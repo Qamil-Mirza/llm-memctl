@@ -1,0 +1,20 @@
+[project]
+name = "memctl"
+version = "0.1.0"
+description = "A swappable memory controller for LLM agents (honors thesis codebase)."
+requires-python = ">=3.11"
+dependencies = ["numpy>=1.26", "pyyaml>=6.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+# Added in later phases: report (matplotlib), oracle ILP (pulp), models (transformers/torch), jev (typesafe-sdk).
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["memctl*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
