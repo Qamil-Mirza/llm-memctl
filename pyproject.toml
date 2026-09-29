@@ -8,6 +8,7 @@ dependencies = ["numpy>=1.26", "pyyaml>=6.0", "pulp>=2.9,<4", "matplotlib>=3.8"]
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
 models = ["torch>=2.3", "transformers>=5.0", "accelerate", "sentence-transformers"]  # for the hf backend
+quantized = ["bitsandbytes>=0.48"]  # only for model.load_in_4bit on a small GPU
 # Added in Phase 3: jev (typesafe-sdk).
 
 [build-system]

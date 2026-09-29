@@ -61,7 +61,18 @@ class HuggingFaceLLM:
     its internal state is reused. Outputs are the same as without the reuse.
     """
 
-    def __init__(self, model_name: str, device: str | None = None) -> None:
+    def __init__(
+        self,
+        model_name: str,
+        device: str | None = None,
+        load_in_4bit: bool = False,
+        device_map: str | dict | None = None,
+        max_memory: dict | None = None,
+        chunk_tokens: int = 4096,
+    ) -> None:
+        """`load_in_4bit`, `device_map`, `max_memory` and `chunk_tokens` are for small
+        GPUs; with all four left alone the model loads exactly as it always has.
+        See docs/decisions.md, entries 37-39."""
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -72,8 +83,29 @@ class HuggingFaceLLM:
         self.device = device
         precision = torch.float32 if device == "cpu" else torch.float16
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForCausalLM.from_pretrained(model_name, dtype=precision).to(device).eval()
-        self.chunk_tokens = 4096
+
+        options: dict = {"dtype": precision}
+        if load_in_4bit:  # weights in 4-bit NF4; everything is computed in float16
+            from transformers import BitsAndBytesConfig
+
+            options["quantization_config"] = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.float16,
+                bnb_4bit_use_double_quant=True,
+            )
+            device_map = device_map or {"": 0}  # bitsandbytes places the weights itself
+        if device_map is not None:
+            options["device_map"] = device_map
+            if max_memory:
+                options["max_memory"] = max_memory
+        self.model = AutoModelForCausalLM.from_pretrained(model_name, **options)
+        if device_map is None:  # a device_map has already placed the weights
+            self.model = self.model.to(device)
+        self.model.eval()
+        # With a device_map the embedding layer decides where the input ids must live.
+        self.input_device = self.model.get_input_embeddings().weight.device
+        self.chunk_tokens = chunk_tokens
         self.prefix_text = ""
         self.prefix_ids = None
         self.prefix_state = None
@@ -91,7 +123,20 @@ class HuggingFaceLLM:
         return len(self.tokenizer(text, add_special_tokens=False).input_ids)
 
     def _ids(self, text: str):
-        return self.tokenizer(text, return_tensors="pt", add_special_tokens=False).input_ids.to(self.device)
+        return self.tokenizer(text, return_tensors="pt", add_special_tokens=False).input_ids.to(self.input_device)
+
+    def _prefix_pass(self, piece, state):
+        """One chunk of the shared prefix. Only `past_key_values` is kept, so ask the
+        model for a single position's logits: the full set is one float per position per
+        vocabulary entry (4096 x 248320 for Qwen3.5, about 2 GB) and is thrown away."""
+        for keyword in ("logits_to_keep", "num_logits_to_keep"):  # the name changed between versions
+            try:
+                return self.model(
+                    input_ids=piece, past_key_values=state, use_cache=True, **{keyword: 1}
+                ).past_key_values
+            except TypeError:
+                continue
+        return self.model(input_ids=piece, past_key_values=state, use_cache=True).past_key_values
 
     def _remember_prefix(self, prefix_text: str) -> None:
         """Run the shared prefix through the model once and keep the result."""
@@ -101,7 +146,7 @@ class HuggingFaceLLM:
         with self.torch.no_grad():  # in pieces, so that very long prompts fit in memory
             for start in range(0, self.prefix_ids.shape[1], self.chunk_tokens):
                 piece = self.prefix_ids[:, start : start + self.chunk_tokens]
-                state = self.model(input_ids=piece, past_key_values=state, use_cache=True).past_key_values
+                state = self._prefix_pass(piece, state)
         self.prefix_state = state
         self.prefix_text = prefix_text
 
@@ -209,10 +254,27 @@ def build_llm(model_config: dict) -> CachedLLM:
     if backend_name == "stub":
         backend: LLM = StubLLM()
     elif backend_name == "hf":
-        backend = LazyLLM(name, lambda: HuggingFaceLLM(name, model_config.get("device")))
+        backend = LazyLLM(
+            name,
+            lambda: HuggingFaceLLM(
+                name,
+                model_config.get("device"),
+                load_in_4bit=model_config.get("load_in_4bit", False),
+                device_map=model_config.get("device_map"),
+                max_memory=model_config.get("max_memory"),
+                chunk_tokens=model_config.get("chunk_tokens", 4096),
+            ),
+        )
     elif backend_name == "vllm":
         backend = VllmLLM(name, model_config["base_url"])
     else:
         raise KeyError(f"unknown model backend '{backend_name}' (known: stub, hf, vllm)")
-    settings = {"backend": backend_name, "name": name, "temperature": 0.0}
+    # `load_in_4bit` is part of the cache key: 4-bit and 16-bit weights give different
+    # text for the same prompt, so their generations must never share a cache entry.
+    settings = {
+        "backend": backend_name,
+        "name": name,
+        "temperature": 0.0,
+        "load_in_4bit": bool(model_config.get("load_in_4bit", False)),
+    }
     return CachedLLM(backend, model_config.get("cache_dir", "cache/generations"), settings)

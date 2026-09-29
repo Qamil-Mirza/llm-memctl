@@ -1,0 +1,37 @@
+# The locomo_small experiment on a GPU too small for 16-bit weights.
+#
+# WARNING: 4-bit weights give different text from 16-bit ones, so these numbers are NOT
+# comparable with the 16-bit runs in runs/locomo_4b. They live in their own output_dir
+# for that reason. See docs/decisions.md entries 39 and 41, and docs/porting.md 4b.
+#
+# B is 0.10 here, not 0.25: on a 4 GB card B = 25% runs out of memory (decision 41).
+benchmark:
+  name: locomo
+  path: data/locomo/locomo10.json
+  limit: 3
+  questions_per_conversation: 60
+budget:
+  fraction: 0.10
+memory:
+  allow_drop: true
+  recall_cost_tokens: 50
+  store_top_k: 10
+  charge_archive_index: true
+  max_recall_rounds: 2
+  embedder: BAAI/bge-small-en-v1.5
+controller:
+  name: keep_newest
+model:
+  backend: hf
+  name: Qwen/Qwen3.5-4B
+  load_in_4bit: true
+  chunk_tokens: 1024        # smaller prefill chunks need less memory at once
+  max_new_tokens: 48
+  cache_dir: cache/generations
+judge:
+  backend: hf
+  name: Qwen/Qwen3.5-2B
+  load_in_4bit: true
+  cache_dir: cache/judge
+seed: 0
+output_dir: runs/locomo_4b_4bit

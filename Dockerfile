@@ -5,10 +5,13 @@ FROM python:3.12-slim
 ENV PIP_NO_CACHE_DIR=1 \
     PYTHONUNBUFFERED=1 \
     HF_HOME=/models \
-    MPLCONFIGDIR=/tmp/matplotlib
+    MPLCONFIGDIR=/tmp/matplotlib \
+    TRITON_CACHE_DIR=/models/triton
 
-# git is used to stamp every run folder with the commit it was made from
-RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/* \
+# git stamps every run folder with the commit it was made from. gcc is needed at run time:
+# Qwen3.5's linear-attention layers are Triton kernels that are compiled on first use.
+RUN apt-get update && apt-get install -y --no-install-recommends git build-essential \
+    && rm -rf /var/lib/apt/lists/* \
     && git config --system --add safe.directory /app
 
 WORKDIR /app
@@ -17,7 +20,7 @@ WORKDIR /app
 # On Linux x86-64, the default torch wheel includes NVIDIA CUDA support.
 COPY pyproject.toml constraints.txt ./
 RUN mkdir memctl && touch memctl/__init__.py \
-    && pip install -c constraints.txt -e ".[dev,models]"
+    && pip install -c constraints.txt -e ".[dev,models,quantized]"
 
 COPY . .
 
