@@ -47,6 +47,11 @@ Each run writes `runs/<date>_<controller>_<benchmark>_B<budget>_seed<seed>/` wit
 `config.yaml`, `decisions.jsonl` (one line per decision), `answers.jsonl` (one line
 per question, including where each evidence item was), and `metrics.json`.
 
+## Running on another machine
+
+`docker compose run --rm memctl` runs the project in a container and uses an NVIDIA
+GPU when there is one. See [docs/porting.md](docs/porting.md).
+
 ## Where things are
 
 | File | What it does |

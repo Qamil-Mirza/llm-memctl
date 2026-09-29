@@ -38,3 +38,5 @@ Each entry: what was unclear, what was chosen, and why. Newest last.
 | 32 | Item ids in the prompt | Shown only in the archive index, not on items in context. | With ids on every line the 0.8B model often answered with an id instead of a fact. |
 | 33 | Judge prompt | Strict, with six short examples. | The first, lenient prompt marked id-only answers as correct. On 60 hand-checked answers the strict prompt made about 4 errors, all too lenient. |
 | 34 | When the judge runs | After all questions are answered. The answering model is unloaded first. | Both models do not fit in memory together with long prompts. |
+| 35 | `full_context` with the 4B answerer | Not run on the development Mac (24 GB memory). | The 23,000-token prompt pushed the machine into 21 GB of swap and made no progress for 30 minutes. To be run on a GPU machine. |
+| 36 | Packaging | One Docker image, with the project folder shared into the container. Package versions are pinned in `constraints.txt`. | Code and config edits need no rebuild, results stay on the host, and git can stamp run folders. |

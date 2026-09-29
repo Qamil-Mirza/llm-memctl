@@ -7,10 +7,10 @@ config, every decision, every answer, the metrics and a report.
 from __future__ import annotations
 
 import argparse
+import importlib.metadata
 import json
 import platform
 import subprocess
-import sys
 import time
 from collections import Counter
 from datetime import date
@@ -114,10 +114,30 @@ def write_jsonl(path: Path, rows: list[dict]) -> None:
     path.write_text("".join(json.dumps(row) + "\n" for row in rows))
 
 
+def environment() -> str:
+    """Python version, platform, GPU and every installed package with its version."""
+    packages = sorted(f"{d.metadata['Name']}=={d.version}" for d in importlib.metadata.distributions())
+    try:
+        import torch
+
+        device = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "no NVIDIA GPU"
+    except ImportError:
+        device = "torch not installed"
+    header = f"python {platform.python_version()}\nplatform {platform.platform()}\ngpu {device}\n\n"
+    return header + "\n".join(packages) + "\n"
+
+
+def git_output(*arguments: str) -> str:
+    try:
+        return subprocess.run(["git", *arguments], capture_output=True, text=True).stdout.strip()
+    except FileNotFoundError:  # git is not installed
+        return ""
+
+
 def git_state() -> tuple[str, str]:
     """(full commit hash, short label for folder names). The label ends in -dirty if code is uncommitted."""
-    commit = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
-    dirty = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True).stdout.strip()
+    commit = git_output("rev-parse", "HEAD")
+    dirty = git_output("status", "--porcelain")
     if not commit:
         return "no git commit yet", "nogit"
     return commit + (" (with uncommitted changes)" if dirty else ""), commit[:7] + ("-dirty" if dirty else "")
@@ -139,9 +159,7 @@ def write_run(config, display_name, decisions, answers, metrics, jev_log) -> Pat
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "config.yaml").write_text(yaml.safe_dump(config, sort_keys=False))
     (folder / "git_commit.txt").write_text(commit + "\n")
-    packages = subprocess.run(["uv", "pip", "freeze", "--python", sys.executable], capture_output=True, text=True)
-    env = f"python {platform.python_version()}\nplatform {platform.platform()}\n\n{packages.stdout}"
-    (folder / "env.txt").write_text(env)
+    (folder / "env.txt").write_text(environment())
     write_jsonl(folder / "decisions.jsonl", decisions)
     write_jsonl(folder / "answers.jsonl", answers)
     if jev_log:

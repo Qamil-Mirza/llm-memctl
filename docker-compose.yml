@@ -1,0 +1,32 @@
+# Usage (see docs/porting.md):
+#   docker compose run --rm memctl                                   # run the tests
+#   docker compose run --rm memctl python -m memctl.run --config configs/locomo_small.yaml
+#
+# On a machine without an NVIDIA GPU, use the "cpu" service instead of "memctl".
+x-memctl: &memctl
+  build: .
+  image: memctl:latest
+  env_file:
+    - path: .env          # JEV_API_KEY and HF_TOKEN, never committed
+      required: false
+  volumes:
+    - .:/app                    # the project folder: code, configs, runs/, cache/, data/
+    - models:/models            # downloaded model weights
+
+services:
+  memctl:
+    <<: *memctl
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  cpu:
+    <<: *memctl
+    profiles: ["cpu"]
+
+volumes:
+  models:
