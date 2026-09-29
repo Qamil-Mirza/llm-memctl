@@ -19,6 +19,7 @@ memory:
   charge_archive_index: true
   max_recall_rounds: 2
   embedder: BAAI/bge-small-en-v1.5
+  embedder_device: cpu   # the 4-bit answerer needs the GPU to itself (decision 42)
 controller:
   name: keep_newest
 model:

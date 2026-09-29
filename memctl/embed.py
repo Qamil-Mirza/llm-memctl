@@ -60,10 +60,13 @@ class HashingEmbedder:
 class SentenceTransformerEmbedder:
     """Dense embeddings from a sentence-transformers model (downloaded on first use)."""
 
-    def __init__(self, model_name: str, reference_threshold: float) -> None:
+    def __init__(self, model_name: str, reference_threshold: float, device: str | None = None) -> None:
         from sentence_transformers import SentenceTransformer  # optional dependency
 
-        self.model = SentenceTransformer(model_name)
+        # `device=None` lets sentence-transformers choose, which is the GPU when there is one.
+        # On a small GPU set memory.embedder_device to "cpu": the embedder is tiny but it and
+        # its CUDA context hold about 0.3 GB that the answering model needs (decision 42).
+        self.model = SentenceTransformer(model_name, device=device)
         self.reference_threshold = reference_threshold
         self.seen: dict[str, np.ndarray] = {}  # texts repeat a lot, so remember their vectors
 
@@ -74,7 +77,9 @@ class SentenceTransformerEmbedder:
         return self.seen[text]
 
 
-def build_embedder(name: str = DEFAULT_EMBEDDER, reference_threshold: float | None = None) -> Embedder:
+def build_embedder(
+    name: str = DEFAULT_EMBEDDER, reference_threshold: float | None = None, device: str | None = None
+) -> Embedder:
     """`hashing` for the built-in test embedder, otherwise a sentence-transformers model name.
 
     The dense default is for real runs. `hashing` only measures word overlap and is for tests.
@@ -88,7 +93,7 @@ def build_embedder(name: str = DEFAULT_EMBEDDER, reference_threshold: float | No
         reference_threshold = REFERENCE_THRESHOLDS[name]
     if name == "hashing":
         return HashingEmbedder(reference_threshold=reference_threshold)
-    return SentenceTransformerEmbedder(name, reference_threshold)
+    return SentenceTransformerEmbedder(name, reference_threshold, device)
 
 
 def cosine(a: np.ndarray, b: np.ndarray) -> float:

@@ -16,6 +16,9 @@ x-memctl: &memctl
 services:
   memctl:
     <<: *memctl
+    environment:
+      # This matters on small cards: without it a few free megabytes can be unusable.
+      PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
     deploy:
       resources:
         reservations:

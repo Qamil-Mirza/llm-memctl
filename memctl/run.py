@@ -53,7 +53,11 @@ def run(config: dict, allow_fake_jev: bool = False, progress: bool = False) -> P
     memory = config.get("memory", {})
     model = config.get("model", {})
     conversations = load_benchmark(config["benchmark"], seed)
-    embedder = build_embedder(memory.get("embedder", DEFAULT_EMBEDDER), memory.get("reference_threshold"))
+    embedder = build_embedder(
+        memory.get("embedder", DEFAULT_EMBEDDER),
+        memory.get("reference_threshold"),
+        memory.get("embedder_device"),
+    )
     llm = build_llm(model)
     agent = Agent(llm, model.get("max_new_tokens", 64), memory.get("max_recall_rounds", 2))
     judge = Judge(build_llm(config["judge"])) if config.get("judge") else None
