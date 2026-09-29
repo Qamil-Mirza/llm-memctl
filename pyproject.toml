@@ -3,11 +3,12 @@ name = "memctl"
 version = "0.1.0"
 description = "A swappable memory controller for LLM agents (honors thesis codebase)."
 requires-python = ">=3.11"
-dependencies = ["numpy>=1.26", "pyyaml>=6.0"]
+dependencies = ["numpy>=1.26", "pyyaml>=6.0", "pulp>=2.9,<4", "matplotlib>=3.8"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
-# Added in later phases: report (matplotlib), oracle ILP (pulp), models (transformers/torch), jev (typesafe-sdk).
+models = ["torch>=2.3", "transformers>=5.0", "accelerate", "sentence-transformers"]  # for the hf backend
+# Added in Phase 3: jev (typesafe-sdk).
 
 [build-system]
 requires = ["setuptools>=68"]
@@ -18,3 +19,4 @@ include = ["memctl*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning:pulp", "ignore:.*PULP_CBC_CMD.*"]

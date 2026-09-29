@@ -6,7 +6,7 @@ import time
 import pytest
 import yaml
 
-from memctl.agent import CachedLLM, StubLLM
+from memctl.llm import CachedLLM, StubLLM
 from memctl.benchmarks import load_benchmark
 from memctl.run import run
 
@@ -37,8 +37,16 @@ def test_smoke_run_with_fake_jev(tmp_path):
 
     decisions = read_jsonl(folder / "decisions.jsonl")
     assert decisions and all(d["controller"] == "jev-FAKE" for d in decisions)
-    assert all("FAKE" in d["reason"] for d in decisions)
-    assert {"step", "item_id", "features", "place", "reason", "confidence"} <= set(decisions[0])
+    moves = [d for d in decisions if d["kind"] != "keep"]
+    keeps = [d for d in decisions if d["kind"] == "keep"]
+    assert all("FAKE" in d["reason"] for d in moves)
+    assert {"step", "item_id", "features", "place", "reason", "confidence"} <= set(moves[0])
+    assert len(keeps) == metrics["cost"]["controller_calls"]  # kept items are logged once per call
+    assert all(set(d["oracle_would_move"]) <= set(d["kept_item_ids"]) for d in keeps)
+    new_items_kept = sum(1 for d in decisions if d["kind"] == "keep_new_item")
+    graded_keeps = sum(len(d["kept_item_ids"]) for d in keeps) + new_items_kept
+    assert metrics["oracle_agreement"]["keeps"]["decisions"] == graded_keeps
+    assert folder.name.split("_")[-1] not in ("seed0", "")  # the folder name ends with the git hash
 
     answers = read_jsonl(folder / "answers.jsonl")
     assert all(row["evidence"] for row in answers)
@@ -61,7 +69,7 @@ def test_full_context_has_all_evidence_and_beats_a_tight_budget(tmp_path):
 
 def test_generation_cache_makes_reruns_free(tmp_path):
     llm = CachedLLM(StubLLM(), str(tmp_path / "cache"), {"name": "stub"})
-    prompt = "## Memory in context\n[a] (Ann) the sky is teal\n## Archive index\n## Question\nwhat colour is the sky"
+    prompt = "## Memory in context\n(Ann) the sky is teal\n## Archive index\n## Question\nwhat colour is the sky"
     first = llm.generate(prompt, 16)
     second = llm.generate(prompt, 16)
     assert first == second and (llm.misses, llm.hits) == (1, 1)

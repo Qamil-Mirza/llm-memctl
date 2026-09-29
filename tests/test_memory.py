@@ -6,6 +6,7 @@ import pytest
 
 from memctl.controllers.base import Placement, build_controller, registry
 from memctl.controllers.jev import FakeJevClient, JevController
+from memctl.controllers.oracle import OraclePlan
 from memctl.embed import HashingEmbedder
 from memctl.features import compute_features
 from memctl.items import Place
@@ -82,10 +83,12 @@ def test_archive_index_lines_count_toward_the_budget(state):
 
 
 @pytest.mark.parametrize("words", [1, 2, 6, 7, 8, 30])
-def test_an_index_line_is_always_cheaper_than_the_item(state, words):
+def test_an_index_line_never_costs_more_than_the_item(state, words):
     from memctl.items import count_tokens
 
-    assert count_tokens(item(1, words).index_line()) < item(1, words).tokens
+    assert count_tokens(item(1, words).index_line()) <= item(1, words).tokens
+    if words >= 7:
+        assert count_tokens(item(1, words).index_line()) < item(1, words).tokens
 
 
 def test_store_search_returns_the_most_similar_items(state):
@@ -100,6 +103,9 @@ def all_controllers():
     controllers = [build_controller({"name": name}, seed=3) for name in registry() if name != "jev"]
     controllers.append(build_controller({"name": "random", "destinations": ["STORE", "ARCHIVE", "DROPPED"]}, 5))
     controllers.append(JevController({"name": "jev"}, client=FakeJevClient()))
+    for controller in controllers:
+        if controller.uses_evidence_labels:  # the oracle needs a plan: every 7th item is needed at the end
+            controller.receive_plan(OraclePlan(needs={f"i{n}": [200] for n in range(1, 151, 7)}))
     return controllers
 
 

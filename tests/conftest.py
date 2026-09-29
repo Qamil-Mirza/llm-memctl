@@ -15,4 +15,5 @@ def item(n: int, words: int = 10, step: int | None = None) -> Item:
 
 @pytest.fixture
 def state() -> MemoryState:
-    return MemoryState(budget=60, embedder=HashingEmbedder())
+    """A memory with room for exactly three standard test items."""
+    return MemoryState(budget=3 * item(1).tokens + 2, embedder=HashingEmbedder())

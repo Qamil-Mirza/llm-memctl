@@ -39,7 +39,6 @@ class MemoryState:
         recall_cost: int = 50,
         store_top_k: int = 5,
         charge_archive_index: bool = True,
-        reference_threshold: float = 0.3,
     ) -> None:
         self.budget = budget
         self.embedder = embedder
@@ -47,7 +46,7 @@ class MemoryState:
         self.recall_cost = recall_cost
         self.store_top_k = store_top_k
         self.charge_archive_index = charge_archive_index
-        self.reference_threshold = reference_threshold
+        self.reference_threshold = embedder.reference_threshold
 
         self.items: dict[str, Item] = {}
         self.place: dict[str, Place] = {}
@@ -104,7 +103,7 @@ class MemoryState:
         if self.incoming is not None:
             raise PlacementError(f"item {self.incoming.id} is still waiting to be placed")
         self.items[item.id] = item
-        self.vectors[item.id] = self.embedder.embed(item.text)
+        self.vectors[item.id] = self.embedder.embed(item.search_text())
         self.last_used[item.id] = self.step
         self.use_count[item.id] = 0
         if self.used_tokens() + item.tokens <= self.budget:

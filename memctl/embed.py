@@ -26,7 +26,17 @@ def content_words(text: str) -> list[str]:
     return [w for w in _WORD.findall(text.lower()) if len(w) > 1 and w not in _STOPWORDS]
 
 
+DEFAULT_EMBEDDER = "BAAI/bge-small-en-v1.5"
+
+# "An earlier item was referenced" means: its similarity to the new message is in the top 5%
+# of all message pairs. Similarity scales differ a lot between embedders, so each has its own
+# threshold. Measured on 3 LoCoMo conversations (106,360 pairs), without using any labels.
+REFERENCE_THRESHOLDS = {"hashing": 0.29, "BAAI/bge-small-en-v1.5": 0.77}
+
+
 class Embedder(Protocol):
+    reference_threshold: float
+
     def embed(self, text: str) -> np.ndarray:
         """Return a unit-length vector for the text."""
         ...
@@ -35,8 +45,9 @@ class Embedder(Protocol):
 class HashingEmbedder:
     """Bag-of-words embedding: each word is hashed into one of `dim` buckets."""
 
-    def __init__(self, dim: int = 512) -> None:
+    def __init__(self, dim: int = 512, reference_threshold: float = REFERENCE_THRESHOLDS["hashing"]) -> None:
         self.dim = dim
+        self.reference_threshold = reference_threshold
 
     def embed(self, text: str) -> np.ndarray:
         vector = np.zeros(self.dim, dtype=np.float32)
@@ -49,20 +60,35 @@ class HashingEmbedder:
 class SentenceTransformerEmbedder:
     """Dense embeddings from a sentence-transformers model (downloaded on first use)."""
 
-    def __init__(self, model_name: str) -> None:
+    def __init__(self, model_name: str, reference_threshold: float) -> None:
         from sentence_transformers import SentenceTransformer  # optional dependency
 
         self.model = SentenceTransformer(model_name)
+        self.reference_threshold = reference_threshold
+        self.seen: dict[str, np.ndarray] = {}  # texts repeat a lot, so remember their vectors
 
     def embed(self, text: str) -> np.ndarray:
-        return np.asarray(self.model.encode(text, normalize_embeddings=True), dtype=np.float32)
+        if text not in self.seen:
+            vector = self.model.encode(text, normalize_embeddings=True, show_progress_bar=False)
+            self.seen[text] = np.asarray(vector, dtype=np.float32)
+        return self.seen[text]
 
 
-def build_embedder(name: str) -> Embedder:
-    """`hashing` for the built-in embedder, otherwise a sentence-transformers model name."""
+def build_embedder(name: str = DEFAULT_EMBEDDER, reference_threshold: float | None = None) -> Embedder:
+    """`hashing` for the built-in test embedder, otherwise a sentence-transformers model name.
+
+    The dense default is for real runs. `hashing` only measures word overlap and is for tests.
+    """
+    if reference_threshold is None:
+        if name not in REFERENCE_THRESHOLDS:
+            raise KeyError(
+                f"no reference threshold is known for embedder '{name}'. Set memory.reference_threshold "
+                "in the config (see REFERENCE_THRESHOLDS in memctl/embed.py for how it is measured)."
+            )
+        reference_threshold = REFERENCE_THRESHOLDS[name]
     if name == "hashing":
-        return HashingEmbedder()
-    return SentenceTransformerEmbedder(name)
+        return HashingEmbedder(reference_threshold=reference_threshold)
+    return SentenceTransformerEmbedder(name, reference_threshold)
 
 
 def cosine(a: np.ndarray, b: np.ndarray) -> float:

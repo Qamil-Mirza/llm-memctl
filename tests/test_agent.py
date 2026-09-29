@@ -1,6 +1,7 @@
 """The agent: prompt contents, store retrieval and the recall(id) tool."""
 
-from memctl.agent import Agent, StubLLM, build_prompt
+from memctl.agent import Agent, build_prompt
+from memctl.llm import StubLLM
 from memctl.controllers.base import Placement
 from memctl.embed import HashingEmbedder
 from memctl.items import Place, make_item
@@ -16,7 +17,7 @@ class ScriptedLLM:
         self.outputs = list(outputs)
         self.prompts: list[str] = []
 
-    def generate(self, prompt: str, max_new_tokens: int) -> str:
+    def generate(self, prompt: str, max_new_tokens: int, shared_prefix: str = "") -> str:
         self.prompts.append(prompt)
         return self.outputs.pop(0)
 
@@ -43,9 +44,9 @@ def memory_with_one_item_in_each_place() -> MemoryState:
 
 def test_prompt_shows_context_items_and_only_an_index_line_for_archived_ones():
     state = memory_with_one_item_in_each_place()
-    prompt = build_prompt(state, "When is the meeting?", retrieved=[], recalled=[])
+    prompt = "".join(build_prompt(state, "When is the meeting?", retrieved=[], recalled=[]))
     assert "The meeting is on Tuesday morning." in prompt
-    assert "[arc] Ann: The long report says the bridge …" in prompt
+    assert "[arc] The long report says …" in prompt
     assert "northern cable anchor" not in prompt
     assert "garden gate" not in prompt and "deleted" not in prompt
 

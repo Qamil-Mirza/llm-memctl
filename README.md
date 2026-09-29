@@ -4,7 +4,7 @@ An LLM agent has a limited prompt. As a conversation grows, something must decid
 what stays in the prompt and what is filed away. In this codebase that "something"
 is a **memory controller**, and you can swap controllers with one line of config.
 
-> Status: **Phase 1 of 4** (scaffold). See "What works today" below.
+> Status: **Phase 2 of 4** (LoCoMo pipeline). See "What works today" below.
 
 ## The idea in one minute
 
@@ -57,10 +57,16 @@ per question, including where each evidence item was), and `metrics.json`.
 | `memctl/controllers/base.py` | `Controller` interface, `Placement`, the registry |
 | `memctl/controllers/rules.py` | `full_context`, `keep_newest`, `lru`, `random`, `file_everything` |
 | `memctl/controllers/jev.py` | `JevClient`, `FakeJevClient`, `JevController` |
-| `memctl/agent.py` | Builds the prompt, handles `recall(id)`, caches generations |
+| `memctl/controllers/oracle.py` | Hindsight oracle (evaluation only); exact plan in `oracle_ilp.py` |
+| `memctl/agent.py` | Builds the prompt and handles `recall(id)` |
+| `memctl/llm.py` | Model backends (`stub`, `hf`, `vllm`) and the disk cache |
 | `memctl/episode.py` | Runs one conversation event by event |
+| `memctl/metrics.py`, `judge.py` | F1, BLEU-1 and the LLM judge |
+| `memctl/attribution.py` | One failure label per wrong answer |
+| `memctl/summary.py` | Builds `metrics.json` |
 | `memctl/run.py` | One command to run an experiment |
-| `memctl/benchmarks/` | Benchmark loaders (today: a tiny synthetic one) |
+| `memctl/report.py`, `plots.py` | `report.md` and its charts |
+| `memctl/benchmarks/` | `locomo.py` and a tiny `synthetic.py` |
 | `docs/` | `architecture.md`, `jev.md`, `metrics.md`, `decisions.md` |
 
 ## Adding a controller
@@ -75,9 +81,20 @@ per question, including where each evidence item was), and `metrics.json`.
 | Phase | Content | State |
 |---|---|---|
 | 1 | Items, memory, controller interface, rule controllers, fake Jev, tests, smoke test | done |
-| 2 | LoCoMo, real model (Qwen), oracle, BLEU-1 and judge, failure attribution, report | not started |
+| 2 | LoCoMo, real model (Qwen), oracle, BLEU-1 and judge, failure attribution, report | done (LongMemEval loader still to do) |
 | 3 | Real Jev client, budget sweep, `memctl.compare` | not started |
 | 4 | `learned_policy` stub and `reset`/`step` environment | not started |
 
 Numbers from the synthetic benchmark and the stub model only show that the pipeline
 runs. They are not results.
+
+## A real run
+
+```bash
+uv pip install --python .venv/bin/python -e ".[dev,models]"
+.venv/bin/python -m memctl.run --config configs/locomo_small.yaml --controller oracle
+.venv/bin/python -m memctl.report runs/locomo_small/<run folder>   # rebuild a report
+```
+
+The first run downloads the answering model (1.7 GB) and the judge (4.6 GB). Every
+generation is cached in `cache/`, so a rerun takes seconds.

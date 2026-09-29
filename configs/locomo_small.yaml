@@ -1,0 +1,30 @@
+# First real experiment: 3 LoCoMo conversations, 60 questions each, one budget.
+# Change the controller or budget here, or on the command line:
+#   python -m memctl.run --config configs/locomo_small.yaml --controller lru --budget-fraction 0.5
+benchmark:
+  name: locomo
+  path: data/locomo/locomo10.json
+  limit: 3                         # first 3 of the 10 conversations
+  questions_per_conversation: 60   # seeded sample, balanced across categories
+budget:
+  fraction: 0.25                   # B = 25% of each conversation's full history
+memory:
+  allow_drop: true
+  recall_cost_tokens: 50
+  store_top_k: 10
+  charge_archive_index: true
+  max_recall_rounds: 2
+  embedder: BAAI/bge-small-en-v1.5
+controller:
+  name: keep_newest
+model:
+  backend: hf                      # hf | vllm | stub
+  name: Qwen/Qwen3.5-0.8B
+  max_new_tokens: 48
+  cache_dir: cache/generations
+judge:
+  backend: hf
+  name: Qwen/Qwen3.5-2B
+  cache_dir: cache/judge
+seed: 0
+output_dir: runs/locomo_small

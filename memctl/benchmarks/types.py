@@ -43,3 +43,12 @@ class Conversation:
     def total_tokens(self) -> int:
         """Length of the full history in tokens (the 100% budget)."""
         return sum(item.tokens for item in self.items())
+
+    def need_times(self) -> dict[str, list[int]]:
+        """For each evidence item, the steps at which a question needs it (evaluation only)."""
+        needs: dict[str, list[int]] = {}
+        for step, event in enumerate(self.events, start=1):
+            if event.kind == "question":
+                for item_id in event.question.evidence_ids:
+                    needs.setdefault(item_id, []).append(step)
+        return needs

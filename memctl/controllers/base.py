@@ -31,6 +31,7 @@ class Controller(ABC):
     name = "base"
     ignores_budget = False  # True only for full_context, which is given an unlimited budget
     runs_on_every_arrival = False  # True for controllers that file items even when there is room
+    uses_evidence_labels = False  # True only for the oracle (evaluation yardstick)
 
     def __init__(self, config: dict, seed: int = 0) -> None:
         self.config = config
@@ -94,7 +95,7 @@ def evict_until_fits(
 
 def registry() -> dict[str, type[Controller]]:
     """Every controller by its config name. Add new controllers here (one line each)."""
-    from memctl.controllers import jev, rules
+    from memctl.controllers import jev, oracle, rules
 
     return {
         "full_context": rules.FullContext,
@@ -103,6 +104,7 @@ def registry() -> dict[str, type[Controller]]:
         "random": rules.RandomEviction,
         "file_everything": rules.FileEverything,
         "jev": jev.JevController,
+        "oracle": oracle.OracleController,
     }
 
 

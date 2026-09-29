@@ -43,19 +43,23 @@ class Item:
         return str(self.source.get("speaker", self.kind))
 
     def prompt_line(self) -> str:
-        """How the full item looks inside the prompt."""
+        """How the full item looks inside the prompt. No id: small models tend to answer with it."""
         date = self.source.get("date")
         who = f"{self.speaker()}, {date}" if date else self.speaker()
-        return f"[{self.id}] ({who}) {self.text}"
+        return f"({who}) {self.text}"
 
-    def index_line(self, max_words: int = 6) -> str:
-        """The one-line archive index entry: id plus a short label.
+    def search_text(self) -> str:
+        """The text that is embedded for search. Including the speaker doubles recall on LoCoMo."""
+        return f"{self.speaker()}: {self.text}"
 
-        It always costs fewer tokens than the item itself, so archiving always frees room.
+    def index_line(self, max_words: int = 4) -> str:
+        """The one-line archive index entry: id plus the first few words.
+
+        It never costs more tokens than the item itself, and much less for long items.
         """
         words = self.text.split()
-        label = " ".join(words[:max_words]) + (" …" if len(words) > max_words else "")
-        return f"[{self.id}] {self.speaker()}: {label}"
+        label = " ".join(words[:max_words]) + (" …" if len(words) > max_words + 1 else "")
+        return f"[{self.id}] {label}"
 
 
 def make_item(
