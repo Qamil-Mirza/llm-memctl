@@ -261,3 +261,133 @@ def test_write_comparison_warns_when_4_bit_and_16_bit_runs_are_mixed(tmp_path):
 def test_write_comparison_refuses_an_empty_folder(tmp_path):
     with pytest.raises(SystemExit):
         write_comparison(tmp_path)
+
+
+# ------------------------------------------------------------------ placement against retrieval
+
+
+def with_evidence(question_id: str, correct: bool, places: list[tuple[str, bool]],
+                  category: str = "single-hop") -> dict:
+    """An answer row whose evidence sits in the given places.
+
+    `places` is a list of (place, in_prompt). For a STORE item, in_prompt means it was
+    returned by the search; for an ARCHIVE item, that the agent recalled it.
+    """
+    row = answer(question_id, correct, category)
+    row["evidence"] = [
+        {
+            "item_id": f"D1:{i}",
+            "place": place,
+            "retrieved_from_store": place == "STORE" and in_prompt,
+            "recalled_from_archive": place == "ARCHIVE" and in_prompt,
+            "in_prompt": place == "CONTEXT" or in_prompt,
+        }
+        for i, (place, in_prompt) in enumerate(places)
+    ]
+    return row
+
+
+def run_with(controller: str, answers: list[dict], store_at_end: int = 100, budget: str = "25%") -> dict:
+    return {"controller": controller, "budget": budget, "answers": answers, "folder": None,
+            "metrics": {"controller": controller, "model": "test",
+                        "final_places": {"STORE": store_at_end}, "cost": {"recalls": 0}}}
+
+
+def test_evidence_split_separates_placement_from_retrieval():
+    from memctl.compare import evidence_split
+    run = run_with("keep_newest", [
+        with_evidence("q1", True, [("CONTEXT", True)]),               # placement
+        with_evidence("q2", True, [("STORE", True)]),                 # retrieval rescued it
+        with_evidence("q3", False, [("STORE", False)]),               # lost
+        with_evidence("q4", True, [("CONTEXT", True), ("STORE", True)]),  # partly rescued
+    ])
+    split = evidence_split(run, lambda r: True)
+    assert split["questions"] == 4
+    assert split["all_in_context"] == 0.25          # only q1
+    assert split["rescued_by_retrieval"] == 0.50    # q2 and q4
+    assert split["all_in_prompt"] == 0.75           # q1, q2, q4
+    assert split["store_recall"] == pytest.approx(2 / 3)   # 2 of 3 stored items found
+    assert split["items_in_store_at_end"] == 100
+
+
+def test_evidence_split_shares_always_add_up():
+    from memctl.compare import evidence_split
+    run = run_with("lru", [
+        with_evidence("q1", True, [("CONTEXT", True)]),
+        with_evidence("q2", True, [("STORE", True)]),
+        with_evidence("q3", False, [("STORE", False)]),
+    ])
+    split = evidence_split(run, lambda r: True)
+    assert split["all_in_context"] + split["rescued_by_retrieval"] == pytest.approx(split["all_in_prompt"])
+
+
+def test_evidence_split_ignores_questions_with_no_evidence_label():
+    from memctl.compare import evidence_split
+    row = answer("no_label", False)
+    row["evidence"] = []
+    run = run_with("keep_newest", [with_evidence("q1", True, [("CONTEXT", True)]), row])
+    assert evidence_split(run, lambda r: True)["questions"] == 1
+
+
+def test_evidence_split_counts_archive_recalls_as_rescued():
+    from memctl.compare import evidence_split
+    run = run_with("archiver", [with_evidence("q1", True, [("ARCHIVE", True)])])
+    split = evidence_split(run, lambda r: True)
+    assert split["all_in_context"] == 0.0 and split["rescued_by_retrieval"] == 1.0
+    assert split["evidence_in_archive"] == 1 and split["store_recall"] is None
+
+
+def test_decomposition_attributes_the_gap_to_placement_and_retrieval():
+    from memctl.compare import decomposition
+    # keep_newest: nothing in context, store finds half. oracle: everything in context.
+    baseline = run_with("keep_newest", [
+        with_evidence("q1", False, [("STORE", True)]),
+        with_evidence("q2", False, [("STORE", False)]),
+    ])
+    oracle = run_with("oracle", [
+        with_evidence("q1", True, [("CONTEXT", True)]),
+        with_evidence("q2", True, [("CONTEXT", True)]),
+    ], store_at_end=3)
+    text = decomposition(baseline, oracle, lambda r: True)
+    assert "1.000" in text          # placement difference: 0 -> 1
+    assert "-0.500" in text         # retrieval difference: 0.5 -> 0
+    assert "Items left in the store: 100 against 3" in text
+
+
+def test_decomposition_warns_when_the_store_explains_more_than_placement():
+    from memctl.compare import decomposition
+    baseline = run_with("keep_newest", [with_evidence("q1", False, [("STORE", False)]),
+                                        with_evidence("q2", False, [("STORE", False)])])
+    # the oracle gains entirely through retrieval, not placement
+    oracle = run_with("oracle", [with_evidence("q1", True, [("STORE", True)]),
+                                 with_evidence("q2", True, [("STORE", True)])], store_at_end=2)
+    assert "comes from its store than from its placement" in decomposition(baseline, oracle, lambda r: True)
+
+
+def test_decomposition_is_silent_when_placement_explains_more():
+    from memctl.compare import decomposition
+    baseline = run_with("keep_newest", [with_evidence("q1", False, [("STORE", False)])])
+    oracle = run_with("oracle", [with_evidence("q1", True, [("CONTEXT", True)])])
+    assert "comes from its store" not in decomposition(baseline, oracle, lambda r: True)
+
+
+# ------------------------------------------------------------------ the archive note
+
+
+def test_archive_note_appears_when_nothing_was_archived():
+    from memctl.compare import archive_note
+    runs = [run_with("keep_newest", [with_evidence("q1", True, [("STORE", True)])])]
+    assert "were not exercised" in "\n".join(archive_note(runs))
+
+
+def test_archive_note_is_absent_when_an_item_was_archived():
+    from memctl.compare import archive_note
+    runs = [run_with("archiver", [with_evidence("q1", True, [("ARCHIVE", True)])])]
+    assert archive_note(runs) == []
+
+
+def test_archive_note_is_absent_when_a_recall_was_made():
+    from memctl.compare import archive_note
+    run = run_with("keep_newest", [with_evidence("q1", True, [("STORE", True)])])
+    run["metrics"]["cost"]["recalls"] = 3
+    assert archive_note([run]) == []

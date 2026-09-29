@@ -111,6 +111,122 @@ def budget_section(runs: list[dict], budget: str, keep: object) -> str:
     return table(header, [controller_row(run, keep) for run in here])
 
 
+# ------------------------------------------------- placement against retrieval
+
+
+def evidence_split(run: dict, keep: object) -> dict | None:
+    """Split "the evidence was in front of the model" into placement and retrieval.
+
+    `all_in_context` is what placement achieved on its own. `rescued_by_retrieval` is the
+    questions that placement missed but a store search or a recall saved. The two add up
+    to `all_in_prompt`, because an item in CONTEXT is always in the prompt.
+
+    This matters for reading the gap to the oracle. The oracle drops every item no later
+    question needs (docs/decisions.md entry 24), so its store holds little but evidence and
+    a top-k search almost always finds it, while a rule controller never drops and searches
+    a store holding everything it ever evicted. Part of the oracle's advantage is therefore
+    a cleaner store rather than better placement, and these columns separate the two.
+    """
+    rows = [row for row in run["answers"] if keep(row) and row["evidence"]]
+    if not rows:
+        return None
+    in_context = sum(1 for r in rows if all(e["place"] == "CONTEXT" for e in r["evidence"]))
+    in_prompt = sum(1 for r in rows if all(e["in_prompt"] for e in r["evidence"]))
+    stored = [e for r in rows for e in r["evidence"] if e["place"] == "STORE"]
+    archived = [e for r in rows for e in r["evidence"] if e["place"] == "ARCHIVE"]
+    return {
+        "questions": len(rows),
+        "all_in_context": in_context / len(rows),
+        "rescued_by_retrieval": (in_prompt - in_context) / len(rows),
+        "all_in_prompt": in_prompt / len(rows),
+        "store_recall": (sum(1 for e in stored if e["retrieved_from_store"]) / len(stored)) if stored else None,
+        "evidence_in_store": len(stored),
+        "evidence_in_archive": len(archived),
+        "items_in_store_at_end": run["metrics"].get("final_places", {}).get("STORE"),
+    }
+
+
+def evidence_section(runs: list[dict], budget: str, keep: object) -> str:
+    def order(run: dict) -> tuple:
+        return ({BASELINE: 0, ORACLE: 2}.get(run["controller"], 1), run["controller"])
+
+    rows = []
+    for run in sorted([r for r in runs if r["budget"] == budget], key=order):
+        split = evidence_split(run, keep)
+        if split is None:
+            rows.append([run["controller"], *([None] * 5)])
+            continue
+        rows.append([
+            run["controller"],
+            split["all_in_context"],
+            split["rescued_by_retrieval"],
+            split["all_in_prompt"],
+            split["store_recall"],
+            split["items_in_store_at_end"],
+        ])
+    header = ["Controller", "All evidence in context", "Rescued by retrieval",
+              "All evidence in prompt", "Evidence recall from store", "Items in store at end"]
+    return table(header, rows)
+
+
+def decomposition(baseline: dict, oracle: dict, keep: object) -> str:
+    """How much of the oracle's advantage is placement and how much is a cleaner store."""
+    mine, theirs = evidence_split(baseline, keep), evidence_split(oracle, keep)
+    if mine is None or theirs is None:
+        return ""
+    placement = theirs["all_in_context"] - mine["all_in_context"]
+    retrieval = theirs["rescued_by_retrieval"] - mine["rescued_by_retrieval"]
+    total = theirs["all_in_prompt"] - mine["all_in_prompt"]
+    lines = [
+        "",
+        "Where that advantage comes from, in questions that had all their evidence available:",
+        "",
+        table(
+            ["Source", "Difference (oracle minus keep_newest)"],
+            [
+                ["Placement: all evidence kept in context", placement],
+                ["Retrieval: evidence found in the store instead", retrieval],
+                ["**Total: all evidence in the prompt**", total],
+            ],
+        ),
+        "",
+        f"- Store evidence recall: `{BASELINE}` "
+        + (f"{mine['store_recall']:.3f}" if mine["store_recall"] is not None else "n/a")
+        + f", `{ORACLE}` "
+        + (f"{theirs['store_recall']:.3f}" if theirs["store_recall"] is not None else "n/a")
+        + f". Items left in the store: {mine['items_in_store_at_end']} against "
+        f"{theirs['items_in_store_at_end']}.",
+    ]
+    if retrieval > placement:
+        lines.append(
+            "- **More of the oracle's advantage here comes from its store than from its "
+            "placement.** It drops everything no later question needs, so its store is small "
+            "and almost pure evidence, which makes a top-k search easy. Do not read this gap "
+            "as placement quality alone."
+        )
+    return "\n".join(lines)
+
+
+def archive_note(runs: list[dict]) -> list[str]:
+    """Say plainly when no run in the folder ever used ARCHIVE or recall()."""
+    used = any(
+        run["metrics"].get("final_places", {}).get("ARCHIVE")
+        or run["metrics"].get("cost", {}).get("recalls")
+        or any(e["place"] == "ARCHIVE" for row in run["answers"] for e in row["evidence"])
+        for run in runs
+    )
+    if used:
+        return []
+    return [
+        "",
+        "> **`ARCHIVE` and `recall()` were not exercised by any run here.** Every rule",
+        "> controller sends what it evicts to `STORE`, so no item was ever archived, no recall",
+        "> was ever made, and the `evidence_archived_not_recalled` label is zero by",
+        "> construction. Nothing in these results says anything about the archive half of the",
+        "> memory model; that needs a controller that archives.",
+    ]
+
+
 # ----------------------------------------------------------------- the paired test
 
 
@@ -228,10 +344,19 @@ def write_comparison(folder: Path) -> Path:
         "agent says the information is absent), so they move the averages on their own.",
     ]
 
+    out += archive_note(runs)
+
     for name, keep in SUBSETS:
         out += ["", f"## Scores, {name}", ""]
         for budget in budgets:
             out += [f"### Budget {budget}", "", budget_section(runs, budget, keep), ""]
+
+        out += ["", f"## Placement against retrieval, {name}", "",
+                "`All evidence in context` is what placement achieved alone; `Rescued by retrieval`",
+                "is the questions placement missed that a store search or a recall saved. Read the",
+                "two together: a controller can look good only because the store bailed it out.", ""]
+        for budget in budgets:
+            out += [f"### Budget {budget}", "", evidence_section(runs, budget, keep), ""]
 
         out += [f"## `{BASELINE}` against `{ORACLE}`, {name}", ""]
         for budget in budgets:
@@ -242,7 +367,8 @@ def write_comparison(folder: Path) -> Path:
                 missing = [n for n, r in ((BASELINE, baseline), (ORACLE, oracle)) if not r]
                 out += [f"Not available: no run for {', '.join(f'`{m}`' for m in missing)} at this budget.", ""]
                 continue
-            out += [paired_section(paired(baseline, oracle, keep)), ""]
+            out += [paired_section(paired(baseline, oracle, keep)),
+                    decomposition(baseline, oracle, keep), ""]
 
     path = folder / "comparison.md"
     path.write_text("\n".join(out) + "\n")

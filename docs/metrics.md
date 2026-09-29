@@ -98,6 +98,29 @@ binomial test against p = 0.5 gives the p-value. It is computed in
 `compare.binomial_two_sided` with no extra dependency, and `tests/test_compare.py`
 checks it against `scipy.stats.binomtest` whenever scipy is installed.
 
+### Placement against retrieval
+
+Evidence reaches the prompt two ways: the controller kept it in context, or a store search
+or `recall()` fetched it. `comparison.md` separates them per controller:
+
+| Column | Meaning |
+|---|---|
+| All evidence in context | what placement achieved on its own |
+| Rescued by retrieval | questions placement missed that a search or recall saved |
+| All evidence in prompt | the sum of the two (an item in context is always in the prompt) |
+| Evidence recall from store | of the evidence sitting in `STORE`, the share the search returned |
+| Items in store at end | how much the search had to look through |
+
+This matters most for the gap to the oracle. The oracle drops every item no later question
+needs (`docs/decisions.md`, entry 24), so its store holds little but evidence and top-k
+search almost always finds it; a rule controller never drops and searches everything it
+ever evicted. The `keep_newest` against `oracle` section therefore attributes the gap to
+placement and to retrieval separately, and says so explicitly when the store explains more
+of it than the placement does (entry 48).
+
+`comparison.md` also warns when no run in the folder ever archived an item or made a
+recall, which is the case for every rule controller as they stand (entry 49).
+
 Why exact and not the usual chi-squared form: the discordant counts here are small
 (tens of questions), which is where the normal approximation is least trustworthy.
 
