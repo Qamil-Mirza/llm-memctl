@@ -4,7 +4,13 @@ An LLM agent has a limited prompt. As a conversation grows, something must decid
 what stays in the prompt and what is filed away. In this codebase that "something"
 is a **memory controller**, and you can swap controllers with one line of config.
 
-> Status: **Phase 2 of 4** (LoCoMo pipeline). See "What works today" below.
+> **Status: paused for a redesign.** The goal is a three-arm comparison of agent memory
+> management on long-horizon tasks (no controller / JEV / RL), which is wider than what
+> Phase 2 built: there is no consolidation, fetch is not a controller action, and LoCoMo is
+> long-*context* QA rather than a long-*horizon task*. Read
+> [docs/restart.md](docs/restart.md) first — it records what was measured, what survives the
+> redesign, and what the new design has to decide. The Phase 2 work is preserved on branch
+> `phase2-locomo-baseline` and tag `phase2-complete`.
 
 ## The idea in one minute
 
