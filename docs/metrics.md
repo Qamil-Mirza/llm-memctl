@@ -71,6 +71,41 @@ That is expected; the per-choice breakdown in the report shows it.
 The oracle follows the same move rules as every controller: a filed item never returns
 to context, and dropped items are gone.
 
+## Comparing two controllers on the same questions
+
+`memctl/compare.py` writes `comparison.md` for a folder of runs. Every table and every
+test appears **twice**: over all questions, and over the non-adversarial ones only
+(`docs/decisions.md`, entry 45).
+
+Per budget it gives accuracy, F1, BLEU-1, average prompt tokens and the memory /
+reasoning split for each controller. All of it is recomputed from `answers.jsonl` with
+the same functions that build `metrics.json`, so the two cannot disagree.
+
+For `keep_newest` against `oracle` it pairs the two runs **by question id** and counts:
+
+| | oracle right | oracle wrong |
+|---|---|---|
+| **keep_newest right** | both right | only `keep_newest` right |
+| **keep_newest wrong** | only `oracle` right | both wrong |
+
+Questions that appear in only one of the two runs are left out and counted separately.
+
+The test is **McNemar's exact test**: the questions both controllers got right or both
+got wrong carry no information about which is better, so only the *discordant* ones
+count. If the two controllers were equally good, each discordant question would fall
+either way with probability one half, so the count is binomial and the two-sided exact
+binomial test against p = 0.5 gives the p-value. It is computed in
+`compare.binomial_two_sided` with no extra dependency, and `tests/test_compare.py`
+checks it against `scipy.stats.binomtest` whenever scipy is installed.
+
+Why exact and not the usual chi-squared form: the discordant counts here are small
+(tens of questions), which is where the normal approximation is least trustworthy.
+
+`comparison.md` ends each comparison with one plain sentence. A gap is called **solid**
+only when there are at least 10 discordant questions and p < 0.05; otherwise it says
+not solid and why. Note that a significant p-value says the ordering is unlikely to be
+chance, not that the difference is large: read it next to the accuracy gap itself.
+
 ## Cost
 
 **The cost axis on every chart is average prompt tokens**, not the budget `B`. `B` limits

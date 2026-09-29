@@ -45,8 +45,22 @@ without rebuilding, and results stay in ordinary folders that are easy to copy:
 ```bash
 git clone <your repository URL> memctl && cd memctl
 cp .env.example .env        # then put JEV_API_KEY in .env
+printf 'MEMCTL_UID=%s\nMEMCTL_GID=%s\n' "$(id -u)" "$(id -g)" >> .env
 docker compose build        # about 10 minutes the first time
 ```
+
+`MEMCTL_UID` and `MEMCTL_GID` make the container run as you. Without them everything in
+`runs/`, `cache/` and `data/` comes back owned by root and needs root to move or delete
+(the default is 1000:1000, which is the usual first user on Linux). If you have already
+made root-owned files, take ownership of them without needing root on the host:
+
+```bash
+docker run --rm -u 0:0 -v "$PWD":/app -v memctl_models:/models alpine \
+    chown -R "$(id -u):$(id -g)" /app/runs /app/cache /app/data /models
+```
+
+On a rented GPU box, `scripts/provision_gpu_box.sh` does all of section 1 to 3 and checks
+the card is big enough before downloading anything.
 
 ## 3. Run
 
@@ -59,6 +73,18 @@ docker compose run --rm memctl python -m memctl.run --config configs/locomo_smal
 
 Results appear in `runs/` on the host. On a machine without an NVIDIA GPU use
 `docker compose run --rm cpu ...` instead of `memctl`.
+
+For the full experiment use the driver, which runs the grid in batches, skips runs it has
+already done and logs each one's wall clock:
+
+```bash
+scripts/run_grid.sh first          # keep_newest and oracle at B = 10% and 25%, then stop
+scripts/run_grid.sh rest           # lru, random, file_everything, and B = 50%
+scripts/run_grid.sh full_context   # on its own, sampling GPU memory every 20 seconds
+```
+
+On a pod that is already a container, where Docker-in-Docker is unavailable, run the same
+script against a local venv: `COMPOSE="" RUNNER=.venv/bin/python scripts/run_grid.sh first`.
 
 To check that the model is on the GPU:
 

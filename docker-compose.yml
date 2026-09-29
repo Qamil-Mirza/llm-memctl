@@ -6,8 +6,11 @@
 x-memctl: &memctl
   build: .
   image: memctl:latest
+  # Run as the host user, so runs/, cache/ and data/ do not come back owned by root.
+  # .env sets MEMCTL_UID and MEMCTL_GID; 1000:1000 is the usual first user on Linux.
+  user: "${MEMCTL_UID:-1000}:${MEMCTL_GID:-1000}"
   env_file:
-    - path: .env          # JEV_API_KEY and HF_TOKEN, never committed
+    - path: .env          # JEV_API_KEY, HF_TOKEN, MEMCTL_UID, MEMCTL_GID; never committed
       required: false
   volumes:
     - .:/app                    # the project folder: code, configs, runs/, cache/, data/
@@ -19,6 +22,7 @@ services:
     environment:
       # This matters on small cards: without it a few free megabytes can be unusable.
       PYTORCH_CUDA_ALLOC_CONF: expandable_segments:True
+      HOME: /tmp          # the numeric user has no /etc/passwd entry and so no home
     deploy:
       resources:
         reservations:
@@ -30,6 +34,8 @@ services:
   cpu:
     <<: *memctl
     profiles: ["cpu"]
+    environment:
+      HOME: /tmp
 
 volumes:
   models:

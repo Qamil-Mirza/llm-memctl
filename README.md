@@ -71,8 +71,10 @@ GPU when there is one. See [docs/porting.md](docs/porting.md).
 | `memctl/summary.py` | Builds `metrics.json` |
 | `memctl/run.py` | One command to run an experiment |
 | `memctl/report.py`, `plots.py` | `report.md` and its charts |
+| `memctl/compare.py` | `comparison.md`: per-budget tables and the paired keep_newest / oracle test |
 | `memctl/benchmarks/` | `locomo.py` and a tiny `synthetic.py` |
-| `docs/` | `architecture.md`, `jev.md`, `metrics.md`, `decisions.md` |
+| `scripts/` | `provision_gpu_box.sh` (set up a rented GPU box), `run_grid.sh` (drive the grid) |
+| `docs/` | `architecture.md`, `jev.md`, `metrics.md`, `decisions.md`, `porting.md` |
 
 ## Adding a controller
 
@@ -87,7 +89,7 @@ GPU when there is one. See [docs/porting.md](docs/porting.md).
 |---|---|---|
 | 1 | Items, memory, controller interface, rule controllers, fake Jev, tests, smoke test | done |
 | 2 | LoCoMo, real model (Qwen), oracle, BLEU-1 and judge, failure attribution, report | done (LongMemEval loader still to do) |
-| 3 | Real Jev client, budget sweep, `memctl.compare` | not started |
+| 3 | Real Jev client, budget sweep, `memctl.compare` | `memctl.compare` done; Jev client not started |
 | 4 | `learned_policy` stub and `reset`/`step` environment | not started |
 
 Numbers from the synthetic benchmark and the stub model only show that the pipeline
@@ -99,6 +101,17 @@ runs. They are not results.
 uv pip install --python .venv/bin/python -e ".[dev,models]"
 .venv/bin/python -m memctl.run --config configs/locomo_small.yaml --controller oracle
 .venv/bin/python -m memctl.report runs/locomo_small/<run folder>   # rebuild a report
+```
+
+The full experiment is `configs/locomo_full.yaml`: all 10 conversations and all 1,986
+questions. It needs a GPU of about 12 GB or more. On a rented box:
+
+```bash
+scripts/provision_gpu_box.sh     # checks the GPU, installs, downloads, runs the tests
+scripts/run_grid.sh first        # keep_newest and oracle at B = 10% and 25%
+scripts/run_grid.sh rest         # the other controllers and B = 50%
+scripts/run_grid.sh full_context # on its own, watching GPU memory
+python -m memctl.compare runs/locomo_full   # rebuild comparison.md
 ```
 
 The first run downloads the answering model (`Qwen/Qwen3.5-4B`, 9.3 GB) and the judge
