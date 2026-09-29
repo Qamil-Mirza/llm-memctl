@@ -1,125 +1,40 @@
-# memctl: a swappable memory controller for LLM agents
+# memctl
 
-An LLM agent has a limited prompt. As a conversation grows, something must decide
-what stays in the prompt and what is filed away. In this codebase that "something"
-is a **memory controller**, and you can swap controllers with one line of config.
+Honors thesis: how well an agent performs on long-horizon tasks under three kinds of
+memory management —
 
-> **Status: paused for a redesign.** The goal is a three-arm comparison of agent memory
-> management on long-horizon tasks (no controller / JEV / RL), which is wider than what
-> Phase 2 built: there is no consolidation, fetch is not a controller action, and LoCoMo is
-> long-*context* QA rather than a long-*horizon task*. Read
-> [docs/restart.md](docs/restart.md) first — it records what was measured, what survives the
-> redesign, and what the new design has to decide. The Phase 2 work is preserved on branch
-> `phase2-locomo-baseline` and tag `phase2-complete`.
+1. **no memory controller** (baseline),
+2. **JEV** deciding eviction, consolidation, and fetch / send to a persistent store,
+3. **an RL policy** deciding those same operations.
 
-## The idea in one minute
+> **Status: scaffold.** The design is being written. Start with
+> [docs/restart.md](docs/restart.md): what the earlier Phase 2 work measured, which parts of
+> it are worth bringing back, and the questions the new design has to answer.
 
-Every piece of history is an **item** (a dialogue turn, tool output or observation).
-At any moment each item is in exactly one of four **places**:
+## The earlier work
 
-| Place | What it means | Cost |
-|---|---|---|
-| `CONTEXT` | In the prompt. | Its tokens count toward the budget `B`. |
-| `STORE` | Searched automatically for each question (embedding top-k). | Free to hold; may not be found. |
-| `ARCHIVE` | Cold storage. The prompt shows a one-line index entry; the agent calls `recall(id)` to read it. | Index line counts toward `B`; each recall costs tokens. |
-| `DROPPED` | Deleted for good (can be switched off). | Nothing, but it is gone. |
-
-The **controller** runs when a new item would push the prompt over budget, and at the
-end of each session. It returns a list of placements, each with a plain-English reason.
-
-```mermaid
-flowchart LR
-    A[new item] --> B[features]
-    B --> C[controller]
-    C -->|placements| D[MemoryState]
-    D --> E[prompt]
-    E --> F[frozen agent]
-    F --> G[answer]
-```
-
-More detail: [docs/architecture.md](docs/architecture.md).
-
-## Quick start
+Phase 2 (eviction policies on LoCoMo, GPU-ported, with a hindsight oracle, failure
+attribution, a paired significance test and cloud run scripts) is kept intact on branch
+`phase2-locomo-baseline`, with tag `phase2-complete` on its last code commit. To look at or
+reuse a file from it:
 
 ```bash
-uv venv --python 3.12
-uv pip install --python .venv/bin/python -e ".[dev]"
-.venv/bin/python -m pytest                       # all tests, under 1 second
-.venv/bin/python -m memctl.run --config configs/smoke_keep_newest.yaml
-.venv/bin/python -m memctl.run --config configs/smoke_jev.yaml --allow-fake-jev
+git show phase2-locomo-baseline:memctl/memory.py
+git checkout phase2-locomo-baseline -- memctl/memory.py   # bring one file back
 ```
 
-Each run writes `runs/<date>_<controller>_<benchmark>_B<budget>_seed<seed>/` with
-`config.yaml`, `decisions.jsonl` (one line per decision), `answers.jsonl` (one line
-per question, including where each evidence item was), and `metrics.json`.
+## Running
 
-## Running on another machine
-
-`docker compose run --rm memctl` runs the project in a container and uses an NVIDIA
-GPU when there is one. See [docs/porting.md](docs/porting.md).
-
-## Where things are
-
-| File | What it does |
-|---|---|
-| `memctl/items.py` | `Item`, `Place`, token counting |
-| `memctl/memory.py` | `MemoryState`: where every item is; enforces the budget; `recall()` |
-| `memctl/features.py` | Per-item features any controller can use |
-| `memctl/controllers/base.py` | `Controller` interface, `Placement`, the registry |
-| `memctl/controllers/rules.py` | `full_context`, `keep_newest`, `lru`, `random`, `file_everything` |
-| `memctl/controllers/jev.py` | `JevClient`, `FakeJevClient`, `JevController` |
-| `memctl/controllers/oracle.py` | Hindsight oracle (evaluation only); exact plan in `oracle_ilp.py` |
-| `memctl/agent.py` | Builds the prompt and handles `recall(id)` |
-| `memctl/llm.py` | Model backends (`stub`, `hf`, `vllm`) and the disk cache |
-| `memctl/episode.py` | Runs one conversation event by event |
-| `memctl/metrics.py`, `judge.py` | F1, BLEU-1 and the LLM judge |
-| `memctl/attribution.py` | One failure label per wrong answer |
-| `memctl/summary.py` | Builds `metrics.json` |
-| `memctl/run.py` | One command to run an experiment |
-| `memctl/report.py`, `plots.py` | `report.md` and its charts |
-| `memctl/compare.py` | `comparison.md`: per-budget tables and the paired keep_newest / oracle test |
-| `memctl/benchmarks/` | `locomo.py` and a tiny `synthetic.py` |
-| `scripts/` | `provision_gpu_box.sh` (set up a rented GPU box), `run_grid.sh` (drive the grid) |
-| `docs/` | `architecture.md`, `jev.md`, `metrics.md`, `decisions.md`, `porting.md` |
-
-## Adding a controller
-
-1. Write a file in `memctl/controllers/` with a class that implements
-   `decide(state, features, budget) -> list[Placement]`.
-2. Add one line to `registry()` in `memctl/controllers/base.py`.
-3. Set `controller: {name: your_name}` in a config.
-
-## What works today
-
-| Phase | Content | State |
-|---|---|---|
-| 1 | Items, memory, controller interface, rule controllers, fake Jev, tests, smoke test | done |
-| 2 | LoCoMo, real model (Qwen), oracle, BLEU-1 and judge, failure attribution, report | done (LongMemEval loader still to do) |
-| 3 | Real Jev client, budget sweep, `memctl.compare` | `memctl.compare` done; Jev client not started |
-| 4 | `learned_policy` stub and `reset`/`step` environment | not started |
-
-Numbers from the synthetic benchmark and the stub model only show that the pipeline
-runs. They are not results.
-
-## A real run
+The Docker setup is kept because it is independent of the research design.
 
 ```bash
-uv pip install --python .venv/bin/python -e ".[dev,models]"
-.venv/bin/python -m memctl.run --config configs/locomo_small.yaml --controller oracle
-.venv/bin/python -m memctl.report runs/locomo_small/<run folder>   # rebuild a report
+cp .env.example .env
+printf 'MEMCTL_UID=%s\nMEMCTL_GID=%s\n' "$(id -u)" "$(id -g)" >> .env
+docker compose build
+docker compose run --rm memctl          # runs the tests
 ```
 
-The full experiment is `configs/locomo_full.yaml`: all 10 conversations and all 1,986
-questions. It needs a GPU of about 12 GB or more. On a rented box:
-
-```bash
-scripts/provision_gpu_box.sh     # checks the GPU, installs, downloads, runs the tests
-scripts/run_grid.sh first        # keep_newest and oracle at B = 10% and 25%
-scripts/run_grid.sh rest         # the other controllers and B = 50%
-scripts/run_grid.sh full_context # on its own, watching GPU memory
-python -m memctl.compare runs/locomo_full   # rebuild comparison.md
-```
-
-The first run downloads the answering model (`Qwen/Qwen3.5-4B`, 9.3 GB) and the judge
-(`Qwen/Qwen3.5-2B`, 4.6 GB). Every
-generation is cached in `cache/`, so a rerun takes seconds.
+On Linux the GPU needs the NVIDIA Container Toolkit, including
+`nvidia-ctk runtime configure --runtime=docker` and
+`nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml` (both root). Full notes, with the
+measured model sizes, are in `docs/porting.md` on the `phase2-locomo-baseline` branch.

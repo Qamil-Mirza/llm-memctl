@@ -1,1 +1,1 @@
-"""memctl: a swappable memory controller for LLM agents."""
+"""memctl: agent memory management on long-horizon tasks. Scaffold; see docs/restart.md."""

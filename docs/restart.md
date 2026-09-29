@@ -5,8 +5,11 @@ Phase 2 built. This file exists so the next design does not have to re-derive wh
 already been measured, and does not re-inherit the assumptions that turned out to be too
 narrow.
 
-The Phase 2 line of work is preserved on branch `phase2-locomo-baseline` and tag
-`phase2-complete`. Nothing below has been deleted.
+`main` has since been cleared back to a scaffold. The Phase 2 code is preserved in full on
+branch `phase2-locomo-baseline` (tag `phase2-complete` marks its last code commit), and
+**every file path below refers to that branch**: read one with
+`git show phase2-locomo-baseline:<path>`, or bring it back with
+`git checkout phase2-locomo-baseline -- <path>`.
 
 ## 1. The goal, as stated
 

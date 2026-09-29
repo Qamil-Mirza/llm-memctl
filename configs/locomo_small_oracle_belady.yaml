@@ -1,9 +1,0 @@
-# Same as locomo_small.yaml but the oracle uses Belady's rule instead of the exact plan.
-benchmark: {name: locomo, path: data/locomo/locomo10.json, limit: 3, questions_per_conversation: 60}
-budget: {fraction: 0.25}
-memory: {allow_drop: true, recall_cost_tokens: 50, store_top_k: 10, charge_archive_index: true, max_recall_rounds: 2, embedder: BAAI/bge-small-en-v1.5}
-controller: {name: oracle, method: belady}
-model: {backend: hf, name: Qwen/Qwen3.5-4B, max_new_tokens: 48, cache_dir: cache/generations}
-judge: {backend: hf, name: Qwen/Qwen3.5-2B, cache_dir: cache/judge}
-seed: 0
-output_dir: runs/locomo_4b
