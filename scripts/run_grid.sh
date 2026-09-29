@@ -28,16 +28,23 @@ OUT=$(sed -n 's/^output_dir:[[:space:]]*//p' "$CONFIG" | head -1)
 OUT=${OUT:-runs}
 LOG=$OUT/grid.log
 SERVICE=${SERVICE:-memctl}          # SERVICE=cpu to run without a GPU
-COMPOSE=${COMPOSE:-docker compose}  # COMPOSE="" to run outside Docker, see below
+COMPOSE=${COMPOSE:-docker compose}
 
-# Outside Docker (a cloud pod that is already a container), call with:
-#   COMPOSE="" RUNNER=".venv/bin/python" scripts/run_grid.sh first
-RUNNER=${RUNNER:-python}
+# On a rented pod that is already a container, Docker-in-Docker is usually unavailable.
+# Set NO_DOCKER=1 to call a local interpreter instead:
+#   NO_DOCKER=1 scripts/run_grid.sh first
+# RUNNER then defaults to the venv scripts/provision_gpu_box.sh creates.
+NO_DOCKER=${NO_DOCKER:-}
+if [ -n "$NO_DOCKER" ]; then
+    RUNNER=${RUNNER:-.venv/bin/python}
+else
+    RUNNER=${RUNNER:-python}
+fi
 run_memctl() {
-    if [ -n "$COMPOSE" ]; then
-        $COMPOSE run --rm "$SERVICE" $RUNNER "$@"
+    if [ -n "$NO_DOCKER" ]; then
+        "$RUNNER" "$@"
     else
-        $RUNNER "$@"
+        $COMPOSE run --rm "$SERVICE" "$RUNNER" "$@"
     fi
 }
 

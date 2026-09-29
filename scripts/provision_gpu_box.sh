@@ -16,6 +16,9 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 NEED_GB=${NEED_GB:-12}
+# MODE=venv forces the venv branch even where Docker works, which is how the venv path
+# gets tested without a rented box. MODE=docker forces the other. Leave unset to detect.
+FORCE_MODE=${MODE:-}
 step() { printf '\n=== %s\n' "$*"; }
 die()  { printf '\nSTOP: %s\n' "$*" >&2; exit 1; }
 
@@ -34,7 +37,10 @@ fi
 
 step "2. Docker, or a venv if there is no usable Docker"
 MODE=venv
-if command -v docker > /dev/null 2>&1 && docker info > /dev/null 2>&1; then
+if [ -n "$FORCE_MODE" ]; then
+    MODE=$FORCE_MODE
+    echo "mode forced to $MODE"
+elif command -v docker > /dev/null 2>&1 && docker info > /dev/null 2>&1; then
     if docker run --rm --gpus all nvidia/cuda:12.4.1-base-ubuntu22.04 nvidia-smi > /dev/null 2>&1; then
         MODE=docker
         echo "Docker can reach the GPU."
@@ -59,7 +65,7 @@ if command -v docker > /dev/null 2>&1 && docker info > /dev/null 2>&1; then
             echo "No root, so the toolkit cannot be installed. Falling back to a venv."
         fi
     fi
-else
+elif [ -z "$FORCE_MODE" ]; then
     echo "No usable Docker (normal on a pod that is already a container). Using a venv."
 fi
 echo "mode: $MODE"
@@ -121,9 +127,9 @@ $( [ "$MODE" = docker ] \
     && echo "  scripts/run_grid.sh first
   scripts/run_grid.sh rest
   scripts/run_grid.sh full_context" \
-    || echo "  COMPOSE=\"\" RUNNER=.venv/bin/python scripts/run_grid.sh first
-  COMPOSE=\"\" RUNNER=.venv/bin/python scripts/run_grid.sh rest
-  COMPOSE=\"\" RUNNER=.venv/bin/python scripts/run_grid.sh full_context" )
+    || echo "  NO_DOCKER=1 scripts/run_grid.sh first
+  NO_DOCKER=1 scripts/run_grid.sh rest
+  NO_DOCKER=1 scripts/run_grid.sh full_context" )
 
 Copy back runs/ when it is finished. Leave cache/ behind unless you want later runs on
 another machine to reuse these generations (docs/porting.md, "Reusing the cache").

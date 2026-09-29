@@ -84,7 +84,7 @@ scripts/run_grid.sh full_context   # on its own, sampling GPU memory every 20 se
 ```
 
 On a pod that is already a container, where Docker-in-Docker is unavailable, run the same
-script against a local venv: `COMPOSE="" RUNNER=.venv/bin/python scripts/run_grid.sh first`.
+script against a local venv: `NO_DOCKER=1 scripts/run_grid.sh first`.
 
 To check that the model is on the GPU:
 
