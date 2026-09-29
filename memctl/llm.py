@@ -155,6 +155,10 @@ class CachedLLM:
         self.hits = 0
         self.misses = 0
 
+    def unload(self) -> None:
+        if hasattr(self.backend, "unload"):
+            self.backend.unload()
+
     def generate(self, prompt: str, max_new_tokens: int, shared_prefix: str = "") -> str:
         key_material = {"prompt": prompt, "max_new_tokens": max_new_tokens, **self.settings}
         key = hashlib.sha256(json.dumps(key_material, sort_keys=True).encode()).hexdigest()
@@ -181,6 +185,21 @@ class LazyLLM:
         if self.backend is None:
             self.backend = self.load()
         return self.backend.generate(prompt, max_new_tokens, shared_prefix)
+
+    def unload(self) -> None:
+        """Free the model's memory (for example before another model is loaded)."""
+        if self.backend is None:
+            return
+        self.backend = None
+        import gc
+
+        import torch
+
+        gc.collect()
+        if torch.backends.mps.is_available():
+            torch.mps.empty_cache()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
 
 def build_llm(model_config: dict) -> CachedLLM:

@@ -23,7 +23,7 @@ from memctl.benchmarks import load_benchmark
 from memctl.controllers.base import build_controller
 from memctl.controllers.oracle import build_plan
 from memctl.embed import DEFAULT_EMBEDDER, build_embedder
-from memctl.episode import run_conversation
+from memctl.episode import grade, run_conversation
 from memctl.judge import Judge
 from memctl.llm import build_llm
 from memctl.memory import MemoryState
@@ -80,7 +80,7 @@ def run(config: dict, allow_fake_jev: bool = False, progress: bool = False) -> P
         plan = build_plan(conversation, budget, state.allow_drop)
         if controller.uses_evidence_labels:
             controller.receive_plan(plan)
-        result = run_conversation(conversation, controller, agent, state, plan, judge)
+        result = run_conversation(conversation, controller, agent, state, plan)
         decisions += result.decisions
         answers += result.answers
         context_tokens += result.context_tokens
@@ -95,6 +95,10 @@ def run(config: dict, allow_fake_jev: bool = False, progress: bool = False) -> P
         if progress:
             print(f"  {conversation.id}: {len(result.answers)} questions, {time.time() - started:.0f}s so far", flush=True)
 
+    llm.unload()  # make room for the judge model
+    grade(answers, judge)
+    if judge:
+        judge.llm.unload()
     totals = {**totals, "budgets": budgets}
     metrics = summarize(config, display_name, conversations, answers, decisions, context_tokens, places, totals, jev_log)
     metrics["cost"]["wall_clock_s"] = round(time.time() - started, 2)

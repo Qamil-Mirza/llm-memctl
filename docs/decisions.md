@@ -18,7 +18,7 @@ Each entry: what was unclear, what was chosen, and why. Newest last.
 | 12 | Jev key variable | Read `JEV_API_KEY` as the brief says (the SDK's own default is `TYPESAFE_API_KEY`). | Follow the brief; pass the key to the SDK explicitly. |
 | 13 | "Tiny model" for the smoke test | A model-free `stub` backend that answers with the best-matching memory line. | Runs in milliseconds with no download. A real tiny model is added with the Hugging Face backend in Phase 2. |
 | 14 | Same-day reruns of the same config | The folder name ends with the short git hash (plus `-dirty` if code is uncommitted), so a rerun after a code change gets a new folder. Reports compare the newest run per controller and budget. | An old result is never lost to a code change. (Changed on review.) |
-| 15 | Answerer model id | `Qwen/Qwen3.5-0.8B`, confirmed on the Hugging Face API on 2026-09-28. | The brief asked to check it. |
+| 15 | Answerer model | `Qwen/Qwen3.5-4B` (changed from `Qwen/Qwen3.5-0.8B` on 2026-09-29; both ids confirmed on the Hugging Face API). | With the 0.8B model the oracle, with all evidence in context, beat keep_newest by only 3 of 180 questions: the model, not memory, limited the score. The 0.8B runs are kept in `runs/locomo_small`. |
 | 16 | Model backends moved out of `agent.py` | `llm.py` holds the backends and the disk cache; `agent.py` keeps the prompt and the recall loop. | Keeps both files short. |
 | 17 | LoCoMo has no train/test split | All 10 conversations are the test set. `limit` takes the first N. | The dataset ships as one file. |
 | 18 | LoCoMo category numbers | 1 multi-hop, 2 temporal, 3 open-domain, 4 single-hop, 5 adversarial. | The mapping used by the LoCoMo code and later papers. |
@@ -37,3 +37,4 @@ Each entry: what was unclear, what was chosen, and why. Newest last.
 | 31 | What text is embedded for search | "speaker: text", with `BAAI/bge-small-en-v1.5`, top-10. | Measured on 3 LoCoMo conversations: recall@5 of evidence rose from 9% (MiniLM, text only) to 37%; recall@10 is 48%. |
 | 32 | Item ids in the prompt | Shown only in the archive index, not on items in context. | With ids on every line the 0.8B model often answered with an id instead of a fact. |
 | 33 | Judge prompt | Strict, with six short examples. | The first, lenient prompt marked id-only answers as correct. On 60 hand-checked answers the strict prompt made about 4 errors, all too lenient. |
+| 34 | When the judge runs | After all questions are answered. The answering model is unloaded first. | Both models do not fit in memory together with long prompts. |

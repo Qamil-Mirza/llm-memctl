@@ -96,5 +96,6 @@ uv pip install --python .venv/bin/python -e ".[dev,models]"
 .venv/bin/python -m memctl.report runs/locomo_small/<run folder>   # rebuild a report
 ```
 
-The first run downloads the answering model (1.7 GB) and the judge (4.6 GB). Every
+The first run downloads the answering model (`Qwen/Qwen3.5-4B`, 9.3 GB) and the judge
+(`Qwen/Qwen3.5-2B`, 4.6 GB). Every
 generation is cached in `cache/`, so a rerun takes seconds.

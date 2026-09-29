@@ -113,7 +113,6 @@ def run_conversation(
     agent: Agent,
     state: MemoryState,
     plan: OraclePlan | None = None,
-    judge: Judge | None = None,
 ) -> ConversationResult:
     result = ConversationResult()
     last_text = ""
@@ -131,21 +130,14 @@ def run_conversation(
             result.decisions += run_controller(state, controller, "session_end", last_text, conversation.id, plan)
             result.controller_calls += 1
         elif event.kind == "question":
-            result.answers.append(ask(state, agent, event.question, conversation.id, judge))
+            result.answers.append(ask(state, agent, event.question, conversation.id))
         result.context_tokens.append(state.used_tokens())
     return result
 
 
-def ask(state: MemoryState, agent: Agent, question: Question, conversation_id: str, judge: Judge | None) -> dict:
-    """Ask one question, score the answer and, if it is wrong, say why."""
+def ask(state: MemoryState, agent: Agent, question: Question, conversation_id: str) -> dict:
+    """Ask one question and record the answer, its scores and where the evidence was."""
     answer = agent.answer(state, question.text)
-    scores = score_answer(answer.text, question.gold_answer, question.category)
-    if judge:
-        correct = judge.is_correct(question.text, question.gold_answer, answer.text, question.category)
-        scores["judge"] = float(correct)
-    else:
-        correct = scores["f1"] >= F1_CORRECT_THRESHOLD
-    evidence = evidence_report(state, question, answer.retrieved_ids, answer.recalled_ids)
     return {
         "conversation_id": conversation_id,
         "question_id": question.id,
@@ -154,13 +146,27 @@ def ask(state: MemoryState, agent: Agent, question: Question, conversation_id: s
         "question": question.text,
         "gold_answer": question.gold_answer,
         "model_answer": answer.text,
-        "scores": scores,
-        "correct": correct,
-        "correct_decided_by": f"judge ({judge.name})" if judge else f"f1 >= {F1_CORRECT_THRESHOLD}",
-        "failure_label": None if correct else failure_label(evidence),
-        "evidence": evidence,
+        "scores": score_answer(answer.text, question.gold_answer, question.category),
+        "evidence": evidence_report(state, question, answer.retrieved_ids, answer.recalled_ids),
         "retrieved_ids": answer.retrieved_ids,
         "recalled_ids": answer.recalled_ids,
         "failed_recalls": answer.failed_recalls,
         "prompt_tokens": answer.prompt_tokens,
     }
+
+
+def grade(answers: list[dict], judge: Judge | None) -> None:
+    """Decide right or wrong for every answer, and label each wrong one with its cause.
+
+    This runs after all questions are answered, so the answering model can be
+    unloaded before the judge model is loaded.
+    """
+    for row in answers:
+        if judge:
+            row["correct"] = judge.is_correct(row["question"], row["gold_answer"], row["model_answer"], row["category"])
+            row["scores"]["judge"] = float(row["correct"])
+            row["correct_decided_by"] = f"judge ({judge.name})"
+        else:
+            row["correct"] = row["scores"]["f1"] >= F1_CORRECT_THRESHOLD
+            row["correct_decided_by"] = f"f1 >= {F1_CORRECT_THRESHOLD}"
+        row["failure_label"] = None if row["correct"] else failure_label(row["evidence"])

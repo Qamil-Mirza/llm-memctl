@@ -14,7 +14,7 @@ controller:
   name: jev
 model:
   backend: stub
-  name: Qwen/Qwen3.5-0.8B   # used from Phase 2 on; the stub backend ignores it
+  name: Qwen/Qwen3.5-4B   # used from Phase 2 on; the stub backend ignores it
   max_new_tokens: 64
   temperature: 0.0
   cache_dir: cache/generations

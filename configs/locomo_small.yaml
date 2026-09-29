@@ -19,7 +19,7 @@ controller:
   name: keep_newest
 model:
   backend: hf                      # hf | vllm | stub
-  name: Qwen/Qwen3.5-0.8B
+  name: Qwen/Qwen3.5-4B
   max_new_tokens: 48
   cache_dir: cache/generations
 judge:
@@ -27,4 +27,4 @@ judge:
   name: Qwen/Qwen3.5-2B
   cache_dir: cache/judge
 seed: 0
-output_dir: runs/locomo_small
+output_dir: runs/locomo_4b
