@@ -60,7 +60,9 @@ def failure_attribution_chart(counts: dict[str, int], title: str, path: Path) ->
     axes.tick_params(axis="y", labelcolor=INK)
     axes.xaxis.grid(True, color=GRID, linewidth=1)
     handles = [plt.Rectangle((0, 0), 1, 1, color=color) for color in GROUP_COLORS.values()]
-    axes.legend(handles, GROUP_COLORS, frameon=False, fontsize=9, loc="lower right", labelcolor=MUTED)
+    axes.legend(handles, GROUP_COLORS, frameon=False, fontsize=9, ncol=3, loc="lower left",
+                bbox_to_anchor=(0, 1.0), labelcolor=MUTED)
+    axes.set_title(title, loc="left", fontsize=11, color=INK, pad=30)
     save(figure, path)
 
 
@@ -93,17 +95,19 @@ def score_vs_cost_chart(series: dict[str, list[tuple[float, float, str]]], score
     next to each point.
     """
     figure, axes = new_chart(title, 7.5, 3.8)
+    several_budgets = len({tag for points in series.values() for _, _, tag in points}) > 1
     for color, (name, points) in zip(SERIES_COLORS, series.items()):
         points = sorted(points)
         axes.plot([p[0] for p in points], [p[1] for p in points], color=color, linewidth=2, marker="o",
                   markersize=8, markeredgecolor=SURFACE, markeredgewidth=2, label=name, solid_capstyle="round")
-        for tokens, score, tag in points:
+        for tokens, score, tag in points if several_budgets else []:
             axes.annotate(tag, (tokens, score), xytext=(0, 8), textcoords="offset points",
                           ha="center", fontsize=7.5, color=MUTED)
     axes.set_ylim(0, 1)
     axes.set_xlim(left=0)
     axes.xaxis.set_major_formatter(matplotlib.ticker.FuncFormatter(lambda value, _: f"{value:,.0f}"))
-    axes.set_xlabel("average prompt tokens per question (labels: budget B)", fontsize=9, color=MUTED)
+    note = " (labels: budget B)" if several_budgets else ""
+    axes.set_xlabel(f"average prompt tokens per question{note}", fontsize=9, color=MUTED)
     axes.set_ylabel(score_name, fontsize=9, color=MUTED)
     axes.yaxis.grid(True, color=GRID, linewidth=1)
     axes.legend(frameon=False, fontsize=9, loc="upper left", bbox_to_anchor=(1.0, 1.0), labelcolor=MUTED)

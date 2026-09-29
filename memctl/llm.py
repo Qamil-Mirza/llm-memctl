@@ -73,6 +73,7 @@ class HuggingFaceLLM:
         precision = torch.float32 if device == "cpu" else torch.float16
         self.tokenizer = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModelForCausalLM.from_pretrained(model_name, dtype=precision).to(device).eval()
+        self.chunk_tokens = 4096
         self.prefix_text = ""
         self.prefix_ids = None
         self.prefix_state = None
@@ -96,8 +97,12 @@ class HuggingFaceLLM:
         """Run the shared prefix through the model once and keep the result."""
         self.prefix_state = None  # free the old one first
         self.prefix_ids = self._ids(prefix_text)
-        with self.torch.no_grad():
-            self.prefix_state = self.model(input_ids=self.prefix_ids, use_cache=True).past_key_values
+        state = None
+        with self.torch.no_grad():  # in pieces, so that very long prompts fit in memory
+            for start in range(0, self.prefix_ids.shape[1], self.chunk_tokens):
+                piece = self.prefix_ids[:, start : start + self.chunk_tokens]
+                state = self.model(input_ids=piece, past_key_values=state, use_cache=True).past_key_values
+        self.prefix_state = state
         self.prefix_text = prefix_text
 
     def generate(self, prompt: str, max_new_tokens: int, shared_prefix: str = "") -> str:

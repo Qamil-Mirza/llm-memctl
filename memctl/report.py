@@ -76,7 +76,14 @@ def headline(run: dict, same_budget: list[dict]) -> str:
                      m["cost"]["avg_prompt_tokens"], gap])
     header = ["Controller", "Accuracy", "F1", "BLEU-1", *(["Judge"] if has_judge else []),
               "Questions with all evidence in prompt", "Avg prompt tokens", "Closed gap (accuracy)"]
-    return table(header, rows)
+    warning = ""
+    if baseline and oracle:
+        gap = oracle["answer_quality"]["accuracy"] - baseline["answer_quality"]["accuracy"]
+        questions = round(gap * oracle["questions"])
+        if abs(gap) < 0.05:
+            warning = (f"\n\n> **Read the closed gap with care.** The oracle beats keep_newest by only {gap:.3f} accuracy "
+                       f"(about {questions} of {oracle['questions']} questions), so one or two answers move the closed gap a lot.")
+    return table(header, rows) + warning
 
 
 def attribution_section(metrics: dict) -> str:
