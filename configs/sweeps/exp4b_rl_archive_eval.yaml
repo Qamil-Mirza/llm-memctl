@@ -1,0 +1,22 @@
+# Experiment 4b: the learned controller with archive and retrieval allowed.
+name: exp4b_rl_archive_eval
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env: {name: synthetic_recall, horizon: 200}
+  agent: {name: scripted_reader, noise: 0.0}
+  memory:
+    allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+    embedder: hashing
+  logging: {detail_episodes: 1}
+grid:
+  controller:
+    - {name: fifo, label: fifo_delete}
+    - {name: salience, label: salience_delete}
+    - {name: salience, label: salience_archive_retrieve, removal: [MOVE_TO_ARCHIVE], retrieve: {top_k: 3}}
+    - {name: rl, label: rl_bc_delete_only_policy, checkpoint: runs/rl_bc/checkpoints/policy.pt}
+    - {name: rl, label: rl_bc_archive, checkpoint: runs/rl_bc_archive/checkpoints/policy.pt}
+    - {name: rl, label: rl_bc_ppo_archive, checkpoint: runs/rl_bc_ppo_archive/checkpoints/policy_best.pt}
+    - {name: oracle, method: approx}
+  memory.budget.fraction: [0.02, 0.05, 0.1, 0.25]

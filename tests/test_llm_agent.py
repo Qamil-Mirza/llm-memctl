@@ -1,0 +1,70 @@
+"""A language model as the task model, swapped in without touching the harness."""
+
+from memctl.agents.llm import LLMAgent
+from memctl.config import resolve
+from memctl.harness.runner import Experiment
+from memctl.llm import ScriptedLLM, TrackedLLM, build_llm
+from memctl.memory.actions import MemoryAction, Operation
+from memctl.memory.compress import LLMCompressor, LLMConsolidator
+from memctl.memory.engine import MemoryEngine
+from memctl.memory.items import SourceType
+from memctl.task import Observation, TaskState
+from tests.helpers import make_state
+
+FACT = "As of step 1, the access code of vault-317 is K93Q."
+
+
+def test_the_prompt_holds_active_memory_only_and_the_answer_is_traced_to_its_item():
+    state = make_state([FACT, "As of step 2, the serial of node-12 is B77Z.", "Question: what is the access code of vault-317?"])
+    MemoryEngine().apply(state, [MemoryAction(Operation.MOVE_TO_ARCHIVE, ("o1",))])
+    prompts = []
+    agent = LLMAgent({}, llm=ScriptedLLM(lambda prompt: prompts.append(prompt) or "K93Q"))
+    question = Observation("o2", state.get("o2").content, SourceType.USER, requires_response=True)
+    step = agent.act(state.view(), question, TaskState(3, "Answer with the value.", question))
+    assert step.action == "K93Q" and step.used_item_ids == ("o0",)
+    assert "K93Q" in prompts[0] and "B77Z" not in prompts[0]  # the archived item is not shown
+    assert prompts[0].startswith("Answer with the value.") and prompts[0].rstrip().endswith("Answer:")
+    assert step.info["model_calls"] == 1 and step.info["prompt_tokens"] > 20
+
+
+def test_a_scripted_model_that_reads_its_prompt_matches_the_scripted_reader_on_a_whole_episode():
+    from memctl.envs.grammar import find_facts, parse_query
+
+    def reader(prompt: str) -> str:
+        memory, _, current = prompt.partition("## Current input")
+        attribute, via, entity = parse_query(current)
+        facts = find_facts(memory)
+        def latest(a, e):
+            found = [(stamp, value) for stamp, fa, fe, value in facts if fa == a and fe == e]
+            return max(found)[1] if found else None
+        if via:
+            entity = latest(via, entity)
+        answer = latest(attribute, entity) if entity else None
+        return f"It is {answer}." if answer else "unknown"
+
+    base = {"env": {"name": "synthetic_recall", "horizon": 120}, "controller": {"name": "lru"},
+            "memory": {"budget": {"fraction": 0.25}}}
+    scripted = Experiment(resolve(base)).run_episode(seed=0).episode
+    with_llm = Experiment(resolve({**base, "agent": {"name": "llm", "model": {"backend": "stub"}}}))
+    with_llm.agent = LLMAgent({}, llm=ScriptedLLM(reader, "scripted-llm"))
+    episode = with_llm.run_episode(seed=0).episode
+    assert episode["task_success"] == scripted["task_success"]
+    assert episode["agent_model"] == "scripted-llm" and episode["task_model_calls"] == episode["queries"]
+    assert episode["tokens_processed"] > 0
+
+
+def test_usage_is_counted_and_generations_are_cached_on_disk(tmp_path):
+    calls = []
+    llm = TrackedLLM(ScriptedLLM(lambda prompt: calls.append(prompt) or "four words in reply"), str(tmp_path), {"name": "x"})
+    assert llm.generate("one two three") == "four words in reply"
+    assert llm.generate("one two three") == "four words in reply"
+    assert len(calls) == 1 and llm.cache_hits == 1
+    assert llm.usage.calls == 2 and llm.usage.input_tokens == 6 and llm.usage.output_tokens == 8
+    assert build_llm({"backend": "stub"}).name == "stub"
+
+
+def test_language_model_compressor_and_consolidator_respect_the_token_limit():
+    wordy = ScriptedLLM(lambda prompt: "vault-317 code K93Q and a great many more words than were asked for here")
+    assert LLMCompressor(wordy).compress("anything", 4) == "vault-317 code"  # vault, -, 317, code
+    merged = LLMConsolidator(wordy).consolidate(["a b c", "d e f"], max_tokens=5)
+    assert len(merged.split()) <= 5 and "vault" in merged

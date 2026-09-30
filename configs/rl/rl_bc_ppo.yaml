@@ -1,0 +1,16 @@
+# Imitation, then RL: DAgger pretraining followed by PPO fine-tuning on task reward.
+schema_version: 1
+name: rl_bc_ppo
+seed: 0
+env: {name: synthetic_recall, horizon: 200}
+agent: {name: scripted_reader, noise: 0.0}
+controller: {name: rl, hidden: 64, architecture: deepsets}
+memory:
+  allowed_operations: [KEEP, EVICT, NO_OP]
+  embedder: hashing
+training:
+  budget_fractions: [0.05, 0.1, 0.25, 0.5]
+  phases:
+    - {algorithm: bc, iterations: 10, episodes: 24, epochs: 3, lr: 0.003, dagger: true}
+    - {algorithm: ppo, iterations: 40, episodes: 24, epochs: 4, lr: 0.0001, gamma: 0.995, entropy: 0.003}
+  eval: {every: 5, episodes: 20}

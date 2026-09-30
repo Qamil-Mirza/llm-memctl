@@ -1,0 +1,24 @@
+# Experiment 7b (smoke test): a real language model as the memory controller.
+# The task model is the scripted reader, so every failure is a memory failure.
+#   python -m memctl.sweep --config configs/sweeps/exp7b_prompted_controller_smoke.yaml --workers 1
+name: exp7b_prompted_controller_smoke
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 2
+  env: {name: synthetic_recall, horizon: 40}
+  agent: {name: scripted_reader}
+  memory:
+    allowed_operations: [KEEP, EVICT, NO_OP]
+  logging: {detail_episodes: 2}
+  pricing: {controller_usd_per_mtok: 0.0}
+grid:
+  controller:
+    - fifo
+    - salience
+    - name: prompted_llm
+      label: prompted_llama3.1_8b
+      max_new_tokens: 120
+      model: {backend: openai, name: "llama3.1:8b", base_url: "http://localhost:11434/v1", cache_dir: cache/generations}
+    - {name: oracle, method: exact}
+  memory.budget.fraction: [0.4]

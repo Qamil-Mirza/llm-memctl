@@ -1,0 +1,27 @@
+# Experiment 6a: evidence retention on LoCoMo under a memory budget, with no task model.
+# The agent is `null`, so task success is 0 by construction and is NOT a result. What is measured
+# is where the evidence was when each question was asked: needed_hit_rate, evidence_complete_rate,
+# and retrieval precision and recall. One episode per conversation (10 episodes).
+name: exp6_locomo_retention
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 10
+  env: {name: locomo}
+  agent: {name: "null"}
+  memory:
+    allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+    embedder: hashing
+  logging: {detail_episodes: 1}
+grid:
+  controller:
+    - {name: fifo, label: fifo_delete}
+    - {name: random, label: random_delete}
+    - {name: salience, label: salience_delete}
+    - {name: similarity, label: similarity_delete}
+    - {name: fifo, label: fifo_archive_retrieve_lexical, removal: [MOVE_TO_ARCHIVE], retrieve: {top_k: 5}}
+    - {name: fifo, label: fifo_archive_retrieve_embedding, removal: [MOVE_TO_ARCHIVE], retrieve: {top_k: 5, method: embedding}}
+    - {name: archive_everything, label: rag_keep_last4, keep_last: 4, retrieve: {top_k: 5}}
+    - {name: oracle, method: exact, label: oracle_delete_only_exact}
+    - {name: oracle, method: approx}
+  memory.budget.fraction: [0.1, 0.25, 0.5]

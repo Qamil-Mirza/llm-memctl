@@ -1,0 +1,21 @@
+# Experiment 6c: does a dense embedder retrieve LoCoMo evidence better than word overlap?
+# The same archive-and-retrieve controller, with two retrieval methods and two embedders.
+# The dense model runs on CPU; give it free cores (embedding 8,000 turns takes a few minutes).
+name: exp6c_locomo_dense_retrieval
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 10
+  env: {name: locomo}
+  agent: {name: "null"}
+  memory:
+    budget: {fraction: 0.1}
+    allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+  logging: {detail_episodes: 1}
+grid:
+  controller:
+    - {name: fifo, label: fifo_archive_retrieve_lexical, removal: [MOVE_TO_ARCHIVE], retrieve: {top_k: 5}}
+    - {name: fifo, label: fifo_archive_retrieve_embedding, removal: [MOVE_TO_ARCHIVE], retrieve: {top_k: 5, method: embedding}}
+  memory.embedder:
+    - hashing
+    - {name: BAAI/bge-small-en-v1.5, device: cpu, label: embedder-bge-small}

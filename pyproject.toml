@@ -1,15 +1,16 @@
 [project]
 name = "memctl"
 version = "0.1.0"
-description = "A swappable memory controller for LLM agents (honors thesis codebase)."
+description = "A research framework for learned memory management in long-running LLM agents (honors thesis)."
 requires-python = ">=3.11"
 dependencies = ["numpy>=1.26", "pyyaml>=6.0", "pulp>=2.9,<4", "matplotlib>=3.8"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+rl = ["torch>=2.3"]  # the RL controller; the CPU build is enough
 models = ["torch>=2.3", "transformers>=5.0", "accelerate", "sentence-transformers"]  # for the hf backend
 quantized = ["bitsandbytes>=0.48"]  # only for model.load_in_4bit on a small GPU
-# Added in Phase 3: jev (typesafe-sdk).
+# The JEV controller needs no package: it calls the TypeSafe HTTP API directly.
 
 [build-system]
 requires = ["setuptools>=68"]

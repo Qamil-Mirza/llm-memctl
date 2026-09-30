@@ -1,0 +1,35 @@
+# Experiment 4: learned controllers against heuristics and the oracle, delete-only action set.
+# The policies were trained at horizon 200 on seeds >= 100000 and selected on seeds >= 50000;
+# this sweep uses seeds 0..99 like every other experiment. Horizon 500 is a transfer test.
+# Train first:  for c in rl_bc rl_bc_mlp rl_ppo rl_ppo_seed1 rl_ppo_seed2 rl_ppo_gamma0 rl_ppo_gamma0_seed1 rl_ppo_gamma0_seed2 rl_bc_ppo; do
+#                 python -m memctl.rl.train --config configs/rl/$c.yaml; done
+name: exp4_rl_eval
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env: {name: synthetic_recall}
+  agent: {name: scripted_reader, noise: 0.0}
+  memory:
+    allowed_operations: [KEEP, EVICT, NO_OP]
+    embedder: hashing
+  shadow_controllers: [{name: fifo}, {name: lru}, {name: salience}]
+  logging: {detail_episodes: 1}
+grid:
+  controller:
+    - fifo
+    - lru
+    - salience
+    - {name: rl, label: rl_bc, checkpoint: runs/rl_bc/checkpoints/policy.pt}
+    - {name: rl, label: rl_bc_mlp, checkpoint: runs/rl_bc_mlp/checkpoints/policy.pt}
+    - {name: rl, label: rl_ppo, checkpoint: runs/rl_ppo/checkpoints/policy_best.pt}
+    - {name: rl, label: rl_ppo_last, checkpoint: runs/rl_ppo/checkpoints/policy.pt}
+    - {name: rl, label: rl_ppo_seed1, checkpoint: runs/rl_ppo_seed1/checkpoints/policy_best.pt}
+    - {name: rl, label: rl_ppo_gamma0, checkpoint: runs/rl_ppo_gamma0/checkpoints/policy_best.pt}
+    - {name: rl, label: rl_ppo_seed2, checkpoint: runs/rl_ppo_seed2/checkpoints/policy_best.pt}
+    - {name: rl, label: rl_ppo_gamma0_seed1, checkpoint: runs/rl_ppo_gamma0_seed1/checkpoints/policy_best.pt}
+    - {name: rl, label: rl_ppo_gamma0_seed2, checkpoint: runs/rl_ppo_gamma0_seed2/checkpoints/policy_best.pt}
+    - {name: rl, label: rl_bc_ppo, checkpoint: runs/rl_bc_ppo/checkpoints/policy_best.pt}
+    - {name: oracle, method: exact}
+  memory.budget.fraction: [0.05, 0.1, 0.25, 0.5]
+  env.horizon: [200, 500]

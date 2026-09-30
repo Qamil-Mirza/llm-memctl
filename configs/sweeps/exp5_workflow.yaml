@@ -1,0 +1,25 @@
+# Experiment 5: the sequential task, where forgetting a token forces a job to restart.
+name: exp5_workflow
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env: {name: workflow}
+  agent: {name: scripted_tool_agent, noise: 0.0}
+  memory:
+    allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+  logging: {detail_episodes: 1}
+grid:
+  controller:
+    - no_controller
+    - fifo
+    - lru
+    - lfu
+    - random
+    - age_decay
+    - salience
+    - {name: fifo, label: fifo_archive_retrieve, removal: [MOVE_TO_ARCHIVE], retrieve: {top_k: 3}}
+    - {name: salience, label: salience_archive_retrieve, removal: [MOVE_TO_ARCHIVE], retrieve: {top_k: 3}}
+    - {name: oracle, method: approx}
+    - full_context
+  memory.budget.fraction: [0.05, 0.1, 0.2, 0.4]

@@ -1,0 +1,17 @@
+# PPO from scratch on the sequential workflow task, gamma 0.0. Here a token that was just used
+# looks exactly like a token that is still needed, so immediate reward and long-horizon reward
+# can disagree: the pair rl_ppo_workflow / rl_ppo_workflow_gamma0 is the sharper test of H2.
+schema_version: 1
+name: rl_ppo_workflow_gamma0
+seed: 0
+env: {name: workflow}
+agent: {name: scripted_tool_agent, noise: 0.0}
+controller: {name: rl, hidden: 64, architecture: deepsets}
+memory:
+  allowed_operations: [KEEP, EVICT, NO_OP]
+  embedder: hashing
+training:
+  budget_fractions: [0.05, 0.1, 0.2, 0.4]
+  phases:
+    - {algorithm: ppo, iterations: 60, episodes: 24, epochs: 4, lr: 0.0003, gamma: 0.0, entropy: 0.01}
+  eval: {every: 5, episodes: 20}

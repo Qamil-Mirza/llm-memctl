@@ -1,0 +1,23 @@
+# Experiment 1c: does policy quality matter more as the horizon grows?
+# In Experiment 1 the budget is a fraction of the history, so a longer episode also has a
+# larger budget. Here the budget is a fixed number of tokens while the horizon grows.
+name: exp1c_horizon_fixed_budget
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env: {name: synthetic_recall}
+  agent: {name: scripted_reader, noise: 0.0}
+  memory:
+    allowed_operations: [KEEP, EVICT, NO_OP]
+  logging: {detail_episodes: 1}
+grid:
+  controller:
+    - fifo
+    - lru
+    - random
+    - salience
+    - {name: oracle, method: approx}
+    - {name: oracle, method: exact}
+  memory.budget.tokens: [800]
+  env.horizon: [200, 500, 1000, 2000]
