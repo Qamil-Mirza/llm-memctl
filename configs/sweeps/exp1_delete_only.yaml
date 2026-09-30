@@ -1,0 +1,31 @@
+# Experiment 1 (first milestone): at the same active-memory budget, do different
+# memory-management policies produce measurably different long-horizon task performance?
+# Delete-only action set, scripted reader with no noise.
+#   python -m memctl.sweep --config configs/sweeps/exp1_delete_only.yaml
+#   python -m memctl.analysis.report runs/exp1_delete_only
+name: exp1_delete_only
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env: {name: synthetic_recall}
+  agent: {name: scripted_reader, noise: 0.0}
+  memory:
+    allowed_operations: [KEEP, EVICT, NO_OP]
+    embedder: hashing          # only the similarity controller reads it
+  logging: {detail_episodes: 2}
+grid:
+  controller:
+    - no_controller            # the no-memory-controller arm: FIFO by forced fallback
+    - fifo
+    - lru
+    - lfu
+    - random
+    - age_decay
+    - similarity
+    - salience
+    - {name: oracle, method: approx}
+    - {name: oracle, method: exact}
+    - full_context             # unlimited budget: the infinite-context reference
+  memory.budget.fraction: [0.02, 0.05, 0.1, 0.25, 0.5, 1.0]
+  env.horizon: [200, 500, 1000]

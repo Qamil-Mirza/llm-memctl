@@ -1,0 +1,21 @@
+# Experiment 1d: does policy quality matter more as dependencies get longer?
+# Horizon and budget are fixed; only the minimum distance between a fact and its query changes.
+name: exp1d_dependency_gap
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env: {name: synthetic_recall, horizon: 500}
+  agent: {name: scripted_reader, noise: 0.0}
+  memory:
+    budget: {fraction: 0.1}
+    allowed_operations: [KEEP, EVICT, NO_OP]
+  logging: {detail_episodes: 1}
+grid:
+  controller:
+    - fifo
+    - lru
+    - random
+    - salience
+    - {name: oracle, method: exact}
+  env.gap.min: [5, 25, 100, 250]

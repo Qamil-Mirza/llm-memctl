@@ -1,0 +1,29 @@
+# Experiment 2: what is archive + retrieval worth compared with permanent deletion? (H4, RQ3)
+# Same task as Experiment 1; the action set now includes MOVE_TO_ARCHIVE and RETRIEVE_FROM_ARCHIVE.
+# Retrieval happens only when a controller asks for it.
+name: exp2_archive_retrieval
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env: {name: synthetic_recall, horizon: 500}
+  agent: {name: scripted_reader, noise: 0.0}
+  memory:
+    allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+    embedder: hashing
+  logging: {detail_episodes: 1}
+grid:
+  controller:
+    - {name: fifo, label: fifo_delete}
+    - {name: lru, label: lru_delete}
+    - {name: salience, label: salience_delete}
+    - {name: fifo, label: fifo_archive_no_retrieval, removal: [MOVE_TO_ARCHIVE]}
+    - {name: fifo, label: fifo_archive_retrieve, removal: [MOVE_TO_ARCHIVE], retrieve: {top_k: 3}}
+    - {name: lru, label: lru_archive_retrieve, removal: [MOVE_TO_ARCHIVE], retrieve: {top_k: 3}}
+    - {name: salience, label: salience_archive_retrieve, removal: [MOVE_TO_ARCHIVE], retrieve: {top_k: 3}}
+    - {name: salience, label: salience_archive_retrieve_top1, removal: [MOVE_TO_ARCHIVE], retrieve: {top_k: 1}}
+    - {name: salience, label: salience_archive_retrieve_embedding, removal: [MOVE_TO_ARCHIVE], retrieve: {top_k: 3, method: embedding}}
+    - {name: archive_everything, label: rag_keep_last4, keep_last: 4, retrieve: {top_k: 3}}
+    - {name: oracle, method: exact, label: oracle_delete_only_exact}
+    - {name: oracle, method: approx}
+  memory.budget.fraction: [0.02, 0.05, 0.1, 0.25]

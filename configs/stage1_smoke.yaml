@@ -1,0 +1,12 @@
+# One small run, a few seconds:  python -m memctl.run --config configs/stage1_smoke.yaml
+schema_version: 1
+name: stage1_smoke
+seed: 0
+episodes: 5
+env: {name: synthetic_recall, horizon: 200}
+agent: {name: scripted_reader, noise: 0.0}
+controller: {name: lru}
+memory:
+  budget: {fraction: 0.25}
+  allowed_operations: [KEEP, EVICT, NO_OP]
+logging: {detail_episodes: 5}

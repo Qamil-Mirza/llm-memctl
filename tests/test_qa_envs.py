@@ -1,0 +1,125 @@
+"""The LoCoMo and LongMemEval adapters, and local answer scoring."""
+
+import json
+from pathlib import Path
+
+import pytest
+
+from memctl.config import resolve
+from memctl.envs import build_env
+from memctl.harness.runner import run_one
+from memctl.judge import Judge
+from memctl.llm import ScriptedLLM
+from memctl.metrics import score_answer, token_f1
+
+LOCOMO = Path("data/locomo/locomo10.json")
+LONGMEMEVAL = Path("data/longmemeval/longmemeval_oracle.json")
+needs_locomo = pytest.mark.skipif(not LOCOMO.exists(), reason="LoCoMo data file is not present")
+needs_longmemeval = pytest.mark.skipif(not LONGMEMEVAL.exists(), reason="LongMemEval data file is not present")
+ARCHIVE_OPS = ["KEEP", "EVICT", "MOVE_TO_ARCHIVE", "RETRIEVE_FROM_ARCHIVE", "NO_OP"]
+
+
+def test_local_scoring():
+    assert token_f1("7 May 2023", "7 May 2023") == 1.0
+    assert token_f1("the beach", "a mountain") == 0.0
+    assert score_answer("It was on 7 May 2023, I think", "7 May 2023")["correct"]
+    assert not score_answer("sometime in June", "7 May 2023")["correct"]
+    assert score_answer("unknown", "anything", unanswerable=True)["correct"]
+    assert not score_answer("Paris", "anything", unanswerable=True)["correct"]
+
+
+def test_the_judge_reads_yes_or_no():
+    judge = Judge({}, llm=ScriptedLLM(lambda prompt: "Yes." if "Answer to grade: 7 May" in prompt else "no"))
+    assert judge.is_correct("When?", "7 May 2023", "7 May") is True
+    assert judge.is_correct("When?", "7 May 2023", "June") is False
+    assert judge.calls == 2
+
+
+FIXTURE = [
+    {
+        "question_id": "q1", "question_type": "single-session-user", "question": "What colour is my bike?",
+        "answer": "teal", "question_date": "2023/05/02 (Tue) 10:00",
+        "haystack_dates": ["2023/05/01 (Mon) 09:00", "2023/04/01 (Sat) 09:00"],
+        "haystack_session_ids": ["s_late", "s_early"],
+        "haystack_sessions": [
+            [{"role": "user", "content": "My bike is teal.", "has_answer": True},
+             {"role": "assistant", "content": "Nice colour."}],
+            [{"role": "user", "content": "I like hiking."}, {"role": "assistant", "content": "Good for you."}],
+        ],
+        "answer_session_ids": ["s_late"],
+    },
+    {
+        "question_id": "q2_abs", "question_type": "multi-session", "question": "What is my cat called?",
+        "answer": "not mentioned", "question_date": "2023/05/02 (Tue) 10:00",
+        "haystack_dates": ["2023/04/01 (Sat) 09:00"], "haystack_session_ids": ["s1"],
+        "haystack_sessions": [[{"role": "user", "content": "I have a dog."}]], "answer_session_ids": ["s1"],
+    },
+]
+
+
+def test_longmemeval_orders_sessions_by_date_and_marks_evidence(tmp_path):
+    path = tmp_path / "lme.json"
+    path.write_text(json.dumps(FIXTURE))
+    env = build_env({"name": "longmemeval", "path": str(path)})
+    observation = env.reset(0)
+    seen = []
+    while observation is not None:
+        seen.append(observation)
+        observation = env.step("teal" if observation.requires_response else None).observation
+    assert [o.id for o in seen] == ["s_early:0", "s_early:1", "s_late:0", "s_late:1", "q0000"]
+    assert seen[0].metadata["date"].startswith("2023/04/01") and seen[-1].requires_response
+    (dependency,) = env.get_ground_truth_dependencies()
+    assert dependency.requirements[0].item_ids == ("s_late:0",) and dependency.step == 5
+    assert env.task_success() == 1.0
+
+    env.reset(1)  # unanswerable, and no turn is marked: falls back to the answer session
+    while env.get_observation() is not None:
+        env.step("unknown" if env.get_observation().requires_response else None)
+    (dependency,) = env.get_ground_truth_dependencies()
+    assert dependency.requirements[0].item_ids == ("s1:0",) and env.task_success() == 1.0
+
+
+def test_a_missing_benchmark_file_says_where_to_get_it(tmp_path):
+    with pytest.raises(FileNotFoundError, match="huggingface"):
+        build_env({"name": "longmemeval", "path": str(tmp_path / "nope.json")})
+    with pytest.raises(FileNotFoundError, match="download"):
+        build_env({"name": "locomo", "path": str(tmp_path / "nope.json")})
+
+
+def qa_config(env, controller, fraction, operations=None):
+    memory = {"budget": {"fraction": fraction}}
+    if operations:
+        memory["allowed_operations"] = operations
+    return resolve(
+        {"env": env, "agent": {"name": "llm", "model": {"backend": "stub"}}, "controller": controller, "memory": memory}
+    )
+
+
+@needs_locomo
+def test_locomo_runs_end_to_end_and_reports_where_the_evidence_was():
+    env = {"name": "locomo"}
+    result = run_one(qa_config(env, {"name": "fifo"}, 0.25), seed=0)
+    episode = result.episode
+    assert episode["queries"] == 199 and episode["steps"] == 419 + 199
+    assert 0 < episode["needed_hit_rate"] < 1  # a quarter of the history cannot hold all the evidence
+    assert 0 < episode["evidence_complete_rate"] <= episode["needed_hit_rate"] + 0.2
+    assert set(episode["failures"]) <= {"evicted", "task_model_reasoning", "unknown"}
+    assert episode["env_stats"]["scored_by"] == "local f1" and episode["agent_model"] == "stub"
+    limited = run_one(qa_config({**env, "max_questions": 5}, {"name": "full_context"}, 1.0), seed=0).episode
+    assert limited["queries"] == 5 and limited["needed_hit_rate"] == 1.0 and "evicted" not in limited["failures"]
+
+
+@needs_locomo
+def test_locomo_seeds_walk_through_the_ten_conversations():
+    env = build_env({"name": "locomo", "max_questions": 1})
+    first, second = env.reset(0).content, env.reset(1).content
+    assert first != second and env.reset(10).content == first
+
+
+@needs_longmemeval
+def test_longmemeval_real_file_runs_with_archive_and_retrieval():
+    env = {"name": "longmemeval"}
+    controller = {"name": "fifo", "removal": ["MOVE_TO_ARCHIVE"], "retrieve": {"top_k": 5}}
+    episode = run_one(qa_config(env, controller, 0.25, ARCHIVE_OPS), seed=0).episode
+    assert episode["queries"] == 1 and episode["retrieved_items"] > 0
+    assert episode["env_stats"]["episode"] and episode["needed_hit_rate"] is not None

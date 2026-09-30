@@ -1,0 +1,16 @@
+# Imitation with archive and retrieval allowed: the expert archives what is needed later,
+# deletes what is never needed, and retrieves an item at the step it is needed.
+schema_version: 1
+name: rl_bc_archive
+seed: 0
+env: {name: synthetic_recall, horizon: 200}
+agent: {name: scripted_reader, noise: 0.0}
+controller: {name: rl, hidden: 64, architecture: deepsets, retrieve_candidates: 8}
+memory:
+  allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+  embedder: hashing
+training:
+  budget_fractions: [0.02, 0.05, 0.1, 0.25]
+  phases:
+    - {algorithm: bc, iterations: 10, episodes: 24, epochs: 3, lr: 0.003, dagger: true}
+  eval: {every: 2, episodes: 20}

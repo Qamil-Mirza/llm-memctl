@@ -7,9 +7,16 @@ memory management —
 2. **JEV** deciding eviction, consolidation, and fetch / send to a persistent store,
 3. **an RL policy** deciding those same operations.
 
-> **Status: scaffold.** The design is being written. Start with
-> [docs/restart.md](docs/restart.md): what the earlier Phase 2 work measured, which parts of
-> it are worth bringing back, and the questions the new design has to answer.
+> **Status: framework built and validated on synthetic tasks.** Start with
+> [README_RESEARCH.md](README_RESEARCH.md) (how to run things), then
+> [EXPERIMENTS.md](EXPERIMENTS.md) (results),
+> [INFRA_REPORT.md](INFRA_REPORT.md) (what is blocked here and by what) and
+> [SCIENTIFIC_VALIDITY_REPORT.md](SCIENTIFIC_VALIDITY_REPORT.md) (what the results do and do not show).
+
+The three arms are three of the controllers behind one interface: `no_controller`,
+`jev` and `rl`, alongside heuristic baselines, a prompted-LLM controller and a hindsight
+oracle. [docs/restart.md](docs/restart.md) records what the earlier Phase 2 work measured and
+why it was redesigned.
 
 ## The earlier work
 
@@ -25,7 +32,15 @@ git checkout phase2-locomo-baseline -- memctl/memory.py   # bring one file back
 
 ## Running
 
-The Docker setup is kept because it is independent of the research design.
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -c constraints.txt -e ".[dev]"
+.venv/bin/pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
+.venv/bin/python -m pytest -q
+.venv/bin/python -m memctl.run --config configs/stage1_smoke.yaml
+```
+
+The Docker setup is kept for running local Hugging Face models on a GPU:
 
 ```bash
 cp .env.example .env

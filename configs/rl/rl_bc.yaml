@@ -1,0 +1,16 @@
+# Imitation only: behaviour cloning of the hindsight expert with DAgger. Delete-only action set.
+#   python -m memctl.rl.train --config configs/rl/rl_bc.yaml
+schema_version: 1
+name: rl_bc
+seed: 0
+env: {name: synthetic_recall, horizon: 200}
+agent: {name: scripted_reader, noise: 0.0}
+controller: {name: rl, hidden: 64, architecture: deepsets}
+memory:
+  allowed_operations: [KEEP, EVICT, NO_OP]
+  embedder: hashing
+training:
+  budget_fractions: [0.05, 0.1, 0.25, 0.5]
+  phases:
+    - {algorithm: bc, iterations: 10, episodes: 24, epochs: 3, lr: 0.003, dagger: true}
+  eval: {every: 2, episodes: 20}

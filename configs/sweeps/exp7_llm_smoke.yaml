@@ -1,0 +1,30 @@
+# Experiment 7a (smoke test): a real language model as the frozen task model.
+# Needs an OpenAI-compatible endpoint (here: Ollama serving llama3.1:8b). Small on purpose:
+# it shows the agent can be swapped without touching the harness and that attribution
+# separates the model's failures from memory failures. Not a result about any controller.
+#   python -m memctl.sweep --config configs/sweeps/exp7_llm_smoke.yaml --workers 1
+name: exp7_llm_smoke
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 3
+  env: {name: synthetic_recall, horizon: 60}
+  agent:
+    name: llm
+    max_new_tokens: 12
+    instructions: >-
+      You are given your memory and a question. Facts are stated as "As of step N, the X of Y is Z".
+      If a fact is stated more than once, the statement with the largest step number is current.
+      Reply with only the value Z (for example K93Q), or the single word unknown if the memory
+      does not contain it.
+    model: {backend: openai, name: "llama3.1:8b", base_url: "http://localhost:11434/v1", cache_dir: cache/generations}
+  memory:
+    allowed_operations: [KEEP, EVICT, NO_OP]
+  logging: {detail_episodes: 3}
+grid:
+  controller:
+    - fifo
+    - salience
+    - {name: oracle, method: exact}
+    - full_context
+  memory.budget.fraction: [0.25]

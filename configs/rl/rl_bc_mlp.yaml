@@ -1,0 +1,16 @@
+# Architecture ablation: the same imitation run as rl_bc, with each item scored on its own
+# (no summary of the other items in memory).
+schema_version: 1
+name: rl_bc_mlp
+seed: 0
+env: {name: synthetic_recall, horizon: 200}
+agent: {name: scripted_reader, noise: 0.0}
+controller: {name: rl, hidden: 64, architecture: mlp}
+memory:
+  allowed_operations: [KEEP, EVICT, NO_OP]
+  embedder: hashing
+training:
+  budget_fractions: [0.05, 0.1, 0.25, 0.5]
+  phases:
+    - {algorithm: bc, iterations: 10, episodes: 24, epochs: 3, lr: 0.003, dagger: true}
+  eval: {every: 2, episodes: 20}

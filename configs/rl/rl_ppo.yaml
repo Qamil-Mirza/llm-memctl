@@ -1,0 +1,15 @@
+# RL only: PPO from a random policy, long-horizon reward (gamma 0.995). No hindsight supervision.
+schema_version: 1
+name: rl_ppo
+seed: 0
+env: {name: synthetic_recall, horizon: 200}
+agent: {name: scripted_reader, noise: 0.0}
+controller: {name: rl, hidden: 64, architecture: deepsets}
+memory:
+  allowed_operations: [KEEP, EVICT, NO_OP]
+  embedder: hashing
+training:
+  budget_fractions: [0.05, 0.1, 0.25, 0.5]
+  phases:
+    - {algorithm: ppo, iterations: 100, episodes: 24, epochs: 4, lr: 0.0003, gamma: 0.995, entropy: 0.01}
+  eval: {every: 5, episodes: 20}

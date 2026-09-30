@@ -1,0 +1,15 @@
+# Does failure attribution recover a reasoning-failure rate that we inject ourselves?
+# The scripted reader fails 20% of the queries whose evidence it has.
+name: exp1b_attribution_check
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env: {name: synthetic_recall, horizon: 500}
+  agent: {name: scripted_reader, noise: 0.2}
+  memory:
+    allowed_operations: [KEEP, EVICT, NO_OP]
+  logging: {detail_episodes: 1}
+grid:
+  controller: [fifo, salience, {name: oracle, method: exact}]
+  memory.budget.fraction: [0.1, 0.25, 1.0]

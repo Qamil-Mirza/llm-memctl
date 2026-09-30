@@ -1,0 +1,27 @@
+# Experiment 3: do compaction and consolidation improve success at a given memory cost? (H5, RQ4)
+# The stream is made more verbose and more redundant than in Experiment 1, and the rewriter is
+# varied: `extractive` keeps the most specific sentences, `truncate` keeps the first tokens.
+name: exp3_compaction_consolidation
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env: {name: synthetic_recall, horizon: 500, verbose_prob: 0.5, restate_prob: 0.4}
+  agent: {name: scripted_reader, noise: 0.0}
+  memory:
+    allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, COMPACT, COMPACT_AND_ARCHIVE, CONSOLIDATE, NO_OP]
+  logging: {detail_episodes: 1}
+grid:
+  controller:
+    - {name: fifo, label: fifo_delete}
+    - {name: salience, label: salience_delete}
+    - {name: fifo, label: fifo_compact, removal: [COMPACT, EVICT]}
+    - {name: salience, label: salience_compact, removal: [COMPACT, EVICT]}
+    - {name: fifo, label: fifo_consolidate, consolidate: {}}
+    - {name: salience, label: salience_compact_consolidate, removal: [COMPACT, EVICT], consolidate: {}}
+    - {name: fifo, label: fifo_consolidate_tight, consolidate: {ratio: 0.4}}
+    - {name: salience, label: salience_compact_consolidate_tight, removal: [COMPACT, EVICT], consolidate: {ratio: 0.4}}
+    - {name: fifo, label: fifo_compact_archive_retrieve, removal: [COMPACT_AND_ARCHIVE, MOVE_TO_ARCHIVE], retrieve: {top_k: 3}}
+    - {name: oracle, method: exact, label: oracle_delete_only_exact}
+  memory.budget.fraction: [0.05, 0.1, 0.25]
+  memory.compressor: [extractive, truncate]
