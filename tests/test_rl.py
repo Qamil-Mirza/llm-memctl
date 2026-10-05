@@ -98,6 +98,42 @@ def test_the_expert_removes_never_needed_items_first_then_the_furthest_need():
     assert checked > 0
 
 
+def test_the_regret_expert_accepts_archive_and_deletion_alike_for_never_needed_items():
+    experiment = Experiment(config(fraction=0.05, operations=ARCHIVE_OPS))
+    controller = experiment.controller
+    hindsight = experiment.hindsight(0)
+    controller.record, controller.follow_expert = True, True
+    controller.expert = make_expert(hindsight, kind="regret")
+    episode = experiment.run_episode(seed=0, detail=False).episode
+    never = needed = 0
+    for decision in controller.recorded:
+        rank = decision.expert_rank
+        for i in range(decision.n_active):
+            need = min(hindsight.next_need(root, decision.step) for root in decision.roots[i])
+            if need > 10**8:
+                assert rank[i, EVICT] == rank[i, ARCHIVE] == 0
+                never += 1
+            else:
+                assert 0 <= rank[i, ARCHIVE] < rank[i, EVICT]
+                needed += 1
+    assert never > 0 and needed > 0 and episode["task_success"] == 1.0
+    with pytest.raises(ValueError):
+        make_expert(hindsight, kind="psychic")
+
+
+def test_a_risky_archive_makes_the_regret_expert_prefer_deleting_what_is_never_needed():
+    experiment = Experiment(config(fraction=0.05, operations=ARCHIVE_OPS))
+    controller = experiment.controller
+    hindsight = experiment.hindsight(0)
+    controller.record, controller.follow_expert = True, True
+    controller.expert = make_expert(hindsight, kind="regret", archive_cost=0.01)
+    experiment.run_episode(seed=0, detail=False)
+    for decision in controller.recorded:
+        for i in range(decision.n_active):
+            if min(hindsight.next_need(root, decision.step) for root in decision.roots[i]) > 10**8:
+                assert decision.expert_rank[i, EVICT] < decision.expert_rank[i, ARCHIVE]
+
+
 def test_following_the_expert_reproduces_the_approximate_oracle():
     for seed in (0, 1, 2):
         experiment = Experiment(config(fraction=0.03))

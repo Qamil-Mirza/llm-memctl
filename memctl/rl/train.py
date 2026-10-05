@@ -10,6 +10,7 @@ reward, `controller: {name: rl, ...}`) plus a `training` section:
         - {algorithm: bc, iterations: 8, episodes: 16, epochs: 4, lr: 0.003, dagger: true}
         - {algorithm: ppo, iterations: 40, episodes: 16, epochs: 4, lr: 0.0003, gamma: 0.995}
       eval: {every: 4, episodes: 20, seed_offset: 50000}
+      expert: {kind: regret}         # optional: which hindsight expert labels imitation (memctl/rl/expert.py)
 
 Three disjoint sets of seeds keep the numbers honest: training episodes use
 `seed_offset` onward, the evaluations logged during training (and used to pick
@@ -48,6 +49,7 @@ TRAINING_DEFAULTS = {
     "phases": [{"algorithm": "bc", "iterations": 8, "episodes": 16}],
     "eval": {"every": 4, "episodes": 20, "seed_offset": 50_000},
     "max_dataset": 40_000,
+    "expert": {"kind": "oracle"},
 }
 
 
@@ -132,7 +134,7 @@ def train(config: dict, folder: str | Path | None = None, progress: bool = False
                     experiment.config["memory"]["budget"] = {"fraction": rng.choice(fractions)}
                 controller.greedy = False
                 if imitation:
-                    controller.expert = make_expert(experiment.hindsight(seed))
+                    controller.expert = make_expert(experiment.hindsight(seed), **settings["expert"])
                     # DAgger: the expert drives the first iteration, the learner the rest, the expert labels all.
                     controller.follow_expert = iteration == 0 or not phase.get("dagger", True)
                 else:
