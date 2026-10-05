@@ -32,6 +32,7 @@ regenerated with the two commands given).
 | 3 | Do compaction and consolidation help? | Compaction: only if lossless. Consolidation: little. PASSED |
 | 4 | Do learned controllers beat heuristics? | They beat every recency rule and match, but do not beat, the best content rule. PASSED |
 | 4b | …with archive and retrieval? | Imitation of the hindsight expert deletes when it should archive. PASSED |
+| D1 | Does an archive-aware regret teacher fix 4b? | **Yes**: 0.34 → 0.85 at 2%, above every heuristic at every budget. Clean commit, 3 seeds. PASSED |
 | 5 | Does the ranking hold on a sequential task? | **No, it flips.** PASSED |
 | 5b | Learned controllers on the sequential task | Task-trained imitation reaches 1.0 where the blind oracle does not; the recall-trained policy does not transfer. PASSED |
 | 6 | LoCoMo and LongMemEval: evidence retention under a budget | Pipeline PASSED; QA accuracy BLOCKED |
@@ -423,6 +424,70 @@ episode (precision 0.11, recall 0.80) and fails only by
   cost-aware one (archive when unsure; retrieve generously when the archive
   is free), or the learner needs the archive's asymmetry expressed in the
   reward. Neither was tried.
+
+## D1. The regret teacher (2026-10-05)
+
+```bash
+python -m memctl.rl.train --config configs/rl/d1/rl_bc_archive_{oracle,regret}_s{0,1,2}.yaml
+python -m memctl.sweep --config configs/sweeps/d1_regret_expert_eval.yaml
+python -m memctl.analysis.seeds runs/d1_regret_expert_eval
+python -m memctl.rl.probe runs/rl_bc_archive_regret_s0/checkpoints/policy.pt
+```
+
+Same learner, data budget and DAgger schedule as Experiment 4b (`rl_bc_archive`);
+only the expert differs. The **oracle** expert labels never-needed items
+EVICT and needed ones MOVE_TO_ARCHIVE. The **regret** expert charges every
+(item, operation) pair its hindsight regret with the oracle playing on (EVICT:
+1 if the item is needed again, else 0; ARCHIVE: 0) and accepts every pair of
+least regret, so for a never-needed item both EVICT and ARCHIVE are accepted
+(`memctl/rl/expert.py`). Three training seeds each; evaluation on seeds 0–99
+as in 4b. **Provenance: commit `5fd6a3a`, all 40 cells `dirty: false`.**
+
+Task success, mean over the 3 training seeds [min, max]:
+
+| controller | 2% | 5% | 10% | 25% |
+|---|---|---|---|---|
+| fifo_delete | 0.007 | 0.058 | 0.238 | 0.618 |
+| fifo_archive_retrieve | 0.759 | 0.777 | 0.808 | 0.911 |
+| salience_archive_retrieve | 0.744 | 0.833 | 0.898 | 0.984 |
+| imitation, oracle expert | 0.335 [0.287, 0.376] | 0.512 [0.467, 0.541] | 0.722 [0.708, 0.731] | 0.958 [0.943, 0.969] |
+| **imitation, regret expert** | **0.851** [0.843, 0.858] | **0.887** [0.870, 0.901] | **0.930** [0.915, 0.948] | **0.987** [0.983, 0.991] |
+| oracle_approx | 0.966 | 1.000 | 1.000 | 1.000 |
+
+Paired over episodes (seed-mean of the regret policies minus the baseline,
+95% bootstrap interval): against the best heuristic at each budget, +0.092
+[0.076, 0.107] at 2% (FIFO-archive), +0.053 [0.037, 0.070] at 5%, +0.031
+[0.018, 0.045] at 10% (salience-archive), +0.003 [−0.003, 0.010] at 25%. The
+gap to the oracle is −0.115, −0.113, −0.070 and −0.013.
+
+**Mechanism, measured** (`memctl.rl.probe`, 10 evaluation episodes, 2%):
+
+| policy | needed items deleted | never-needed items deleted | retrievals / episode | retrieval precision |
+|---|---|---|---|---|
+| Exp. 4b `rl_bc_archive` (oracle expert) | 92% | 99% | 0.8 | 0.88 |
+| regret expert, seed 1 | 0% | 0% | 12.7 | 1.00 |
+
+**What it shows**
+
+- **The 4b failure is the teacher, not the learner.** The oracle-expert
+  learner orders removals well (only 6% of what it removes is needed later)
+  but chooses the *operation* as the expert's majority action, the same for
+  needed and never-needed items: Weihs et al.'s policy averaging, measured.
+  Accepting every least-regret action removes the privileged tie-break, and
+  the same learner learns to archive.
+- **Imitation now beats every fixed rule** at 2–10% and ties at 25%, with a
+  quarter of the heuristics' retrievals (14 against 57 per episode).
+- The Experiment 4 policy, whose archive outputs were never trained, scored
+  0.591 at 2% in 4b, above the oracle-expert learner (0.383): imitating the
+  oracle made the operation choice *worse than untrained*.
+
+**What it does not show**
+
+- The archive is free here, so "archive everything" is the right
+  operation choice and the regret teacher says so. Whether a learner tracks
+  a *priced* archive is D5 (running).
+- The remaining gap to the oracle (0.11 at 2%) is retrieval: the shortlist is
+  BM25 top-8, and the learner retrieves 91% of the needed items it is shown.
 
 ## 5. The sequential task
 
