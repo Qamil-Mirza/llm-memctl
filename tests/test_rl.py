@@ -226,6 +226,25 @@ def test_unused_helpers_are_importable():
     assert episode_info and DELETE_ONLY
 
 
+def test_one_policy_can_be_trained_on_several_tasks(tmp_path):
+    settings = config(horizon=80)
+    settings["name"] = "tiny_multitask"
+    settings["training"] = {
+        "phases": [{"algorithm": "cost", "iterations": 2, "episodes": 2, "epochs": 1}],
+        "eval": {"every": 2, "episodes": 2},
+        "expert": {"kind": "regret"},
+        "budget_fractions": [0.1],
+        "tasks": [
+            {"label": "recall", "env": {"name": "synthetic_recall", "horizon": 80}},
+            {"label": "workflow", "env": {"name": "workflow", "horizon": 80, "jobs": 4},
+             "agent": {"name": "scripted_tool_agent"}, "budget_fractions": [0.2]},
+        ],
+    }
+    folder = train(settings, tmp_path / "train")
+    log = read_jsonl(folder / "train_log.jsonl")
+    assert {"recall/success@0.1", "workflow/success@0.2"} <= set(log[-1])
+    assert log[0]["decisions"] > 0
+
 def _ambiguous_decisions(needed_share: float, archive_cost: float, count: int = 200) -> list[Decision]:
     """One item to remove, which looks the same whether or not it is needed later."""
     rng = np.random.default_rng(0)
