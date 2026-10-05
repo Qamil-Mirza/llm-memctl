@@ -36,6 +36,7 @@ class StepContext:
     retrieved_items: int = 0
     retrieved_hits: int = 0  # retrieved items that the current query needed
     requirements_destroyed: int = 0  # (hindsight) future requirements made unrecoverable now
+    archived_items: int = 0  # items the controller wrote to the archive this step
     extra: dict = field(default_factory=dict)
 
 
@@ -65,6 +66,12 @@ def _active_memory_cost(ctx: StepContext) -> float:
 def _retrieval_cost(ctx: StepContext) -> float:
     """Retrieved tokens as a share of the budget."""
     return ctx.retrieved_tokens / ctx.budget if ctx.budget else 0.0
+
+
+@term("archive_write")
+def _archive_write(ctx: StepContext) -> float:
+    """Items written to the archive. A negative weight prices the archive per item stored."""
+    return float(ctx.archived_items)
 
 
 @term("controller_compute_cost")

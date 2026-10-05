@@ -142,10 +142,12 @@ def run_episode(
         forced = engine.enforce_budget(state)
         regret_rows = tracker.after_actions(step, results + intervened + forced) if diverged_at is None else []
 
-        retrieved_ids, retrieved_tokens = [], 0
+        retrieved_ids, retrieved_tokens, archived_items = [], 0, 0
         for outcome in results:  # counted per item, so one action with many targets is not one removal
             if outcome.applied:
                 action_counts["controller"][outcome.action.operation.value] += max(1, len(outcome.action.target_ids))
+                if outcome.action.operation in (Operation.MOVE_TO_ARCHIVE, Operation.COMPACT_AND_ARCHIVE):
+                    archived_items += len(outcome.action.target_ids)
                 if outcome.action.operation is Operation.RETRIEVE_FROM_ARCHIVE:
                     retrieved_ids += list(outcome.action.target_ids)
                     retrieved_tokens -= outcome.tokens_freed
@@ -216,7 +218,7 @@ def run_episode(
             controller_model_calls=int(decision.get("model_calls", 0)), invalid_actions=invalid,
             forced_evictions=len(forced), scored=scored, requirements=requirements,
             requirements_in_active=in_active, retrieved_items=len(retrieved_ids), retrieved_hits=hits,
-            requirements_destroyed=len(regret_rows),
+            requirements_destroyed=len(regret_rows), archived_items=archived_items,
         )
         reward, terms = reward_fn(context)
         cumulative += reward

@@ -121,7 +121,7 @@ def train(config: dict, folder: str | Path | None = None, progress: bool = False
         name = phase["algorithm"]
         algorithm = ALGORITHMS[name](phase)
         optimizer = torch.optim.Adam(controller.policy.parameters(), lr=float(phase.get("lr", 3e-3 if name == "bc" else 3e-4)))
-        imitation = name == "bc"
+        imitation = name in ("bc", "cost")
         # Regret tracking is only worth its cost when the expert labels need hindsight anyway.
         experiment.config["hindsight"]["enabled"] = False
         dataset: list[Decision] = []

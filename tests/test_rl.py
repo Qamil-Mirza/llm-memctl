@@ -224,3 +224,35 @@ def test_training_writes_a_checkpoint_that_an_ordinary_run_can_evaluate(tmp_path
 
 def test_unused_helpers_are_importable():
     assert episode_info and DELETE_ONLY
+
+
+def _ambiguous_decisions(needed_share: float, archive_cost: float, count: int = 200) -> list[Decision]:
+    """One item to remove, which looks the same whether or not it is needed later."""
+    rng = np.random.default_rng(0)
+    decisions = []
+    for _ in range(count):
+        needed = rng.random() < needed_share
+        mask = np.zeros((1, 4), bool)
+        mask[0, [EVICT, ARCHIVE]] = True
+        decision = Decision(5, np.ones((1, ITEM_DIM), np.float32), np.zeros(GLOBAL_DIM, np.float32), ["a"], [("a",)], 1,
+                            np.full((1, 4), 10, np.int64), mask, 1)
+        cost = np.full((1, 4), np.nan, np.float32)
+        cost[0, EVICT], cost[0, ARCHIVE] = float(needed), archive_cost
+        rank = np.full((1, 4), -1, np.int64)
+        rank[0, EVICT], rank[0, ARCHIVE] = (1, 0) if needed else (0, 1)
+        decision.expert_rank, decision.expert_retrieved, decision.expert_cost = rank, [], cost
+        decisions.append(decision)
+    return decisions
+
+
+@pytest.mark.parametrize("algorithm, expected", [("bc", EVICT), ("cost", ARCHIVE)])
+def test_with_a_priced_archive_only_cost_sensitive_imitation_archives_what_might_be_needed(algorithm, expected):
+    """30% of these items are needed later and archiving costs 0.1: archiving has the lower
+    expected regret (0.1 < 0.3), but deletion is least-regret 70% of the time."""
+    torch.manual_seed(0)
+    policy = ItemPolicy(ITEM_DIM, GLOBAL_DIM)
+    optimizer = torch.optim.Adam(policy.parameters(), lr=0.01)
+    learner = ALGORITHMS[algorithm]({"epochs": 30, "batch_size": 50})
+    learner.update(policy, optimizer, _ambiguous_decisions(0.3, 0.1), random.Random(0))
+    logits, _ = policy(torch.ones(1, ITEM_DIM), torch.zeros(GLOBAL_DIM))
+    assert int(torch.argmax(logits[0, [EVICT, ARCHIVE]])) == [EVICT, ARCHIVE].index(expected)

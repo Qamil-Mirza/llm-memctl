@@ -23,6 +23,14 @@ Two experts, chosen with `training.expert.kind`:
 
   `archive_cost` prices the archive; `retrieval_risk` is the chance the item,
   once archived, is not retrieved when needed (0 with the oracle playing on).
+
+  The regret expert also returns the cost of every pair, for cost-sensitive
+  imitation (`algorithm: cost`): regret plus `order_weight` times the item's
+  place in the oracle's order (0 for never-needed and furthest-needed items, up
+  to 1 for the item needed soonest). Accepted-set imitation (`bc`) learns the
+  action that is *most often* least-regret for what the learner can see; the
+  cost-sensitive loss learns the one of least *expected* regret, which differs
+  as soon as the archive has a price.
 """
 
 from __future__ import annotations
@@ -39,7 +47,10 @@ ARCHIVE = REMOVAL_OPERATIONS.index(Operation.MOVE_TO_ARCHIVE)
 KINDS = ("oracle", "regret")
 
 
-def make_expert(hindsight: Hindsight, kind: str = "oracle", archive_cost: float = 0.0, retrieval_risk: float = 0.0):
+def make_expert(
+    hindsight: Hindsight, kind: str = "oracle", archive_cost: float = 0.0, retrieval_risk: float = 0.0,
+    order_weight: float = 0.05,
+):
     if kind not in KINDS:
         raise ValueError(f"unknown expert kind {kind!r}; expected one of {KINDS}")
 
@@ -66,16 +77,20 @@ def make_expert(hindsight: Hindsight, kind: str = "oracle", archive_cost: float 
 
     def regret(decision: Decision) -> tuple[np.ndarray, list[int]]:
         next_need, retrieved = needs(decision)
+        distinct = sorted({need for need in next_need[: decision.n_active] if need != NEVER}, reverse=True)
+        place = {need: (1 + order) / len(distinct) for order, need in enumerate(distinct)}  # soonest -> 1
         keys: dict[tuple[int, int], tuple[float, int]] = {}
+        cost = np.full(decision.mask.shape, np.nan, dtype=np.float32)
         for i in range(decision.n_active):
             needed = next_need[i] != NEVER
-            for column, cost in ((EVICT, float(needed)), (ARCHIVE, archive_cost + retrieval_risk * needed)):
+            for column, value in ((EVICT, float(needed)), (ARCHIVE, archive_cost + retrieval_risk * needed)):
                 if decision.mask[i, column]:
-                    keys[(i, column)] = (round(cost, 9), -next_need[i])
+                    keys[(i, column)] = (round(value, 9), -next_need[i])
+                    cost[i, column] = value + order_weight * place.get(next_need[i], 0.0)
         order = {key: position for position, key in enumerate(sorted(set(keys.values())))}
         rank = np.full(decision.mask.shape, -1, dtype=np.int64)
         for (i, column), key in keys.items():
             rank[i, column] = order[key]
-        return rank, retrieved
+        return rank, retrieved, cost
 
     return oracle if kind == "oracle" else regret

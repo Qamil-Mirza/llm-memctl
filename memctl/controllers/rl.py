@@ -67,6 +67,9 @@ class Decision:
     # expert would remove item i by that operation: 0 first, ties allowed, -1 for "not this way".
     expert_rank: np.ndarray | None = None
     expert_retrieved: list[int] | None = None
+    # Optional: the expert's cost of removing item i by that operation (NaN where unavailable),
+    # for cost-sensitive imitation. Lower is better; `expert_rank` orders the same pairs.
+    expert_cost: np.ndarray | None = None
 
 
 def accepted_picks(rank: np.ndarray, mask: torch.Tensor) -> list[int]:
@@ -121,7 +124,7 @@ class RLController(MemoryController):
         self.record = False
         self.recorded: list[Decision] = []
         self.rewards: list[tuple[int, float]] = []
-        self.expert: Callable[[Decision], tuple[np.ndarray, list[int]]] | None = None
+        self.expert: Callable[[Decision], tuple] | None = None  # (rank, retrieved[, cost])
         self.follow_expert = False
         self._roots: dict[str, tuple[str, ...]] = {}
         self._info: dict = {}
@@ -194,7 +197,9 @@ class RLController(MemoryController):
             retrieve_tokens=[item.token_count for item, _ in shortlist],
         )
         if self.expert is not None:
-            decision.expert_rank, decision.expert_retrieved = self.expert(decision)
+            labels = self.expert(decision)
+            decision.expert_rank, decision.expert_retrieved = labels[0], labels[1]
+            decision.expert_cost = labels[2] if len(labels) > 2 else None
         self._choose(decision)
         if self.record:
             self.recorded.append(decision)
