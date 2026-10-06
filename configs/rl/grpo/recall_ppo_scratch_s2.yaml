@@ -1,0 +1,16 @@
+# GRPO experiment: PPO from scratch, same episodes as GRPO. 1,584 training episodes (as rl_bc_ppo_archive), seed 2.
+schema_version: 1
+name: recall_ppo_scratch_s2
+seed: 2
+env: {name: synthetic_recall, horizon: 200}
+agent: {name: scripted_reader, noise: 0.0}
+controller: {name: rl, hidden: 64, architecture: deepsets, retrieve_candidates: 8}
+memory:
+  allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+  embedder: hashing
+training:
+  budget_fractions: [0.02, 0.05, 0.1, 0.25]
+  phases:
+  - {algorithm: ppo, episodes: 24, epochs: 4, lr: 0.0003, gamma: 0.995, entropy: 0.01,
+    iterations: 66}
+  eval: {every: 6, episodes: 20}

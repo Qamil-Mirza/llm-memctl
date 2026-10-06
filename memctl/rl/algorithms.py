@@ -10,6 +10,7 @@ What each algorithm needs on a `Decision`:
 - `cost`       expert costs (`expert_cost`), plus `expert_rank` and `expert_retrieved`
 - `reinforce`  `return_to_go`
 - `ppo`        `return_to_go`, and the `log_prob` and `value` recorded when it was taken
+- `grpo`       `advantage` (set by the trainer from a group of samples of one episode) and `log_prob`
 """
 
 from __future__ import annotations
@@ -190,6 +191,44 @@ class PolicyGradient:
         return {**last, "decisions": len(decisions), "mean_return": float(returns.mean())}
 
 
+class GroupRelative(PolicyGradient):
+    """GRPO: PPO's clipped objective with no value network. The trainer runs each episode
+    `group` times with different action samples and sets every decision's `advantage` to its
+    episode's return minus the group mean, over the group's standard deviation. Same seed, same
+    budget, so what is left of the spread is the policy's own choices, not the episode's luck."""
+
+    name = "grpo"
+
+    def update(self, policy: ItemPolicy, optimizer: torch.optim.Optimizer, decisions: list[Decision], rng: random.Random) -> dict:
+        decisions = [d for d in decisions if (d.picks or d.retrieved) and d.advantage]
+        if not decisions:
+            return {"loss": None, "decisions": 0}
+        advantages = torch.tensor([d.advantage for d in decisions], dtype=torch.float32)
+        old_log_probs = torch.tensor([d.log_prob for d in decisions], dtype=torch.float32)
+        last = {}
+        for _ in range(self.epochs):
+            order = list(range(len(decisions)))
+            rng.shuffle(order)
+            for start in range(0, len(order), self.batch_size):
+                batch = order[start : start + self.batch_size]
+                policy_terms, entropies = [], []
+                for index in batch:
+                    log_prob, _, entropy = evaluate(policy, decisions[index])
+                    ratio = torch.exp(log_prob - old_log_probs[index])
+                    clipped = torch.clamp(ratio, 1 - self.clip, 1 + self.clip)
+                    policy_terms.append(-torch.min(ratio * advantages[index], clipped * advantages[index]))
+                    entropies.append(entropy)
+                policy_loss = torch.stack(policy_terms).mean()
+                entropy = torch.stack(entropies).mean()
+                loss = policy_loss - self.entropy_coef * entropy
+                optimizer.zero_grad()
+                loss.backward()
+                torch.nn.utils.clip_grad_norm_(policy.parameters(), 1.0)
+                optimizer.step()
+                last = {"loss": loss.item(), "policy_loss": policy_loss.item(), "entropy": entropy.item()}
+        return {**last, "decisions": len(decisions)}
+
+
 class Reinforce(PolicyGradient):
     name = "reinforce"
 
@@ -197,4 +236,4 @@ class Reinforce(PolicyGradient):
         super().__init__({**settings, "epochs": 1, "clip": None})
 
 
-ALGORITHMS = {"bc": BehaviourCloning, "cost": CostSensitiveImitation, "ppo": PolicyGradient, "reinforce": Reinforce}
+ALGORITHMS = {"bc": BehaviourCloning, "cost": CostSensitiveImitation, "grpo": GroupRelative, "ppo": PolicyGradient, "reinforce": Reinforce}

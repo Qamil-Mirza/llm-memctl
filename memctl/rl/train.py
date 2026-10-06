@@ -9,6 +9,7 @@ reward, `controller: {name: rl, ...}`) plus a `training` section:
       phases:
         - {algorithm: bc, iterations: 8, episodes: 16, epochs: 4, lr: 0.003, dagger: true}
         - {algorithm: ppo, iterations: 40, episodes: 16, epochs: 4, lr: 0.0003, gamma: 0.995}
+        - {algorithm: grpo, iterations: 40, episodes: 24, group: 8, epochs: 4, lr: 0.0003}
       eval: {every: 4, episodes: 20, seed_offset: 50000}
       expert: {kind: regret}         # optional: which hindsight expert labels imitation (memctl/rl/expert.py)
       tasks:                         # optional: train one policy on several tasks, one episode each in turn
@@ -74,6 +75,20 @@ def fill_returns(decisions: list[Decision], rewards: list[tuple[int, float]], ga
         value_at[step] = running
     for decision in decisions:
         decision.return_to_go = value_at.get(decision.step, 0.0)
+
+
+def set_group_advantages(returns: list[tuple[int, float, list[Decision]]]) -> None:
+    """GRPO: each decision's advantage is its episode's return, standardised within its group."""
+    groups: dict[int, list[float]] = {}
+    for group, value, _ in returns:
+        groups.setdefault(group, []).append(value)
+    for group, value, decisions in returns:
+        values = groups[group]
+        mean = sum(values) / len(values)
+        spread = (sum((v - mean) ** 2 for v in values) / len(values)) ** 0.5
+        advantage = (value - mean) / (spread + 1e-6) if spread > 0 else 0.0
+        for decision in decisions:
+            decision.advantage = advantage
 
 
 def evaluate_policy(experiment: Experiment, episodes: int, fractions: list[float] | None, seed_offset: int = 50_000,
@@ -151,14 +166,18 @@ def train(config: dict, folder: str | Path | None = None, progress: bool = False
         for _, task_experiment, _ in tasks:
             task_experiment.config["hindsight"]["enabled"] = False
         dataset: list[Decision] = []
+        group = int(phase.get("group", 1)) if name == "grpo" else 1
         for iteration in range(int(phase.get("iterations", 8))):
             fresh: list[Decision] = []
             successes, forced = [], 0
+            returns: list[tuple[int, float, list[Decision]]] = []  # (group, return, decisions), for GRPO
             for number in range(int(phase.get("episodes", 16))):
-                seed, next_seed = next_seed, next_seed + 1
-                _, experiment, fractions = tasks[number % len(tasks)]
-                if fractions:
-                    experiment.config["memory"]["budget"] = {"fraction": rng.choice(fractions)}
+                if number % group == 0:  # a new episode: seed, task and budget shared by the whole group
+                    seed, next_seed = next_seed, next_seed + 1
+                    _, experiment, fractions = tasks[(number // group) % len(tasks)]
+                    if fractions:
+                        experiment.config["memory"]["budget"] = {"fraction": rng.choice(fractions)}
+                controller.sample_offset = number % group if group > 1 else 0
                 controller.greedy = False
                 if imitation:
                     controller.expert = make_expert(experiment.hindsight(seed), **settings["expert"])
@@ -172,12 +191,17 @@ def train(config: dict, folder: str | Path | None = None, progress: bool = False
                 if imitation and episode.get("hindsight_diverged_at") is not None:
                     # From the divergence on, the expert's labels describe another episode.
                     recorded = [d for d in recorded if d.step < episode["hindsight_diverged_at"]]
-                if not imitation:
+                if name == "grpo":
+                    returns.append((number // group, sum(reward for _, reward in controller.rewards), recorded))
+                elif not imitation:
                     fill_returns(controller.recorded, controller.rewards, float(phase.get("gamma", 0.995)))
                 fresh += recorded
                 successes.append(episode["task_success"])
                 forced += episode["forced_evictions"]
                 episodes_run += 1
+            controller.sample_offset = 0
+            if name == "grpo":
+                set_group_advantages(returns)
             if imitation:
                 dataset = (dataset + fresh)[-int(settings["max_dataset"]):]
                 stats = algorithm.update(controller.policy, optimizer, dataset, rng)

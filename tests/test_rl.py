@@ -287,3 +287,40 @@ def test_the_plug_in_rule_archives_or_deletes_by_price(tmp_path):
         counts = run_one(settings, seed=0).episode["action_counts"]["controller"]
         other = "EVICT" if kept == "MOVE_TO_ARCHIVE" else "MOVE_TO_ARCHIVE"
         assert counts.get(kept, 0) > 0 and counts.get(other, 0) == 0
+
+
+def test_group_advantages_are_standardised_within_each_group():
+    from memctl.rl.train import set_group_advantages
+
+    make = lambda: Decision(1, np.zeros((1, 1), np.float32), np.zeros(1, np.float32), ["a"], [("a",)], 1,
+                            np.ones((1, 4), np.int64), np.ones((1, 4), bool), 1)
+    rows = [(0, 1.0, [make()]), (0, 3.0, [make()]), (1, 5.0, [make()]), (1, 5.0, [make()])]
+    set_group_advantages(rows)
+    assert rows[0][2][0].advantage == pytest.approx(-1.0, abs=1e-4)
+    assert rows[1][2][0].advantage == pytest.approx(1.0, abs=1e-4)
+    assert rows[2][2][0].advantage == 0.0 and rows[3][2][0].advantage == 0.0  # no spread, no signal
+
+
+def test_samples_of_one_episode_differ_only_by_sample_offset():
+    experiment = Experiment(config(operations=ARCHIVE_OPS, greedy=False))
+    controller = experiment.controller
+    controller.record = True
+
+    def picks(offset):
+        controller.sample_offset = offset
+        experiment.run_episode(seed=3, detail=False)
+        return [d.picks for d in controller.recorded]
+
+    assert picks(1) == picks(1) and picks(1) != picks(2)
+
+
+def test_grpo_training_runs_and_logs(tmp_path):
+    settings = config(horizon=80, operations=ARCHIVE_OPS)
+    settings["name"] = "tiny_grpo"
+    settings["training"] = {
+        "phases": [{"algorithm": "grpo", "iterations": 2, "episodes": 4, "group": 2, "epochs": 1}],
+        "eval": {"every": 2, "episodes": 2},
+        "budget_fractions": [0.05],
+    }
+    log = read_jsonl(train(settings, tmp_path / "train") / "train_log.jsonl")
+    assert [row["algorithm"] for row in log] == ["grpo", "grpo"] and "success@0.05" in log[1]

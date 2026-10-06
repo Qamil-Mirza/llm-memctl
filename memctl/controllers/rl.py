@@ -63,6 +63,7 @@ class Decision:
     log_prob: float = 0.0
     value: float = 0.0
     return_to_go: float = 0.0  # filled in by the trainer
+    advantage: float | None = None  # set by trainers that compute their own (GRPO: group-relative)
     # Expert labels, when a trainer supplies them. `expert_rank[i, op]` is the order in which an
     # expert would remove item i by that operation: 0 first, ties allowed, -1 for "not this way".
     expert_rank: np.ndarray | None = None
@@ -126,6 +127,8 @@ class RLController(MemoryController):
         self.rewards: list[tuple[int, float]] = []
         self.expert: Callable[[Decision], tuple] | None = None  # (rank, retrieved[, cost])
         self.follow_expert = False
+        # Trainers that sample one episode several times (GRPO) set a different value per sample.
+        self.sample_offset = 0
         self._roots: dict[str, tuple[str, ...]] = {}
         self._info: dict = {}
         # Optional plug-in Bayes rule for a priced archive (memctl/rl/needed.py): the policy picks which
@@ -145,7 +148,8 @@ class RLController(MemoryController):
         super().reset(episode)
         self.featurizer.reset()
         self.recorded, self.rewards, self._roots = [], [], {}
-        self.generator.manual_seed(hash((self.seed, episode.seed)) % (2**31))
+        key = (self.seed, episode.seed) if not self.sample_offset else (self.seed, episode.seed, self.sample_offset)
+        self.generator.manual_seed(hash(key) % (2**31))
         self.retriever = build_retriever(self.config.get("retrieval_method", "lexical"), episode.embedder)
 
     def update(self, feedback: Feedback) -> None:
