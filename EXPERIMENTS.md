@@ -33,6 +33,7 @@ regenerated with the two commands given).
 | 4 | Do learned controllers beat heuristics? | They beat every recency rule and match, but do not beat, the best content rule. PASSED |
 | 4b | …with archive and retrieval? | Imitation of the hindsight expert deletes when it should archive. PASSED |
 | D5 | …and when the archive has a price? | Imitation collapses at any price; cost-sensitive imitation wins at low price, over-archives at high. PARTIAL |
+| D5b | Does a plug-in Bayes rule track the price? | Yes at 0.01 and 0.05 (+0.07 to +0.28); loses 0.06 to delete-all at 0.2. PARTIAL |
 | D1 | Does an archive-aware regret teacher fix 4b? | **Yes**: 0.34 → 0.85 at 2%, above every heuristic at every budget. Clean commit, 3 seeds. PASSED |
 | 5 | Does the ranking hold on a sequential task? | **No, it flips.** PASSED |
 | 5b | Learned controllers on the sequential task | Task-trained imitation reaches 1.0 where the blind oracle does not; the recall-trained policy does not transfer. PASSED |
@@ -535,9 +536,63 @@ and 0.05, 121 at 0.2; heuristics, 247; oracle, 11.
   minimised by a choice, not by a calibrated probability, and "archive
   anything" spreads its mass over many equally cheap pairs.
 
-**Next**: a plug-in Bayes rule. Learn a calibrated P(needed | item) separately
-and archive iff it exceeds the price; the choice of *which* item to remove
-stays with the imitation policy.
+### D5b. The plug-in Bayes rule
+
+```bash
+python -m memctl.rl.needed --config configs/rl/d5/needed_s{0,1}.yaml
+python -m memctl.sweep --config configs/sweeps/d5b_plugin_eval.yaml
+```
+
+The D1 regret policy (trained with a free archive) picks *which* item to
+remove; a separate model gives P(needed again | features) for that item, and
+the controller archives iff it exceeds the price (`archive_price`,
+`needed_model`). The model is a 32-unit MLP fitted with log loss on 200 of the
+policy's own episodes (about 37,000 removed items, base rate 4.5%) and
+checked on 50 held-out episodes: Brier 0.034 against 0.043 for the base rate
+(seed 0; 0.039 against 0.048 for seed 1), and calibrated per bin (predicted
+0.065 / observed 0.061; 0.167 / 0.176; 0.41 / 0.36). 70% of removed items get
+P < 0.01, and none of those was needed. **Provenance: commit `4d8e4d1`, all
+18 cells and both models `dirty: false`;** cells pair with D5's on seeds 0–99.
+
+Priced score, mean of 2 seeds:
+
+| price | budget | plug-in | cost-sensitive | `bc` | salience archive | salience delete | oracle |
+|---|---|---|---|---|---|---|---|
+| 0.01 | 2% | **0.812** | 0.744 | 0.357 | 0.611 | 0.365 | 0.960 |
+| 0.01 | 5% | **0.856** | 0.777 | 0.534 | 0.707 | 0.546 | 0.999 |
+| 0.01 | 10% | **0.907** | 0.826 | 0.729 | 0.778 | 0.738 | 1.000 |
+| 0.05 | 2% | **0.648** | 0.286 | 0.352 | 0.078 | 0.365 | 0.939 |
+| 0.05 | 5% | **0.710** | 0.347 | 0.528 | 0.199 | 0.546 | 0.994 |
+| 0.05 | 10% | **0.790** | 0.424 | 0.727 | 0.295 | 0.738 | 1.000 |
+| 0.2 | 2% | 0.311 | −0.562 | 0.333 | −1.921 | **0.365** | 0.857 |
+| 0.2 | 5% | 0.473 | −0.384 | 0.508 | −1.705 | **0.546** | 0.976 |
+| 0.2 | 10% | 0.675 | −0.225 | 0.719 | −1.513 | **0.738** | 0.999 |
+
+Paired against the best other non-oracle controller (95% bootstrap): at 0.01,
++0.068, +0.080, +0.081 (all intervals above +0.059); at 0.05, +0.284,
++0.163, +0.051 (all above +0.030); at 0.2, −0.053, −0.073, −0.063 (all below
+−0.030).
+
+**What it shows**
+
+- **The information to price the archive is in the features; imitation
+  losses do not extract it, a calibrated estimate does.** Separating "which
+  item" (imitation) from "which operation" (a Bayes decision on a calibrated
+  probability) wins by large margins where the trade-off is real (0.05).
+- **At 0.2 it archives too eagerly.** The rule values a needed item at one
+  query; its real value is lower (retrieval misses it ~9% of the time, and
+  restatements make some items redundant). From D1/D5, archiving instead of
+  deleting at 2% gains about 10.7 queries per episode for about 14.5 needed
+  items removed, so about 0.74 query each. The fix is to estimate that value
+  (or regress the counterfactual gain directly) instead of assuming 1.
+
+**For the thesis**: the hindsight-teacher result now has three parts. The
+oracle's argmin labels are the wrong target once an archive exists (D1);
+least-regret *sets* fix a free archive but are indistinguishable from the
+oracle at any positive price (D5); and the right object to learn from
+hindsight is a calibrated expected regret, used in a decision rule (D5b),
+which is what AggreVaTe-style cost-sensitive learning aims at but a softmax
+expected-cost loss does not deliver.
 
 ## 5. The sequential task
 
