@@ -129,9 +129,11 @@ class RLController(MemoryController):
         self._roots: dict[str, tuple[str, ...]] = {}
         self._info: dict = {}
         # Optional plug-in Bayes rule for a priced archive (memctl/rl/needed.py): the policy picks which
-        # item to remove; the item is archived iff P(needed again) > archive_price, deleted otherwise.
+        # item to remove; the item is archived iff P(needed again) x need_value > archive_price, deleted
+        # otherwise. need_value is what keeping a needed item is worth, in the price's unit (queries).
         self.needed_model = NeededModel.load(config["needed_model"]) if config.get("needed_model") else None
         self.archive_price = float(config.get("archive_price", 0.0))
+        self.need_value = float(config.get("need_value", 1.0))
         if config.get("checkpoint"):
             self.load(config["checkpoint"])
 
@@ -274,7 +276,7 @@ class RLController(MemoryController):
             if needed is not None and not accepted:
                 i, evict, archive = pick // N_REMOVALS, REMOVAL_OPERATIONS.index(Operation.EVICT), REMOVAL_OPERATIONS.index(Operation.MOVE_TO_ARCHIVE)
                 if pick % N_REMOVALS in (evict, archive) and bool(mask[i, evict]) and bool(mask[i, archive]):
-                    pick = i * N_REMOVALS + (archive if needed[i] > self.archive_price else evict)
+                    pick = i * N_REMOVALS + (archive if needed[i] * self.need_value > self.archive_price else evict)
             log_prob += float(log_probs[pick])
             decision.picks.append(pick)
             mask[pick // N_REMOVALS] = False

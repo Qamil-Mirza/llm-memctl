@@ -275,3 +275,15 @@ def test_with_a_priced_archive_only_cost_sensitive_imitation_archives_what_might
     learner.update(policy, optimizer, _ambiguous_decisions(0.3, 0.1), random.Random(0))
     logits, _ = policy(torch.ones(1, ITEM_DIM), torch.zeros(GLOBAL_DIM))
     assert int(torch.argmax(logits[0, [EVICT, ARCHIVE]])) == [EVICT, ARCHIVE].index(expected)
+
+
+def test_the_plug_in_rule_archives_or_deletes_by_price(tmp_path):
+    from memctl.rl.policy import NeededModel
+
+    model = NeededModel(ITEM_DIM + GLOBAL_DIM)
+    torch.save({"state_dict": model.state_dict(), "config": model.config}, tmp_path / "needed.pt")
+    for price, kept in ((-1.0, "MOVE_TO_ARCHIVE"), (float("inf"), "EVICT")):
+        settings = config(fraction=0.05, operations=ARCHIVE_OPS, needed_model=str(tmp_path / "needed.pt"), archive_price=price)
+        counts = run_one(settings, seed=0).episode["action_counts"]["controller"]
+        other = "EVICT" if kept == "MOVE_TO_ARCHIVE" else "MOVE_TO_ARCHIVE"
+        assert counts.get(kept, 0) > 0 and counts.get(other, 0) == 0
