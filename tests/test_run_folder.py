@@ -109,3 +109,12 @@ def test_sweep_cells_share_seeds_and_get_stable_names(tmp_path):
     assert all(value == [0, 1] for value in seeds.values())
     histories = {label: [e["history_tokens"] for e in read_jsonl(root / label / "episodes.jsonl")] for label in labels}
     assert histories["fifo__fraction0.1"] == histories["oracle-exact__fraction0.1"]
+
+
+def test_sweep_only_reruns_the_named_cells(tmp_path):
+    sweep = {"name": "toy_only", "base": {**BASE, "episodes": 1},
+             "grid": {"controller": ["fifo", "lru"], "memory.budget.fraction": [0.1]}}
+    root = run_sweep(sweep, workers=1, output_dir=str(tmp_path), only=["lru__fraction0.1"])
+    assert sorted(path.name for path in root.iterdir() if path.is_dir()) == ["lru__fraction0.1"]
+    with pytest.raises(ValueError):
+        run_sweep(sweep, workers=1, output_dir=str(tmp_path), only=["nope"])

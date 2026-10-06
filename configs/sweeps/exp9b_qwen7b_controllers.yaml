@@ -1,0 +1,40 @@
+# Experiment 9b: Experiment 8 repeated with a 7B task model at 100 episodes.
+# Qwen2.5-7B-Instruct (bf16) served by vLLM v0.8.5 on a rented RunPod A40, 16,384-token context,
+# greedy decoding. The base_url is that pod's proxy URL; point it at your own server to rerun.
+# Run from a clean worktree with runs/ checkpoints linked in:
+#   python -m memctl.sweep --config <this file> --workers 8
+name: exp9b_qwen7b_controllers
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env: {name: synthetic_recall, horizon: 200}
+  agent:
+    name: llm
+    max_new_tokens: 12
+    instructions: >-
+      You are given your memory and a question. Facts are stated as "As of step N, the X of Y is Z".
+      If a fact is stated more than once, the statement with the largest step number is current.
+      Reply with only the value Z (for example K93Q), or the single word unknown if the memory
+      does not contain it.
+    model: {backend: openai, name: "qwen2.5-7b-instruct", base_url: "https://dn4h6dnxcbi8la-8000.proxy.runpod.net/v1", timeout_s: 120, cache_dir: cache/generations_qwen7b_vllm}
+  memory:
+    allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+    embedder: hashing
+  logging: {detail_episodes: 2}
+grid:
+  controller:
+    - {name: fifo, label: fifo_delete}
+    - {name: fifo, label: fifo_archive_retrieve, removal: [MOVE_TO_ARCHIVE], retrieve: {top_k: 3}}
+    - {name: salience, label: salience_archive_retrieve, removal: [MOVE_TO_ARCHIVE], retrieve: {top_k: 3}}
+    - {name: oracle, method: approx}
+    - {name: rl, label: bc_oracle_s0, checkpoint: runs/rl_bc_archive_oracle_s0/checkpoints/policy.pt}
+    - {name: rl, label: bc_oracle_s1, checkpoint: runs/rl_bc_archive_oracle_s1/checkpoints/policy.pt}
+    - {name: rl, label: bc_oracle_s2, checkpoint: runs/rl_bc_archive_oracle_s2/checkpoints/policy.pt}
+    - {name: rl, label: bc_regret_s0, checkpoint: runs/rl_bc_archive_regret_s0/checkpoints/policy.pt}
+    - {name: rl, label: bc_regret_s1, checkpoint: runs/rl_bc_archive_regret_s1/checkpoints/policy.pt}
+    - {name: rl, label: bc_regret_s2, checkpoint: runs/rl_bc_archive_regret_s2/checkpoints/policy.pt}
+    - {name: rl, label: joint_bc_s0, checkpoint: runs/joint_bc_regret_s0/checkpoints/policy.pt}
+    - {name: rl, label: regret_bc_grpo_s0, checkpoint: runs/recall_regret_bc_grpo_s0/checkpoints/policy_best.pt}
+    - {name: rl, label: grpo_scratch_s0, checkpoint: runs/recall_grpo_scratch_s0/checkpoints/policy_best.pt}
+  memory.budget.fraction: [0.02, 0.05, 0.1, 0.25]

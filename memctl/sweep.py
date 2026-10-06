@@ -76,11 +76,16 @@ def _run_cell(job: tuple[str, dict, str]) -> tuple[str, float, str]:
         return label, time.time() - started, f"FAILED: {type(error).__name__}: {error}"
 
 
-def run_sweep(sweep: dict, workers: int | None = None, output_dir: str = "runs") -> Path:
+def run_sweep(sweep: dict, workers: int | None = None, output_dir: str = "runs", only: list[str] | None = None) -> Path:
     root = Path(output_dir) / sweep["name"]
     root.mkdir(parents=True, exist_ok=True)
     (root / "sweep.yaml").write_text(yaml.safe_dump(sweep, sort_keys=False))
     jobs = [(label, config, str(root / label)) for label, config in cells(sweep)]
+    if only:
+        unknown = set(only) - {label for label, _, _ in jobs}
+        if unknown:
+            raise ValueError(f"no such cells: {', '.join(sorted(unknown))}")
+        jobs = [job for job in jobs if job[0] in only]
     workers = workers or max(1, (os.cpu_count() or 2) - 2)
     print(f"{len(jobs)} cells, {workers} workers -> {root}", flush=True)
     failures = []
@@ -102,11 +107,12 @@ def main() -> None:
     parser.add_argument("--workers", type=int, help="parallel processes (default: cores - 2)")
     parser.add_argument("--episodes", type=int, help="override base.episodes")
     parser.add_argument("--output-dir", default="runs")
+    parser.add_argument("--only", help="comma-separated cell labels to (re)run, e.g. the failed ones")
     args = parser.parse_args()
     sweep = yaml.safe_load(Path(args.config).read_text())
     if args.episodes:
         sweep.setdefault("base", {})["episodes"] = args.episodes
-    print(f"sweep folder: {run_sweep(sweep, args.workers, args.output_dir)}")
+    print(f"sweep folder: {run_sweep(sweep, args.workers, args.output_dir, args.only.split(",") if args.only else None)}")
 
 
 if __name__ == "__main__":

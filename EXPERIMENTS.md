@@ -823,6 +823,70 @@ at 25% +0.078 [+0.037, +0.121]; FIFO-archive at 25% +0.062 [+0.016, +0.109].
   first numbers; the rented-GPU runs should repeat them at 100 episodes with
   a 7–8B model.
 
+## 9. Experiment 8 with a 7B task model at 100 episodes (2026-10-06)
+
+```bash
+# vLLM v0.8.5 serving Qwen/Qwen2.5-7B-Instruct (bf16, 16,384-token context) on a rented
+# RunPod A40; set base_url in the configs to your own server to rerun
+python -m memctl.sweep --config configs/sweeps/exp9a_qwen7b_full_context.yaml --workers 8
+python -m memctl.sweep --config configs/sweeps/exp9b_qwen7b_controllers.yaml --workers 16
+```
+
+Experiment 8 repeated with a stronger reader and more statistical power:
+Qwen2.5-7B-Instruct (greedy) instead of `qwen2.5:3b`, 100 episodes (seeds
+0–99) instead of 30, and all three training seeds of each D1 policy, plus the
+D2 joint controller and two GRPO policies (seed 0). Same recall task, same
+instructions, archive and retrieval allowed. Generations cached in
+`cache/generations_qwen7b_vllm` (~106,000 calls). Compute: one A40 for
+2.76 hours at $0.49/hour, about $1.35. **Provenance: commit `3d441b3`,
+52 of 53 cells `dirty: false`; `oracle-approx` at 10% failed once on an empty
+proxy response and was rerun at `e1acaaf` (adds HTTP retries, nothing else),
+also clean.**
+
+Task success; in brackets the paired difference from full context (0.898) with
+a 95% bootstrap interval over the 100 episodes. Learned rows are the mean of
+three training seeds.
+
+| controller | 2% | 5% | 10% | 25% |
+|---|---|---|---|---|
+| fifo_delete | 0.007 | 0.058 | 0.236 | 0.588 |
+| fifo_archive_retrieve | 0.741 | 0.761 | 0.787 | 0.857 |
+| salience_archive_retrieve | 0.728 | 0.807 | 0.850 | 0.898 (+0.001 [−0.012, +0.012]) |
+| imitation, oracle expert (3 seeds) | 0.320 | 0.485 | 0.678 | 0.880 |
+| **imitation, regret expert (3 seeds)** | **0.832** (−0.066 [−0.081, −0.050]) | **0.861** | **0.884** (−0.013 [−0.028, +0.001]) | **0.908** (+0.011 [+0.000, +0.022]) |
+| joint controller (D2, seed 0) | 0.841 | 0.865 | 0.892 | 0.911 |
+| regret BC → GRPO (seed 0) | 0.833 | 0.860 | 0.890 | 0.906 |
+| GRPO from scratch (seed 0) | 0.768 | 0.864 | 0.877 | 0.903 |
+| oracle_approx | 0.937 (+0.039 [+0.022, +0.056]) | 0.955 (+0.057) | 0.948 (+0.050) | 0.947 (+0.050 [+0.035, +0.065]) |
+| full context (no budget) | 0.898 | | | |
+
+Paired at 2% (95% bootstrap): regret expert − oracle expert +0.512
+[+0.492, +0.532]; regret policy − salience-archive +0.104 [+0.086, +0.123];
+joint − specialist (seed 0) +0.004 [−0.008, +0.016]; GRPO fine-tuning − its
+BC start −0.004 [−0.016, +0.008]; oracle − regret policy +0.105
+[+0.088, +0.122].
+
+**What it shows**
+
+- **Every D-series result survives a real 7B reader.** The regret teacher beats
+  the oracle teacher by 0.51 at 2% across three training seeds (the
+  oracle-taught policies' failures are ~1,300 `evicted` per seed, the regret
+  policies' none); the learned policy beats the best fixed rule by 0.10 at 2%;
+  one joint controller matches the recall specialist; GRPO fine-tuning neither
+  helps nor hurts a good imitation start.
+- **"Less context can be better" holds, but is smaller with a stronger
+  reader.** The 7B model reads full context far better than the 3B one (0.898
+  against 0.723), so the oracle's edge over full context shrinks from +0.16 to
+  +0.04–0.06, still with intervals that exclude 0. The learned policy at 25% of
+  the history matches full context (+0.011 [+0.000, +0.022]) while the model
+  reads 40% of the tokens (40,565 against 102,705 per episode); at 2% it gives
+  up 0.066 for 4.6% of the tokens.
+- **The remaining gap to the oracle is retrieval.** At 2% the regret policy's
+  failures are mostly `archived_not_retrieved` (~300 per seed against 72 for
+  the oracle): the evidence was kept in the archive but the lexical top-3
+  retrieval did not bring it back. Better retrieval, not better eviction, is
+  where the next 0.10 is.
+
 ## 5. The sequential task
 
 ```bash

@@ -68,3 +68,55 @@ def test_language_model_compressor_and_consolidator_respect_the_token_limit():
     assert LLMCompressor(wordy).compress("anything", 4) == "vault-317 code"  # vault, -, 317, code
     merged = LLMConsolidator(wordy).consolidate(["a b c", "d e f"], max_tokens=5)
     assert len(merged.split()) <= 5 and "vault" in merged
+
+
+def test_openai_backend_retries_transient_failures(monkeypatch):
+    import io
+    import json as json_module
+    import urllib.error
+
+    import memctl.llm as llm_module
+
+    replies = [urllib.error.HTTPError("u", 502, "bad gateway", {}, None), io.BytesIO(b""),
+               io.BytesIO(json_module.dumps({"choices": [{"message": {"content": " K93Q "}}]}).encode())]
+
+    class Response:
+        def __init__(self, body):
+            self.body = body
+
+        def __enter__(self):
+            return self.body
+
+        def __exit__(self, *exc):
+            return False
+
+    def urlopen(request, timeout):
+        reply = replies.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        return Response(reply)
+
+    monkeypatch.setattr(llm_module.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(llm_module.time, "sleep", lambda seconds: None)
+    backend = llm_module.OpenAICompatibleLLM("m", "http://example.invalid/v1")
+    assert backend.generate("q") == "K93Q"
+    assert not replies
+
+
+def test_openai_backend_does_not_retry_client_errors(monkeypatch):
+    import urllib.error
+
+    import pytest
+
+    import memctl.llm as llm_module
+
+    calls = []
+
+    def urlopen(request, timeout):
+        calls.append(1)
+        raise urllib.error.HTTPError("u", 403, "forbidden", {}, None)
+
+    monkeypatch.setattr(llm_module.urllib.request, "urlopen", urlopen)
+    with pytest.raises(urllib.error.HTTPError):
+        llm_module.OpenAICompatibleLLM("m", "http://example.invalid/v1").generate("q")
+    assert len(calls) == 1
