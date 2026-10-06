@@ -1,0 +1,18 @@
+# Diagnostic 3: recall_regret_bc_grpo_s1 with best-of-8 filtered imitation (RAFT) in place of GRPO's advantages.
+schema_version: 1
+name: diag3_bestof8_s1
+seed: 1
+env: {name: synthetic_recall, horizon: 200}
+agent: {name: scripted_reader, noise: 0.0}
+controller: {name: rl, hidden: 64, architecture: deepsets, retrieve_candidates: 8}
+memory:
+  allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+  embedder: hashing
+training:
+  budget_fractions: [0.02, 0.05, 0.1, 0.25]
+  phases:
+  - {algorithm: bc, iterations: 6, episodes: 24, epochs: 3, lr: 0.003, dagger: true}
+  - {algorithm: grpo, advantage: best, group: 8, episodes: 24, epochs: 4, lr: 0.0003, entropy: 0.01,
+    iterations: 60}
+  eval: {every: 6, episodes: 20}
+  expert: {kind: regret}

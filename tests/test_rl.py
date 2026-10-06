@@ -301,6 +301,30 @@ def test_group_advantages_are_standardised_within_each_group():
     assert rows[2][2][0].advantage == 0.0 and rows[3][2][0].advantage == 0.0  # no spread, no signal
 
 
+def test_group_advantage_modes():
+    from memctl.rl.train import group_spread, set_group_advantages
+
+    make = lambda: Decision(1, np.zeros((1, 1), np.float32), np.zeros(1, np.float32), ["a"], [("a",)], 1,
+                            np.ones((1, 4), np.int64), np.ones((1, 4), bool), 1)
+
+    def advantages(mode, values=((0, 1.0), (0, 3.0), (1, 5.0), (1, 5.1))):
+        rows = [(group, value, [make()]) for group, value in values]
+        set_group_advantages(rows, mode)
+        return [row[2][0].advantage for row in rows]
+
+    assert advantages("std")[2:] == pytest.approx([-1.0, 1.0], abs=1e-3)  # a 0.1 gap becomes a full +-1
+    assert advantages("mean") == pytest.approx([-1.0, 1.0, -0.05, 0.05])  # Dr. GRPO keeps it small
+    batch = advantages("batch")
+    assert batch[1] / batch[3] == pytest.approx(20.0)  # one scale for the batch
+    assert advantages("best") == [0.0, 1.0, 0.0, 1.0]
+    assert advantages("best", ((0, 2.0), (0, 2.0))) == [0.0, 0.0]  # a shared best teaches nothing
+    with pytest.raises(ValueError):
+        advantages("nope")
+    assert group_spread({"returns": [3.0, 3.0], "success": [0.5, 0.5]})["source"] == "tied"
+    assert group_spread({"returns": [3.0, 2.9], "success": [0.5, 0.5]})["source"] == "fallbacks_only"
+    assert group_spread({"returns": [3.0, 2.0], "success": [0.5, 0.4]})["source"] == "answers"
+
+
 def test_samples_of_one_episode_differ_only_by_sample_offset():
     experiment = Experiment(config(operations=ARCHIVE_OPS, greedy=False))
     controller = experiment.controller

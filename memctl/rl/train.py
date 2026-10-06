@@ -10,6 +10,7 @@ reward, `controller: {name: rl, ...}`) plus a `training` section:
         - {algorithm: bc, iterations: 8, episodes: 16, epochs: 4, lr: 0.003, dagger: true}
         - {algorithm: ppo, iterations: 40, episodes: 16, epochs: 4, lr: 0.0003, gamma: 0.995}
         - {algorithm: grpo, iterations: 40, episodes: 24, group: 8, epochs: 4, lr: 0.0003}
+          # optional `advantage: std | mean | batch | best` (see set_group_advantages)
       eval: {every: 4, episodes: 20, seed_offset: 50000}
       expert: {kind: regret}         # optional: which hindsight expert labels imitation (memctl/rl/expert.py)
       tasks:                         # optional: train one policy on several tasks, one episode each in turn
@@ -77,18 +78,52 @@ def fill_returns(decisions: list[Decision], rewards: list[tuple[int, float]], ga
         decision.return_to_go = value_at.get(decision.step, 0.0)
 
 
-def set_group_advantages(returns: list[tuple[int, float, list[Decision]]]) -> None:
-    """GRPO: each decision's advantage is its episode's return, standardised within its group."""
+ADVANTAGES = ("std", "mean", "batch", "best")
+
+
+def set_group_advantages(returns: list[tuple[int, float, list[Decision]]], mode: str = "std") -> None:
+    """GRPO: each decision's advantage is its episode's return relative to its group.
+
+    - `std`   (GRPO): minus the group mean, over the group's standard deviation.
+    - `mean`  (Dr. GRPO): minus the group mean, unscaled, so near-tied groups stay small.
+    - `batch` (Lite PPO / REINFORCE++): minus the group mean, over the batch's standard deviation.
+    - `best`  (RAFT, filtered imitation): 1 for the group's single best episode, 0 for the rest
+      and for groups whose best is shared, so the update raises the likelihood of the best sample.
+    """
+    if mode not in ADVANTAGES:
+        raise ValueError(f"unknown advantage {mode!r}; expected one of {ADVANTAGES}")
     groups: dict[int, list[float]] = {}
     for group, value, _ in returns:
         groups.setdefault(group, []).append(value)
-    for group, value, decisions in returns:
+    centred = [value - sum(groups[group]) / len(groups[group]) for group, value, _ in returns]
+    batch_spread = (sum(c * c for c in centred) / len(centred)) ** 0.5 if centred else 0.0
+    for (group, value, decisions), offset in zip(returns, centred):
         values = groups[group]
-        mean = sum(values) / len(values)
-        spread = (sum((v - mean) ** 2 for v in values) / len(values)) ** 0.5
-        advantage = (value - mean) / (spread + 1e-6) if spread > 0 else 0.0
+        spread = (sum((v - sum(values) / len(values)) ** 2 for v in values) / len(values)) ** 0.5
+        if mode == "std":
+            advantage = offset / (spread + 1e-6) if spread > 0 else 0.0
+        elif mode == "mean":
+            advantage = offset
+        elif mode == "batch":
+            advantage = offset / (batch_spread + 1e-6) if batch_spread > 0 else 0.0
+        else:
+            advantage = float(value == max(values) and values.count(value) == 1)
         for decision in decisions:
             decision.advantage = advantage
+
+
+def group_spread(member: dict) -> dict:
+    """What a GRPO group's return spread is made of: answers, forced fallbacks, or nothing."""
+    returns, success = member["returns"], member["success"]
+    mean = sum(returns) / len(returns)
+    spread = (sum((v - mean) ** 2 for v in returns) / len(returns)) ** 0.5
+    if spread == 0:
+        source = "tied"
+    elif len(set(success)) == 1:
+        source = "fallbacks_only"
+    else:
+        source = "answers"
+    return {"spread": round(spread, 6), "source": source}
 
 
 def evaluate_policy(experiment: Experiment, episodes: int, fractions: list[float] | None, seed_offset: int = 50_000,
@@ -152,6 +187,7 @@ def train(config: dict, folder: str | Path | None = None, progress: bool = False
     (folder / "metadata.json").write_text(json.dumps(metadata, indent=2))
     log_path = folder / "train_log.jsonl"
     log_path.write_text("")
+    (folder / "groups.jsonl").unlink(missing_ok=True)
 
     next_seed = int(settings["seed_offset"]) + int(config["seed"])
     started, episodes_run = time.time(), 0
@@ -171,6 +207,7 @@ def train(config: dict, folder: str | Path | None = None, progress: bool = False
             fresh: list[Decision] = []
             successes, forced = [], 0
             returns: list[tuple[int, float, list[Decision]]] = []  # (group, return, decisions), for GRPO
+            members: dict[int, dict] = {}  # GRPO: what each group's spread is made of, for groups.jsonl
             for number in range(int(phase.get("episodes", 16))):
                 if number % group == 0:  # a new episode: seed, task and budget shared by the whole group
                     seed, next_seed = next_seed, next_seed + 1
@@ -192,7 +229,14 @@ def train(config: dict, folder: str | Path | None = None, progress: bool = False
                     # From the divergence on, the expert's labels describe another episode.
                     recorded = [d for d in recorded if d.step < episode["hindsight_diverged_at"]]
                 if name == "grpo":
-                    returns.append((number // group, sum(reward for _, reward in controller.rewards), recorded))
+                    total = sum(reward for _, reward in controller.rewards)
+                    returns.append((number // group, total, recorded))
+                    member = members.setdefault(number // group, {
+                        "seed": seed, "fraction": experiment.config["memory"]["budget"].get("fraction"),
+                        "returns": [], "success": [], "forced": []})
+                    member["returns"].append(round(total, 6))
+                    member["success"].append(episode["task_success"])
+                    member["forced"].append(episode["forced_evictions"])
                 elif not imitation:
                     fill_returns(controller.recorded, controller.rewards, float(phase.get("gamma", 0.995)))
                 fresh += recorded
@@ -201,7 +245,11 @@ def train(config: dict, folder: str | Path | None = None, progress: bool = False
                 episodes_run += 1
             controller.sample_offset = 0
             if name == "grpo":
-                set_group_advantages(returns)
+                set_group_advantages(returns, phase.get("advantage", "std"))
+                with (folder / "groups.jsonl").open("a") as file:
+                    for number, member in members.items():
+                        file.write(json.dumps({"phase": phase_number, "iteration": iteration, "group": number,
+                                               **member, **group_spread(member)}) + "\n")
             if imitation:
                 dataset = (dataset + fresh)[-int(settings["max_dataset"]):]
                 stats = algorithm.update(controller.policy, optimizer, dataset, rng)

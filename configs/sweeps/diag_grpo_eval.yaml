@@ -1,0 +1,26 @@
+# Diagnostics 2-3: regret imitation alone, then GRPO (rerun with group logging), then best-of-8
+# filtered imitation in place of GRPO, three training seeds each, on the standard evaluation seeds.
+name: diag_grpo_eval
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env: {name: synthetic_recall, horizon: 200}
+  agent: {name: scripted_reader, noise: 0.0}
+  memory:
+    allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+    embedder: hashing
+  logging: {detail_episodes: 0}
+grid:
+  controller:
+    - {name: oracle, method: approx}
+    - {name: rl, label: bc_regret_s0, checkpoint: runs/rl_bc_archive_regret_s0/checkpoints/policy.pt}
+    - {name: rl, label: bc_regret_s1, checkpoint: runs/rl_bc_archive_regret_s1/checkpoints/policy.pt}
+    - {name: rl, label: bc_regret_s2, checkpoint: runs/rl_bc_archive_regret_s2/checkpoints/policy.pt}
+    - {name: rl, label: grpo_audit_s0, checkpoint: runs/diag2_grpo_audit_s0/checkpoints/policy_best.pt}
+    - {name: rl, label: grpo_audit_s1, checkpoint: runs/diag2_grpo_audit_s1/checkpoints/policy_best.pt}
+    - {name: rl, label: grpo_audit_s2, checkpoint: runs/diag2_grpo_audit_s2/checkpoints/policy_best.pt}
+    - {name: rl, label: bestof8_s0, checkpoint: runs/diag3_bestof8_s0/checkpoints/policy_best.pt}
+    - {name: rl, label: bestof8_s1, checkpoint: runs/diag3_bestof8_s1/checkpoints/policy_best.pt}
+    - {name: rl, label: bestof8_s2, checkpoint: runs/diag3_bestof8_s2/checkpoints/policy_best.pt}
+  memory.budget.fraction: [0.02, 0.05, 0.1, 0.25]
