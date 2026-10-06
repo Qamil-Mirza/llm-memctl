@@ -1,0 +1,27 @@
+# D2b: as D2, but both tasks allow the same operations (archive and retrieval on the workflow task too),
+# so the action set does not tell the policy which task it is in.
+# Specialists to compare against: configs/rl/d1/rl_bc_archive_regret_s*.yaml and rl_bc_workflow.
+schema_version: 1
+name: joint_same_ops_s2
+seed: 2
+env: {name: synthetic_recall, horizon: 200}
+agent: {name: scripted_reader, noise: 0.0}
+controller: {name: rl, hidden: 64, architecture: deepsets, retrieve_candidates: 8}
+memory:
+  embedder: hashing
+training:
+  expert: {kind: regret}
+  tasks:
+    - label: recall
+      env: {name: synthetic_recall, horizon: 200}
+      agent: {name: scripted_reader, noise: 0.0}
+      memory: {allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]}
+      budget_fractions: [0.02, 0.05, 0.1, 0.25]
+    - label: workflow
+      env: {name: workflow}
+      agent: {name: scripted_tool_agent, noise: 0.0}
+      memory: {allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]}
+      budget_fractions: [0.05, 0.1, 0.2, 0.4]
+  phases:
+    - {algorithm: bc, iterations: 20, episodes: 24, epochs: 3, lr: 0.003, dagger: true}
+  eval: {every: 4, episodes: 20}
