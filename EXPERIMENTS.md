@@ -33,7 +33,7 @@ regenerated with the two commands given).
 | 4 | Do learned controllers beat heuristics? | They beat every recency rule and match, but do not beat, the best content rule. PASSED |
 | 4b | …with archive and retrieval? | Imitation of the hindsight expert deletes when it should archive. PASSED |
 | D5 | …and when the archive has a price? | Imitation collapses at any price; cost-sensitive imitation wins at low price, over-archives at high. PARTIAL |
-| D5b | Does a plug-in Bayes rule track the price? | Yes at 0.01 and 0.05 (+0.07 to +0.28); loses 0.06 to delete-all at 0.2. PARTIAL |
+| D5b | Does a plug-in Bayes rule track the price? | Yes at 0.01 and 0.05 (+0.07 to +0.28); loses 0.06 to delete-all at 0.2 (D5c: not a value-calibration problem). PARTIAL |
 | D1 | Does an archive-aware regret teacher fix 4b? | **Yes**: 0.34 → 0.85 at 2%, above every heuristic at every budget. Clean commit, 3 seeds. PASSED |
 | 5 | Does the ranking hold on a sequential task? | **No, it flips.** PASSED |
 | 5b | Learned controllers on the sequential task | Task-trained imitation reaches 1.0 where the blind oracle does not; the recall-trained policy does not transfer. PASSED |
@@ -585,6 +585,21 @@ Paired against the best other non-oracle controller (95% bootstrap): at 0.01,
   deleting at 2% gains about 10.7 queries per episode for about 14.5 needed
   items removed, so about 0.74 query each. The fix is to estimate that value
   (or regress the counterfactual gain directly) instead of assuming 1.
+
+**D5c: valuing a needed item at its measured worth does not fix 0.2.**
+`need_value` (queries gained per needed item removed, archiving all against
+deleting all, on 50 training seeds) came out at 0.67 and 0.74 for the two
+seeds. With it (`configs/rl/d5/needed_v_s*.yaml`, sweep generated into
+`runs/d5c_valued_plugin_eval.yaml`, commit `5b981b5`, 18 clean cells) the rule
+is unchanged at 0.01 and 0.05 (differences within ±0.005, except −0.024 at
+0.05/10%) and still 0.062–0.064 below salience-delete at 0.2. Ordering the
+removals by expected cost min(P × value, price) instead of by the policy did
+not help either (20-episode check, discarded). The remaining gap at 0.2 is
+most likely the item *order*: the regret policy was trained where deletion
+never happened, and its order is a worse deletion order than salience's
+(the same policy deleting everything scores 0.333 at 2% against 0.365). At
+high prices, where the archive is barely used, a deletion-trained order
+should be used; a policy trained across prices would learn both.
 
 **For the thesis**: the hindsight-teacher result now has three parts. The
 oracle's argmin labels are the wrong target once an archive exists (D1);
