@@ -986,13 +986,41 @@ to the oracle at 2% falls from 0.115 to 0.048 [0.041, 0.057]. Hop-2 misses
 fall from ~195 to 23 / 22 / 54 per seed; retrieval recall rises from 0.83 to
 0.90 at the same precision (0.91).
 
+**GRPO on top of the follow-the-clue policy** (`configs/rl/grpo2/`, commit
+`831be0f`, all `dirty: false`). Four variants, each starting from the three
+follow-the-clue imitation policies, at matched experience (1,440 GRPO
+episodes): plain GRPO (group std, 24 episodes × 60 iterations); batch-level
+scaling computed per budget (`advantage: batch, stratify: true`, 96 × 15);
+the same plus per-question credit (`question_weight: 1`: every sample of a
+group meets the same question at the same step, so a decision also gets its
+episode's reward at that step minus the group's mean); and the same plus the
+regret expert's imitation loss (`imitation_weight: 0.5`).
+
+| controller | 2% | 5% | 10% | 25% |
+|---|---|---|---|---|
+| follow-the-clue imitation | 0.917 | 0.958 | 0.970 | 0.992 |
+| + plain GRPO | 0.928 (+0.011 [+0.004, +0.018]) | 0.976 (+0.017) | 0.983 (+0.013) | 0.995 |
+| + GRPO, batch scale per budget | 0.930 (+0.013 [+0.008, +0.018]) | 0.971 (+0.013) | 0.982 (+0.012) | 0.996 |
+| + per-question credit | 0.932 (+0.014 [+0.009, +0.020]) | 0.972 (+0.014) | 0.983 (+0.013) | 0.996 |
+| + expert loss | 0.929 (+0.012 [+0.007, +0.016]) | 0.969 (+0.011) | 0.982 (+0.012) | 0.996 |
+| oracle_approx | 0.966 | 1.000 | 1.000 | 1.000 |
+
+Against plain GRPO, no variant differs at 2% (largest +0.003 [−0.001,
++0.008], per-question credit) and all are 0.004–0.007 lower at 5%. GRPO now
+adds 1.1–1.4 points at 2% where it added 0.8 on the old shortlist, and the
+gap to the oracle at 2% is 0.034–0.038. The GRPO changes recommended by the
+next-directions report (batch scaling, budget strata, per-question credit,
+an imitation term) make no measurable difference at this scale.
+
 **What it shows**
 
 - The remaining gap of Experiment 9 was a retrieval problem, as the failure
   breakdown said, and a generic multi-hop search closes 58% of it at 2%.
 - On the old shortlist RL had nothing to find: GRPO's groups differed in real
   answers, but the decisive fact was rarely among the choices. RL and
-  best-of-8 imitation each added about a point.
+  best-of-8 imitation each added about a point. With the fact in reach GRPO
+  adds slightly more (1.1–1.4 points at 2%), and how its advantages are
+  computed does not matter.
 
 **What it does not show**
 
