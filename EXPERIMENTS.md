@@ -39,7 +39,7 @@ regenerated with the two commands given).
 | 4b | …with archive and retrieval? | Imitation of the hindsight expert deletes when it should archive. PASSED |
 | D5 | …and when the archive has a price? | Imitation collapses at any price; cost-sensitive imitation wins at low price, over-archives at high. PARTIAL |
 | D5b | Does a plug-in Bayes rule track the price? | Yes at 0.01 and 0.05 (+0.07 to +0.28); loses 0.06 to delete-all at 0.2 (D5c: not a value-calibration problem). PARTIAL |
-| D2 | Can one controller serve both task structures? | **Yes**: matches each specialist on its task; every fixed rule fails on one. PASSED |
+| D2 | Can one controller serve both task structures? | **Yes**: matches each specialist on its task; every fixed rule fails on one. Holds with identical action sets (D2b). PASSED |
 | D1 | Does an archive-aware regret teacher fix 4b? | **Yes**: 0.34 → 0.85 at 2%, above every heuristic at every budget. Clean commit, 3 seeds. PASSED |
 | 5 | Does the ranking hold on a sequential task? | **No, it flips.** PASSED |
 | 5b | Learned controllers on the sequential task | Task-trained imitation reaches 1.0 where the blind oracle does not; the recall-trained policy does not transfer. PASSED |
@@ -555,13 +555,29 @@ Workflow task:
 
 **What it does not show**
 
-- The two tasks differ in their action sets (the workflow task is
-  delete-only), and the features include whether archive candidates exist,
-  so the policy can tell which task it is in. That is legitimate for a
-  controller, but it means this is "one network, two task-specific
-  behaviours", not one behaviour that suits both. A test with the same action
-  set on both tasks would separate the two.
 - Both tasks are synthetic and the task model is scripted.
+
+### D2b. The same action set on both tasks
+
+In D2 the workflow task was delete-only, so the action set alone told the
+policy which task it was in. D2b trains the joint policy with archive and
+retrieval allowed on *both* tasks (`configs/rl/d2/joint_same_ops_s*.yaml`,
+commit `103b4c0`, 88 evaluation cells `dirty: false`):
+
+| controller | recall 2% | recall 5% | workflow 5% | workflow 10% | workflow 20% |
+|---|---|---|---|---|---|
+| **joint, same operations** | **0.859** [0.848, 0.866] | **0.896** | **1.000** (all seeds) | **1.000** | **1.000** |
+| recall specialist | 0.851 | 0.887 | 0.226 [0.054, 0.438] | 0.592 | 0.999 |
+| workflow specialist (delete-only) | – | – | 1.000 | 1.000 | 1.000 |
+| fifo_archive_retrieve | 0.759 | 0.777 | 0.023 | 0.170 | 0.890 |
+| salience_archive_retrieve | 0.744 | 0.833 | 0.009 | 0.084 | 0.577 |
+| oracle_approx (archives) | 0.966 | 1.000 | 1.000 | 1.000 | 1.000 |
+
+The result holds with the confound removed: one policy, one action set,
+level with each specialist on its own task. Archiving does not rescue the
+fixed rules on the workflow task (lexical retrieval does not bring back the
+right token in time), while the recall specialist, now able to archive,
+partly transfers (0.226 at 5%, 0.999 at 20%) where in D2 it scored 0.000.
 
 ## D5. A priced archive (2026-10-05)
 
