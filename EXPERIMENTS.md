@@ -32,6 +32,7 @@ regenerated with the two commands given).
 | 3 | Do compaction and consolidation help? | Compaction: only if lossless. Consolidation: little. PASSED |
 | 4 | Do learned controllers beat heuristics? | They beat every recency rule and match, but do not beat, the best content rule. PASSED |
 | 4b | …with archive and retrieval? | Imitation of the hindsight expert deletes when it should archive. PASSED |
+| D5 | …and when the archive has a price? | Imitation collapses at any price; cost-sensitive imitation wins at low price, over-archives at high. PARTIAL |
 | D1 | Does an archive-aware regret teacher fix 4b? | **Yes**: 0.34 → 0.85 at 2%, above every heuristic at every budget. Clean commit, 3 seeds. PASSED |
 | 5 | Does the ranking hold on a sequential task? | **No, it flips.** PASSED |
 | 5b | Learned controllers on the sequential task | Task-trained imitation reaches 1.0 where the blind oracle does not; the recall-trained policy does not transfer. PASSED |
@@ -488,6 +489,55 @@ gap to the oracle is −0.115, −0.113, −0.070 and −0.013.
   a *priced* archive is D5 (running).
 - The remaining gap to the oracle (0.11 at 2%) is retrieval: the shortlist is
   BM25 top-8, and the learner retrieves 91% of the needed items it is shown.
+
+## D5. A priced archive (2026-10-05)
+
+```bash
+python -m memctl.rl.train --config configs/rl/d5/<config>.yaml     # 14 configs
+python -m memctl.sweep --config configs/sweeps/d5_priced_archive_eval.yaml
+python -m memctl.analysis.priced runs/d5_priced_archive_eval --price <p>
+```
+
+Each item written to the archive costs *p* queries: an episode scores
+(correct − p × archive writes) / queries (`memctl.analysis.priced`). The regret
+expert carries the price (ARCHIVE costs p; EVICT costs 1 if the item is needed
+again). Learners: accepted-set imitation (`bc`, as in D1) and cost-sensitive
+imitation (`cost`: the policy's expected regret along the expert's removal
+sequence, `memctl/rl/algorithms.py`), each trained at its own price, 2 seeds.
+**Provenance: commit `5fd6a3a`, all 63 cells `dirty: false`.** Priced score at
+2% budget, mean of 2 seeds (5% and 10% show the same pattern):
+
+| price | `bc` (regret expert) | `cost` (regret expert) | `bc` (oracle expert) | salience archive | salience delete | oracle |
+|---|---|---|---|---|---|---|
+| 0 | **0.854** | 0.849 | 0.358 | 0.744 | 0.365 | 0.966 |
+| 0.01 | 0.357 | **0.744** | 0.357 | 0.611 | 0.365 | 0.960 |
+| 0.05 | 0.352 | 0.286 | 0.352 | 0.078 | **0.365** | 0.939 |
+| 0.2 | 0.333 | −0.562 | 0.333 | −1.921 | **0.365** | 0.857 |
+
+Archive writes per episode at 2%: `bc` with a price, 2; `cost`, 210 at 0.01
+and 0.05, 121 at 0.2; heuristics, 247; oracle, 11.
+
+**What it shows**
+
+- **With any positive price the regret expert *is* the oracle expert**, and
+  accepted-set imitation of it gives bit-identical policies (same numbers to
+  three decimals in every cell). The oracle's labels are the regret labels
+  of an infinitesimally priced archive; imitation cannot tell "cheap" from
+  "free", and collapses to deleting everything (probe at 5%: 99% of needed
+  items deleted).
+- **Cost-sensitive imitation moves in the right direction** and wins clearly
+  at a low price (0.744 against 0.611 for the best heuristic and 0.357 for
+  `bc`). At 0.2 it starts to discriminate (probe at 5%: deletes 96% of
+  never-needed items, 67% of needed ones).
+- **It is miscalibrated at higher prices.** It keeps archiving about 200
+  items per episode at 0.05, where deleting is right (it loses to
+  delete-all), and archives too much at 0.2. A softmax expected-cost loss is
+  minimised by a choice, not by a calibrated probability, and "archive
+  anything" spreads its mass over many equally cheap pairs.
+
+**Next**: a plug-in Bayes rule. Learn a calibrated P(needed | item) separately
+and archive iff it exceeds the price; the choice of *which* item to remove
+stays with the imitation policy.
 
 ## 5. The sequential task
 
