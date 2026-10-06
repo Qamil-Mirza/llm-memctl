@@ -16,11 +16,16 @@ regenerated with the two commands given).
 - The task model is the scripted reader unless stated: it answers correctly
   exactly when the needed text is in ACTIVE memory. So task success here
   measures memory management only.
-- **Provenance:** all runs were made from an uncommitted working tree
-  (`metadata.json` records commit `d215c8f` plus `dirty: true`), and the code
-  changed between the early and late experiments. See
-  [SCIENTIFIC_VALIDITY_REPORT.md](SCIENTIFIC_VALIDITY_REPORT.md) §7. Rerun after
-  committing before quoting a number in the thesis.
+- **Provenance:** Experiments 1–6 were first run from an uncommitted working
+  tree (`dirty: true`). On 2026-10-05 every training and sweep was rerun from
+  clean commit `ef57fc4` (642 run folders, all `dirty: false`; Experiment 7
+  needs a remote model and was not rerun). **Every task-success number
+  reproduced exactly except 8 cells of Experiment 4b**, the two archive-trained
+  RL policies, whose table below now shows the clean values (they moved by up
+  to 0.095, within training-seed spread; the conclusions are unchanged). The
+  per-cell detail in the 4b discussion (retrieval counts, failure counts) is
+  from the original run. Experiments D1–D5c were run from clean commits as
+  stated in their sections.
 
 | # | Question | Status |
 |---|---|---|
@@ -397,8 +402,8 @@ here unchanged: its archive and retrieval outputs were never trained.
 | fifo_delete | 0.007 | 0.058 | 0.238 | 0.618 |
 | salience_delete | 0.365 | 0.546 | 0.738 | 0.962 |
 | salience_archive_retrieve | 0.737 | 0.833 | 0.898 | 0.984 |
-| rl_bc_archive (imitation of the hindsight expert) | 0.383 | 0.521 | 0.724 | 0.965 |
-| rl_bc_ppo_archive (imitation, then 1,344 PPO episodes) | 0.452 | 0.578 | 0.710 | 0.937 |
+| rl_bc_archive (imitation of the hindsight expert) | 0.340 | 0.528 | 0.731 | 0.969 |
+| rl_bc_ppo_archive (imitation, then 1,344 PPO episodes) | 0.357 | 0.511 | 0.701 | 0.967 |
 | rl_bc_delete_only_policy (untrained retrieval head) | 0.591 | 0.849 | 0.939 | 0.982 |
 | oracle_approx | 0.966 | 1.000 | 1.000 | 1.000 |
 
