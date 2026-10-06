@@ -299,8 +299,8 @@ for c in rl_bc rl_bc_mlp rl_ppo rl_ppo_seed1 rl_ppo_seed2 rl_ppo_gamma0 rl_ppo_g
 python -m memctl.sweep --config configs/sweeps/exp4_rl_eval.yaml
 ```
 
-Delete-only action set. Every policy is the same small network (about 12,000
-parameters; DeepSets over per-item features, or a plain MLP for `rl_bc_mlp`),
+Delete-only action set. Every policy is the same small network (27,526
+parameters, DeepSets over per-item features; 19,334 for the plain MLP of `rl_bc_mlp`),
 trained at horizon 200 on four budgets (5, 10, 25, 50%), on seeds 100000+,
 with `policy_best.pt` chosen on validation seeds 50000+. Evaluation here uses
 seeds 0–99 like every other experiment; horizon 500 is a transfer test.
