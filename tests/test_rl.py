@@ -348,3 +348,34 @@ def test_grpo_training_runs_and_logs(tmp_path):
     }
     log = read_jsonl(train(settings, tmp_path / "train") / "train_log.jsonl")
     assert [row["algorithm"] for row in log] == ["grpo", "grpo"] and "success@0.05" in log[1]
+
+
+def test_the_bridge_search_follows_the_first_fact_to_the_second():
+    from memctl.retrieval import LexicalRetriever, bridge_search
+
+    facts = [f"As of step {n}, the priority of node-{n} is X{n}." for n in range(10, 30)]
+    facts += ["As of step 40, the courier of sensor-171 is clerk-172.",
+              "As of step 42, the priority of clerk-172 is M37M.",
+              "Question: what is the route of order-147?", "Question: what is the priority of the courier of sensor-171?"]
+    items = make_state(facts, budget=10_000).active()
+    hop1, hop2, question = items[20], items[21], items[-1]
+    archive = [item for item in items if item.id not in (hop1.id, question.id)]
+    retriever = LexicalRetriever()
+    first = [item.id for item, _ in retriever.search(question.content, archive, 8)]
+    assert hop2.id not in first  # the question's words do not reach it
+    found = bridge_search(retriever, question.content, [hop1, question], archive, 4, exclude=(question.id,))
+    assert found[0][0].id == hop2.id
+
+
+def test_bridge_search_policies_use_feature_version_2_and_old_checkpoints_still_load(tmp_path):
+    old = RLController({"hidden": 16}, seed=0)
+    old.save(tmp_path / "v1.pt")
+    new = RLController({"hidden": 16, "bridge_search": True}, seed=0)
+    assert new.featurizer.version == 2 and new.featurizer.item_dim == old.featurizer.item_dim + 1
+    new.save(tmp_path / "v2.pt")
+    assert RLController({"checkpoint": str(tmp_path / "v1.pt")}).featurizer.version == 1
+    assert RLController({"checkpoint": str(tmp_path / "v2.pt"), "bridge_search": True}).featurizer.version == 2
+    with pytest.raises(ValueError):
+        RLController({"checkpoint": str(tmp_path / "v2.pt")})
+    result = run_one(config(fraction=0.05, operations=ARCHIVE_OPS), seed=1, controller=new)
+    assert result.episode["action_counts"]["controller"].get("RETRIEVE_FROM_ARCHIVE", 0) > 0

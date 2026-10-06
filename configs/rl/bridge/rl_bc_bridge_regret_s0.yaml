@@ -1,0 +1,17 @@
+# Follow-the-clue search: D1's regret imitation (configs/rl/d1/rl_bc_archive_regret_s0.yaml) with
+# bridge_search on, which adds up to 4 archive items reached through the question's first fact.
+schema_version: 1
+name: rl_bc_bridge_regret_s0
+seed: 0
+env: {name: synthetic_recall, horizon: 200}
+agent: {name: scripted_reader, noise: 0.0}
+controller: {name: rl, hidden: 64, architecture: deepsets, retrieve_candidates: 8, bridge_search: true}
+memory:
+  allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+  embedder: hashing
+training:
+  budget_fractions: [0.02, 0.05, 0.1, 0.25]
+  expert: {kind: regret}
+  phases:
+    - {algorithm: bc, iterations: 10, episodes: 24, epochs: 3, lr: 0.003, dagger: true}
+  eval: {every: 2, episodes: 20}

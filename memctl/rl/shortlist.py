@@ -8,7 +8,8 @@ enough: the controller's behaviour does not depend on the reader's answers on th
 recall task) and, at every query, records for each piece of evidence the query
 needs (one per hop on two-hop queries): whether a carrier is active, archived or
 gone, the rank of the best archived carrier in a lexical search of the whole
-archive with the question text, and whether the controller retrieved it.
+archive with the question text and in the follow-the-clue search
+(`bridge_search`), and whether the controller retrieved it.
 
 The controller's own shortlist is the top `retrieve_candidates` (8) of that
 search, so a hop whose rank is beyond 8 cannot be retrieved whatever the policy
@@ -26,7 +27,7 @@ import yaml
 
 from memctl.harness.runner import Experiment
 from memctl.memory.actions import Operation
-from memctl.retrieval import LexicalRetriever
+from memctl.retrieval import LexicalRetriever, bridge_search
 from memctl.sysinfo import collect_metadata
 from memctl.util import merged
 
@@ -72,6 +73,9 @@ def replay(config: dict, episodes: int) -> list[dict]:
         retrieved = {i for action in actions if action.operation is Operation.RETRIEVE_FROM_ARCHIVE for i in action.target_ids}
         ranking = lexical.search(task.observation.content, memory.archived, len(memory.archived))
         rank_of = {item.id: number + 1 for number, (item, _) in enumerate(ranking)}
+        bridged = bridge_search(lexical, task.observation.content, memory.active, memory.archived, 20,
+                                exclude=(task.observation.id,))
+        bridge_rank_of = {item.id: number + 1 for number, (item, _) in enumerate(bridged)}
         hops = []
         for requirement in dependency.requirements:
             wanted = set(requirement.item_ids)
@@ -79,9 +83,11 @@ def replay(config: dict, episodes: int) -> list[dict]:
             carriers = [item for item in memory.archived if wanted & set(roots(item))]
             ranks = [rank_of.get(item.id) for item in carriers]
             ranks = [r for r in ranks if r is not None]
+            bridge_ranks = [bridge_rank_of[item.id] for item in carriers if item.id in bridge_rank_of]
             hops.append({
                 "where": "active" if active else ("archived" if carriers else "gone"),
                 "rank": min(ranks) if ranks else None,
+                "bridge_rank": min(bridge_ranks) if bridge_ranks else None,
                 "retrieved": any(item.id in retrieved for item in carriers),
             })
         rows.append({"seed": state["seed"], "step": memory.step, "query_id": dependency.query_id,
@@ -112,13 +118,21 @@ def summarise(rows: list[dict]) -> dict:
     # The case that dominates Exp 9's failures: hop 1 in view (active or just retrieved), hop 2 archived
     # and not retrieved.
     second: Counter = Counter()
+    reach: Counter = Counter()  # the same misses: reachable by the question search (top 8), the bridge (top 4), either
     for row in rows:
         first, last = row["hops"][0], row["hops"][-1]
         if len(row["hops"]) == 2 and (first["where"] == "active" or first["retrieved"]) \
                 and last["where"] == "archived" and not last["retrieved"]:
             second[bucket(row["hops"][1]["rank"])] += 1
+            hop = row["hops"][1]
+            in_first = hop["rank"] is not None and hop["rank"] <= 8
+            in_bridge = hop.get("bridge_rank") is not None and hop["bridge_rank"] <= 4
+            reach["question_top8"] += in_first
+            reach["bridge_top4"] += in_bridge
+            reach["either"] += in_first or in_bridge
+            reach["total"] += 1
     return {"queries": len(rows), "by_hop": {k: dict(v) for k, v in sorted(table.items())},
-            "hop2_only_missed_by_rank": dict(second)}
+            "hop2_only_missed_by_rank": dict(second), "hop2_only_missed_reach": dict(reach)}
 
 
 def main() -> None:

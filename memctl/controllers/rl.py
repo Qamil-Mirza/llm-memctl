@@ -30,11 +30,11 @@ import numpy as np
 import torch
 
 from memctl.controllers.base import EpisodeInfo, Feedback, MemoryController
-from memctl.features import FEATURE_VERSION, GLOBAL_DIM, Featurizer
+from memctl.features import GLOBAL_DIM, VERSION_FEATURES, Featurizer
 from memctl.memory.actions import MemoryAction, Operation
 from memctl.memory.items import Fidelity, MemoryItem
 from memctl.memory.state import MemoryView
-from memctl.retrieval import build_retriever
+from memctl.retrieval import bridge_search, build_retriever
 from memctl.rl.policy import N_COLUMNS, REMOVAL_OPERATIONS, RETRIEVE_COLUMN, ItemPolicy, NeededModel
 from memctl.task import TaskState
 
@@ -114,7 +114,13 @@ class RLController(MemoryController):
         self.min_compact_tokens = int(config.get("min_compact_tokens", 30))
         self.compact_ratio = float(config.get("compact_ratio", 0.5))
         self.log_features = bool(config.get("log_features", False))
-        self.featurizer = Featurizer(bool(config.get("use_embeddings", False)), int(config.get("embedding_dim", 0)))
+        # Follow-the-clue search (memctl/retrieval.py): adds the archive items reached through a bridge
+        # to the retrieval shortlist, marked by the `bridge_score` feature (feature version 2).
+        self.bridge_search = bool(config.get("bridge_search", False))
+        self.bridge_candidates = int(config.get("bridge_candidates", 4))
+        self.bridge_seeds = int(config.get("bridge_seeds", 2))
+        self.featurizer = Featurizer(bool(config.get("use_embeddings", False)), int(config.get("embedding_dim", 0)),
+                                     version=2 if self.bridge_search else 1)
         self.policy = ItemPolicy(
             self.featurizer.item_dim, GLOBAL_DIM, int(config.get("hidden", 64)), config.get("architecture", "deepsets")
         )
@@ -183,8 +189,17 @@ class RLController(MemoryController):
         for item in memory.active:  # keep lineage up to date even on steps with no decision
             self._root_ids(item)
         shortlist: list[tuple[MemoryItem, float]] = []
-        if self.allows(Operation.RETRIEVE_FROM_ARCHIVE) and task.observation.requires_response and memory.archived:
+        searching = self.allows(Operation.RETRIEVE_FROM_ARCHIVE) and task.observation.requires_response and memory.archived
+        if searching:
             shortlist = self.retriever.search(task.observation.content, memory.archived, self.retrieve_candidates)
+        bridge: dict[str, float] = {}
+        if self.bridge_search and searching:
+            found = bridge_search(self.retriever, task.observation.content, memory.active, memory.archived,
+                                  self.bridge_candidates, self.bridge_seeds, exclude=(task.observation.id,))
+            top_bridge = max((score for _, score in found), default=1.0) or 1.0
+            bridge = {item.id: score / top_bridge for item, score in found}
+            listed = {item.id for item, _ in shortlist}
+            shortlist = shortlist + [(item, 0.0) for item, _ in found if item.id not in listed]
         if not memory.over_budget and not shortlist:
             return []
 
@@ -196,7 +211,7 @@ class RLController(MemoryController):
         savings = savings.reshape(len(active), N_REMOVALS)
         decision = Decision(
             step=memory.step,
-            items=self.featurizer.items(candidates, memory, task, scores),
+            items=self.featurizer.items(candidates, memory, task, scores, bridge),
             global_features=self.featurizer.globals(memory, task),
             item_ids=[item.id for item in candidates],
             roots=[self._root_ids(item) for item in candidates],
@@ -299,7 +314,7 @@ class RLController(MemoryController):
             {
                 "state_dict": self.policy.state_dict(),
                 "policy": self.policy.config,
-                "feature_version": FEATURE_VERSION,
+                "feature_version": self.featurizer.version,
                 "use_embeddings": self.featurizer.use_embeddings,
                 "embedding_dim": self.featurizer.embedding_dim,
                 "columns": N_COLUMNS,
@@ -309,12 +324,14 @@ class RLController(MemoryController):
 
     def load(self, path: str | Path) -> None:
         checkpoint = torch.load(Path(path), weights_only=True)
-        if checkpoint["feature_version"] != FEATURE_VERSION:
-            raise ValueError(
-                f"checkpoint was trained on feature version {checkpoint['feature_version']}, "
-                f"this code computes version {FEATURE_VERSION}"
-            )
-        self.featurizer = Featurizer(checkpoint["use_embeddings"], checkpoint["embedding_dim"])
+        version = checkpoint["feature_version"]
+        if version not in VERSION_FEATURES:
+            raise ValueError(f"checkpoint was trained on feature version {version}, "
+                             f"this code computes versions {sorted(VERSION_FEATURES)}")
+        if (version >= 2) != self.bridge_search:
+            raise ValueError(f"checkpoint (feature version {version}) and bridge_search: {self.bridge_search} "
+                             "disagree: version 2 policies are trained with bridge_search: true")
+        self.featurizer = Featurizer(checkpoint["use_embeddings"], checkpoint["embedding_dim"], version=version)
         settings = checkpoint["policy"]
         self.policy = ItemPolicy(settings["item_dim"], settings["global_dim"], settings["hidden"], settings["architecture"])
         self.policy.load_state_dict(checkpoint["state_dict"])
