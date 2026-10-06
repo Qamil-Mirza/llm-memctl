@@ -47,6 +47,7 @@ regenerated with the two commands given).
 | 6 | LoCoMo and LongMemEval: evidence retention under a budget | Pipeline PASSED; QA accuracy BLOCKED |
 | 6c | Dense against lexical retrieval on LoCoMo | See §6c. PASSED |
 | 7 | A real language model as task model and as controller | Smoke tests only. PARTIAL |
+| 8 | A real language model (qwen2.5:3b) as the task model | A small, well-chosen memory beats full context; the D1 ranking holds. PASSED (1 seed, 30 episodes) |
 
 ---
 
@@ -758,6 +759,69 @@ oracle at any positive price (D5); and the right object to learn from
 hindsight is a calibrated expected regret, used in a decision rule (D5b),
 which is what AggreVaTe-style cost-sensitive learning aims at but a softmax
 expected-cost loss does not deliver.
+
+## 8. A real language model as the task model (2026-10-05)
+
+```bash
+# Ollama on the local 4 GB GPU, served with OLLAMA_CONTEXT_LENGTH=16384 on port 11435
+python -m memctl.sweep --config configs/sweeps/exp8a_llm_task_model.yaml --workers 1   # full context
+python -m memctl.sweep --config configs/sweeps/exp8b_llm_task_model.yaml --workers 1   # under a budget
+```
+
+The scripted reader replaced by `qwen2.5:3b` (4-bit) through the `openai`
+backend, on the recall task with archive and retrieval; 30 episodes (seeds
+0–29); learned policies are seed 0 of D1. Generations cached in
+`cache/generations_qwen3b_ctx16k`. The default Ollama context (4,096 tokens)
+silently truncated full-context prompts in a first try (success 0.09); every
+number here is with a 16,384-token context. **Provenance: commit `5fd6a3a`,
+25 cells `dirty: false`.**
+
+Task success with the LLM (evidence availability, i.e. what the scripted
+reader would score, in the second table):
+
+| controller | 2% | 5% | 10% | 25% |
+|---|---|---|---|---|
+| fifo_delete | 0.005 | 0.045 | 0.220 | 0.545 |
+| fifo_archive_retrieve | 0.550 | 0.619 | 0.649 | 0.785 |
+| salience_archive_retrieve | 0.551 | 0.605 | 0.599 | 0.801 |
+| imitation, oracle expert | 0.277 | 0.445 | 0.520 | 0.799 |
+| **imitation, regret expert** | **0.733** | **0.713** | **0.743** | **0.812** |
+| oracle_approx | 0.886 | 0.864 | 0.836 | 0.839 |
+| full context (no budget, all evidence present) | 0.723 | | | |
+
+| evidence in memory at the question | 2% | 5% | 10% | 25% |
+|---|---|---|---|---|
+| salience_archive_retrieve | 0.756 | 0.832 | 0.915 | 0.984 |
+| imitation, oracle expert | 0.331 | 0.538 | 0.718 | 0.968 |
+| imitation, regret expert | 0.860 | 0.902 | 0.948 | 0.987 |
+| oracle_approx | 0.966 | 1.000 | 1.000 | 1.000 |
+| full context | 1.000 | | | |
+
+Paired against full context (95% bootstrap over the 30 episodes): oracle at
+2% +0.163 [+0.117, +0.212], at 10% +0.112 [+0.049, +0.174]; regret policy at
+25% +0.089 [+0.045, +0.132], at 2% +0.010 [−0.047, +0.070]; salience-archive
+at 25% +0.078 [+0.037, +0.121]; FIFO-archive at 25% +0.062 [+0.016, +0.109].
+
+**What it shows**
+
+- **For a real model, less context can be better context.** Full context has
+  every answer in it and scores 0.723; the oracle's 2% memory scores 0.886,
+  and every archiving controller at 25% beats full context. The scripted
+  reader cannot show this: for it, full context is a perfect 1.000. Memory
+  control here *raises* accuracy, it does not only save tokens.
+- **The D1 result carries over.** With the LLM the regret-expert policy beats
+  the oracle-expert one by 0.456 at 2% (0.733 against 0.277); the oracle-expert
+  policy's failures are 423 `evicted`, the regret policy's none.
+- **Accuracy given the evidence differs between controllers**, which the
+  scripted reader hides: at 2% the LLM answers 92% of the questions whose
+  evidence the oracle kept, 85% for the regret policy (its LLM failures
+  include 52 `retrieved_but_ignored`: evidence fetched back from the archive
+  that the model did not use). Which memory is easiest for a model to read is
+  part of what a controller should optimise, and only an LLM in the loop
+  measures it.
+- With 30 episodes and one training seed per learned policy, these are
+  first numbers; the rented-GPU runs should repeat them at 100 episodes with
+  a 7–8B model.
 
 ## 5. The sequential task
 
