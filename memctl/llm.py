@@ -141,7 +141,8 @@ class OpenAICompatibleLLM:
             "temperature": 0.0,
             "seed": 0,
         }
-        headers = {"Content-Type": "application/json"}
+        # Some proxies (RunPod's, behind Cloudflare) reject urllib's default User-Agent with 403.
+        headers = {"Content-Type": "application/json", "User-Agent": "memctl"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
         request = urllib.request.Request(self.url, data=json.dumps(body).encode(), headers=headers)
