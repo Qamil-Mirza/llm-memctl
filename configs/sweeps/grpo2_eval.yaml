@@ -1,0 +1,31 @@
+# GRPO variants on top of the follow-the-clue imitation policy, three training seeds each (scripted reader).
+name: grpo2_eval
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env: {name: synthetic_recall, horizon: 200}
+  agent: {name: scripted_reader, noise: 0.0}
+  memory:
+    allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+    embedder: hashing
+  logging: {detail_episodes: 0}
+grid:
+  controller:
+    - {name: oracle, method: approx}
+    - {name: rl, label: bc_bridge_s0, bridge_search: true, checkpoint: runs/rl_bc_bridge_regret_s0/checkpoints/policy.pt}
+    - {name: rl, label: bc_bridge_s1, bridge_search: true, checkpoint: runs/rl_bc_bridge_regret_s1/checkpoints/policy.pt}
+    - {name: rl, label: bc_bridge_s2, bridge_search: true, checkpoint: runs/rl_bc_bridge_regret_s2/checkpoints/policy.pt}
+    - {name: rl, label: grpo_std_s0, bridge_search: true, checkpoint: runs/grpo_std_s0/checkpoints/policy_best.pt}
+    - {name: rl, label: grpo_std_s1, bridge_search: true, checkpoint: runs/grpo_std_s1/checkpoints/policy_best.pt}
+    - {name: rl, label: grpo_std_s2, bridge_search: true, checkpoint: runs/grpo_std_s2/checkpoints/policy_best.pt}
+    - {name: rl, label: grpo_batch_s0, bridge_search: true, checkpoint: runs/grpo_batch_s0/checkpoints/policy_best.pt}
+    - {name: rl, label: grpo_batch_s1, bridge_search: true, checkpoint: runs/grpo_batch_s1/checkpoints/policy_best.pt}
+    - {name: rl, label: grpo_batch_s2, bridge_search: true, checkpoint: runs/grpo_batch_s2/checkpoints/policy_best.pt}
+    - {name: rl, label: grpo_batch_q_s0, bridge_search: true, checkpoint: runs/grpo_batch_q_s0/checkpoints/policy_best.pt}
+    - {name: rl, label: grpo_batch_q_s1, bridge_search: true, checkpoint: runs/grpo_batch_q_s1/checkpoints/policy_best.pt}
+    - {name: rl, label: grpo_batch_q_s2, bridge_search: true, checkpoint: runs/grpo_batch_q_s2/checkpoints/policy_best.pt}
+    - {name: rl, label: grpo_batch_q_il_s0, bridge_search: true, checkpoint: runs/grpo_batch_q_il_s0/checkpoints/policy_best.pt}
+    - {name: rl, label: grpo_batch_q_il_s1, bridge_search: true, checkpoint: runs/grpo_batch_q_il_s1/checkpoints/policy_best.pt}
+    - {name: rl, label: grpo_batch_q_il_s2, bridge_search: true, checkpoint: runs/grpo_batch_q_il_s2/checkpoints/policy_best.pt}
+  memory.budget.fraction: [0.02, 0.05, 0.1, 0.25]

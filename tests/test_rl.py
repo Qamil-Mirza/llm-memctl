@@ -379,3 +379,30 @@ def test_bridge_search_policies_use_feature_version_2_and_old_checkpoints_still_
         RLController({"checkpoint": str(tmp_path / "v2.pt")})
     result = run_one(config(fraction=0.05, operations=ARCHIVE_OPS), seed=1, controller=new)
     assert result.episode["action_counts"]["controller"].get("RETRIEVE_FROM_ARCHIVE", 0) > 0
+
+
+def test_stratified_batch_advantages_and_per_question_credit():
+    from memctl.rl.train import set_group_advantages
+
+    make = lambda step: Decision(step, np.zeros((1, 1), np.float32), np.zeros(1, np.float32), ["a"], [("a",)], 1,
+                                 np.ones((1, 4), np.int64), np.ones((1, 4), bool), 1)
+    rows = [(0, 1.0, [make(5)], {5: 1.0}), (0, 0.0, [make(5)], {5: 0.0}),
+            (1, 10.0, [make(5)], {}), (1, 0.0, [make(5)], {})]
+    set_group_advantages(rows, "batch", strata={0: 0.02, 1: 0.25})
+    assert [r[2][0].advantage for r in rows] == pytest.approx([1.0, -1.0, 1.0, -1.0], abs=1e-4)  # each budget its own scale
+    set_group_advantages(rows, "mean", question_weight=2.0)
+    assert rows[0][2][0].advantage == pytest.approx(0.5 + 2.0 * 0.5)  # episode credit plus the question it answered
+    assert rows[2][2][0].advantage == pytest.approx(5.0)
+
+
+def test_grpo_can_keep_the_expert_in_its_loss(tmp_path):
+    settings = config(horizon=60, operations=ARCHIVE_OPS)
+    settings["name"] = "tiny_grpo"
+    settings["training"] = {
+        "phases": [{"algorithm": "grpo", "iterations": 1, "episodes": 4, "group": 2, "epochs": 1,
+                    "advantage": "batch", "stratify": True, "question_weight": 1.0, "imitation_weight": 0.5}],
+        "eval": {"every": 0, "episodes": 1}, "budget_fractions": [0.05], "expert": {"kind": "regret"},
+    }
+    folder = train(settings, tmp_path / "train")
+    row = read_jsonl(folder / "train_log.jsonl")[0]
+    assert "imitation_loss" in row and len(read_jsonl(folder / "groups.jsonl")) == 2

@@ -1,0 +1,18 @@
+# GRPO variants from the follow-the-clue imitation policy (runs/rl_bc_bridge_regret_s2), 1,440 GRPO
+# episodes each so variants are compared at matched experience. As grpo_batch_q plus the regret expert's imitation loss (weight 0.5).
+schema_version: 1
+name: grpo_batch_q_il_s2
+seed: 2
+env: {name: synthetic_recall, horizon: 200}
+agent: {name: scripted_reader, noise: 0.0}
+controller: {name: rl, hidden: 64, architecture: deepsets, retrieve_candidates: 8, bridge_search: true,
+             checkpoint: runs/rl_bc_bridge_regret_s2/checkpoints/policy.pt}
+memory:
+  allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+  embedder: hashing
+training:
+  budget_fractions: [0.02, 0.05, 0.1, 0.25]
+  expert: {kind: regret}
+  phases:
+  - {algorithm: grpo, advantage: batch, stratify: true, question_weight: 1.0, imitation_weight: 0.5, group: 8, episodes: 96, iterations: 15, epochs: 4, lr: 0.0003, entropy: 0.01}
+  eval: {every: 2, episodes: 20}
