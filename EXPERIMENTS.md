@@ -9,7 +9,7 @@ runs/<name>` (writes `runs/<name>/report.md` and `runs/<name>/plots/`; the
 commands given).
 
 **Contents** (sections are not in numeric order): 1, 1b, 1c, 1d, 2, 3, 4,
-4b, D1, GRPO, D2 (D2b), D5 (D5b, D5c), 8, 9, 5, 5b, 6, 6c, 7 (7a, 7b).
+4b, D1, GRPO, D2 (D2b), D5 (D5b, D5c), 8, 9, 10, 5, 5b, 6, 6c, 7 (7a, 7b).
 
 **How to read the numbers**
 
@@ -55,6 +55,7 @@ commands given).
 | 7 | A real language model as task model and as controller | Smoke tests only; the task-model half is superseded by Experiments 8 and 9. PARTIAL |
 | 8 | A real language model (qwen2.5:3b) as the task model | A small, well-chosen memory beats full context; the D1 ranking holds. PASSED (1 seed, 30 episodes) |
 | 9 | …with Qwen2.5-7B as the task model, 100 episodes | Every D-series result holds; oracle-approx beats full context by +0.04–0.06; the remaining gap is archived-but-not-retrieved. PASSED |
+| 10 | Diagnostics; a follow-the-clue search for two-hop questions | GRPO's signal was real but the needed fact was out of reach; the search lifts imitation from 0.851 to 0.917 at 2% (oracle 0.966). PASSED (scripted reader) |
 
 ---
 
@@ -907,6 +908,100 @@ BC start −0.004 [−0.016, +0.008]; oracle − regret policy +0.105
   that shortlist. GRPO retrieved more (17.5 against 14.3 items per episode)
   at lower precision, cutting both-missing cases but not hop-2-only ones.
   Next steps: `docs/research/next_directions.html`.
+
+## 10. Diagnostics and the follow-the-clue search (2026-10-06)
+
+```bash
+# diagnostic 1: where the needed evidence sits when the controller decides (scripted reader, no LLM)
+python -m memctl.rl.shortlist --config configs/sweeps/exp9b_qwen7b_controllers.yaml --label bc_regret_s0 --out runs/diag1_shortlist
+# diagnostics 2-3: GRPO rerun with per-group logging, and best-of-8 filtered imitation
+python -m memctl.rl.train --config configs/rl/diag/diag2_grpo_audit_s0.yaml      # and _s1, _s2
+python -m memctl.rl.train --config configs/rl/diag/diag3_bestof8_s0.yaml         # and _s1, _s2
+python -m memctl.sweep --config configs/sweeps/diag_grpo_eval.yaml
+# follow-the-clue search: regret imitation with bridge_search on
+python -m memctl.rl.train --config configs/rl/bridge/rl_bc_bridge_regret_s0.yaml # and _s1, _s2
+python -m memctl.sweep --config configs/sweeps/bridge_eval.yaml
+```
+
+Follows the plan in `docs/research/next_directions.html`. Everything here uses
+the scripted reader on the recall task (seeds 0–99), with archive and
+retrieval allowed. **Provenance: diagnostics 2–3 at `c76b5cd`, the
+follow-the-clue runs at `5b4ceea`, diagnostic 1 at `831be0f`; every run
+`dirty: false`.**
+
+**Diagnostic 1: the second hop is half out of reach, half refused.** At every
+query, the rank of each needed fact in a lexical search of the whole archive
+with the question text. Misses where hop 1 was in view and hop 2 was archived
+and not retrieved, regret imitation at 2% (3 seeds):
+
+| rank of the hop-2 fact | 1–3 | 4–8 | 9–20 | >20 |
+|---|---|---|---|---|
+| misses (s0 / s1 / s2) | 22 / 24 / 23 | 80 / 84 / 80 | 54 / 55 / 56 | 39 / 37 / 36 |
+
+About 54% of these hop-2 facts are on the 8-item shortlist and the policy
+declines them (2 of 114 shortlisted hop-2 facts retrieved); 46% are beyond
+it. Hop-1 and one-hop facts on the shortlist are retrieved 97–99% of the
+time. The oracle's archive holds 4 items on average at 2% (it deletes what is
+never needed); the regret policy's holds 116, because a free archive makes
+archiving everything least-regret.
+
+**Diagnostic 2: GRPO's signal was real.** Over 540 GRPO groups (3 seeds × 180),
+84% differ in which questions were answered, 1% only in forced-fallback
+penalties, and 15% are fully tied (mostly at the 25% budget). The median
+untied group spans 0.09 task success. The std-scaling noise hypothesis of
+the next-directions report is rejected for this reward.
+
+**Diagnostic 3: GRPO adds no more than best-of-8 filtered imitation.** Task
+success, mean of 3 training seeds; in brackets the paired difference from
+regret imitation (D1):
+
+| controller | 2% | 5% | 10% | 25% |
+|---|---|---|---|---|
+| regret imitation (D1) | 0.851 | 0.887 | 0.930 | 0.987 |
+| imitation then GRPO (rerun, `diag2`) | 0.859 (+0.008 [+0.001, +0.015]) | 0.906 (+0.019) | 0.944 (+0.014) | 0.992 (+0.005) |
+| imitation then best-of-8 (`diag3`) | 0.861 (+0.010 [+0.004, +0.017]) | 0.896 (+0.009) | 0.944 (+0.014) | 0.988 (+0.001) |
+| oracle_approx | 0.966 (+0.115) | 1.000 | 1.000 | 1.000 |
+
+GRPO − best-of-8: −0.002 [−0.008, +0.003] at 2%, +0.010 [+0.003, +0.017] at
+5%. Both add about one point over imitation.
+
+**The follow-the-clue search.** `bridge_search` (`memctl/retrieval.py`) takes
+the best matches to the question that contain its rarest word (what the
+question names), and searches the archive again with the question's leftover
+words plus each seed's three rarest new words (the bridge entity). Up to 4
+items it finds join the 8-item shortlist, marked by a `bridge_score` feature
+(feature version 2; version 1 checkpoints load unchanged). It knows nothing of
+the task's sentence forms. Of the regret policy's 195 hop-2 misses (s0), the
+question search has 102 in its top 8; the bridge search has 184 in its top 4.
+
+| controller | 2% | 5% | 10% | 25% |
+|---|---|---|---|---|
+| fifo_archive_retrieve | 0.759 | 0.777 | 0.808 | 0.911 |
+| regret imitation (D1) | 0.851 | 0.887 | 0.930 | 0.987 |
+| **regret imitation + follow-the-clue** | **0.917** (+0.067 [+0.054, +0.079]) | **0.958** (+0.071 [+0.060, +0.083]) | **0.970** (+0.040 [+0.032, +0.048]) | **0.992** (+0.005 [+0.002, +0.009]) |
+| oracle_approx | 0.966 | 1.000 | 1.000 | 1.000 |
+
+Mean of 3 training seeds each; paired difference from D1 in brackets. The gap
+to the oracle at 2% falls from 0.115 to 0.048 [0.041, 0.057]. Hop-2 misses
+fall from ~195 to 23 / 22 / 54 per seed; retrieval recall rises from 0.83 to
+0.90 at the same precision (0.91).
+
+**What it shows**
+
+- The remaining gap of Experiment 9 was a retrieval problem, as the failure
+  breakdown said, and a generic multi-hop search closes 58% of it at 2%.
+- On the old shortlist RL had nothing to find: GRPO's groups differed in real
+  answers, but the decisive fact was rarely among the choices. RL and
+  best-of-8 imitation each added about a point.
+
+**What it does not show**
+
+- These are scripted-reader numbers. Whether the gain holds with Qwen2.5-7B
+  needs a rented GPU (Experiment 9's setup).
+- Remaining failures at 2% (~165 per seed against the oracle's 72) are half
+  one-hop. Facts ranked beyond 8 by the question search account for only
+  ~27 of them, so the hindsight reranker of the next-directions plan has a
+  ceiling of about 0.014 and is deferred.
 
 ## 5. The sequential task
 
