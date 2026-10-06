@@ -1,0 +1,32 @@
+# Experiment 11b: LoCoMo question answering with Qwen2.5-7B as the reader and as the judge (the
+# local F1 is logged too). One episode per conversation (10). Learned policies were trained only on
+# the synthetic recall task: this is a transfer test. A judge from the same model as the reader may be
+# lenient on its own phrasing; F1 is the check.
+name: exp11b_locomo_qa
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 10
+  env: {name: locomo, judge: {backend: openai, name: "qwen2.5-7b-instruct", base_url: "https://1zb0pczeible1v-8000.proxy.runpod.net/v1", timeout_s: 300, cache_dir: cache/generations_qwen7b_vllm}}
+  agent:
+    name: llm
+    max_new_tokens: 32
+    model: {backend: openai, name: "qwen2.5-7b-instruct", base_url: "https://1zb0pczeible1v-8000.proxy.runpod.net/v1", timeout_s: 300, cache_dir: cache/generations_qwen7b_vllm}
+  memory:
+    allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+    embedder: hashing
+  logging: {detail_episodes: 1}
+grid:
+  controller:
+    - {name: full_context}
+    - {name: fifo, label: fifo_archive_retrieve, removal: [MOVE_TO_ARCHIVE], retrieve: {top_k: 5}}
+    - {name: salience, label: salience_archive_retrieve, removal: [MOVE_TO_ARCHIVE], retrieve: {top_k: 5}}
+    - {name: archive_everything, label: rag_keep_last4, keep_last: 4, retrieve: {top_k: 5}}
+    - {name: oracle, method: approx}
+    - {name: rl, label: bc_regret_s0, checkpoint: runs/rl_bc_archive_regret_s0/checkpoints/policy.pt}
+    - {name: rl, label: bc_regret_s1, checkpoint: runs/rl_bc_archive_regret_s1/checkpoints/policy.pt}
+    - {name: rl, label: bc_regret_s2, checkpoint: runs/rl_bc_archive_regret_s2/checkpoints/policy.pt}
+    - {name: rl, label: bc_bridge_s0, bridge_search: true, checkpoint: runs/rl_bc_bridge_regret_s0/checkpoints/policy.pt}
+    - {name: rl, label: bc_bridge_s1, bridge_search: true, checkpoint: runs/rl_bc_bridge_regret_s1/checkpoints/policy.pt}
+    - {name: rl, label: bc_bridge_s2, bridge_search: true, checkpoint: runs/rl_bc_bridge_regret_s2/checkpoints/policy.pt}
+  memory.budget.fraction: [0.1, 0.25]
