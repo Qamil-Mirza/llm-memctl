@@ -35,7 +35,7 @@ from memctl.memory.actions import MemoryAction, Operation
 from memctl.memory.items import Fidelity, MemoryItem
 from memctl.memory.state import MemoryView
 from memctl.retrieval import build_retriever
-from memctl.rl.policy import N_COLUMNS, REMOVAL_OPERATIONS, RETRIEVE_COLUMN, ItemPolicy
+from memctl.rl.policy import N_COLUMNS, REMOVAL_OPERATIONS, RETRIEVE_COLUMN, ItemPolicy, NeededModel
 from memctl.task import TaskState
 
 N_REMOVALS = len(REMOVAL_OPERATIONS)
@@ -128,6 +128,10 @@ class RLController(MemoryController):
         self.follow_expert = False
         self._roots: dict[str, tuple[str, ...]] = {}
         self._info: dict = {}
+        # Optional plug-in Bayes rule for a priced archive (memctl/rl/needed.py): the policy picks which
+        # item to remove; the item is archived iff P(needed again) > archive_price, deleted otherwise.
+        self.needed_model = NeededModel.load(config["needed_model"]) if config.get("needed_model") else None
+        self.archive_price = float(config.get("archive_price", 0.0))
         if config.get("checkpoint"):
             self.load(config["checkpoint"])
 
@@ -250,6 +254,11 @@ class RLController(MemoryController):
 
         mask = torch.from_numpy(decision.mask).clone()
         savings = decision.savings
+        needed = None
+        if self.needed_model is not None and n:
+            rows = np.concatenate([decision.items[:n], np.repeat(decision.global_features[None, :], n, axis=0)], axis=1)
+            with torch.no_grad():
+                needed = torch.sigmoid(self.needed_model(torch.from_numpy(rows))).numpy()
         while excess > 0 and bool(mask.any()):
             flat = logits[:n, :N_REMOVALS].masked_fill(~mask, -1e9).flatten()
             log_probs = torch.log_softmax(flat, dim=0)
@@ -262,6 +271,10 @@ class RLController(MemoryController):
                 pick = int(torch.argmax(flat))
             else:
                 pick = int(torch.multinomial(log_probs.exp(), 1, generator=self.generator))
+            if needed is not None and not accepted:
+                i, evict, archive = pick // N_REMOVALS, REMOVAL_OPERATIONS.index(Operation.EVICT), REMOVAL_OPERATIONS.index(Operation.MOVE_TO_ARCHIVE)
+                if pick % N_REMOVALS in (evict, archive) and bool(mask[i, evict]) and bool(mask[i, archive]):
+                    pick = i * N_REMOVALS + (archive if needed[i] > self.archive_price else evict)
             log_prob += float(log_probs[pick])
             decision.picks.append(pick)
             mask[pick // N_REMOVALS] = False

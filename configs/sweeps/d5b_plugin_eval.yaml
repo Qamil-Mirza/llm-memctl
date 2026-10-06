@@ -1,0 +1,23 @@
+# D5b: the plug-in Bayes rule under a priced archive. The D1 regret policy picks which item to
+# remove; a calibrated P(needed again) (memctl/rl/needed.py) decides archive vs delete at the price.
+# Same seeds as d5_priced_archive_eval, so cells pair with its baselines. Score each cell at its price.
+name: d5b_plugin_eval
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env: {name: synthetic_recall, horizon: 200}
+  agent: {name: scripted_reader, noise: 0.0}
+  memory:
+    allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+    embedder: hashing
+  logging: {detail_episodes: 0}
+grid:
+  controller:
+    - {name: rl, label: plugin0.01_s0, checkpoint: runs/rl_bc_archive_regret_s0/checkpoints/policy.pt, needed_model: runs/needed_s0/needed.pt, archive_price: 0.01}
+    - {name: rl, label: plugin0.01_s1, checkpoint: runs/rl_bc_archive_regret_s1/checkpoints/policy.pt, needed_model: runs/needed_s1/needed.pt, archive_price: 0.01}
+    - {name: rl, label: plugin0.05_s0, checkpoint: runs/rl_bc_archive_regret_s0/checkpoints/policy.pt, needed_model: runs/needed_s0/needed.pt, archive_price: 0.05}
+    - {name: rl, label: plugin0.05_s1, checkpoint: runs/rl_bc_archive_regret_s1/checkpoints/policy.pt, needed_model: runs/needed_s1/needed.pt, archive_price: 0.05}
+    - {name: rl, label: plugin0.2_s0, checkpoint: runs/rl_bc_archive_regret_s0/checkpoints/policy.pt, needed_model: runs/needed_s0/needed.pt, archive_price: 0.2}
+    - {name: rl, label: plugin0.2_s1, checkpoint: runs/rl_bc_archive_regret_s1/checkpoints/policy.pt, needed_model: runs/needed_s1/needed.pt, archive_price: 0.2}
+  memory.budget.fraction: [0.02, 0.05, 0.1]

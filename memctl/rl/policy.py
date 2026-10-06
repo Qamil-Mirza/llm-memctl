@@ -13,6 +13,8 @@ Architectures:
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import torch
 from torch import nn
 
@@ -47,3 +49,22 @@ class ItemPolicy(nn.Module):
         context = state if self.architecture == "deepsets" else global_features
         logits = self.score(torch.cat([encoded, context.expand(encoded.shape[0], -1)], dim=1))
         return logits, self.value(state).squeeze(-1)
+
+
+class NeededModel(nn.Module):
+    def __init__(self, input_dim: int, hidden: int = 32) -> None:
+        super().__init__()
+        self.config = {"input_dim": input_dim, "hidden": hidden}
+        self.net = nn.Sequential(nn.Linear(input_dim, hidden), nn.ReLU(), nn.Linear(hidden, 1))
+
+    def forward(self, rows: torch.Tensor) -> torch.Tensor:
+        """Logits, one per row."""
+        return self.net(rows).squeeze(-1)
+
+    @staticmethod
+    def load(path: str | Path) -> "NeededModel":
+        checkpoint = torch.load(Path(path), weights_only=True)
+        model = NeededModel(**checkpoint["config"])
+        model.load_state_dict(checkpoint["state_dict"])
+        model.eval()
+        return model
