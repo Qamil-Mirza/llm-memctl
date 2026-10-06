@@ -5,7 +5,8 @@ Phase 2 built. This file exists so the next design does not have to re-derive wh
 already been measured, and does not re-inherit the assumptions that turned out to be too
 narrow.
 
-`main` has since been cleared back to a scaffold. The Phase 2 code is preserved in full on
+`main` was cleared to a scaffold on 2026-09-29 and rebuilt as the current framework
+(`README_RESEARCH.md`). The Phase 2 code is preserved in full on
 branch `phase2-locomo-baseline` (tag `phase2-complete` marks its last code commit), and
 **every file path below refers to that branch**: read one with
 `git show phase2-locomo-baseline:<path>`, or bring it back with
@@ -52,18 +53,26 @@ These cost real time to establish. None of them depends on the Phase 2 framing.
   so the KV cache is about **32 KB per token**. The prompt is rarely the problem; the
   weights are.
 - 4-bit changes the generated text, so 4-bit and 16-bit results are not comparable. It is
-  in the generation cache key for that reason.
+  in the generation cache key for that reason. The Mac's 16-bit baseline (accuracy 0.661 at
+  B = 25%) was therefore never reproduced here. CPU offload was 17× slower (5.0 s per
+  question against 0.30 s). Renting a 12–24 GB card at about $0.35/hour, the full grid was
+  estimated at 10–14 hours.
 
 ### Porting defects found (all fixed, all in git)
 
-1. Docker 29 needs `nvidia-ctk cdi generate` as well as `runtime configure`, and it is a
-   root step. 2. `python:3.12-slim` has no C compiler, and Qwen3.5's linear-attention layers
-   are Triton kernels compiled on first use. 3. The shared-prefix prefill materialised a
-   logit per position per vocabulary entry (4096 × 248,320 ≈ 2 GB) and discarded it.
-4. The embedder and its CUDA context hold ~0.3 GB, which on a small card is decisive.
-5. The container wrote root-owned files into `runs/`, `cache/` and `data/`.
+None of these showed on the Mac. (This table absorbed the former `blockers.md`.)
 
-Fixes 2–5 are correct on any card. All are documented in `docs/porting.md` and
+| Problem | Symptom | Fix |
+|---|---|---|
+| Docker could not see the GPU | `failed to discover GPU vendor from CDI` | NVIDIA Container Toolkit, plus `nvidia-ctk runtime configure` and `nvidia-ctk cdi generate` (root; Docker 29 needs both) |
+| No C compiler in the image | `Failed to find C compiler` on every generation — Qwen3.5's linear-attention layers are Triton kernels compiled on first use | `build-essential` in the image; Triton cache kept in the models volume |
+| Prefill wasted ~2 GB | Out of memory: logits computed for every position (4096 × 248,320) and thrown away | Ask the model for one position's logits (output unchanged) |
+| Embedder on the GPU | Out of memory even at B = 10%: `bge-small` and its CUDA context held ~0.3 GB | `memory.embedder_device: cpu` option |
+| Container wrote root-owned files | `runs/`, `cache/`, `data/` needed root to manage | Container runs as the host user (`MEMCTL_UID` / `MEMCTL_GID`) |
+| No-Docker path in the run script | `COMPOSE=""` still ran Docker (`:-` treats empty as unset) | `NO_DOCKER=1` flag, tested |
+| Docker restart during a build | Build died silently; `tail` hid the exit code | Rebuilt; noted in the porting docs |
+
+All but the first are correct on any card. All are documented in `docs/porting.md` and
 `docs/decisions.md` entries 37–47.
 
 ### LoCoMo, if it is ever used again
@@ -118,7 +127,7 @@ a finding. Any new design should state its minimum detectable effect before runn
 - Oracle ILP: 25 s for all 10 plans at B = 10%, under a second at larger budgets.
 - Pipeline validation run (4-bit, B = 10%, 3 conversations, 180 questions): accuracy 0.644,
   F1 0.485, BLEU-1 0.440, 40 memory and 22 reasoning failures of 64 wrong. Kept in
-  `runs/locomo_4b_4bit/`. Not comparable with 16-bit numbers.
+  `runs/_archive_dirty_2026-09-30/locomo_4b_4bit/`. Not comparable with 16-bit numbers.
 
 ## 4. What survives the redesign
 
@@ -175,7 +184,8 @@ result:
 1. **Sample cost.** One episode is one conversation: ~200 questions at ~2.5 s each, so
    **~8 minutes per episode**. A thousand episodes is days of GPU. The generation cache does
    not help, because changing the policy changes the placements, which changes the prompts,
-   which misses the cache every time.
+   which misses the cache every time. (This was Phase 2's local 4-bit Hugging Face path. The
+   vLLM path used in Experiment 9 did about 106,000 generations in 2.76 hours on one A40.)
 2. **The observation has no text semantics.** `ItemFeatures.as_vector()` is nine numbers
    (age, tokens, times referenced, steps since last use, similarity to the current query,
    is_incoming, and a 3-way one-hot on kind). A policy reading only that can learn recency
@@ -196,7 +206,8 @@ improve on it, with the oracle bounding both.
 
 - **JEV can drop and archive; no rule baseline can.** "JEV beats the baseline" would
   conflate *JEV is smart* with *being allowed to drop helps*. An action-space-matched
-  control is needed (`random` already accepts a `destinations` list).
+  control is needed (`random` already accepts a `destinations` list), and JEV's own API
+  cost must be counted.
 - **Oracle agreement is 88% dominated by decisions where the oracle drops** (51,095 of
   58,018 in the validation run), which rule controllers can never match. The headline
   agreement figure is near-meaningless across controllers; read it per choice.

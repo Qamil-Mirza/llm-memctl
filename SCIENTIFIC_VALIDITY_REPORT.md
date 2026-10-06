@@ -4,6 +4,11 @@ What the results in [EXPERIMENTS.md](EXPERIMENTS.md) can and cannot support,
 hypothesis by hypothesis, and the confounds that anyone quoting them must
 carry along. Written 2026-09-30, against the runs of that day.
 
+> **Update 2026-10-06.** Every run was reproduced from clean commit `ef57fc4`
+> on 2026-10-05 (§7), and Experiments D1, D2/D2b, D5/D5b/D5c, GRPO, 8 and 9
+> have run since. The paragraphs below are updated where those results change
+> them; each update is marked *Update*.
+
 ## 1. The stage gate
 
 The build plan said: do not proceed to the next stage if the current
@@ -34,6 +39,14 @@ policy trained on the other task does not transfer that. The honest statement
 is: *learned controllers reach the best fixed heuristic on the task they were
 trained on and are not fooled by the task where that heuristic fails; they did
 not beat the best heuristic on its own task.* See §3.
+*Update:* with the archive, imitation of the regret expert beats every fixed
+rule at 2–10% and ties at 25% (D1: +0.092 [0.076, 0.107] over the best rule at
+2%, three training seeds). One joint policy matches each specialist on both
+tasks, including with the same action set (D2, D2b). With Qwen2.5-7B as the
+reader the regret policy beats the best rule (FIFO-archive) by +0.09 at 2%, and
+salience-archive by +0.104 [+0.086, +0.123]
+(Exp. 9). H1 is supported on the archive action set; the delete-only result
+above stands.
 
 **H2 — long-horizon reward beats immediate reward.** Not supported by this
 evidence. With three PPO seeds each, discount 0.995 and discount 0 are within
@@ -43,6 +56,10 @@ immediate-reward run ended far higher (0.992 against 0.404 at 5%, one seed
 each; Exp. 5b). The recall task is a
 weak test of H2: the immediate signal already identifies the kind of item
 worth keeping. See §3.
+*Update:* still unsupported; the planned multi-seed discount comparison (D6)
+was never run. GRPO is the more reliable optimiser on the workflow task (all 3
+seeds solve it, against 2 of 3 for PPO), which removes the instability, not the
+H2 question.
 
 **H3 — the advantage of good memory management grows with horizon, tighter
 budgets and longer dependencies.** Supported, for the *room* rather than for
@@ -60,7 +77,12 @@ oracle reaches 1.0 at 2% where the exact delete-only optimum is 0.87. The
 qualifier is that the value is entirely in the retriever: on the workflow task
 the same lexical retriever has recall 0.01–0.10 and archiving gives nothing
 (Exp. 5), and on LoCoMo its recall is 0.35–0.38 (Exp. 6). The archive was also
-unlimited and free.
+unlimited and free. *Update:* D5 priced archive writes. At a low price (0.01)
+archiving still wins, with cost-sensitive imitation and the plug-in Bayes rule
+(D5b) ahead of every heuristic; at 0.05 only the plug-in rule archives
+profitably; at 0.2 deleting is right and every archiving controller loses to
+salience-delete (the plug-in rule by 0.05–0.07; D5c). "Under uncertainty,
+archive" holds only while the archive is cheap.
 
 **H5 — compaction and consolidation improve the success/memory frontier when
 memories are redundant.** Conditionally. Compaction with a rewriter that keeps
@@ -80,7 +102,10 @@ trained on four budgets and evaluated on the same four; Exp. 4). Across
 horizons: the 200-step policies were evaluated at 500 steps (Exp. 4). Across
 tasks: the recall-trained policy on the workflow task behaves like FIFO, not
 like the salience rule it resembles on its own task (Exp. 5b). Across base
-models: not tested; only the scripted reader was used.
+models: not tested; only the scripted reader was used. *Update:* now tested on
+the recall task: policies trained with the scripted reader keep their ranking
+with `qwen2.5:3b` (Exp. 8) and Qwen2.5-7B (Exp. 9) as the task model; a joint
+policy covers both tasks (D2).
 
 ## 3. Learned controllers (Experiments 4, 4b, 5b)
 
@@ -102,11 +127,17 @@ What can be said about the RL arm, and why it is less than the hypotheses ask fo
    are `evicted`, not `archived_not_retrieved`). An untrained retrieval head
    that archives and retrieves indiscriminately does better. Any future
    imitation work should use a cost-aware expert, and any RL work should
-   price deletion against archiving in the reward.
+   price deletion against archiving in the reward. *Update: done.* The
+   regret expert fixes it with a free archive (D1: 0.34 → 0.85 at 2%); with a
+   priced archive, cost-sensitive imitation and a plug-in Bayes rule were
+   tested (D5, D5b). A warm start from the oracle expert hurts RL: GRPO after
+   oracle imitation reaches 0.451 at 2% against 0.70–0.72 from scratch (GRPO
+   section).
 3. **PPO numbers are single-run noise unless seeds are pooled.** Spread
    across three seeds is up to 0.13 at horizon 200, 5%; policies drift after
    their best validation point; the best-validated checkpoint is 0.02–0.06
    above the final one. Three seeds is the minimum used here and still small.
+   *Update:* every GRPO configuration was trained with 3 seeds.
 4. **The learned policy that beat the oracle (Exp. 5b) beat a blind
    oracle.** On the workflow task the reference-pass oracle cannot see the
    episode after the first restart; the learned policy recovers from
@@ -140,6 +171,9 @@ Ordered by how much they limit what can be claimed.
    pure function of memory contents. A language model would add reasoning
    failures (attributable, per Exp. 1b) and would also change *which* memory
    states lead to success. Experiment 7 is a smoke test, not evidence.
+   *Update:* no longer perfect-only on the recall task: Experiments 8 and 9 use
+   real LLM readers (30 and 100 episodes) and the D1 ranking holds. The
+   workflow task is still scripted only.
 4. **A fraction budget confounds horizon with absolute budget** (Exp. 1); the
    fixed-token variant (1c) is the one to cite for horizon effects, and it
    still confounds horizon with dependency distance, which 1d isolates.
@@ -161,7 +195,8 @@ Ordered by how much they limit what can be claimed.
    these retrievers; a stronger retriever would move the archive results.
 8. **The archive is free.** No experiment priced archive tokens or retrieval
    compute; `archive_budget` and the `retrieval_cost` reward term exist for
-   that.
+   that. *Update:* D5 prices archive writes in the score (D5–D5c); retrieval
+   compute is still free.
 9. **Statistics.** Episodes are the unit and comparisons are paired, but no
    correction was made for the number of comparisons (hundreds of cells).
    Treat a difference as real only if it is large relative to its minimum
@@ -177,7 +212,8 @@ Ordered by how much they limit what can be claimed.
 13. **LongMemEval's salience result is a dataset artefact**: evidence sits in
     short user turns, assistant turns are long, and salience prefers user turns.
 14. **Single training seed for most RL configurations.** Three seeds for the
-    two PPO variants on the recall task, one for everything else.
+    two PPO variants on the recall task, one for everything else. *Update:*
+    the D-series and GRPO use 3 training seeds (D5 and D5b: 2).
 
 ## 4b. Defects found by an independent code review, and what they changed
 
@@ -203,13 +239,16 @@ disjoint; and that no controller can reach ground truth.
 
 - A task model that is not perfect: rerun Experiments 1–5 with the `llm`
   agent on a GPU host. Attribution will say how much of the change is the model.
+  *Done for the recall task with archive (Exp. 8, 9); not for the workflow task.*
 - A generator whose query distribution is not predictable from source type:
   set `sources.*.query_prob` equal across sources and rerun Experiment 1;
   salience's advantage should shrink to its "has identifiers" component.
 - A priced archive: set `memory.archive_budget` and a non-zero
-  `retrieval_cost` weight and rerun Experiment 2.
+  `retrieval_cost` weight and rerun Experiment 2. *Done in a different form:
+  archive writes priced in the score (D5–D5c).*
 - More PPO seeds and a hyper-parameter sweep before concluding anything about
-  RL versus imitation.
+  RL versus imitation. *Partly done: GRPO and PPO compared with 3 seeds each
+  (GRPO section); no hyper-parameter sweep.*
 
 ## 6. Reporting rules used
 
@@ -220,6 +259,13 @@ episodes; the minimum detectable effect is reported next to every difference.
 No hidden model reasoning was logged or used anywhere.
 
 ## 7. Provenance caveat
+
+*Resolved 2026-10-05:* every training and sweep was rerun from clean commit
+`ef57fc4` (`dirty: false`). Every task-success number reproduced exactly
+except 9 cells of Experiment 4b (the two archive-trained RL policies and
+`salience_archive_retrieve` at 2%), whose clean values are now in
+EXPERIMENTS.md. The dirty runs are archived in
+`runs/_archive_dirty_2026-09-30/`. The original caveat follows.
 
 All runs were made from an uncommitted working tree on branch
 `framework-rebuild`; `metadata.json` records commit `d215c8f` with

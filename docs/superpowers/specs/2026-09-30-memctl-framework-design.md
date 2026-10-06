@@ -2,7 +2,9 @@
 
 Date: 2026-09-30. Approved in conversation the same day, with the five decisions recorded
 in section 2. This is the design record; `README_RESEARCH.md` is the user guide and
-`EXPERIMENTS.md` holds results.
+`EXPERIMENTS.md` holds results. Later additions (regret expert, GRPO, the `cost`
+algorithm, joint `training.tasks`, the plug-in archive rule, the `openai` backend) are
+documented in `README_RESEARCH.md` and `EXPERIMENTS.md`, not here.
 
 ## 1. Purpose
 
@@ -104,7 +106,7 @@ One label per failed query, most severe first:
 `archived_not_retrieved` · `retrieved_but_ignored` · `task_model_reasoning` ·
 `invalid_action` · `unknown`.
 
-`evicted` carries a cause: `controller` or `forced_fallback`. `invalid_action` is used when
+`evicted` carries a cause: `controller` or `harness`. `invalid_action` is used when
 the needed item was removed by the fallback on a step where the controller emitted a
 rejected action.
 

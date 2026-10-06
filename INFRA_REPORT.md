@@ -4,6 +4,34 @@ What was built, whether it runs, and what stops it from running here. Written
 2026-09-30 on the machine described below; `python -m memctl.doctor` reproduces
 the environment part of this report at any time.
 
+## Update 2026-10-06
+
+The snapshot below is of 2026-09-30; lines it contradicts are marked
+"(superseded, see update)". Since then:
+
+- **Tests:** 165 pass on the host. The Docker image was not re-run against them.
+- **Hugging Face backend:** `transformers` 5.17.0 is now in `.venv`; the `hf`
+  backend is still unused in an experiment.
+- **LLM task model: PASSED** through the `openai` backend. Experiment 8:
+  `qwen2.5:3b` on the local 4 GB GPU via Ollama (port 11435,
+  `OLLAMA_CONTEXT_LENGTH=16384`). Experiment 9: vLLM v0.8.5 serving
+  Qwen2.5-7B-Instruct on a rented RunPod A40 ($0.49/h; 2.76 h, about $1.35;
+  about 106,000 calls). The backend has HTTP retries and sends a `User-Agent`.
+- **RL algorithms:** GRPO and cost-sensitive imitation (`cost`) implemented and
+  PASSED (GRPO section, D2, D5 in EXPERIMENTS.md); the regret expert
+  (`rl/expert.py`) PASSED (D1, D2, D5). DQN-style and contextual bandit are
+  still not implemented.
+- **New modules:** `analysis/priced.py` (priced-archive scoring),
+  `analysis/seeds.py` (pool training seeds), `rl/probe.py` (what a policy does
+  with needed / never-needed items), `rl/needed.py` (calibrated P(needed) for
+  the plug-in archive rule). 28 sweep configs in `configs/sweeps/`.
+- **Provenance:** every training and sweep was rerun from clean commit
+  `ef57fc4` on 2026-10-05 (`dirty: false`); the dirty runs are archived in
+  `runs/_archive_dirty_2026-09-30/`. Later experiments ran from clean commits.
+- **Constraints:** 1 (4 GB GPU) resolved by renting a GPU; 3 (real-model
+  latency) done for the task model, but the prompted-LLM controller is still
+  only smoke-tested (Experiment 7b); 2 (JEV) still blocked, no key.
+
 ## Machine
 
 | | |
@@ -22,7 +50,7 @@ Statuses: **PASSED** implemented, unit-tested and run end to end in an
 experiment here; **PARTIAL** implemented and tested, but validated only with a
 stand-in, at smoke-test scale, or on part of its scope; **BLOCKED** implemented
 but not runnable here for an external reason, given with what unblocks it;
-**FAILED** ran and did not work. Tests: 153 pass on the host (about 80 s); the Docker image ran the suite as it
+**FAILED** ran and did not work. Tests (superseded, see update): 153 pass on the host (about 80 s); the Docker image ran the suite as it
 stood before the review fixes (148 passed, 86 s).
 
 ### Core
@@ -46,7 +74,7 @@ stood before the review fixes (148 passed, 86 s).
 | LoCoMo adapter (Phase 1) | PARTIAL | pipeline and evidence metrics run on all 10 conversations (Experiment 6); QA accuracy needs a task model, see below |
 | LongMemEval adapter (Phase 1) | PARTIAL | oracle and S splits parsed; evidence metrics on 100 questions of S; QA accuracy and the official LLM judge not run |
 | Scripted task models (reader, tool agent) with a noise knob | PASSED | Experiment 1b recovers the injected rate |
-| Language-model task model (`agents/llm.py`) | PARTIAL | unit-tested with a scripted model; run with a real model only in the Experiment 7 smoke test; the Hugging Face backend is BLOCKED in `.venv` (no `transformers`) and by the 4 GB GPU for any model above about 1B parameters at 16-bit |
+| Language-model task model (`agents/llm.py`) | PARTIAL (superseded, see update: PASSED in Experiments 8, 9) | unit-tested with a scripted model; run with a real model only in the Experiment 7 smoke test; the Hugging Face backend is BLOCKED in `.venv` (no `transformers`) and by the 4 GB GPU for any model above about 1B parameters at 16-bit |
 | Archive search (BM25, embedding cosine) | PASSED | Experiments 2, 5, 6 |
 | Dense embeddings (sentence-transformers, `BAAI/bge-small-en-v1.5`) | PARTIAL | installed and checked on CPU this session; Experiment 6c runs it on LoCoMo (see EXPERIMENTS.md); slow on CPU (about 20 ms per text without load) |
 | Compressors: extractive, truncate; LLM compressor and consolidator | PASSED / PARTIAL | the first two in Experiment 3; the LLM ones unit-tested with a scripted model only |
@@ -55,7 +83,7 @@ stood before the review fixes (148 passed, 86 s).
 | RL controller: item policy (MLP / DeepSets), decision procedure, checkpoints | PASSED | Experiments 4, 4b, 5b |
 | RL: behaviour cloning / DAgger from the hindsight expert | PASSED | 5 trainings (`rl_bc*`) |
 | RL: PPO and REINFORCE | PASSED | 10 PPO trainings; REINFORCE is PPO with one epoch and no clipping, unit-tested, not used in an experiment |
-| RL: other algorithms (DQN-style, GRPO, contextual bandit) | not implemented | `rl/algorithms.py` has the `ALGORITHMS` registry; a new algorithm is one class with `update` |
+| RL: other algorithms (DQN-style, GRPO, contextual bandit) | not implemented (GRPO superseded, see update) | `rl/algorithms.py` has the `ALGORITHMS` registry; a new algorithm is one class with `update` |
 | Hindsight: evidence tracking through rewrites, requirements-destroyed regret | PASSED | `regret.jsonl` in every run; used by attribution in Experiment 3 |
 | Hindsight: continuation regret by replay, counterfactual ablation | PASSED (tests) | unit-tested on the synthetic task; not used at scale in an experiment |
 | Hindsight: string and tool-value dependency tracing | PASSED (tests) | recovers labelled evidence on the synthetic and workflow tasks; not used as the evidence source of an experiment |
@@ -76,7 +104,7 @@ stood before the review fixes (148 passed, 86 s).
 | Pinned dependencies | `constraints.txt` pins every package; torch is the CPU wheel from the PyTorch index |
 | Versioned configs | `schema_version: 1`; the resolved config is saved with every run |
 | Model identifiers and revisions | in `metadata.json` (`models`) and each episode row (`agent_model`, `controller_model`); the Hugging Face backend records `name@revision` |
-| Git commit with every run | Yes, with a `dirty` flag. **Every run this session is marked dirty** because the code was never committed; see the validity report |
+| Git commit with every run | Yes, with a `dirty` flag. **Every run this session is marked dirty** because the code was never committed; see the validity report (superseded, see update: clean rerun at `ef57fc4`) |
 | Environment metadata, CPU/GPU | Yes (`metadata.json`) |
 | Resume failed experiments | Yes, at episode granularity, with the same config checked |
 | Checkpoint controllers | Yes: `checkpoints/controller` per run, `policy.pt` and `policy_best.pt` per training |
@@ -87,7 +115,8 @@ stood before the review fixes (148 passed, 86 s).
 1. **GPU memory (4 GB).** Nothing above about 1B parameters runs at 16-bit;
    the earlier work measured that Qwen3.5-4B needs 8.4 GB (3.4 GB in 4-bit, and
    then only for prompts up to about 3,900 tokens). Every language-model
-   experiment beyond a smoke test is blocked on this. *Recommendation:* rent a
+   experiment beyond a smoke test is blocked on this (superseded, see update:
+   resolved by renting). *Recommendation:* rent a
    card with at least 12 GB (24 GB runs every budget). The Docker image and the
    `hf` backend are ready for it. The scripted-agent experiments do not need
    it and should stay on CPU.

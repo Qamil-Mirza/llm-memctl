@@ -1,5 +1,14 @@
 # Hindsight-Supervised Memory Management for Long-Running Agents: a Research Note on `memctl`
 
+> **Snapshot of 2026-09-30; its numbers come from the dirty (`dirty: true`) runs of that day.**
+> Since then: every run was rerun from clean commit `ef57fc4` on 2026-10-05 (all task-success
+> numbers reproduced except 9 cells of Experiment 4b), and Experiments D1, D2/D2b, D5/D5b/D5c,
+> GRPO, 8 and 9 were run. See [EXPERIMENTS.md](../../EXPERIMENTS.md) for current results. The
+> dirty run folders this note cites are archived in `runs/_archive_dirty_2026-09-30/` (including
+> `_superseded/`, `exp7_*` and `locomo_4b_4bit/`, whose paths below are updated); the same paths
+> directly under `runs/` now hold the clean reruns. The current directions document is
+> [next_directions.html](next_directions.html).
+
 *Technical memo, 2026-09-30. Reconstructed from the repository at commit `4fe0f7c` (`main`), its run artifacts under `runs/`, and the four project reports (`README_RESEARCH.md`, `EXPERIMENTS.md`, `INFRA_REPORT.md`, `SCIENTIFIC_VALIDITY_REPORT.md`). Every quantitative claim names the run folder or file it was read from. Literature context was gathered by a scholarly search on the same day and is confined to §16–18. Status labels used throughout: **implemented**, **experimentally validated**, **partially supported**, **unsupported**, **blocked by infrastructure**.*
 
 ---
@@ -382,7 +391,7 @@ Provenance caveat: the `rl_bc*` trainings ran before validation seeds were moved
 | 3 | `exp3_compaction_consolidation.yaml` | synthetic, `verbose_prob` 0.5, `restate_prob` 0.4 | 10 variants × 2 rewriters | 5, 10, 25 % | 500 | 100 | full run |
 | 4 | `exp4_rl_eval.yaml` + 9 trainings in `configs/rl/` | synthetic, delete-only | fifo, lru, salience, rl_bc, rl_bc_mlp, rl_bc_ppo, rl_ppo ×3 seeds (+ `_last`), rl_ppo_gamma0 ×3 seeds, oracle_exact | 5, 10, 25, 50 % | 200 (train) / 500 (transfer) | 100 | full run |
 | 4b | `exp4b_rl_archive_eval.yaml` + 2 trainings | synthetic, archive set | fifo_delete, salience_delete, salience_archive_retrieve, rl_bc_delete_only_policy, rl_bc_archive, rl_bc_ppo_archive, oracle_approx | 2, 5, 10, 25 % | 200 | 100 | full run (rerun after E16) |
-| 5 | `exp5_workflow.yaml` | workflow, archive set | 11 (as Exp. 1 minus similarity/lfu variants, plus fifo/salience archive+retrieve) | 5, 10, 20, 40 % | 400-step limit | 100 | full run (rerun after E16; pre-fix cells kept in `runs/_superseded/`) |
+| 5 | `exp5_workflow.yaml` | workflow, archive set | 11 (as Exp. 1 minus similarity/lfu variants, plus fifo/salience archive+retrieve) | 5, 10, 20, 40 % | 400-step limit | 100 | full run (rerun after E16; pre-fix cells kept in `runs/_archive_dirty_2026-09-30/_superseded/`) |
 | 5b | `exp5b_workflow_rl.yaml` + 3 trainings | workflow, delete-only | fifo, lru, salience, rl_bc_transfer, rl_bc_workflow, rl_ppo_workflow, rl_ppo_workflow_gamma0, oracle_approx, oracle_approx_lazy | 5, 10, 20, 40 % | 400-step limit | 100 | full run; **only the `rl_bc_workflow` cells were rerun after fix E17** (see §12.3) |
 | 6a | `exp6_locomo_retention.yaml` | LoCoMo, `agent: null` | 9 variants | 10, 25, 50 % | 10 conversations | 10 | full run of the pipeline; **QA accuracy blocked** |
 | 6b | `exp6_longmemeval_retention.yaml` | LongMemEval-S, `agent: null` | 6 variants | 5, 10, 25 % | 100 instances | 100 | as 6a |
@@ -390,7 +399,7 @@ Provenance caveat: the `rl_bc*` trainings ran before validation seeds were moved
 | 7a | `exp7_llm_smoke.yaml` | synthetic, horizon 60, llama3.1:8b as task model via Ollama on CPU | fifo, salience, oracle_exact, full_context | 25 % | 60 | 3 (11 queries in all) | **smoke test** |
 | 7b | `exp7b_prompted_controller_smoke.yaml` | synthetic, horizon 40, llama3.1:8b as controller | fifo, salience, prompted_llm, oracle_exact | 40 % | 40 | 2 (5 queries) | **smoke test** |
 | H6 | – | – | `jev` | – | – | – | **blocked**: no `JEV_API_KEY` |
-| P2 | `runs/locomo_4b_4bit/` (branch `phase2-locomo-baseline`) | LoCoMo, Qwen3.5-4B 4-bit as answerer | keep_newest | 10 % | 3 conversations, 180 questions | – | earlier pipeline validation; not comparable with 16-bit |
+| P2 | `runs/_archive_dirty_2026-09-30/locomo_4b_4bit/` (branch `phase2-locomo-baseline`) | LoCoMo, Qwen3.5-4B 4-bit as answerer | keep_newest | 10 % | 3 conversations, 180 questions | – | earlier pipeline validation; not comparable with 16-bit |
 
 ### 8.3 RL trainings
 
@@ -616,9 +625,9 @@ An independent reviewer read the harness after the first experiments had run. Fo
 
 | # | defect | experiments affected | fix | rerun |
 |---|---|---|---|---|
-| 1 | The forced fallback **deleted items retrieved at the same step** when the retrieval did not fit, turning an unaffordable retrieval into a permanent loss of archived evidence. Only the archive-mode oracle and the RL controller triggered it (heuristics budget their retrievals). | `oracle_approx` cells of Exp. 2, 5, 6; RL cells of Exp. 4b | Fallback first returns this step's retrievals to the archive, oldest first, then evicts (E16; `MemoryEngine.enforce_budget`) | Exp. 2, 4b, 5, 6a, 6b, 6c rerun (`runs/*.rerun.log`); pre-fix Exp. 5 kept in `runs/_superseded/exp5_workflow_before_fallback_fix` |
+| 1 | The forced fallback **deleted items retrieved at the same step** when the retrieval did not fit, turning an unaffordable retrieval into a permanent loss of archived evidence. Only the archive-mode oracle and the RL controller triggered it (heuristics budget their retrievals). | `oracle_approx` cells of Exp. 2, 5, 6; RL cells of Exp. 4b | Fallback first returns this step's retrievals to the archive, oldest first, then evicts (E16; `MemoryEngine.enforce_budget`) | Exp. 2, 4b, 5, 6a, 6b, 6c rerun (`runs/*.rerun.log`); pre-fix Exp. 5 kept in `runs/_archive_dirty_2026-09-30/_superseded/exp5_workflow_before_fallback_fix` |
 | 2 | **Action counts mixed units**: one per action for controllers, one per item for the fallback, so `forced_share_of_removals` and the actions table were not comparable | tables only | everything counts items | tables regenerated |
-| 3 | On the workflow task, **hindsight-derived metrics kept being computed after divergence** from the reference pass (`requirements_destroyed`, `unnecessary_token_share`, regret rows, imitation labels), describing a different episode | Exp. 5, 5b columns; `rl_bc_workflow` labels | divergence detected by content hash; metrics `null` from then on; labels after divergence dropped (E17) | `rl_bc_workflow` retrained (`runs/_superseded/rl_bc_workflow_prefix_labels` is the old one) and its Exp. 5b cells rerun; **other Exp. 5b cells were not** (§10.9) |
+| 3 | On the workflow task, **hindsight-derived metrics kept being computed after divergence** from the reference pass (`requirements_destroyed`, `unnecessary_token_share`, regret rows, imitation labels), describing a different episode | Exp. 5, 5b columns; `rl_bc_workflow` labels | divergence detected by content hash; metrics `null` from then on; labels after divergence dropped (E17) | `rl_bc_workflow` retrained (`runs/_archive_dirty_2026-09-30/_superseded/rl_bc_workflow_prefix_labels` is the old one) and its Exp. 5b cells rerun; **other Exp. 5b cells were not** (§10.9) |
 | 4 | `invalid_action` was assigned whenever *any* controller action at the step was rejected, related to the lost item or not | no recorded run (no rejected actions occurred) | requires a rejected action targeting the lost item, or a step on which every controller action was rejected | none needed |
 
 Two smaller corrections: `retrieved_but_ignored` now means retrieved at that step, and the query observation no longer counts as an "unnecessary" token. The reviewer also confirmed the ILP's optimality by brute force on 40 instances, that recorded RL log-probabilities are reproduced exactly, that seed sets are disjoint, and that no controller can reach ground truth.
@@ -629,7 +638,7 @@ Two smaller corrections: `retrieved_but_ignored` now means retrieved at that ste
 - 32 of 36 Exp. 5b cells hold episode rows from before fix E17 (their rows lack `hindsight_diverged_at`); task success is unaffected, hindsight-derived columns are not.
 - `oracle_solve_s` is absent from Exp. 1–1d, 2, 3 (partly) and 5 rows; the per-episode solve times quoted for 1c come from cell wall times in the sweep log.
 - The policy parameter count quoted in EXPERIMENTS.md (~12,000) disagrees with the training metadata (27,526 DeepSets / 19,334 MLP).
-- Earlier attempts at `rl_ppo`, `rl_ppo_gamma0` and `rl_bc_ppo` exist in `runs/_superseded/*_first_attempt`; the reported ones are the second attempts.
+- Earlier attempts at `rl_ppo`, `rl_ppo_gamma0` and `rl_bc_ppo` exist in `runs/_archive_dirty_2026-09-30/_superseded/*_first_attempt`; the reported ones are the second attempts.
 
 ## 13. What we have actually learned
 
@@ -881,7 +890,7 @@ The evidence does not yet single out one of these. B is the best supported by re
 
 ## Bibliography
 
-Repository documents (ground truth for every result): `README_RESEARCH.md`, `EXPERIMENTS.md`, `INFRA_REPORT.md`, `SCIENTIFIC_VALIDITY_REPORT.md`, `blockers.md`, `docs/restart.md`, `docs/superpowers/specs/2026-09-30-memctl-framework-design.md`; run artifacts under `runs/` (`summary.json`, `report.json`, `episodes.jsonl`, `failures.jsonl`, `metadata.json`, `train_log.jsonl`, sweep `.log` files).
+Repository documents (ground truth for every result): `README_RESEARCH.md`, `EXPERIMENTS.md`, `INFRA_REPORT.md`, `SCIENTIFIC_VALIDITY_REPORT.md`, `docs/restart.md` (which absorbed the former `blockers.md`), `docs/superpowers/specs/2026-09-30-memctl-framework-design.md`; run artifacts under `runs/` (`summary.json`, `report.json`, `episodes.jsonl`, `failures.jsonl`, `metadata.json`, `train_log.jsonl`, sweep `.log` files).
 
 Literature (venue as verified on 2026-09-30; "(venue unverified)" where the primary page did not confirm it):
 
@@ -1006,14 +1015,14 @@ Literature (venue as verified on 2026-09-30; "(venue unverified)" where the prim
 | 1d | `exp1d_dependency_gap.yaml` | `runs/exp1d_dependency_gap/` | `*/summary.json` | d215c8f | yes | not needed |
 | 2 | `exp2_archive_retrieval.yaml` | `runs/exp2_archive_retrieval/` + `.rerun.log` | `*/summary.json` | d215c8f | yes | yes (E16) |
 | 3 | `exp3_compaction_consolidation.yaml` | `runs/exp3_compaction_consolidation/` | `*/summary.json` | d215c8f | yes | not needed |
-| 4 | `exp4_rl_eval.yaml`; `configs/rl/rl_bc*.yaml`, `rl_ppo*.yaml` | `runs/exp4_rl_eval/`, `runs/rl_*/` | `report.json`, `*/episodes.jsonl`, `rl_*/summary.json`, `train_log.jsonl`, `checkpoints/policy*.pt` | d215c8f | yes | second attempts (`runs/_superseded/*_first_attempt`) |
+| 4 | `exp4_rl_eval.yaml`; `configs/rl/rl_bc*.yaml`, `rl_ppo*.yaml` | `runs/exp4_rl_eval/`, `runs/rl_*/` | `report.json`, `*/episodes.jsonl`, `rl_*/summary.json`, `train_log.jsonl`, `checkpoints/policy*.pt` | d215c8f | yes | second attempts (`runs/_archive_dirty_2026-09-30/_superseded/*_first_attempt`) |
 | 4b | `exp4b_rl_archive_eval.yaml`; `rl_bc_archive.yaml`, `rl_bc_ppo_archive.yaml` | `runs/exp4b_rl_archive_eval/` + `.rerun.log` | as above | d215c8f | yes | yes (E16) |
-| 5 | `exp5_workflow.yaml` | `runs/exp5_workflow/` + `.rerun.log`; pre-fix in `runs/_superseded/exp5_workflow_before_fallback_fix/` | `*/summary.json`, `*/episodes.jsonl` (`env_stats.restarts`) | d215c8f | yes | yes (E16) |
-| 5b | `exp5b_workflow_rl.yaml`; `rl_bc_workflow.yaml`, `rl_ppo_workflow*.yaml` | `runs/exp5b_workflow_rl/` + `.rerun.log`; old labels in `runs/_superseded/rl_bc_workflow_prefix_labels/` | as above | d215c8f | yes | **partial**: only `rl_bc_workflow` cells (E17) |
+| 5 | `exp5_workflow.yaml` | `runs/exp5_workflow/` + `.rerun.log`; pre-fix in `runs/_archive_dirty_2026-09-30/_superseded/exp5_workflow_before_fallback_fix/` | `*/summary.json`, `*/episodes.jsonl` (`env_stats.restarts`) | d215c8f | yes | yes (E16) |
+| 5b | `exp5b_workflow_rl.yaml`; `rl_bc_workflow.yaml`, `rl_ppo_workflow*.yaml` | `runs/exp5b_workflow_rl/` + `.rerun.log`; old labels in `runs/_archive_dirty_2026-09-30/_superseded/rl_bc_workflow_prefix_labels/` | as above | d215c8f | yes | **partial**: only `rl_bc_workflow` cells (E17) |
 | 6a/6b | `exp6_locomo_retention.yaml`, `exp6_longmemeval_retention.yaml` | `runs/exp6_locomo_retention/`, `runs/exp6_longmemeval_retention/` + `.rerun.log` | `*/summary.json` | d215c8f | yes | yes (E16) |
 | 6c | `exp6c_locomo_dense_retrieval.yaml` | `runs/exp6c_locomo_dense_retrieval/` + `.rerun.log` | `*/summary.json` | d215c8f | yes | yes (duplicated rows incident) |
-| 7a/7b | `exp7_llm_smoke.yaml`, `exp7b_prompted_controller_smoke.yaml` | `runs/exp7_llm_smoke/`, `runs/exp7b_prompted_controller_smoke/` | `*/summary.json`, `*/steps.jsonl`, `cache/generations/` | d215c8f | yes | smoke only |
-| Phase 2 | branch `phase2-locomo-baseline`, tag `phase2-complete` | `runs/locomo_4b_4bit/comparison.md` | – | ba06b3a | – | superseded design |
+| 7a/7b | `exp7_llm_smoke.yaml`, `exp7b_prompted_controller_smoke.yaml` | `runs/_archive_dirty_2026-09-30/exp7_llm_smoke/`, `runs/_archive_dirty_2026-09-30/exp7b_prompted_controller_smoke/` | `*/summary.json`, `*/steps.jsonl`, `cache/generations/` | d215c8f | yes | smoke only |
+| Phase 2 | branch `phase2-locomo-baseline`, tag `phase2-complete` | `runs/_archive_dirty_2026-09-30/locomo_4b_4bit/comparison.md` | – | ba06b3a | – | superseded design |
 | Tests | `tests/` | – | 153 passed in 16 s on 2026-09-30 (this session) | 4fe0f7c / main | clean | – |
 
 ## Unresolved questions
