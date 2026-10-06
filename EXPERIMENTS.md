@@ -34,6 +34,7 @@ regenerated with the two commands given).
 | 4b | …with archive and retrieval? | Imitation of the hindsight expert deletes when it should archive. PASSED |
 | D5 | …and when the archive has a price? | Imitation collapses at any price; cost-sensitive imitation wins at low price, over-archives at high. PARTIAL |
 | D5b | Does a plug-in Bayes rule track the price? | Yes at 0.01 and 0.05 (+0.07 to +0.28); loses 0.06 to delete-all at 0.2 (D5c: not a value-calibration problem). PARTIAL |
+| D2 | Can one controller serve both task structures? | **Yes**: matches each specialist on its task; every fixed rule fails on one. PASSED |
 | D1 | Does an archive-aware regret teacher fix 4b? | **Yes**: 0.34 → 0.85 at 2%, above every heuristic at every budget. Clean commit, 3 seeds. PASSED |
 | 5 | Does the ranking hold on a sequential task? | **No, it flips.** PASSED |
 | 5b | Learned controllers on the sequential task | Task-trained imitation reaches 1.0 where the blind oracle does not; the recall-trained policy does not transfer. PASSED |
@@ -490,6 +491,72 @@ gap to the oracle is −0.115, −0.113, −0.070 and −0.013.
   a *priced* archive is D5 (running).
 - The remaining gap to the oracle (0.11 at 2%) is retrieval: the shortlist is
   BM25 top-8, and the learner retrieves 91% of the needed items it is shown.
+
+## D2. One controller for both tasks (2026-10-05)
+
+```bash
+python -m memctl.rl.train --config configs/rl/d2/joint_{bc,cost}_regret_s{0,1,2}.yaml
+python -m memctl.sweep --config configs/sweeps/d2_joint_recall_eval.yaml
+python -m memctl.sweep --config configs/sweeps/d2_joint_workflow_eval.yaml
+```
+
+One policy, trained by DAgger on the regret expert with episodes alternating
+between the recall task (archive and retrieval allowed) and the workflow task
+(delete-only), `training.tasks` in `memctl/rl/train.py`. Twice the iterations
+of a specialist, so each task gets the same number of training episodes as
+its specialist. Specialists: the D1 regret policies (recall) and
+`rl_bc_workflow` from the clean rerun (workflow). Three seeds each.
+**Provenance: trainings at commit `9acfdb9`; all 100 evaluation cells
+`dirty: false`.**
+
+Recall task (task success, mean of 3 seeds [min, max]):
+
+| controller | 2% | 5% | 10% | 25% |
+|---|---|---|---|---|
+| fifo_archive_retrieve | 0.759 | 0.777 | 0.808 | 0.911 |
+| salience_archive_retrieve | 0.744 | 0.833 | 0.898 | 0.984 |
+| recall specialist | 0.851 [0.843, 0.858] | 0.887 [0.870, 0.901] | 0.930 [0.915, 0.948] | 0.987 [0.983, 0.991] |
+| **joint, `bc`** | **0.852** [0.845, 0.857] | **0.895** [0.887, 0.902] | **0.945** [0.936, 0.950] | **0.990** [0.988, 0.993] |
+| joint, `cost` | 0.848 [0.839, 0.863] | 0.895 [0.882, 0.903] | 0.934 [0.930, 0.940] | 0.982 [0.975, 0.986] |
+| oracle_approx | 0.966 | 1.000 | 1.000 | 1.000 |
+
+Workflow task:
+
+| controller | 5% | 10% | 20% | 40% |
+|---|---|---|---|---|
+| fifo | 0.028 | 0.221 | 0.891 | 1.000 |
+| salience | 0.001 | 0.051 | 0.399 | 1.000 |
+| recall specialist (never saw this task) | 0.000 | 0.001 | 0.008 | 0.100 |
+| workflow specialist | 1.000 | 1.000 | 1.000 | 1.000 |
+| **joint, `bc` and `cost`** (all 6 policies) | **1.000** | **1.000** | **1.000** | **1.000** |
+| oracle_approx_lazy | 0.896 | 1.000 | 1.000 | 1.000 |
+
+**What it shows**
+
+- **One small controller (27,526 parameters) matches each specialist on its
+  own task**, with no loss from sharing: on recall it is level with or
+  slightly above the specialist; on the workflow task all six joint policies
+  complete every job at every budget.
+- **Every fixed rule is wrong on one of the two tasks**: salience is the best
+  content rule on recall and the worst rule on the workflow task (0.001 at
+  5%); FIFO is the best rule on the workflow task among heuristics and fails
+  on recall when it deletes (0.007 at 2%). The recall specialist does not
+  transfer (0.000 at 5%). The joint controller is the only controller,
+  besides the oracle, that is not wrong on either; on the workflow task it
+  also beats the oracle, whose hindsight goes blind after the first
+  divergence (Experiment 5b).
+- This is the thesis claim of `docs/research/ONE_PAGE_RESEARCH_SUMMARY.md`
+  ("unlike any fixed rule, is not wrong on both"), now measured.
+
+**What it does not show**
+
+- The two tasks differ in their action sets (the workflow task is
+  delete-only), and the features include whether archive candidates exist,
+  so the policy can tell which task it is in. That is legitimate for a
+  controller, but it means this is "one network, two task-specific
+  behaviours", not one behaviour that suits both. A test with the same action
+  set on both tasks would separate the two.
+- Both tasks are synthetic and the task model is scripted.
 
 ## D5. A priced archive (2026-10-05)
 
