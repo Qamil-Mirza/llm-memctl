@@ -39,6 +39,7 @@ regenerated with the two commands given).
 | 4b | …with archive and retrieval? | Imitation of the hindsight expert deletes when it should archive. PASSED |
 | D5 | …and when the archive has a price? | Imitation collapses at any price; cost-sensitive imitation wins at low price, over-archives at high. PARTIAL |
 | D5b | Does a plug-in Bayes rule track the price? | Yes at 0.01 and 0.05 (+0.07 to +0.28); loses 0.06 to delete-all at 0.2 (D5c: not a value-calibration problem). PARTIAL |
+| GRPO | Does GRPO fix PPO, and does an oracle warm start poison RL? | GRPO is reliable on the workflow task, not better on recall; the oracle warm start halves RL's result. PASSED |
 | D2 | Can one controller serve both task structures? | **Yes**: matches each specialist on its task; every fixed rule fails on one. Holds with identical action sets (D2b). PASSED |
 | D1 | Does an archive-aware regret teacher fix 4b? | **Yes**: 0.34 → 0.85 at 2%, above every heuristic at every budget. Clean commit, 3 seeds. PASSED |
 | 5 | Does the ranking hold on a sequential task? | **No, it flips.** PASSED |
@@ -496,6 +497,67 @@ gap to the oracle is −0.115, −0.113, −0.070 and −0.013.
   a *priced* archive is D5 (running).
 - The remaining gap to the oracle (0.11 at 2%) is retrieval: the shortlist is
   BM25 top-8, and the learner retrieves 91% of the needed items it is shown.
+
+## GRPO (2026-10-05)
+
+```bash
+python -m memctl.rl.train --config configs/rl/grpo/<name>_s{0,1,2}.yaml     # 18 configs
+python -m memctl.sweep --config configs/sweeps/grpo_{recall,workflow}_eval.yaml
+```
+
+GRPO (`algorithm: grpo` in `memctl/rl/algorithms.py`): each training episode is
+played 8 times with different action samples; an episode's advantage is its
+return standardised within those 8, applied to all of its decisions with PPO's
+clipped objective and no value network. Every training uses 1,584 episodes, the
+budget of `rl_bc_ppo_archive`; 3 seeds; `policy_best.pt` (chosen on validation
+seeds) evaluated on seeds 0–99. **Provenance: commit `16c6f5c`, 88 evaluation
+cells `dirty: false`.**
+
+Recall task with archive (task success, mean [min, max] over 3 seeds; needed
+items deleted per episode at 2% in the last column):
+
+| training | 2% | 5% | 10% | 25% | deleted needed, 2% |
+|---|---|---|---|---|---|
+| PPO from scratch | 0.717 [0.702, 0.736] | 0.899 | 0.922 | 0.940 [0.850, 0.988] | 0.0 |
+| GRPO from scratch | 0.704 [0.616, 0.789] | 0.866 | 0.919 | 0.978 | 1.8 |
+| imitate the **oracle** expert, then GRPO | 0.451 [0.347, 0.559] | 0.572 | 0.737 | 0.961 | **10.7** |
+| imitate the **regret** expert, then GRPO | **0.859** [0.850, 0.864] | **0.906** | **0.944** | **0.992** | 0.0 |
+| (D1) regret imitation alone | 0.851 | 0.887 | 0.930 | 0.987 | 0.0 |
+| salience_archive_retrieve | 0.744 | 0.833 | 0.898 | 0.984 | – |
+
+Workflow task, delete-only (validation success at 5% every 144 episodes, per seed):
+
+| training | test 5% | test 10% | learning curve at 5% (validation) |
+|---|---|---|---|
+| GRPO from scratch | **0.999** [0.998, 1.000] | 1.000 | solved by 432 / 432 / 288 episodes in the three seeds |
+| PPO from scratch | 0.741 [**0.227**, 1.000] | 0.999 | solved at ~1,000 episodes in two seeds; never in the third |
+| fifo / oracle_approx_lazy | 0.028 / 0.896 | 0.221 / 1.000 | – |
+
+**What it shows**
+
+- **A warm start from the oracle poisons RL.** After imitating the oracle,
+  1,440 episodes of GRPO leave the policy at 0.451 at 2%, against 0.70–0.72
+  for RL from scratch with the same total budget; it still deletes 10.7 needed
+  items per episode. The same holds for PPO: Experiment 4b's oracle-imitation
+  + PPO policy scores 0.357 (clean rerun), PPO from scratch 0.717. This is
+  Weihs et al.'s "IL warm start is strictly worse" (Poisoned Doors) measured in
+  memory control, and it applies to the hindsight-SFT-then-GRPO recipe of
+  Mem-T and ForesightKV.
+- **The regret expert is the right warm start,** but RL adds little on top of
+  it here (0.859 against 0.851): with a free archive, imitation already finds
+  the policy RL would.
+- **GRPO is the more reliable optimiser on the sequential task**: all three
+  seeds solve it, three times faster than the PPO seeds that do, and none
+  fails, where one PPO seed stays at 0.04 throughout. This is the instability
+  of D6 (one PPO seed at 0.99, another at 0.40), removed by comparing samples of
+  the same episode instead of learning a value baseline.
+- **On the recall task GRPO is no better than PPO** (0.704 against 0.717 at 2%)
+  and its seeds spread more. Group-relative advantages help most where the
+  episode's own luck is large (the workflow task's restarts), less where it is
+  small.
+- One GRPO workflow seed fell from 1.00 to 0.29 in its last validation;
+  `policy_best.pt` avoids it, but late-training collapse is a known GRPO
+  failure and worth a KL or learning-rate schedule if GRPO is used further.
 
 ## D2. One controller for both tasks (2026-10-05)
 
