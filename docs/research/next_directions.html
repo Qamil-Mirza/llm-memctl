@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Second Hop First</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:ital,wght@0,500;0,600;1,500&display=swap">
+<style>
+/* Layout: a single reading column (memo), with a wide lane for the chart, the hop diagram and the ranked roadmap table. */
+:root {
+  --paper: #f5f6f4;
+  --sheet: #ffffff;
+  --ink: #1c2430;
+  --muted: #5b6573;
+  --rule: #d9dde2;
+  --accent: #1f6f78;      /* archive teal */
+  --accent-soft: #e2f0f0;
+  --warn: #a4521a;        /* missed-fact amber */
+  --warn-soft: #f8ebe0;
+  --good: #2f7a3f;
+  --display: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+  --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #12161c; --sheet: #1a2028; --ink: #e4e8ec; --muted: #9aa5b1; --rule: #2d3540;
+    --accent: #5fb8c0; --accent-soft: #19323a; --warn: #e39a62; --warn-soft: #3a2a1e; --good: #72c283;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #12161c; --sheet: #1a2028; --ink: #e4e8ec; --muted: #9aa5b1; --rule: #2d3540;
+  --accent: #5fb8c0; --accent-soft: #19323a; --warn: #e39a62; --warn-soft: #3a2a1e; --good: #72c283;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--paper); color: var(--ink);
+  font: 16px/1.6 var(--body);
+  padding-inline: 16px; padding-block: 40px 64px;
+}
+.wrap { max-width: 760px; margin: 0 auto; display: grid; gap: 40px; }
+.wide { max-width: 960px; margin: 0 auto; width: 100%; }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; text-wrap: balance; line-height: 1.2; margin: 0; }
+h1 { font-size: clamp(2rem, 5vw, 2.8rem); }
+h2 { font-size: 1.55rem; }
+h3 { font-size: 1.12rem; }
+p { margin: 0; }
+section { display: grid; gap: 16px; min-width: 0; }
+a { color: var(--accent); text-underline-offset: 2px; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.eyebrow { font: 500 0.75rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.lede { font-size: 1.13rem; color: var(--ink); }
+.meta { font: 0.85rem/1.5 var(--mono); color: var(--muted); }
+code, .num { font-family: var(--mono); font-size: 0.88em; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* plain-language block */
+.plain { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 24px; display: grid; gap: 18px; }
+.plain h3 { font-family: var(--body); font-size: 0.8rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.plain div { display: grid; gap: 6px; }
+
+/* hop diagram */
+.hops { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: stretch; }
+.hop { border: 1px solid var(--rule); border-radius: 6px; padding: 14px; background: var(--sheet); display: grid; gap: 6px; align-content: start; min-width: 0; }
+.hop .tag { font: 500 0.72rem/1 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; }
+.hop.q .tag { color: var(--muted); }
+.hop.ok { border-color: var(--good); }
+.hop.ok .tag { color: var(--good); }
+.hop.miss { border-color: var(--warn); background: var(--warn-soft); }
+.hop.miss .tag { color: var(--warn); }
+.hop p { font-size: 0.95rem; }
+.hop .why { font-size: 0.85rem; color: var(--muted); }
+@media (max-width: 640px) { .hops { grid-template-columns: 1fr; } }
+
+/* bar chart */
+.chart { display: grid; gap: 10px; }
+.bar-row { display: grid; grid-template-columns: 11.5rem minmax(0, 1fr) 3rem; gap: 12px; align-items: center; }
+.bar-row .lbl { font-size: 0.92rem; }
+.bar-track { height: 18px; background: var(--accent-soft); border-radius: 3px; overflow: hidden; }
+.bar { height: 100%; background: var(--warn); }
+.bar.oracle { background: var(--good); }
+.bar-row .val { font: 500 0.9rem var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.caption { font-size: 0.85rem; color: var(--muted); }
+@media (max-width: 520px) { .bar-row { grid-template-columns: 7.5rem minmax(0, 1fr) 2.6rem; } .bar-row .lbl { font-size: 0.82rem; } }
+
+/* findings list */
+.facts { display: grid; gap: 10px; padding: 0; margin: 0; list-style: none; }
+.facts li { padding-left: 16px; border-left: 2px solid var(--rule); }
+
+/* roadmap */
+.steps { display: grid; gap: 14px; counter-reset: step; padding: 0; margin: 0; list-style: none; }
+.step { background: var(--sheet); border: 1px solid var(--rule); border-radius: 6px; padding: 18px 20px; display: grid; gap: 10px; min-width: 0; }
+.step-head { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; }
+.step-head h3::before { counter-increment: step; content: counter(step) ". "; color: var(--accent); }
+.chip { font: 500 0.72rem/1 var(--mono); padding: 5px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); white-space: nowrap; }
+.chip.cost { background: transparent; border: 1px solid var(--rule); color: var(--muted); }
+.step dl { display: grid; grid-template-columns: 7.5rem minmax(0, 1fr); gap: 6px 14px; margin: 0; font-size: 0.95rem; }
+.step dt { font: 500 0.75rem/1.9 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.step dd { margin: 0; min-width: 0; }
+@media (max-width: 560px) { .step dl { grid-template-columns: 1fr; } .step dt { line-height: 1.2; } }
+.phase { font: 600 0.8rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding-top: 10px; }
+
+.unv { font: 500 0.7rem var(--mono); color: var(--warn); border: 1px solid var(--warn); border-radius: 3px; padding: 0 4px; white-space: nowrap; }
+
+/* table */
+.tbl { overflow-x: auto; border: 1px solid var(--rule); border-radius: 6px; background: var(--sheet); }
+table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 0.9rem; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font: 500 0.72rem var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+td.n { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+.skip { display: grid; gap: 8px; }
+.callout { border-left: 3px solid var(--accent); padding: 4px 0 4px 16px; }
+footer { border-top: 1px solid var(--rule); padding-top: 18px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header style="display:grid;gap:14px">
+  <p class="eyebrow">llm-memctl · next directions · 2026-10-06</p>
+  <h1>Fix the second hop before tuning GRPO</h1>
+  <p class="lede">After Experiment 9, the learned memory controller trails the oracle by about 0.10 task success at a 2% memory budget. Nearly all of that gap is one kind of miss: the fact needed for the second step of a two-step question sits in the archive, and the controller's search can never find it. This page explains that finding, why it reorders our plans, and the ranked list of what to try next.</p>
+  <p class="meta">Built from a literature search (GRPO variants, multi-turn credit assignment, RL-trained memory agents, learned retrieval) plus a new breakdown of the Exp 9 failure logs. Source notes: <code>research_notes/Next directions memory controller/</code>. Full write-up: <code>reports/Next directions memory controller.md</code>.</p>
+</header>
+
+<section class="plain" aria-labelledby="plain-h">
+  <h2 id="plain-h" style="font-size:1.25rem">In plain words</h2>
+  <div>
+    <h3>What we found</h3>
+    <p>Our small memory manager is like a secretary for the language model. It decides what stays on the desk, what goes into the filing cabinet, and what gets pulled back out. With room on the desk for only 2% of the conversation, it gets 83% of questions right. A cheating version that knows the future gets 94%. Almost all of the difference comes from questions that take two steps, like "what is the priority of the courier of sensor-171?" First you need to know the courier is clerk-172. Then you need clerk-172's priority. The secretary searches the cabinet using only the words in the question, and the question never says "clerk-172". So the second fact never even shows up as an option.</p>
+  </div>
+  <div>
+    <h3>Why it matters</h3>
+    <p>This explains why extra trial-and-error training (GRPO) did not help. You cannot learn to pick a file that never appears on your list of choices. So the next gain comes from giving the secretary a better way to search, not from training harder.</p>
+  </div>
+  <div>
+    <h3>What we do next</h3>
+    <p>First, a few cheap checks on the laptop. Then a "follow the clue" search that uses the first fact to find the second. After that, fix how GRPO scores its practice runs, and give credit to the single decision that won or lost each question instead of spreading one score across 200 decisions.</p>
+  </div>
+</section>
+
+<section aria-labelledby="gap-h">
+  <p class="eyebrow">The finding</p>
+  <h2 id="gap-h">The gap is two-hop questions the search cannot reach</h2>
+  <p>In Experiment 9 (Qwen2.5-7B reader, 100 episodes, 1,952 questions per run), full context scores 0.898. At a 2% budget the regret-BC controller scores 0.832, the oracle-approx controller 0.937, and GRPO fine-tuning from regret-BC 0.833 (change −0.004 [−0.016, +0.008]). Breaking the <code>archived_not_retrieved</code> failures down by which piece of evidence was missing gives this picture:</p>
+
+  <div class="hops" role="group" aria-label="Example two-hop failure">
+    <div class="hop q"><span class="tag">Question, step 55</span><p>What is the priority of the courier of sensor-171?</p><p class="why">The search uses these words.</p></div>
+    <div class="hop ok"><span class="tag">Hop 1 · on the desk</span><p>"the courier of sensor-171 is clerk-172"</p><p class="why">Shares "sensor-171" and "courier" with the question.</p></div>
+    <div class="hop miss"><span class="tag">Hop 2 · in the archive</span><p>"the priority of clerk-172 is M37M"</p><p class="why">Shares only "priority" with the question, like hundreds of other archived facts.</p></div>
+  </div>
+
+  <div class="chart" role="img" aria-label="Misses where only the hop-2 fact was absent, per controller at 2% budget">
+    <h3>Misses where only the second fact was missing, 2% budget</h3>
+    <div class="bar-row"><span class="lbl">Joint controller</span><div class="bar-track"><div class="bar" style="width:100%"></div></div><span class="val">215</span></div>
+    <div class="bar-row"><span class="lbl">Regret BC → GRPO</span><div class="bar-track"><div class="bar" style="width:97.2%"></div></div><span class="val">209</span></div>
+    <div class="bar-row"><span class="lbl">Regret BC (3-seed mean)</span><div class="bar-track"><div class="bar" style="width:88%"></div></div><span class="val">189</span></div>
+    <div class="bar-row"><span class="lbl">Salience-archive rule</span><div class="bar-track"><div class="bar" style="width:77.2%"></div></div><span class="val">166</span></div>
+    <div class="bar-row"><span class="lbl">Oracle-approx</span><div class="bar-track"><div class="bar oracle" style="width:4.2%"></div></div><span class="val">9</span></div>
+    <p class="caption">Counted from <code>runs/exp9b_qwen7b_controllers/*__fraction0.02/failures.jsonl</code>: two-hop questions where the hop-1 fact was active and the hop-2 fact was archived. Regret BC seeds: 186, 194, 188. Out of 1,952 questions, ~189 is about 0.097 of success, nearly the whole oracle gap.</p>
+  </div>
+
+  <ul class="facts">
+    <li><strong>The cause is in the code.</strong> The controller only chooses retrievals from the 8 best BM25 matches to the question text (<code>memctl/controllers/rl.py</code>, <code>retrieve_candidates: 8</code>). The regret expert labels retrievals only inside that shortlist (<code>memctl/rl/expert.py</code>). A hop-2 fact outside the shortlist is outside the action space for the policy, for DAgger and for GRPO alike. The oracle retrieves by hindsight, so it is not limited this way.</li>
+    <li><strong>GRPO behaved as the reach problem predicts.</strong> It retrieved more items (17.5 vs 14.3 per episode) at lower precision, so cases where both facts were missing fell. Hop-2-only misses rose from 186 to 209.</li>
+    <li><strong>What is not yet measured.</strong> The per-step shortlist is logged for only 2 episodes per cell, so the share of hop-2 facts ranked below 8th is unknown. Diagnostic 1 below measures it.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="grpo-h">
+  <p class="eyebrow">What the logs say about GRPO</p>
+  <h2 id="grpo-h">Three GRPO explanations checked against the training logs</h2>
+  <ul class="facts">
+    <li><strong>Entropy collapse is ruled out.</strong> Policy entropy stayed between 0.34 and 1.28 nats across all 60 GRPO iterations (<code>runs/recall_regret_bc_grpo_s0/train_log.jsonl</code>). The clip-higher and Clip-Cov fixes target collapse, so they are low priority.</li>
+    <li><strong>The std-division risk is real, in a narrower form.</strong> The reward counts correct answers with −0.1 per forced fallback. When all 8 rollouts answer the same questions and one takes a fallback, dividing by the group's spread (floor 1e-6) turns that 0.1 into a full ±1 advantage. Dr. GRPO describes this over-weighting of near-tied groups (<a href="https://arxiv.org/abs/2503.20783">arXiv:2503.20783</a>).</li>
+    <li><strong>Updates are small and often tied.</strong> Each iteration has only 3 groups of 8, with a budget drawn per group, and the 25% groups almost always tie. Validation at 2% stayed flat between 0.845 and 0.864 throughout training.</li>
+    <li><strong>GRPO trained against the scripted reader.</strong> It never saw "retrieved but ignored" failures, which only occur with a real LLM reader. That does not explain the retrieval gap, which shows up under both readers.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="road-h">
+  <p class="eyebrow">Recommendations, in order</p>
+  <h2 id="road-h">What to try next, and why</h2>
+  <p>The order follows value per effort. The diagnostics come first because they decide how much the later items can gain. The GRPO changes come after the retrieval fix because they can only help once the right fact is among the choices. Literature claims the research team could not re-verify are marked <span class="unv">unverified</span>.</p>
+
+  <ol class="steps">
+    <li class="phase" aria-hidden="true">Cheap diagnostics · CPU only</li>
+    <li class="step">
+      <div class="step-head"><h3>Measure how far the search misses</h3><span class="chip">diagnostic</span><span class="chip cost">hours · CPU</span></div>
+      <dl>
+        <dt>Change</dt><dd>Replay the 2% regret-BC episodes with the scripted reader and log, at each question, the BM25 rank of every archived evidence fact, split by hop.</dd>
+        <dt>Why</dt><dd>If most hop-2 facts rank below 8th, the limit is the search and fixing it comes first. If most rank inside the top 8, the policy is choosing not to retrieve them, and per-question credit (step 7) moves up.</dd>
+        <dt>Worked if</dt><dd>We know the share of hop-2 facts outside the top 8 and the ranking of everything below is settled.</dd>
+      </dl>
+    </li>
+    <li class="step">
+      <div class="step-head"><h3>Audit the GRPO groups</h3><span class="chip">diagnostic</span><span class="chip cost">hours · CPU</span></div>
+      <dl>
+        <dt>Change</dt><dd>Log, per group: reward spread, budget, whether the spread came only from fallback penalties, and the advantage size.</dd>
+        <dt>Why</dt><dd>Shows whether GRPO learned from real differences in answers or from noise. Tells us which normalisation fix (step 6) matters.</dd>
+        <dt>Worked if</dt><dd>We can state the share of fully tied groups and of noise-driven advantages.</dd>
+      </dl>
+    </li>
+    <li class="step">
+      <div class="step-head"><h3>Best-of-8 imitation baseline</h3><span class="chip">ablation</span><span class="chip cost">one CPU run</span></div>
+      <dl>
+        <dt>Change</dt><dd>For each seed, keep the best of 8 rollouts and clone it (RAFT-style).</dd>
+        <dt>Why</dt><dd>Work on LLM reasoning reports this filtered imitation is competitive with GRPO (<a href="https://arxiv.org/abs/2504.11343">arXiv:2504.11343</a> <span class="unv">unverified</span>). If it matches GRPO here, the RL objective adds nothing yet.</dd>
+        <dt>Worked if</dt><dd>We know whether GRPO beats filtered imitation at matched episodes.</dd>
+      </dl>
+    </li>
+
+    <li class="phase" aria-hidden="true">Retrieval · widen the choices</li>
+    <li class="step">
+      <div class="step-head"><h3>Follow-the-clue (bridge entity) search</h3><span class="chip">highest value</span><span class="chip cost">~1 day + cents of GPU</span></div>
+      <dl>
+        <dt>Change</dt><dd>At each question, run a second search that adds the values found in active or just-retrieved facts about the question's entity ("priority clerk-172"). Hand the union shortlist to the policy and let the expert label it. A first version is a rule: no training, no LLM.</dd>
+        <dt>Why</dt><dd>Multi-step retrieval guided by what has already been found is well supported. A small retriever policy that picks the next item given the ones it has, adding only ~4M parameters on a frozen retriever, transferred across readers (<a href="https://arxiv.org/abs/2406.14739">arXiv:2406.14739</a>, EMNLP 2024 outstanding paper). Per-step search rewards beat a single final reward by 11.2 points at 3B and 4.2 at 7B (StepSearch, <a href="https://arxiv.org/abs/2505.15107">arXiv:2505.15107</a>). LongMemEval's fact-based key expansion raised recall@k by 9.4% (<a href="https://arxiv.org/abs/2410.10813">arXiv:2410.10813</a>).</dd>
+        <dt>Worked if</dt><dd>Hop-2-only misses fall toward the oracle's 9, and the paired 2% interval against regret BC excludes zero. Ceiling: about +0.09 success at 2%.</dd>
+      </dl>
+    </li>
+    <li class="step">
+      <div class="step-head"><h3>Small reranker trained on hindsight labels</h3><span class="chip">retrieval</span><span class="chip cost">1–2 days · CPU</span></div>
+      <dl>
+        <dt>Change</dt><dd>Train a scorer over archive candidates with a contrastive loss: the hindsight-needed fact is the positive, older versions of the same fact are hard negatives. Add a recency term. The existing 27k MLP can serve as the scorer.</dd>
+        <dt>Why</dt><dd>Versioned facts ("as of step N…") look almost identical to BM25. Similarity plus a recency prior achieved perfect latest-version retrieval on synthetic data (<a href="https://arxiv.org/abs/2509.19376">arXiv:2509.19376</a>). MemRL keeps the LLM frozen and learns only a utility score over similarity-filtered memories (<a href="https://arxiv.org/abs/2601.03192">arXiv:2601.03192</a>). DeepRetrieval rewards retrieval recall directly with no generator in the loop (<a href="https://arxiv.org/abs/2503.00223">arXiv:2503.00223</a>). Training needs zero LLM calls.</dd>
+        <dt>Worked if</dt><dd>Recall@3 of the hindsight fact rises on replayed episodes before any LLM evaluation, and one-hop and hop-1 misses (75–99 per seed vs the oracle's 50) fall.</dd>
+      </dl>
+    </li>
+
+    <li class="phase" aria-hidden="true">GRPO · after the retrieval fix</li>
+    <li class="step">
+      <div class="step-head"><h3>Normalise across the batch, bigger batches, per-budget groups</h3><span class="chip">GRPO</span><span class="chip cost">hours</span></div>
+      <dl>
+        <dt>Change</dt><dd>Drop the per-group std division or use batch-level std. Raise episodes per iteration from 24 to 96 or more. Compute statistics separately per budget fraction.</dd>
+        <dt>Why</dt><dd>Dr. GRPO removes the std term to stop over-weighting near-tied groups (<a href="https://arxiv.org/abs/2503.20783">arXiv:2503.20783</a>). A group-mean baseline with batch std was one of two tricks sufficient to beat GRPO and DAPO in the Lite PPO study (<a href="https://arxiv.org/abs/2508.08221">arXiv:2508.08221</a>). UMA's Task-Stratified GRPO normalises different task groups separately (<a href="https://arxiv.org/abs/2602.18493">arXiv:2602.18493</a>). Bigger batches cost no LLM calls because training uses the scripted reader.</dd>
+        <dt>Worked if</dt><dd>2% validation leaves its 0.845–0.864 band. Expect small gains until retrieval is fixed.</dd>
+      </dl>
+    </li>
+    <li class="step">
+      <div class="step-head"><h3>Per-question credit</h3><span class="chip">credit assignment</span><span class="chip cost">1–2 days · no extra LLM calls</span></div>
+      <dl>
+        <dt>Change</dt><dd>Today one episode advantage goes to all ~200 decisions. The simulator replays exactly, so all 8 rollouts face the same question at the same step. Compare, across the 8, whether question q was answered, and add that to the advantage of the decisions made at q: A = A<sub>episode</sub> + ω·A<sub>question</sub>. Also credit the question's outcome to earlier archive and evict decisions that touched its evidence, keeping the summed reward unchanged.</dd>
+        <dt>Why</dt><dd>The 2025–26 agent-RL papers agree that gains come from giving different steps different advantages by comparing actions from the same state. GiGPO reports more than 12% over GRPO on ALFWorld (<a href="https://arxiv.org/abs/2505.10978">arXiv:2505.10978</a>), but it needs repeated states, which our rollouts lose after their first different decision. The question step is a better anchor that we get for free. Redistribution that keeps the sum fixed follows RUDDER (<a href="https://arxiv.org/abs/1806.07857">arXiv:1806.07857</a>) and SCAR (<a href="https://arxiv.org/abs/2505.20417">arXiv:2505.20417</a>). This exact design is our inference; no paper tests it on a non-LLM memory controller.</dd>
+        <dt>Worked if</dt><dd>At matched episodes, GRPO's 2% validation rises and hop-2 misses fall faster than with episode-level advantages.</dd>
+      </dl>
+    </li>
+    <li class="step">
+      <div class="step-head"><h3>Keep the expert in the loss</h3><span class="chip">GRPO</span><span class="chip cost">~1 day</span></div>
+      <dl>
+        <dt>Change</dt><dd>Train on GRPO loss plus DAgger cross-entropy on visited states plus a pull (KL) toward the frozen BC policy. Raise the expert weight on tied groups.</dd>
+        <dt>Why</dt><dd>Methods that keep imitation inside RL protect a strong starting policy: CHORD (<a href="https://arxiv.org/abs/2508.11408">arXiv:2508.11408</a>), SRFT, +9.0 over the best RL baseline (<a href="https://arxiv.org/abs/2506.19767">arXiv:2506.19767</a>), and RSTG, which distils from a teacher only on all-fail groups (<a href="https://arxiv.org/abs/2608.00782">arXiv:2608.00782</a>). Our regret expert is free in hindsight, so this is cheap. ADVISOR's warning that imitating a teacher who sees more can hurt (<a href="https://arxiv.org/abs/2007.12173">arXiv:2007.12173</a>) matches oracle BC's 0.320.</dd>
+        <dt>Worked if</dt><dd>No regression from regret BC, plus gains on seeds that used to tie.</dd>
+      </dl>
+    </li>
+    <li class="step">
+      <div class="step-head"><h3>Exploration slot for never-retrieved facts</h3><span class="chip">retrieval + RL</span><span class="chip cost">~2 days</span></div>
+      <dl>
+        <dt>Change</dt><dd>Reserve one retrieval slot for an archived fact sampled with a known probability, and reweight its outcomes (inverse propensity weighting).</dd>
+        <dt>Why</dt><dd>Causal Memory Policy (October 2026) shows that the value of a memory cannot be estimated if it is never retrieved: 54% of required memories on LongMemEval and 67% on LoCoMo. Exploration slots fix that (<a href="https://arxiv.org/abs/2610.02070">arXiv:2610.02070</a>). The same paper warns that utility depends on the question, so the reranker's features must be question-specific.</dd>
+        <dt>Worked if</dt><dd>We get unbiased value estimates for facts that the search never surfaces.</dd>
+      </dl>
+    </li>
+    <li class="step">
+      <div class="step-head"><h3>Expert rollouts inside groups, and branching</h3><span class="chip">later</span><span class="chip cost">days · some LLM</span></div>
+      <dl>
+        <dt>Change</dt><dd>Put 1–2 expert or oracle rollouts into each group of 8 (LUFFY-style). Separately, branch from shared prefixes at contested archive and retrieve decisions and stop each branch at the next question that needs the item.</dd>
+        <dt>Why</dt><dd>LUFFY reports +6.4 on maths benchmarks by mixing expert traces into groups (<a href="https://arxiv.org/abs/2504.14945">arXiv:2504.14945</a>), but the oracle's key retrievals are not choosable inside today's shortlist, so this waits for step 4. Branching gives exact per-decision advantages: VinePPO reaches baseline peak in up to 3× less wall-clock time (<a href="https://arxiv.org/abs/2410.01679">arXiv:2410.01679</a>), and Tree-GRPO matched chain-based RL with a quarter of the rollouts (<a href="https://arxiv.org/abs/2509.21240">arXiv:2509.21240</a>). Use branching as an audit of the cheaper per-question credit.</dd>
+        <dt>Worked if</dt><dd>Per-decision advantages agree with the oracle's choices more often than episode-level ones.</dd>
+      </dl>
+    </li>
+  </ol>
+</section>
+
+<section aria-labelledby="skip-h">
+  <p class="eyebrow">Lower priority</p>
+  <h2 id="skip-h">GRPO variants we can skip for now</h2>
+  <div class="skip">
+    <p><strong>Length-normalisation fixes</strong> (Dr. GRPO's 1/|o|, DAPO's token-level loss): episodes have a fixed 200-step length, so these change nothing.</p>
+    <p><strong>GSPO and GMPO</strong> (<a href="https://arxiv.org/abs/2507.18071">arXiv:2507.18071</a>): they fix noise in token-level ratios for large LLMs. A sequence-level ratio would merge 200 independent decisions into one and throw away per-step credit.</p>
+    <p><strong>DAPO-style oversample and discard</strong>: it wastes rollouts once an LLM reader is in the loop. Prompt Replay, which re-picks seeds whose results are mixed, is the cheaper version (<a href="https://arxiv.org/abs/2603.21177">arXiv:2603.21177</a>).</p>
+    <p><strong>Clip-higher and entropy fixes</strong>: entropy did not collapse in our runs.</p>
+    <p><strong>Reader-side fixes</strong> for "retrieved but ignored" (~20 per seed): put retrieved facts right before the question, newest last, tagged with their step. That is an hour's work, not a project.</p>
+  </div>
+</section>
+
+<section class="wide" aria-labelledby="tbl-h">
+  <h2 id="tbl-h">Summary table</h2>
+  <div class="tbl">
+    <table>
+      <thead><tr><th>#</th><th>Direction</th><th>Cost</th><th>Success signal</th></tr></thead>
+      <tbody>
+        <tr><td class="n">1</td><td>Search-miss diagnostic</td><td>hours, CPU</td><td>share of hop-2 facts outside top 8</td></tr>
+        <tr><td class="n">2</td><td>GRPO group audit</td><td>hours, CPU</td><td>share of tied groups and noise-driven advantages</td></tr>
+        <tr><td class="n">3</td><td>Best-of-8 imitation</td><td>one CPU run</td><td>matching GRPO means RL adds nothing yet</td></tr>
+        <tr><td class="n">4</td><td>Follow-the-clue search</td><td>~1 day + cents GPU</td><td>hop-2-only misses → ~9; up to +0.09 at 2%</td></tr>
+        <tr><td class="n">5</td><td>Hindsight reranker + recency</td><td>1–2 days, CPU</td><td>recall@3 of needed fact up</td></tr>
+        <tr><td class="n">6</td><td>Batch std, bigger batches, per-budget groups</td><td>hours</td><td>2% validation leaves 0.845–0.864</td></tr>
+        <tr><td class="n">7</td><td>Per-question credit</td><td>1–2 days, no extra LLM</td><td>faster fall in hop-2 misses at matched episodes</td></tr>
+        <tr><td class="n">8</td><td>Expert in the loss + KL to BC</td><td>~1 day</td><td>no regression; gains on tied seeds</td></tr>
+        <tr><td class="n">9</td><td>Exploration slot</td><td>~2 days</td><td>unbiased value of never-retrieved facts</td></tr>
+        <tr><td class="n">10</td><td>Expert rollouts in groups; branching</td><td>days, some LLM</td><td>per-decision advantages match the oracle</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section aria-labelledby="check-h">
+  <h2 id="check-h">Check before citing in the thesis</h2>
+  <p>The researchers recalled these from memory or saw them only in search snippets: DAPO's clip value and AIME scores, VAPO's 60.4, RLOO, ReMax, the RAFT++ minimalist paper, ReLIFT's arXiv ID, Mroueh's GRPO analysis (arXiv:2503.06639), GRESO and PODS, Mu-GRPO, TRACE, arXiv:2602.20722, Re3's arXiv ID, R1-Searcher's algorithm (sources disagree), and Ng et al.'s potential-based shaping. Lite PPO, GSPO, GMPO, LUFFY, SRFT, CHORD, WSRL, Tree-GRPO and VersionRAG were checked against search snippets, not full text.</p>
+  <p class="callout">The idea most likely to matter for the thesis: our simulator replays exactly, so every rollout in a group meets the same question at the same step. That turns per-decision credit assignment, which LLM-agent papers need tree search or a learned critic for, into nearly free bookkeeping. If the follow-the-clue search closes most of the hop-2 gap and per-question credit then lets GRPO beat its BC start with a clean interval, that is the first evidence that RL adds something imitation cannot.</p>
+</section>
+
+<footer>
+  <p class="meta">Numbers: EXPERIMENTS.md §9 and <code>runs/exp9b_qwen7b_controllers/</code>. Earlier literature review: <code>docs/research/RELATED_WORK_LITERATURE_REPORT.md</code> (2026-09-30).</p>
+</footer>
+
+</div>
+</body>
+</html>

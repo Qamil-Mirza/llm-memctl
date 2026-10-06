@@ -1,10 +1,15 @@
 # Experiments
 
 Every experiment run while the framework was built, with the command that
-reproduces it, the result, and what it does and does not show. Dates are
-2026-09-30. Full tables and figures are in each `runs/<name>/report.md` and
-`runs/<name>/plots/` (the `runs/` folder is not in git; every table below can be
-regenerated with the two commands given).
+reproduces it, the result, and what it does and does not show. Experiments
+1–7 date from 2026-09-30; later sections carry their own dates. To get full
+tables and figures, generate them with `python -m memctl.analysis.report
+runs/<name>` (writes `runs/<name>/report.md` and `runs/<name>/plots/`; the
+`runs/` folder is not in git; every table below can be regenerated with the
+commands given).
+
+**Contents** (sections are not in numeric order): 1, 1b, 1c, 1d, 2, 3, 4,
+4b, D1, GRPO, D2 (D2b), D5 (D5b, D5c), 8, 9, 5, 5b, 6, 6c, 7 (7a, 7b).
 
 **How to read the numbers**
 
@@ -20,9 +25,10 @@ regenerated with the two commands given).
   tree (`dirty: true`). On 2026-10-05 every training and sweep was rerun from
   clean commit `ef57fc4` (642 run folders, all `dirty: false`; Experiment 7
   needs a remote model and was not rerun). **Every task-success number
-  reproduced exactly except 8 cells of Experiment 4b**, the two archive-trained
-  RL policies, whose table below now shows the clean values (they moved by up
-  to 0.095, within training-seed spread; the conclusions are unchanged). The
+  reproduced exactly except 9 cells of Experiment 4b**: the two archive-trained
+  RL policies (8 cells, moved by up to 0.095, within training-seed spread) and
+  `salience_archive_retrieve` at 2% (0.737 → 0.744). The table below shows the
+  clean values; the conclusions are unchanged. The
   per-cell detail in the 4b discussion (retrieval counts, failure counts) is
   from the original run. Experiments D1–D5c were run from clean commits as
   stated in their sections.
@@ -44,10 +50,11 @@ regenerated with the two commands given).
 | D1 | Does an archive-aware regret teacher fix 4b? | **Yes**: 0.34 → 0.85 at 2%, above every heuristic at every budget. Clean commit, 3 seeds. PASSED |
 | 5 | Does the ranking hold on a sequential task? | **No, it flips.** PASSED |
 | 5b | Learned controllers on the sequential task | Task-trained imitation reaches 1.0 where the blind oracle does not; the recall-trained policy does not transfer. PASSED |
-| 6 | LoCoMo and LongMemEval: evidence retention under a budget | Pipeline PASSED; QA accuracy BLOCKED |
+| 6 | LoCoMo and LongMemEval: evidence retention under a budget | Pipeline PASSED; QA accuracy not run (now feasible with the `openai` backend on a rented GPU) |
 | 6c | Dense against lexical retrieval on LoCoMo | See §6c. PASSED |
-| 7 | A real language model as task model and as controller | Smoke tests only. PARTIAL |
+| 7 | A real language model as task model and as controller | Smoke tests only; the task-model half is superseded by Experiments 8 and 9. PARTIAL |
 | 8 | A real language model (qwen2.5:3b) as the task model | A small, well-chosen memory beats full context; the D1 ranking holds. PASSED (1 seed, 30 episodes) |
+| 9 | …with Qwen2.5-7B as the task model, 100 episodes | Every D-series result holds; oracle-approx beats full context by +0.04–0.06; the remaining gap is archived-but-not-retrieved. PASSED |
 
 ---
 
@@ -403,7 +410,7 @@ here unchanged: its archive and retrieval outputs were never trained.
 |---|---|---|---|---|
 | fifo_delete | 0.007 | 0.058 | 0.238 | 0.618 |
 | salience_delete | 0.365 | 0.546 | 0.738 | 0.962 |
-| salience_archive_retrieve | 0.737 | 0.833 | 0.898 | 0.984 |
+| salience_archive_retrieve | 0.744 | 0.833 | 0.898 | 0.984 |
 | rl_bc_archive (imitation of the hindsight expert) | 0.340 | 0.528 | 0.731 | 0.969 |
 | rl_bc_ppo_archive (imitation, then 1,344 PPO episodes) | 0.357 | 0.511 | 0.701 | 0.967 |
 | rl_bc_delete_only_policy (untrained retrieval head) | 0.591 | 0.849 | 0.939 | 0.982 |
@@ -423,8 +430,9 @@ episode (precision 0.11, recall 0.80) and fails only by
   and archives the rest. The learner cannot tell the two apart, imitates the
   majority action (delete), and loses evidence it could have archived for
   free. Its failures are deletions, not retrieval misses. PPO on task reward
-  moved it a little (+0.06 at 2–5%) in 1,344 episodes but did not undo the
-  habit.
+  did not undo the habit in 1,344 episodes: essentially no gain (clean rerun,
+  `rl_bc_archive` → `rl_bc_ppo_archive`: 0.340 → 0.357 at 2%, 0.528 → 0.511
+  at 5%).
 - A policy that archives freely and retrieves liberally does better here
   than one that decides carefully, because the archive costs nothing and the
   retriever is decent: the untrained retrieval head, which retrieves most of
@@ -433,7 +441,8 @@ episode (precision 0.11, recall 0.80) and fails only by
 - The right expert for this action set is not the hindsight-optimal one but a
   cost-aware one (archive when unsure; retrieve generously when the archive
   is free), or the learner needs the archive's asymmetry expressed in the
-  reward. Neither was tried.
+  reward. Both were tried later: the regret expert (D1) and a priced archive
+  (D5).
 
 ## D1. The regret teacher (2026-10-05)
 
@@ -488,14 +497,14 @@ gap to the oracle is −0.115, −0.113, −0.070 and −0.013.
 - **Imitation now beats every fixed rule** at 2–10% and ties at 25%, with a
   quarter of the heuristics' retrievals (14 against 57 per episode).
 - The Experiment 4 policy, whose archive outputs were never trained, scored
-  0.591 at 2% in 4b, above the oracle-expert learner (0.383): imitating the
+  0.591 at 2% in 4b, above the oracle-expert learner (0.340): imitating the
   oracle made the operation choice *worse than untrained*.
 
 **What it does not show**
 
 - The archive is free here, so "archive everything" is the right
   operation choice and the regret teacher says so. Whether a learner tracks
-  a *priced* archive is D5 (running).
+  a *priced* archive is D5 (complete).
 - The remaining gap to the oracle (0.11 at 2%) is retrieval: the shortlist is
   BM25 top-8, and the learner retrieves 91% of the needed items it is shown.
 
@@ -550,8 +559,9 @@ Workflow task, delete-only (validation success at 5% every 144 episodes, per see
 - **GRPO is the more reliable optimiser on the sequential task**: all three
   seeds solve it, three times faster than the PPO seeds that do, and none
   fails, where one PPO seed stays at 0.04 throughout. This is the instability
-  of D6 (one PPO seed at 0.99, another at 0.40), removed by comparing samples of
-  the same episode instead of learning a value baseline.
+  seen in Experiment 5b (single PPO seeds at 0.992 with discount 0 and 0.404
+  with discount 0.995), removed by comparing samples of the same episode
+  instead of learning a value baseline.
 - **On the recall task GRPO is no better than PPO** (0.704 against 0.717 at 2%)
   and its seeds spread more. Group-relative advantages help most where the
   episode's own luck is large (the workflow task's restarts), less where it is
@@ -820,8 +830,7 @@ at 25% +0.078 [+0.037, +0.121]; FIFO-archive at 25% +0.062 [+0.016, +0.109].
   part of what a controller should optimise, and only an LLM in the loop
   measures it.
 - With 30 episodes and one training seed per learned policy, these are
-  first numbers; the rented-GPU runs should repeat them at 100 episodes with
-  a 7–8B model.
+  first numbers; Experiment 9 repeats them at 100 episodes with a 7B model.
 
 ## 9. Experiment 8 with a 7B task model at 100 episodes (2026-10-06)
 
@@ -871,7 +880,7 @@ BC start −0.004 [−0.016, +0.008]; oracle − regret policy +0.105
 - **Every D-series result survives a real 7B reader.** The regret teacher beats
   the oracle teacher by 0.51 at 2% across three training seeds (the
   oracle-taught policies' failures are ~1,300 `evicted` per seed, the regret
-  policies' none); the learned policy beats the best fixed rule by 0.10 at 2%;
+  policies' none); the learned policy beats the best fixed rule (FIFO-archive, 0.741) by 0.09 at 2%;
   one joint controller matches the recall specialist; GRPO fine-tuning neither
   helps nor hurts a good imitation start.
 - **"Less context can be better" holds, but is smaller with a stronger
@@ -883,9 +892,21 @@ BC start −0.004 [−0.016, +0.008]; oracle − regret policy +0.105
   up 0.066 for 4.6% of the tokens.
 - **The remaining gap to the oracle is retrieval.** At 2% the regret policy's
   failures are mostly `archived_not_retrieved` (~300 per seed against 72 for
-  the oracle): the evidence was kept in the archive but the lexical top-3
-  retrieval did not bring it back. Better retrieval, not better eviction, is
+  the oracle): the evidence was kept in the archive but the retrieval step
+  (the policy picks from a BM25 top-8 shortlist searched with the question
+  text) did not bring it back. Better retrieval, not better eviction, is
   where the next 0.10 is.
+- **Most of that gap is the second hop of two-hop questions** (breakdown of
+  `failures.jsonl`, added 2026-10-06). Misses where the hop-1 fact was active
+  and only the hop-2 fact was archived: regret BC 186 / 194 / 188 per seed
+  (≈0.097 of 1,952 queries), regret BC → GRPO 209, joint 215,
+  salience-archive 166, oracle-approx 9. The hop-2 fact names a bridge
+  entity ("the priority of clerk-172") that the question ("the priority of
+  the courier of sensor-171") never mentions, so the question-text shortlist
+  rarely contains it, and the regret expert labels retrievals only inside
+  that shortlist. GRPO retrieved more (17.5 against 14.3 items per episode)
+  at lower precision, cutting both-missing cases but not hop-2-only ones.
+  Next steps: `docs/research/next_directions.html`.
 
 ## 5. The sequential task
 
@@ -1027,8 +1048,9 @@ metrics run on real benchmark data, and the ordering seen on the synthetic task
 
 **What it does not show**
 
-- QA accuracy. That needs a task model, which is BLOCKED on this machine (see
-  INFRA_REPORT.md). The numbers above are an upper bound for a perfect reader.
+- QA accuracy. That needs a task model and was not run; the GPU block has since
+  been lifted by renting one (RunPod, vLLM; Experiment 9). The numbers above
+  are an upper bound for a perfect reader.
 - Anything about long-horizon control. Every question comes after the history.
 - That salience is good on LongMemEval for a meaningful reason. It prefers
   user turns to assistant turns, and in this dataset the evidence is mostly in

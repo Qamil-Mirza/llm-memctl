@@ -27,7 +27,7 @@ environment ──observation──▶ memory state ◀──actions── memor
 python3 -m venv .venv
 .venv/bin/pip install -c constraints.txt -e ".[dev]"
 .venv/bin/pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu   # RL controller; CPU is enough
-.venv/bin/python -m pytest -q          # 153 tests, about 80 seconds
+.venv/bin/python -m pytest -q          # 165 tests
 .venv/bin/python -m memctl.doctor      # what can run on this machine
 ```
 
@@ -45,9 +45,43 @@ GPU stack for local Hugging Face models.
 | Train the RL controller | `python -m memctl.rl.train --config configs/rl/rl_bc.yaml` |
 | Learning curve | `python -m memctl.analysis.plots runs/rl_bc` |
 | Environment check | `python -m memctl.doctor` |
+| …and probe an LLM server | `python -m memctl.doctor --base-url http://localhost:8000/v1` |
+| A grid in parallel, or rerun named cells | `python -m memctl.sweep --config <sweep>.yaml --workers N --only <label>,<label>` |
+| Pool training seeds (`_s<k>` labels) | `python -m memctl.analysis.seeds runs/<sweep> [--metric task_success]` |
+| Score a sweep under a priced archive | `python -m memctl.analysis.priced runs/<sweep> --price 0.05 [--json]` |
+| What a policy does with needed / never-needed items | `python -m memctl.rl.probe runs/<training>/checkpoints/policy.pt [--episodes 20] [--fractions 0.02 0.05]` |
+| Fit P(needed again) for the plug-in archive rule | `python -m memctl.rl.needed --config configs/rl/d5/needed_s0.yaml` |
 
 Running a sweep again resumes it: cells have stable folder names and finished
 episodes are skipped.
+
+## Training the RL controller
+
+`python -m memctl.rl.train --config <x>.yaml` takes an ordinary experiment
+config with `controller: {name: rl, ...}` plus a `training` section (full
+reference in the docstring of `memctl/rl/train.py`):
+
+```yaml
+training:
+  seed_offset: 100000                 # training seeds; validation uses eval.seed_offset; experiments use 0, 1, ...
+  budget_fractions: [0.02, 0.05]      # optional: a budget drawn per episode
+  phases:                             # run in order on one policy
+    - {algorithm: bc, iterations: 8, episodes: 16, epochs: 4, lr: 0.003, dagger: true}
+    - {algorithm: grpo, iterations: 40, episodes: 24, group: 8, epochs: 4, lr: 0.0003}
+  eval: {every: 4, episodes: 20, seed_offset: 50000}
+  expert: {kind: regret}              # oracle (default) | regret; archive_cost: p prices the archive
+  tasks:                              # optional: one policy on several tasks, one episode each in turn
+    - {label: recall, env: {name: synthetic_recall}}
+    - {label: workflow, env: {name: workflow}, agent: {name: scripted_tool_agent}}
+```
+
+Algorithms: `bc` (imitation of the expert, DAgger by default), `cost`
+(cost-sensitive imitation: expected regret along the expert's removals),
+`grpo` (group-relative advantages over `group` samples of one episode, no value
+network), `ppo`, `reinforce`. The expert (`memctl/rl/expert.py`): `oracle`
+labels the hindsight argmin; `regret` accepts every (item, operation) pair of
+least hindsight regret. The output folder holds `checkpoints/policy.pt` (last)
+and `checkpoints/policy_best.pt` (best validation success).
 
 ## One step of an episode
 
@@ -111,7 +145,7 @@ All implement `MemoryController` (`memctl/controllers/base.py`):
 | `oracle` | hindsight; `method: approx` or `exact`. Analysis only. |
 | `prompted_llm` | a language model that replies with a JSON list of actions |
 | `jev` | TypeSafe's Jev model behind an adapter; needs `JEV_API_KEY` |
-| `rl` | a learned item scorer; `checkpoint:` loads a trained policy |
+| `rl` | a learned item scorer; `checkpoint:` loads a trained policy; with `needed_model:` (from `memctl.rl.needed`) and `archive_price:` it archives an item iff P(needed) × `need_value` (default 1) > `archive_price` |
 
 Every priority heuristic takes the same options, which is how the delete-only,
 archive-only, compression-only and retrieval variants are built:
@@ -145,6 +179,21 @@ All implement `TaskEnvironment` (`memctl/envs/base.py`): `reset`, `step`,
 |---|---|
 | `scripted_reader`, `scripted_tool_agent` | succeed exactly when the needed text is in ACTIVE; `noise` injects reasoning failures at a known rate |
 | `llm` | a language model (`model: {backend: hf | openai | stub, ...}`) |
+
+The `openai` backend talks to any OpenAI-compatible chat-completions server
+(vLLM, Ollama `/v1`, llama.cpp), greedy decoding:
+
+```yaml
+agent:
+  name: llm
+  model: {backend: openai, name: qwen2.5-7b-instruct, base_url: http://localhost:8000/v1,
+          api_key_env: MY_KEY, timeout_s: 120, cache_dir: cache/generations_x}
+```
+
+`api_key_env` names an environment variable (optional); `timeout_s` defaults
+to 300; `cache_dir` saves every generation to disk so reruns cost nothing.
+Retries on transient failures (5xx, timeouts, empty bodies; 5 retries with
+backoff) and a `User-Agent` header (some proxies reject urllib's) are built in.
 | `null` | never answers; for measuring evidence retention without a task model |
 
 ## Hindsight
