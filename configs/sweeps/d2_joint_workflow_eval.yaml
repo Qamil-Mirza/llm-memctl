@@ -1,0 +1,29 @@
+# D2 on the workflow task (delete-only, as in 5b): the joint policy against the workflow
+# specialist (rl_bc_workflow, from the clean rerun) and the recall specialist, which never saw it.
+name: d2_joint_workflow_eval
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env: {name: workflow}
+  agent: {name: scripted_tool_agent, noise: 0.0}
+  memory:
+    allowed_operations: [KEEP, EVICT, NO_OP]
+    embedder: hashing
+  logging: {detail_episodes: 0}
+grid:
+  controller:
+    - fifo
+    - salience
+    - {name: oracle, method: approx, eager: false, label: oracle_approx_lazy}
+    - {name: rl, label: workflow_specialist, checkpoint: runs/rl_bc_workflow/checkpoints/policy.pt}
+    - {name: rl, label: recall_specialist_s0, checkpoint: runs/rl_bc_archive_regret_s0/checkpoints/policy.pt}
+    - {name: rl, label: joint_bc_s0, checkpoint: runs/joint_bc_regret_s0/checkpoints/policy.pt}
+    - {name: rl, label: joint_cost_s0, checkpoint: runs/joint_cost_regret_s0/checkpoints/policy.pt}
+    - {name: rl, label: recall_specialist_s1, checkpoint: runs/rl_bc_archive_regret_s1/checkpoints/policy.pt}
+    - {name: rl, label: joint_bc_s1, checkpoint: runs/joint_bc_regret_s1/checkpoints/policy.pt}
+    - {name: rl, label: joint_cost_s1, checkpoint: runs/joint_cost_regret_s1/checkpoints/policy.pt}
+    - {name: rl, label: recall_specialist_s2, checkpoint: runs/rl_bc_archive_regret_s2/checkpoints/policy.pt}
+    - {name: rl, label: joint_bc_s2, checkpoint: runs/joint_bc_regret_s2/checkpoints/policy.pt}
+    - {name: rl, label: joint_cost_s2, checkpoint: runs/joint_cost_regret_s2/checkpoints/policy.pt}
+  memory.budget.fraction: [0.05, 0.1, 0.2, 0.4]
