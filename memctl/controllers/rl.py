@@ -35,7 +35,7 @@ from memctl.memory.actions import MemoryAction, Operation
 from memctl.memory.items import Fidelity, MemoryItem
 from memctl.memory.state import MemoryView
 from memctl.retrieval import build_retriever
-from memctl.rl.policy import N_COLUMNS, REMOVAL_OPERATIONS, RETRIEVE_COLUMN, ItemPolicy
+from memctl.rl.policy import N_COLUMNS, REMOVAL_OPERATIONS, RETRIEVE_COLUMN, ItemPolicy, NeededModel
 from memctl.task import TaskState
 
 N_REMOVALS = len(REMOVAL_OPERATIONS)
@@ -63,10 +63,14 @@ class Decision:
     log_prob: float = 0.0
     value: float = 0.0
     return_to_go: float = 0.0  # filled in by the trainer
+    advantage: float | None = None  # set by trainers that compute their own (GRPO: group-relative)
     # Expert labels, when a trainer supplies them. `expert_rank[i, op]` is the order in which an
     # expert would remove item i by that operation: 0 first, ties allowed, -1 for "not this way".
     expert_rank: np.ndarray | None = None
     expert_retrieved: list[int] | None = None
+    # Optional: the expert's cost of removing item i by that operation (NaN where unavailable),
+    # for cost-sensitive imitation. Lower is better; `expert_rank` orders the same pairs.
+    expert_cost: np.ndarray | None = None
 
 
 def accepted_picks(rank: np.ndarray, mask: torch.Tensor) -> list[int]:
@@ -121,10 +125,18 @@ class RLController(MemoryController):
         self.record = False
         self.recorded: list[Decision] = []
         self.rewards: list[tuple[int, float]] = []
-        self.expert: Callable[[Decision], tuple[np.ndarray, list[int]]] | None = None
+        self.expert: Callable[[Decision], tuple] | None = None  # (rank, retrieved[, cost])
         self.follow_expert = False
+        # Trainers that sample one episode several times (GRPO) set a different value per sample.
+        self.sample_offset = 0
         self._roots: dict[str, tuple[str, ...]] = {}
         self._info: dict = {}
+        # Optional plug-in Bayes rule for a priced archive (memctl/rl/needed.py): the policy picks which
+        # item to remove; the item is archived iff P(needed again) x need_value > archive_price, deleted
+        # otherwise. need_value is what keeping a needed item is worth, in the price's unit (queries).
+        self.needed_model = NeededModel.load(config["needed_model"]) if config.get("needed_model") else None
+        self.archive_price = float(config.get("archive_price", 0.0))
+        self.need_value = float(config.get("need_value", 1.0))
         if config.get("checkpoint"):
             self.load(config["checkpoint"])
 
@@ -136,7 +148,8 @@ class RLController(MemoryController):
         super().reset(episode)
         self.featurizer.reset()
         self.recorded, self.rewards, self._roots = [], [], {}
-        self.generator.manual_seed(hash((self.seed, episode.seed)) % (2**31))
+        key = (self.seed, episode.seed) if not self.sample_offset else (self.seed, episode.seed, self.sample_offset)
+        self.generator.manual_seed(hash(key) % (2**31))
         self.retriever = build_retriever(self.config.get("retrieval_method", "lexical"), episode.embedder)
 
     def update(self, feedback: Feedback) -> None:
@@ -194,7 +207,9 @@ class RLController(MemoryController):
             retrieve_tokens=[item.token_count for item, _ in shortlist],
         )
         if self.expert is not None:
-            decision.expert_rank, decision.expert_retrieved = self.expert(decision)
+            labels = self.expert(decision)
+            decision.expert_rank, decision.expert_retrieved = labels[0], labels[1]
+            decision.expert_cost = labels[2] if len(labels) > 2 else None
         self._choose(decision)
         if self.record:
             self.recorded.append(decision)
@@ -245,6 +260,11 @@ class RLController(MemoryController):
 
         mask = torch.from_numpy(decision.mask).clone()
         savings = decision.savings
+        needed = None
+        if self.needed_model is not None and n:
+            rows = np.concatenate([decision.items[:n], np.repeat(decision.global_features[None, :], n, axis=0)], axis=1)
+            with torch.no_grad():
+                needed = torch.sigmoid(self.needed_model(torch.from_numpy(rows))).numpy()
         while excess > 0 and bool(mask.any()):
             flat = logits[:n, :N_REMOVALS].masked_fill(~mask, -1e9).flatten()
             log_probs = torch.log_softmax(flat, dim=0)
@@ -257,6 +277,10 @@ class RLController(MemoryController):
                 pick = int(torch.argmax(flat))
             else:
                 pick = int(torch.multinomial(log_probs.exp(), 1, generator=self.generator))
+            if needed is not None and not accepted:
+                i, evict, archive = pick // N_REMOVALS, REMOVAL_OPERATIONS.index(Operation.EVICT), REMOVAL_OPERATIONS.index(Operation.MOVE_TO_ARCHIVE)
+                if pick % N_REMOVALS in (evict, archive) and bool(mask[i, evict]) and bool(mask[i, archive]):
+                    pick = i * N_REMOVALS + (archive if needed[i] * self.need_value > self.archive_price else evict)
             log_prob += float(log_probs[pick])
             decision.picks.append(pick)
             mask[pick // N_REMOVALS] = False

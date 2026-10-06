@@ -1,0 +1,28 @@
+# Experiment 8a: a real language model as the frozen task model (qwen2.5:3b, 4-bit, Ollama on
+# this machine's 4 GB GPU, served with OLLAMA_CONTEXT_LENGTH=16384 so no prompt is truncated).
+# 8a: full context (budget-independent). 8b: controllers under a budget.
+# Run from the D1 worktree (checkpoints), one worker (one GPU):
+#   python -m memctl.sweep --config <this file> --workers 1
+name: exp8a_llm_task_model
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 30
+  env: {name: synthetic_recall, horizon: 200}
+  agent:
+    name: llm
+    max_new_tokens: 12
+    instructions: >-
+      You are given your memory and a question. Facts are stated as "As of step N, the X of Y is Z".
+      If a fact is stated more than once, the statement with the largest step number is current.
+      Reply with only the value Z (for example K93Q), or the single word unknown if the memory
+      does not contain it.
+    model: {backend: openai, name: "qwen2.5:3b", base_url: "http://localhost:11435/v1", cache_dir: cache/generations_qwen3b_ctx16k}
+  memory:
+    allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+    embedder: hashing
+  logging: {detail_episodes: 2}
+grid:
+  controller:
+    - full_context
+  memory.budget.fraction: [1.0]

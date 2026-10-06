@@ -98,6 +98,42 @@ def test_the_expert_removes_never_needed_items_first_then_the_furthest_need():
     assert checked > 0
 
 
+def test_the_regret_expert_accepts_archive_and_deletion_alike_for_never_needed_items():
+    experiment = Experiment(config(fraction=0.05, operations=ARCHIVE_OPS))
+    controller = experiment.controller
+    hindsight = experiment.hindsight(0)
+    controller.record, controller.follow_expert = True, True
+    controller.expert = make_expert(hindsight, kind="regret")
+    episode = experiment.run_episode(seed=0, detail=False).episode
+    never = needed = 0
+    for decision in controller.recorded:
+        rank = decision.expert_rank
+        for i in range(decision.n_active):
+            need = min(hindsight.next_need(root, decision.step) for root in decision.roots[i])
+            if need > 10**8:
+                assert rank[i, EVICT] == rank[i, ARCHIVE] == 0
+                never += 1
+            else:
+                assert 0 <= rank[i, ARCHIVE] < rank[i, EVICT]
+                needed += 1
+    assert never > 0 and needed > 0 and episode["task_success"] == 1.0
+    with pytest.raises(ValueError):
+        make_expert(hindsight, kind="psychic")
+
+
+def test_a_risky_archive_makes_the_regret_expert_prefer_deleting_what_is_never_needed():
+    experiment = Experiment(config(fraction=0.05, operations=ARCHIVE_OPS))
+    controller = experiment.controller
+    hindsight = experiment.hindsight(0)
+    controller.record, controller.follow_expert = True, True
+    controller.expert = make_expert(hindsight, kind="regret", archive_cost=0.01)
+    experiment.run_episode(seed=0, detail=False)
+    for decision in controller.recorded:
+        for i in range(decision.n_active):
+            if min(hindsight.next_need(root, decision.step) for root in decision.roots[i]) > 10**8:
+                assert decision.expert_rank[i, EVICT] < decision.expert_rank[i, ARCHIVE]
+
+
 def test_following_the_expert_reproduces_the_approximate_oracle():
     for seed in (0, 1, 2):
         experiment = Experiment(config(fraction=0.03))
@@ -188,3 +224,103 @@ def test_training_writes_a_checkpoint_that_an_ordinary_run_can_evaluate(tmp_path
 
 def test_unused_helpers_are_importable():
     assert episode_info and DELETE_ONLY
+
+
+def test_one_policy_can_be_trained_on_several_tasks(tmp_path):
+    settings = config(horizon=80)
+    settings["name"] = "tiny_multitask"
+    settings["training"] = {
+        "phases": [{"algorithm": "cost", "iterations": 2, "episodes": 2, "epochs": 1}],
+        "eval": {"every": 2, "episodes": 2},
+        "expert": {"kind": "regret"},
+        "budget_fractions": [0.1],
+        "tasks": [
+            {"label": "recall", "env": {"name": "synthetic_recall", "horizon": 80}},
+            {"label": "workflow", "env": {"name": "workflow", "horizon": 80, "jobs": 4},
+             "agent": {"name": "scripted_tool_agent"}, "budget_fractions": [0.2]},
+        ],
+    }
+    folder = train(settings, tmp_path / "train")
+    log = read_jsonl(folder / "train_log.jsonl")
+    assert {"recall/success@0.1", "workflow/success@0.2"} <= set(log[-1])
+    assert log[0]["decisions"] > 0
+
+def _ambiguous_decisions(needed_share: float, archive_cost: float, count: int = 200) -> list[Decision]:
+    """One item to remove, which looks the same whether or not it is needed later."""
+    rng = np.random.default_rng(0)
+    decisions = []
+    for _ in range(count):
+        needed = rng.random() < needed_share
+        mask = np.zeros((1, 4), bool)
+        mask[0, [EVICT, ARCHIVE]] = True
+        decision = Decision(5, np.ones((1, ITEM_DIM), np.float32), np.zeros(GLOBAL_DIM, np.float32), ["a"], [("a",)], 1,
+                            np.full((1, 4), 10, np.int64), mask, 1)
+        cost = np.full((1, 4), np.nan, np.float32)
+        cost[0, EVICT], cost[0, ARCHIVE] = float(needed), archive_cost
+        rank = np.full((1, 4), -1, np.int64)
+        rank[0, EVICT], rank[0, ARCHIVE] = (1, 0) if needed else (0, 1)
+        decision.expert_rank, decision.expert_retrieved, decision.expert_cost = rank, [], cost
+        decisions.append(decision)
+    return decisions
+
+
+@pytest.mark.parametrize("algorithm, expected", [("bc", EVICT), ("cost", ARCHIVE)])
+def test_with_a_priced_archive_only_cost_sensitive_imitation_archives_what_might_be_needed(algorithm, expected):
+    """30% of these items are needed later and archiving costs 0.1: archiving has the lower
+    expected regret (0.1 < 0.3), but deletion is least-regret 70% of the time."""
+    torch.manual_seed(0)
+    policy = ItemPolicy(ITEM_DIM, GLOBAL_DIM)
+    optimizer = torch.optim.Adam(policy.parameters(), lr=0.01)
+    learner = ALGORITHMS[algorithm]({"epochs": 30, "batch_size": 50})
+    learner.update(policy, optimizer, _ambiguous_decisions(0.3, 0.1), random.Random(0))
+    logits, _ = policy(torch.ones(1, ITEM_DIM), torch.zeros(GLOBAL_DIM))
+    assert int(torch.argmax(logits[0, [EVICT, ARCHIVE]])) == [EVICT, ARCHIVE].index(expected)
+
+
+def test_the_plug_in_rule_archives_or_deletes_by_price(tmp_path):
+    from memctl.rl.policy import NeededModel
+
+    model = NeededModel(ITEM_DIM + GLOBAL_DIM)
+    torch.save({"state_dict": model.state_dict(), "config": model.config}, tmp_path / "needed.pt")
+    for price, kept in ((-1.0, "MOVE_TO_ARCHIVE"), (float("inf"), "EVICT")):
+        settings = config(fraction=0.05, operations=ARCHIVE_OPS, needed_model=str(tmp_path / "needed.pt"), archive_price=price)
+        counts = run_one(settings, seed=0).episode["action_counts"]["controller"]
+        other = "EVICT" if kept == "MOVE_TO_ARCHIVE" else "MOVE_TO_ARCHIVE"
+        assert counts.get(kept, 0) > 0 and counts.get(other, 0) == 0
+
+
+def test_group_advantages_are_standardised_within_each_group():
+    from memctl.rl.train import set_group_advantages
+
+    make = lambda: Decision(1, np.zeros((1, 1), np.float32), np.zeros(1, np.float32), ["a"], [("a",)], 1,
+                            np.ones((1, 4), np.int64), np.ones((1, 4), bool), 1)
+    rows = [(0, 1.0, [make()]), (0, 3.0, [make()]), (1, 5.0, [make()]), (1, 5.0, [make()])]
+    set_group_advantages(rows)
+    assert rows[0][2][0].advantage == pytest.approx(-1.0, abs=1e-4)
+    assert rows[1][2][0].advantage == pytest.approx(1.0, abs=1e-4)
+    assert rows[2][2][0].advantage == 0.0 and rows[3][2][0].advantage == 0.0  # no spread, no signal
+
+
+def test_samples_of_one_episode_differ_only_by_sample_offset():
+    experiment = Experiment(config(operations=ARCHIVE_OPS, greedy=False))
+    controller = experiment.controller
+    controller.record = True
+
+    def picks(offset):
+        controller.sample_offset = offset
+        experiment.run_episode(seed=3, detail=False)
+        return [d.picks for d in controller.recorded]
+
+    assert picks(1) == picks(1) and picks(1) != picks(2)
+
+
+def test_grpo_training_runs_and_logs(tmp_path):
+    settings = config(horizon=80, operations=ARCHIVE_OPS)
+    settings["name"] = "tiny_grpo"
+    settings["training"] = {
+        "phases": [{"algorithm": "grpo", "iterations": 2, "episodes": 4, "group": 2, "epochs": 1}],
+        "eval": {"every": 2, "episodes": 2},
+        "budget_fractions": [0.05],
+    }
+    log = read_jsonl(train(settings, tmp_path / "train") / "train_log.jsonl")
+    assert [row["algorithm"] for row in log] == ["grpo", "grpo"] and "success@0.05" in log[1]

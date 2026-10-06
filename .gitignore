@@ -6,3 +6,4 @@ cache/
 data/
 .pytest_cache/
 .env
+.worktrees/

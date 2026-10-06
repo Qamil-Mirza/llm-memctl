@@ -16,11 +16,16 @@ regenerated with the two commands given).
 - The task model is the scripted reader unless stated: it answers correctly
   exactly when the needed text is in ACTIVE memory. So task success here
   measures memory management only.
-- **Provenance:** all runs were made from an uncommitted working tree
-  (`metadata.json` records commit `d215c8f` plus `dirty: true`), and the code
-  changed between the early and late experiments. See
-  [SCIENTIFIC_VALIDITY_REPORT.md](SCIENTIFIC_VALIDITY_REPORT.md) §7. Rerun after
-  committing before quoting a number in the thesis.
+- **Provenance:** Experiments 1–6 were first run from an uncommitted working
+  tree (`dirty: true`). On 2026-10-05 every training and sweep was rerun from
+  clean commit `ef57fc4` (642 run folders, all `dirty: false`; Experiment 7
+  needs a remote model and was not rerun). **Every task-success number
+  reproduced exactly except 8 cells of Experiment 4b**, the two archive-trained
+  RL policies, whose table below now shows the clean values (they moved by up
+  to 0.095, within training-seed spread; the conclusions are unchanged). The
+  per-cell detail in the 4b discussion (retrieval counts, failure counts) is
+  from the original run. Experiments D1–D5c were run from clean commits as
+  stated in their sections.
 
 | # | Question | Status |
 |---|---|---|
@@ -32,11 +37,17 @@ regenerated with the two commands given).
 | 3 | Do compaction and consolidation help? | Compaction: only if lossless. Consolidation: little. PASSED |
 | 4 | Do learned controllers beat heuristics? | They beat every recency rule and match, but do not beat, the best content rule. PASSED |
 | 4b | …with archive and retrieval? | Imitation of the hindsight expert deletes when it should archive. PASSED |
+| D5 | …and when the archive has a price? | Imitation collapses at any price; cost-sensitive imitation wins at low price, over-archives at high. PARTIAL |
+| D5b | Does a plug-in Bayes rule track the price? | Yes at 0.01 and 0.05 (+0.07 to +0.28); loses 0.06 to delete-all at 0.2 (D5c: not a value-calibration problem). PARTIAL |
+| GRPO | Does GRPO fix PPO, and does an oracle warm start poison RL? | GRPO is reliable on the workflow task, not better on recall; the oracle warm start halves RL's result. PASSED |
+| D2 | Can one controller serve both task structures? | **Yes**: matches each specialist on its task; every fixed rule fails on one. Holds with identical action sets (D2b). PASSED |
+| D1 | Does an archive-aware regret teacher fix 4b? | **Yes**: 0.34 → 0.85 at 2%, above every heuristic at every budget. Clean commit, 3 seeds. PASSED |
 | 5 | Does the ranking hold on a sequential task? | **No, it flips.** PASSED |
 | 5b | Learned controllers on the sequential task | Task-trained imitation reaches 1.0 where the blind oracle does not; the recall-trained policy does not transfer. PASSED |
 | 6 | LoCoMo and LongMemEval: evidence retention under a budget | Pipeline PASSED; QA accuracy BLOCKED |
 | 6c | Dense against lexical retrieval on LoCoMo | See §6c. PASSED |
 | 7 | A real language model as task model and as controller | Smoke tests only. PARTIAL |
+| 8 | A real language model (qwen2.5:3b) as the task model | A small, well-chosen memory beats full context; the D1 ranking holds. PASSED (1 seed, 30 episodes) |
 
 ---
 
@@ -290,8 +301,8 @@ for c in rl_bc rl_bc_mlp rl_ppo rl_ppo_seed1 rl_ppo_seed2 rl_ppo_gamma0 rl_ppo_g
 python -m memctl.sweep --config configs/sweeps/exp4_rl_eval.yaml
 ```
 
-Delete-only action set. Every policy is the same small network (about 12,000
-parameters; DeepSets over per-item features, or a plain MLP for `rl_bc_mlp`),
+Delete-only action set. Every policy is the same small network (27,526
+parameters, DeepSets over per-item features; 19,334 for the plain MLP of `rl_bc_mlp`),
 trained at horizon 200 on four budgets (5, 10, 25, 50%), on seeds 100000+,
 with `policy_best.pt` chosen on validation seeds 50000+. Evaluation here uses
 seeds 0–99 like every other experiment; horizon 500 is a transfer test.
@@ -393,8 +404,8 @@ here unchanged: its archive and retrieval outputs were never trained.
 | fifo_delete | 0.007 | 0.058 | 0.238 | 0.618 |
 | salience_delete | 0.365 | 0.546 | 0.738 | 0.962 |
 | salience_archive_retrieve | 0.737 | 0.833 | 0.898 | 0.984 |
-| rl_bc_archive (imitation of the hindsight expert) | 0.383 | 0.521 | 0.724 | 0.965 |
-| rl_bc_ppo_archive (imitation, then 1,344 PPO episodes) | 0.452 | 0.578 | 0.710 | 0.937 |
+| rl_bc_archive (imitation of the hindsight expert) | 0.340 | 0.528 | 0.731 | 0.969 |
+| rl_bc_ppo_archive (imitation, then 1,344 PPO episodes) | 0.357 | 0.511 | 0.701 | 0.967 |
 | rl_bc_delete_only_policy (untrained retrieval head) | 0.591 | 0.849 | 0.939 | 0.982 |
 | oracle_approx | 0.966 | 1.000 | 1.000 | 1.000 |
 
@@ -423,6 +434,394 @@ episode (precision 0.11, recall 0.80) and fails only by
   cost-aware one (archive when unsure; retrieve generously when the archive
   is free), or the learner needs the archive's asymmetry expressed in the
   reward. Neither was tried.
+
+## D1. The regret teacher (2026-10-05)
+
+```bash
+python -m memctl.rl.train --config configs/rl/d1/rl_bc_archive_{oracle,regret}_s{0,1,2}.yaml
+python -m memctl.sweep --config configs/sweeps/d1_regret_expert_eval.yaml
+python -m memctl.analysis.seeds runs/d1_regret_expert_eval
+python -m memctl.rl.probe runs/rl_bc_archive_regret_s0/checkpoints/policy.pt
+```
+
+Same learner, data budget and DAgger schedule as Experiment 4b (`rl_bc_archive`);
+only the expert differs. The **oracle** expert labels never-needed items
+EVICT and needed ones MOVE_TO_ARCHIVE. The **regret** expert charges every
+(item, operation) pair its hindsight regret with the oracle playing on (EVICT:
+1 if the item is needed again, else 0; ARCHIVE: 0) and accepts every pair of
+least regret, so for a never-needed item both EVICT and ARCHIVE are accepted
+(`memctl/rl/expert.py`). Three training seeds each; evaluation on seeds 0–99
+as in 4b. **Provenance: commit `5fd6a3a`, all 40 cells `dirty: false`.**
+
+Task success, mean over the 3 training seeds [min, max]:
+
+| controller | 2% | 5% | 10% | 25% |
+|---|---|---|---|---|
+| fifo_delete | 0.007 | 0.058 | 0.238 | 0.618 |
+| fifo_archive_retrieve | 0.759 | 0.777 | 0.808 | 0.911 |
+| salience_archive_retrieve | 0.744 | 0.833 | 0.898 | 0.984 |
+| imitation, oracle expert | 0.335 [0.287, 0.376] | 0.512 [0.467, 0.541] | 0.722 [0.708, 0.731] | 0.958 [0.943, 0.969] |
+| **imitation, regret expert** | **0.851** [0.843, 0.858] | **0.887** [0.870, 0.901] | **0.930** [0.915, 0.948] | **0.987** [0.983, 0.991] |
+| oracle_approx | 0.966 | 1.000 | 1.000 | 1.000 |
+
+Paired over episodes (seed-mean of the regret policies minus the baseline,
+95% bootstrap interval): against the best heuristic at each budget, +0.092
+[0.076, 0.107] at 2% (FIFO-archive), +0.053 [0.037, 0.070] at 5%, +0.031
+[0.018, 0.045] at 10% (salience-archive), +0.003 [−0.003, 0.010] at 25%. The
+gap to the oracle is −0.115, −0.113, −0.070 and −0.013.
+
+**Mechanism, measured** (`memctl.rl.probe`, 10 evaluation episodes, 2%):
+
+| policy | needed items deleted | never-needed items deleted | retrievals / episode | retrieval precision |
+|---|---|---|---|---|
+| Exp. 4b `rl_bc_archive` (oracle expert) | 92% | 99% | 0.8 | 0.88 |
+| regret expert, seed 1 | 0% | 0% | 12.7 | 1.00 |
+
+**What it shows**
+
+- **The 4b failure is the teacher, not the learner.** The oracle-expert
+  learner orders removals well (only 6% of what it removes is needed later)
+  but chooses the *operation* as the expert's majority action, the same for
+  needed and never-needed items: Weihs et al.'s policy averaging, measured.
+  Accepting every least-regret action removes the privileged tie-break, and
+  the same learner learns to archive.
+- **Imitation now beats every fixed rule** at 2–10% and ties at 25%, with a
+  quarter of the heuristics' retrievals (14 against 57 per episode).
+- The Experiment 4 policy, whose archive outputs were never trained, scored
+  0.591 at 2% in 4b, above the oracle-expert learner (0.383): imitating the
+  oracle made the operation choice *worse than untrained*.
+
+**What it does not show**
+
+- The archive is free here, so "archive everything" is the right
+  operation choice and the regret teacher says so. Whether a learner tracks
+  a *priced* archive is D5 (running).
+- The remaining gap to the oracle (0.11 at 2%) is retrieval: the shortlist is
+  BM25 top-8, and the learner retrieves 91% of the needed items it is shown.
+
+## GRPO (2026-10-05)
+
+```bash
+python -m memctl.rl.train --config configs/rl/grpo/<name>_s{0,1,2}.yaml     # 18 configs
+python -m memctl.sweep --config configs/sweeps/grpo_{recall,workflow}_eval.yaml
+```
+
+GRPO (`algorithm: grpo` in `memctl/rl/algorithms.py`): each training episode is
+played 8 times with different action samples; an episode's advantage is its
+return standardised within those 8, applied to all of its decisions with PPO's
+clipped objective and no value network. Every training uses 1,584 episodes, the
+budget of `rl_bc_ppo_archive`; 3 seeds; `policy_best.pt` (chosen on validation
+seeds) evaluated on seeds 0–99. **Provenance: commit `16c6f5c`, 88 evaluation
+cells `dirty: false`.**
+
+Recall task with archive (task success, mean [min, max] over 3 seeds; needed
+items deleted per episode at 2% in the last column):
+
+| training | 2% | 5% | 10% | 25% | deleted needed, 2% |
+|---|---|---|---|---|---|
+| PPO from scratch | 0.717 [0.702, 0.736] | 0.899 | 0.922 | 0.940 [0.850, 0.988] | 0.0 |
+| GRPO from scratch | 0.704 [0.616, 0.789] | 0.866 | 0.919 | 0.978 | 1.8 |
+| imitate the **oracle** expert, then GRPO | 0.451 [0.347, 0.559] | 0.572 | 0.737 | 0.961 | **10.7** |
+| imitate the **regret** expert, then GRPO | **0.859** [0.850, 0.864] | **0.906** | **0.944** | **0.992** | 0.0 |
+| (D1) regret imitation alone | 0.851 | 0.887 | 0.930 | 0.987 | 0.0 |
+| salience_archive_retrieve | 0.744 | 0.833 | 0.898 | 0.984 | – |
+
+Workflow task, delete-only (validation success at 5% every 144 episodes, per seed):
+
+| training | test 5% | test 10% | learning curve at 5% (validation) |
+|---|---|---|---|
+| GRPO from scratch | **0.999** [0.998, 1.000] | 1.000 | solved by 432 / 432 / 288 episodes in the three seeds |
+| PPO from scratch | 0.741 [**0.227**, 1.000] | 0.999 | solved at ~1,000 episodes in two seeds; never in the third |
+| fifo / oracle_approx_lazy | 0.028 / 0.896 | 0.221 / 1.000 | – |
+
+**What it shows**
+
+- **A warm start from the oracle poisons RL.** After imitating the oracle,
+  1,440 episodes of GRPO leave the policy at 0.451 at 2%, against 0.70–0.72
+  for RL from scratch with the same total budget; it still deletes 10.7 needed
+  items per episode. The same holds for PPO: Experiment 4b's oracle-imitation
+  + PPO policy scores 0.357 (clean rerun), PPO from scratch 0.717. This is
+  Weihs et al.'s "IL warm start is strictly worse" (Poisoned Doors) measured in
+  memory control, and it applies to the hindsight-SFT-then-GRPO recipe of
+  Mem-T and ForesightKV.
+- **The regret expert is the right warm start,** but RL adds little on top of
+  it here (0.859 against 0.851): with a free archive, imitation already finds
+  the policy RL would.
+- **GRPO is the more reliable optimiser on the sequential task**: all three
+  seeds solve it, three times faster than the PPO seeds that do, and none
+  fails, where one PPO seed stays at 0.04 throughout. This is the instability
+  of D6 (one PPO seed at 0.99, another at 0.40), removed by comparing samples of
+  the same episode instead of learning a value baseline.
+- **On the recall task GRPO is no better than PPO** (0.704 against 0.717 at 2%)
+  and its seeds spread more. Group-relative advantages help most where the
+  episode's own luck is large (the workflow task's restarts), less where it is
+  small.
+- One GRPO workflow seed fell from 1.00 to 0.29 in its last validation;
+  `policy_best.pt` avoids it, but late-training collapse is a known GRPO
+  failure and worth a KL or learning-rate schedule if GRPO is used further.
+
+## D2. One controller for both tasks (2026-10-05)
+
+```bash
+python -m memctl.rl.train --config configs/rl/d2/joint_{bc,cost}_regret_s{0,1,2}.yaml
+python -m memctl.sweep --config configs/sweeps/d2_joint_recall_eval.yaml
+python -m memctl.sweep --config configs/sweeps/d2_joint_workflow_eval.yaml
+```
+
+One policy, trained by DAgger on the regret expert with episodes alternating
+between the recall task (archive and retrieval allowed) and the workflow task
+(delete-only), `training.tasks` in `memctl/rl/train.py`. Twice the iterations
+of a specialist, so each task gets the same number of training episodes as
+its specialist. Specialists: the D1 regret policies (recall) and
+`rl_bc_workflow` from the clean rerun (workflow). Three seeds each.
+**Provenance: trainings at commit `9acfdb9`; all 100 evaluation cells
+`dirty: false`.**
+
+Recall task (task success, mean of 3 seeds [min, max]):
+
+| controller | 2% | 5% | 10% | 25% |
+|---|---|---|---|---|
+| fifo_archive_retrieve | 0.759 | 0.777 | 0.808 | 0.911 |
+| salience_archive_retrieve | 0.744 | 0.833 | 0.898 | 0.984 |
+| recall specialist | 0.851 [0.843, 0.858] | 0.887 [0.870, 0.901] | 0.930 [0.915, 0.948] | 0.987 [0.983, 0.991] |
+| **joint, `bc`** | **0.852** [0.845, 0.857] | **0.895** [0.887, 0.902] | **0.945** [0.936, 0.950] | **0.990** [0.988, 0.993] |
+| joint, `cost` | 0.848 [0.839, 0.863] | 0.895 [0.882, 0.903] | 0.934 [0.930, 0.940] | 0.982 [0.975, 0.986] |
+| oracle_approx | 0.966 | 1.000 | 1.000 | 1.000 |
+
+Workflow task:
+
+| controller | 5% | 10% | 20% | 40% |
+|---|---|---|---|---|
+| fifo | 0.028 | 0.221 | 0.891 | 1.000 |
+| salience | 0.001 | 0.051 | 0.399 | 1.000 |
+| recall specialist (never saw this task) | 0.000 | 0.001 | 0.008 | 0.100 |
+| workflow specialist | 1.000 | 1.000 | 1.000 | 1.000 |
+| **joint, `bc` and `cost`** (all 6 policies) | **1.000** | **1.000** | **1.000** | **1.000** |
+| oracle_approx_lazy | 0.896 | 1.000 | 1.000 | 1.000 |
+
+**What it shows**
+
+- **One small controller (27,526 parameters) matches each specialist on its
+  own task**, with no loss from sharing: on recall it is level with or
+  slightly above the specialist; on the workflow task all six joint policies
+  complete every job at every budget.
+- **Every fixed rule is wrong on one of the two tasks**: salience is the best
+  content rule on recall and the worst rule on the workflow task (0.001 at
+  5%); FIFO is the best rule on the workflow task among heuristics and fails
+  on recall when it deletes (0.007 at 2%). The recall specialist does not
+  transfer (0.000 at 5%). The joint controller is the only controller,
+  besides the oracle, that is not wrong on either; on the workflow task it
+  also beats the oracle, whose hindsight goes blind after the first
+  divergence (Experiment 5b).
+- This is the thesis claim of `docs/research/ONE_PAGE_RESEARCH_SUMMARY.md`
+  ("unlike any fixed rule, is not wrong on both"), now measured.
+
+**What it does not show**
+
+- Both tasks are synthetic and the task model is scripted.
+
+### D2b. The same action set on both tasks
+
+In D2 the workflow task was delete-only, so the action set alone told the
+policy which task it was in. D2b trains the joint policy with archive and
+retrieval allowed on *both* tasks (`configs/rl/d2/joint_same_ops_s*.yaml`,
+commit `103b4c0`, 88 evaluation cells `dirty: false`):
+
+| controller | recall 2% | recall 5% | workflow 5% | workflow 10% | workflow 20% |
+|---|---|---|---|---|---|
+| **joint, same operations** | **0.859** [0.848, 0.866] | **0.896** | **1.000** (all seeds) | **1.000** | **1.000** |
+| recall specialist | 0.851 | 0.887 | 0.226 [0.054, 0.438] | 0.592 | 0.999 |
+| workflow specialist (delete-only) | – | – | 1.000 | 1.000 | 1.000 |
+| fifo_archive_retrieve | 0.759 | 0.777 | 0.023 | 0.170 | 0.890 |
+| salience_archive_retrieve | 0.744 | 0.833 | 0.009 | 0.084 | 0.577 |
+| oracle_approx (archives) | 0.966 | 1.000 | 1.000 | 1.000 | 1.000 |
+
+The result holds with the confound removed: one policy, one action set,
+level with each specialist on its own task. Archiving does not rescue the
+fixed rules on the workflow task (lexical retrieval does not bring back the
+right token in time), while the recall specialist, now able to archive,
+partly transfers (0.226 at 5%, 0.999 at 20%) where in D2 it scored 0.000.
+
+## D5. A priced archive (2026-10-05)
+
+```bash
+python -m memctl.rl.train --config configs/rl/d5/<config>.yaml     # 14 configs
+python -m memctl.sweep --config configs/sweeps/d5_priced_archive_eval.yaml
+python -m memctl.analysis.priced runs/d5_priced_archive_eval --price <p>
+```
+
+Each item written to the archive costs *p* queries: an episode scores
+(correct − p × archive writes) / queries (`memctl.analysis.priced`). The regret
+expert carries the price (ARCHIVE costs p; EVICT costs 1 if the item is needed
+again). Learners: accepted-set imitation (`bc`, as in D1) and cost-sensitive
+imitation (`cost`: the policy's expected regret along the expert's removal
+sequence, `memctl/rl/algorithms.py`), each trained at its own price, 2 seeds.
+**Provenance: commit `5fd6a3a`, all 63 cells `dirty: false`.** Priced score at
+2% budget, mean of 2 seeds (5% and 10% show the same pattern):
+
+| price | `bc` (regret expert) | `cost` (regret expert) | `bc` (oracle expert) | salience archive | salience delete | oracle |
+|---|---|---|---|---|---|---|
+| 0 | **0.854** | 0.849 | 0.358 | 0.744 | 0.365 | 0.966 |
+| 0.01 | 0.357 | **0.744** | 0.357 | 0.611 | 0.365 | 0.960 |
+| 0.05 | 0.352 | 0.286 | 0.352 | 0.078 | **0.365** | 0.939 |
+| 0.2 | 0.333 | −0.562 | 0.333 | −1.921 | **0.365** | 0.857 |
+
+Archive writes per episode at 2%: `bc` with a price, 2; `cost`, 210 at 0.01
+and 0.05, 121 at 0.2; heuristics, 247; oracle, 11.
+
+**What it shows**
+
+- **With any positive price the regret expert *is* the oracle expert**, and
+  accepted-set imitation of it gives bit-identical policies (same numbers to
+  three decimals in every cell). The oracle's labels are the regret labels
+  of an infinitesimally priced archive; imitation cannot tell "cheap" from
+  "free", and collapses to deleting everything (probe at 5%: 99% of needed
+  items deleted).
+- **Cost-sensitive imitation moves in the right direction** and wins clearly
+  at a low price (0.744 against 0.611 for the best heuristic and 0.357 for
+  `bc`). At 0.2 it starts to discriminate (probe at 5%: deletes 96% of
+  never-needed items, 67% of needed ones).
+- **It is miscalibrated at higher prices.** It keeps archiving about 200
+  items per episode at 0.05, where deleting is right (it loses to
+  delete-all), and archives too much at 0.2. A softmax expected-cost loss is
+  minimised by a choice, not by a calibrated probability, and "archive
+  anything" spreads its mass over many equally cheap pairs.
+
+### D5b. The plug-in Bayes rule
+
+```bash
+python -m memctl.rl.needed --config configs/rl/d5/needed_s{0,1}.yaml
+python -m memctl.sweep --config configs/sweeps/d5b_plugin_eval.yaml
+```
+
+The D1 regret policy (trained with a free archive) picks *which* item to
+remove; a separate model gives P(needed again | features) for that item, and
+the controller archives iff it exceeds the price (`archive_price`,
+`needed_model`). The model is a 32-unit MLP fitted with log loss on 200 of the
+policy's own episodes (about 37,000 removed items, base rate 4.5%) and
+checked on 50 held-out episodes: Brier 0.034 against 0.043 for the base rate
+(seed 0; 0.039 against 0.048 for seed 1), and calibrated per bin (predicted
+0.065 / observed 0.061; 0.167 / 0.176; 0.41 / 0.36). 70% of removed items get
+P < 0.01, and none of those was needed. **Provenance: commit `4d8e4d1`, all
+18 cells and both models `dirty: false`;** cells pair with D5's on seeds 0–99.
+
+Priced score, mean of 2 seeds:
+
+| price | budget | plug-in | cost-sensitive | `bc` | salience archive | salience delete | oracle |
+|---|---|---|---|---|---|---|---|
+| 0.01 | 2% | **0.812** | 0.744 | 0.357 | 0.611 | 0.365 | 0.960 |
+| 0.01 | 5% | **0.856** | 0.777 | 0.534 | 0.707 | 0.546 | 0.999 |
+| 0.01 | 10% | **0.907** | 0.826 | 0.729 | 0.778 | 0.738 | 1.000 |
+| 0.05 | 2% | **0.648** | 0.286 | 0.352 | 0.078 | 0.365 | 0.939 |
+| 0.05 | 5% | **0.710** | 0.347 | 0.528 | 0.199 | 0.546 | 0.994 |
+| 0.05 | 10% | **0.790** | 0.424 | 0.727 | 0.295 | 0.738 | 1.000 |
+| 0.2 | 2% | 0.311 | −0.562 | 0.333 | −1.921 | **0.365** | 0.857 |
+| 0.2 | 5% | 0.473 | −0.384 | 0.508 | −1.705 | **0.546** | 0.976 |
+| 0.2 | 10% | 0.675 | −0.225 | 0.719 | −1.513 | **0.738** | 0.999 |
+
+Paired against the best other non-oracle controller (95% bootstrap): at 0.01,
++0.068, +0.080, +0.081 (all intervals above +0.059); at 0.05, +0.284,
++0.163, +0.051 (all above +0.030); at 0.2, −0.053, −0.073, −0.063 (all below
+−0.030).
+
+**What it shows**
+
+- **The information to price the archive is in the features; imitation
+  losses do not extract it, a calibrated estimate does.** Separating "which
+  item" (imitation) from "which operation" (a Bayes decision on a calibrated
+  probability) wins by large margins where the trade-off is real (0.05).
+- **At 0.2 it archives too eagerly.** The rule values a needed item at one
+  query; its real value is lower (retrieval misses it ~9% of the time, and
+  restatements make some items redundant). From D1/D5, archiving instead of
+  deleting at 2% gains about 10.7 queries per episode for about 14.5 needed
+  items removed, so about 0.74 query each. The fix is to estimate that value
+  (or regress the counterfactual gain directly) instead of assuming 1.
+
+**D5c: valuing a needed item at its measured worth does not fix 0.2.**
+`need_value` (queries gained per needed item removed, archiving all against
+deleting all, on 50 training seeds) came out at 0.67 and 0.74 for the two
+seeds. With it (`configs/rl/d5/needed_v_s*.yaml`, sweep generated into
+`runs/d5c_valued_plugin_eval.yaml`, commit `5b981b5`, 18 clean cells) the rule
+is unchanged at 0.01 and 0.05 (differences within ±0.005, except −0.024 at
+0.05/10%) and still 0.062–0.064 below salience-delete at 0.2. Ordering the
+removals by expected cost min(P × value, price) instead of by the policy did
+not help either (20-episode check, discarded). The remaining gap at 0.2 is
+most likely the item *order*: the regret policy was trained where deletion
+never happened, and its order is a worse deletion order than salience's
+(the same policy deleting everything scores 0.333 at 2% against 0.365). At
+high prices, where the archive is barely used, a deletion-trained order
+should be used; a policy trained across prices would learn both.
+
+**For the thesis**: the hindsight-teacher result now has three parts. The
+oracle's argmin labels are the wrong target once an archive exists (D1);
+least-regret *sets* fix a free archive but are indistinguishable from the
+oracle at any positive price (D5); and the right object to learn from
+hindsight is a calibrated expected regret, used in a decision rule (D5b),
+which is what AggreVaTe-style cost-sensitive learning aims at but a softmax
+expected-cost loss does not deliver.
+
+## 8. A real language model as the task model (2026-10-05)
+
+```bash
+# Ollama on the local 4 GB GPU, served with OLLAMA_CONTEXT_LENGTH=16384 on port 11435
+python -m memctl.sweep --config configs/sweeps/exp8a_llm_task_model.yaml --workers 1   # full context
+python -m memctl.sweep --config configs/sweeps/exp8b_llm_task_model.yaml --workers 1   # under a budget
+```
+
+The scripted reader replaced by `qwen2.5:3b` (4-bit) through the `openai`
+backend, on the recall task with archive and retrieval; 30 episodes (seeds
+0–29); learned policies are seed 0 of D1. Generations cached in
+`cache/generations_qwen3b_ctx16k`. The default Ollama context (4,096 tokens)
+silently truncated full-context prompts in a first try (success 0.09); every
+number here is with a 16,384-token context. **Provenance: commit `5fd6a3a`,
+25 cells `dirty: false`.**
+
+Task success with the LLM (evidence availability, i.e. what the scripted
+reader would score, in the second table):
+
+| controller | 2% | 5% | 10% | 25% |
+|---|---|---|---|---|
+| fifo_delete | 0.005 | 0.045 | 0.220 | 0.545 |
+| fifo_archive_retrieve | 0.550 | 0.619 | 0.649 | 0.785 |
+| salience_archive_retrieve | 0.551 | 0.605 | 0.599 | 0.801 |
+| imitation, oracle expert | 0.277 | 0.445 | 0.520 | 0.799 |
+| **imitation, regret expert** | **0.733** | **0.713** | **0.743** | **0.812** |
+| oracle_approx | 0.886 | 0.864 | 0.836 | 0.839 |
+| full context (no budget, all evidence present) | 0.723 | | | |
+
+| evidence in memory at the question | 2% | 5% | 10% | 25% |
+|---|---|---|---|---|
+| salience_archive_retrieve | 0.756 | 0.832 | 0.915 | 0.984 |
+| imitation, oracle expert | 0.331 | 0.538 | 0.718 | 0.968 |
+| imitation, regret expert | 0.860 | 0.902 | 0.948 | 0.987 |
+| oracle_approx | 0.966 | 1.000 | 1.000 | 1.000 |
+| full context | 1.000 | | | |
+
+Paired against full context (95% bootstrap over the 30 episodes): oracle at
+2% +0.163 [+0.117, +0.212], at 10% +0.112 [+0.049, +0.174]; regret policy at
+25% +0.089 [+0.045, +0.132], at 2% +0.010 [−0.047, +0.070]; salience-archive
+at 25% +0.078 [+0.037, +0.121]; FIFO-archive at 25% +0.062 [+0.016, +0.109].
+
+**What it shows**
+
+- **For a real model, less context can be better context.** Full context has
+  every answer in it and scores 0.723; the oracle's 2% memory scores 0.886,
+  and every archiving controller at 25% beats full context. The scripted
+  reader cannot show this: for it, full context is a perfect 1.000. Memory
+  control here *raises* accuracy, it does not only save tokens.
+- **The D1 result carries over.** With the LLM the regret-expert policy beats
+  the oracle-expert one by 0.456 at 2% (0.733 against 0.277); the oracle-expert
+  policy's failures are 423 `evicted`, the regret policy's none.
+- **Accuracy given the evidence differs between controllers**, which the
+  scripted reader hides: at 2% the LLM answers 92% of the questions whose
+  evidence the oracle kept, 85% for the regret policy (its LLM failures
+  include 52 `retrieved_but_ignored`: evidence fetched back from the archive
+  that the model did not use). Which memory is easiest for a model to read is
+  part of what a controller should optimise, and only an LLM in the loop
+  measures it.
+- With 30 episodes and one training seed per learned policy, these are
+  first numbers; the rented-GPU runs should repeat them at 100 episodes with
+  a 7–8B model.
 
 ## 5. The sequential task
 

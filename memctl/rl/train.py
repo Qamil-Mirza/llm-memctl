@@ -9,7 +9,17 @@ reward, `controller: {name: rl, ...}`) plus a `training` section:
       phases:
         - {algorithm: bc, iterations: 8, episodes: 16, epochs: 4, lr: 0.003, dagger: true}
         - {algorithm: ppo, iterations: 40, episodes: 16, epochs: 4, lr: 0.0003, gamma: 0.995}
+        - {algorithm: grpo, iterations: 40, episodes: 24, group: 8, epochs: 4, lr: 0.0003}
       eval: {every: 4, episodes: 20, seed_offset: 50000}
+      expert: {kind: regret}         # optional: which hindsight expert labels imitation (memctl/rl/expert.py)
+      tasks:                         # optional: train one policy on several tasks, one episode each in turn
+        - {label: recall, env: {name: synthetic_recall}, budget_fractions: [0.02, 0.05]}
+        - {label: workflow, env: {name: workflow}, agent: {name: scripted_tool_agent}}
+
+Each task is the experiment config with the task's keys merged on top (a task
+may set its own `budget_fractions`). Validation success is logged per task as
+`<label>/success@<fraction>`, and `policy_best.pt` is the best mean over all of
+them.
 
 Three disjoint sets of seeds keep the numbers honest: training episodes use
 `seed_offset` onward, the evaluations logged during training (and used to pick
@@ -41,6 +51,7 @@ from memctl.harness.runner import Experiment
 from memctl.rl.algorithms import ALGORITHMS
 from memctl.rl.expert import make_expert
 from memctl.sysinfo import collect_metadata
+from memctl.util import merged
 
 TRAINING_DEFAULTS = {
     "seed_offset": 100_000,
@@ -48,6 +59,7 @@ TRAINING_DEFAULTS = {
     "phases": [{"algorithm": "bc", "iterations": 8, "episodes": 16}],
     "eval": {"every": 4, "episodes": 20, "seed_offset": 50_000},
     "max_dataset": 40_000,
+    "expert": {"kind": "oracle"},
 }
 
 
@@ -65,7 +77,22 @@ def fill_returns(decisions: list[Decision], rewards: list[tuple[int, float]], ga
         decision.return_to_go = value_at.get(decision.step, 0.0)
 
 
-def evaluate_policy(experiment: Experiment, episodes: int, fractions: list[float] | None, seed_offset: int = 50_000) -> dict:
+def set_group_advantages(returns: list[tuple[int, float, list[Decision]]]) -> None:
+    """GRPO: each decision's advantage is its episode's return, standardised within its group."""
+    groups: dict[int, list[float]] = {}
+    for group, value, _ in returns:
+        groups.setdefault(group, []).append(value)
+    for group, value, decisions in returns:
+        values = groups[group]
+        mean = sum(values) / len(values)
+        spread = (sum((v - mean) ** 2 for v in values) / len(values)) ** 0.5
+        advantage = (value - mean) / (spread + 1e-6) if spread > 0 else 0.0
+        for decision in decisions:
+            decision.advantage = advantage
+
+
+def evaluate_policy(experiment: Experiment, episodes: int, fractions: list[float] | None, seed_offset: int = 50_000,
+                    prefix: str = "") -> dict:
     """Mean task success of the greedy policy on the validation seeds (seed_offset, seed_offset + 1, ...)."""
     controller: RLController = experiment.controller
     saved = (controller.greedy, controller.record, controller.expert, controller.follow_expert)
@@ -80,7 +107,7 @@ def evaluate_policy(experiment: Experiment, episodes: int, fractions: list[float
             values = [experiment.run_episode(seed=seed, detail=False).episode["task_success"] for seed in seeds]
             for seed in seeds:
                 experiment._hindsight.pop(seed, None)
-            results["success" if fraction is None else f"success@{fraction:g}"] = sum(values) / len(values)
+            results[prefix + ("success" if fraction is None else f"success@{fraction:g}")] = sum(values) / len(values)
     finally:
         controller.greedy, controller.record, controller.expert, controller.follow_expert = saved
         experiment.config["memory"]["budget"] = saved_budget
@@ -103,6 +130,22 @@ def train(config: dict, folder: str | Path | None = None, progress: bool = False
     rng = random.Random(int(config["seed"]))
     experiment = Experiment(config)
     controller: RLController = experiment.controller
+    # (label, experiment, budget fractions) per task; every experiment drives the same controller.
+    tasks = [("", experiment, settings["budget_fractions"])]
+    if settings.get("tasks"):
+        base = {key: value for key, value in config.items() if key != "training"}
+        tasks = []
+        for task in settings["tasks"]:
+            overrides = {key: value for key, value in task.items() if key not in ("label", "budget_fractions")}
+            tasks.append((f"{task['label']}/", Experiment(merged(base, overrides), controller),
+                          task.get("budget_fractions", settings["budget_fractions"])))
+
+    def evaluate_all() -> dict:
+        scores = {}
+        for prefix, task_experiment, task_fractions in tasks:
+            scores.update(evaluate_policy(task_experiment, eval_episodes, task_fractions, eval_offset, prefix))
+        return scores
+
     controller.record = True
     metadata = {**collect_metadata(), "models": experiment.models(), "status": "running",
                 "parameters": sum(p.numel() for p in controller.policy.parameters())}
@@ -111,7 +154,6 @@ def train(config: dict, folder: str | Path | None = None, progress: bool = False
     log_path.write_text("")
 
     next_seed = int(settings["seed_offset"]) + int(config["seed"])
-    fractions = settings["budget_fractions"]
     started, episodes_run = time.time(), 0
     eval_episodes, eval_offset = int(settings["eval"]["episodes"]), int(settings["eval"]["seed_offset"])
     best: dict = {"validation": -1.0}
@@ -119,20 +161,26 @@ def train(config: dict, folder: str | Path | None = None, progress: bool = False
         name = phase["algorithm"]
         algorithm = ALGORITHMS[name](phase)
         optimizer = torch.optim.Adam(controller.policy.parameters(), lr=float(phase.get("lr", 3e-3 if name == "bc" else 3e-4)))
-        imitation = name == "bc"
+        imitation = name in ("bc", "cost")
         # Regret tracking is only worth its cost when the expert labels need hindsight anyway.
-        experiment.config["hindsight"]["enabled"] = False
+        for _, task_experiment, _ in tasks:
+            task_experiment.config["hindsight"]["enabled"] = False
         dataset: list[Decision] = []
+        group = int(phase.get("group", 1)) if name == "grpo" else 1
         for iteration in range(int(phase.get("iterations", 8))):
             fresh: list[Decision] = []
             successes, forced = [], 0
-            for _ in range(int(phase.get("episodes", 16))):
-                seed, next_seed = next_seed, next_seed + 1
-                if fractions:
-                    experiment.config["memory"]["budget"] = {"fraction": rng.choice(fractions)}
+            returns: list[tuple[int, float, list[Decision]]] = []  # (group, return, decisions), for GRPO
+            for number in range(int(phase.get("episodes", 16))):
+                if number % group == 0:  # a new episode: seed, task and budget shared by the whole group
+                    seed, next_seed = next_seed, next_seed + 1
+                    _, experiment, fractions = tasks[(number // group) % len(tasks)]
+                    if fractions:
+                        experiment.config["memory"]["budget"] = {"fraction": rng.choice(fractions)}
+                controller.sample_offset = number % group if group > 1 else 0
                 controller.greedy = False
                 if imitation:
-                    controller.expert = make_expert(experiment.hindsight(seed))
+                    controller.expert = make_expert(experiment.hindsight(seed), **settings["expert"])
                     # DAgger: the expert drives the first iteration, the learner the rest, the expert labels all.
                     controller.follow_expert = iteration == 0 or not phase.get("dagger", True)
                 else:
@@ -143,12 +191,17 @@ def train(config: dict, folder: str | Path | None = None, progress: bool = False
                 if imitation and episode.get("hindsight_diverged_at") is not None:
                     # From the divergence on, the expert's labels describe another episode.
                     recorded = [d for d in recorded if d.step < episode["hindsight_diverged_at"]]
-                if not imitation:
+                if name == "grpo":
+                    returns.append((number // group, sum(reward for _, reward in controller.rewards), recorded))
+                elif not imitation:
                     fill_returns(controller.recorded, controller.rewards, float(phase.get("gamma", 0.995)))
                 fresh += recorded
                 successes.append(episode["task_success"])
                 forced += episode["forced_evictions"]
                 episodes_run += 1
+            controller.sample_offset = 0
+            if name == "grpo":
+                set_group_advantages(returns)
             if imitation:
                 dataset = (dataset + fresh)[-int(settings["max_dataset"]):]
                 stats = algorithm.update(controller.policy, optimizer, dataset, rng)
@@ -161,7 +214,7 @@ def train(config: dict, folder: str | Path | None = None, progress: bool = False
             }
             every = int(settings["eval"]["every"])
             if every and (iteration + 1) % every == 0:
-                scores = evaluate_policy(experiment, eval_episodes, fractions, eval_offset)
+                scores = evaluate_all()
                 row.update(scores)
                 validation = sum(scores.values()) / len(scores)
                 if validation > best["validation"]:
@@ -176,7 +229,7 @@ def train(config: dict, folder: str | Path | None = None, progress: bool = False
         controller.save(folder / "checkpoints" / f"policy_phase{phase_number}_{name}.pt")
 
     controller.save(folder / "checkpoints" / "policy.pt")
-    final = evaluate_policy(experiment, eval_episodes, fractions, eval_offset)
+    final = evaluate_all()
     if sum(final.values()) / len(final) > best["validation"]:
         best = {"validation": sum(final.values()) / len(final), "episodes_total": episodes_run, "phase": "final", **final}
         controller.save(folder / "checkpoints" / "policy_best.pt")

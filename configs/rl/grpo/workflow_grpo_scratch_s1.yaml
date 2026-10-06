@@ -1,0 +1,16 @@
+# GRPO experiment: GRPO from scratch, workflow task. 1,584 training episodes (as rl_bc_ppo_archive), seed 1.
+schema_version: 1
+name: workflow_grpo_scratch_s1
+seed: 1
+env: {name: workflow}
+agent: {name: scripted_tool_agent, noise: 0.0}
+controller: {name: rl, hidden: 64, architecture: deepsets}
+memory:
+  allowed_operations: [KEEP, EVICT, NO_OP]
+  embedder: hashing
+training:
+  budget_fractions: [0.05, 0.1, 0.2, 0.4]
+  phases:
+  - {algorithm: grpo, group: 8, episodes: 24, epochs: 4, lr: 0.0003, entropy: 0.01,
+    iterations: 60}
+  eval: {every: 6, episodes: 20}

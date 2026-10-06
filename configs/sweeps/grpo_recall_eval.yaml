@@ -1,0 +1,30 @@
+# GRPO experiment, recall task with archive: GRPO vs PPO from scratch, and GRPO after imitating
+# the oracle expert vs the regret expert. policy_best.pt (chosen on validation seeds), as for PPO.
+name: grpo_recall_eval
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env: {name: synthetic_recall, horizon: 200}
+  agent: {name: scripted_reader, noise: 0.0}
+  memory:
+    allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+    embedder: hashing
+  logging: {detail_episodes: 0}
+grid:
+  controller:
+    - {name: salience, label: salience_archive_retrieve, removal: [MOVE_TO_ARCHIVE], retrieve: {top_k: 3}}
+    - {name: oracle, method: approx}
+    - {name: rl, label: grpo_scratch_s0, checkpoint: runs/recall_grpo_scratch_s0/checkpoints/policy_best.pt}
+    - {name: rl, label: grpo_scratch_s1, checkpoint: runs/recall_grpo_scratch_s1/checkpoints/policy_best.pt}
+    - {name: rl, label: grpo_scratch_s2, checkpoint: runs/recall_grpo_scratch_s2/checkpoints/policy_best.pt}
+    - {name: rl, label: ppo_scratch_s0, checkpoint: runs/recall_ppo_scratch_s0/checkpoints/policy_best.pt}
+    - {name: rl, label: ppo_scratch_s1, checkpoint: runs/recall_ppo_scratch_s1/checkpoints/policy_best.pt}
+    - {name: rl, label: ppo_scratch_s2, checkpoint: runs/recall_ppo_scratch_s2/checkpoints/policy_best.pt}
+    - {name: rl, label: oracle_bc_grpo_s0, checkpoint: runs/recall_oracle_bc_grpo_s0/checkpoints/policy_best.pt}
+    - {name: rl, label: oracle_bc_grpo_s1, checkpoint: runs/recall_oracle_bc_grpo_s1/checkpoints/policy_best.pt}
+    - {name: rl, label: oracle_bc_grpo_s2, checkpoint: runs/recall_oracle_bc_grpo_s2/checkpoints/policy_best.pt}
+    - {name: rl, label: regret_bc_grpo_s0, checkpoint: runs/recall_regret_bc_grpo_s0/checkpoints/policy_best.pt}
+    - {name: rl, label: regret_bc_grpo_s1, checkpoint: runs/recall_regret_bc_grpo_s1/checkpoints/policy_best.pt}
+    - {name: rl, label: regret_bc_grpo_s2, checkpoint: runs/recall_regret_bc_grpo_s2/checkpoints/policy_best.pt}
+  memory.budget.fraction: [0.02, 0.05, 0.1, 0.25]

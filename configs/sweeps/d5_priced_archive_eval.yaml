@@ -1,0 +1,39 @@
+# D5: a priced archive. One sweep with every policy; score it at each price with
+#   python -m memctl.analysis.priced runs/d5_priced_archive_eval --price <lambda>
+# Price p means each item written to the archive costs p queries. Run from the D1 worktree,
+# where the D1 and D5 checkpoints live.
+name: d5_priced_archive_eval
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env: {name: synthetic_recall, horizon: 200}
+  agent: {name: scripted_reader, noise: 0.0}
+  memory:
+    allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+    embedder: hashing
+  logging: {detail_episodes: 0}
+grid:
+  controller:
+    - {name: salience, label: salience_delete}
+    - {name: salience, label: salience_archive_retrieve, removal: [MOVE_TO_ARCHIVE], retrieve: {top_k: 3}}
+    - {name: oracle, method: approx}
+    - {name: rl, label: bc_oracle_s0, checkpoint: runs/rl_bc_archive_oracle_s0/checkpoints/policy.pt}
+    - {name: rl, label: bc_regret0_s0, checkpoint: runs/rl_bc_archive_regret_s0/checkpoints/policy.pt}
+    - {name: rl, label: cost_regret0_s0, checkpoint: runs/priced0_cost_regret_s0/checkpoints/policy.pt}
+    - {name: rl, label: bc_regret0.01_s0, checkpoint: runs/priced0.01_bc_regret_s0/checkpoints/policy.pt}
+    - {name: rl, label: cost_regret0.01_s0, checkpoint: runs/priced0.01_cost_regret_s0/checkpoints/policy.pt}
+    - {name: rl, label: bc_regret0.05_s0, checkpoint: runs/priced0.05_bc_regret_s0/checkpoints/policy.pt}
+    - {name: rl, label: cost_regret0.05_s0, checkpoint: runs/priced0.05_cost_regret_s0/checkpoints/policy.pt}
+    - {name: rl, label: bc_regret0.2_s0, checkpoint: runs/priced0.2_bc_regret_s0/checkpoints/policy.pt}
+    - {name: rl, label: cost_regret0.2_s0, checkpoint: runs/priced0.2_cost_regret_s0/checkpoints/policy.pt}
+    - {name: rl, label: bc_oracle_s1, checkpoint: runs/rl_bc_archive_oracle_s1/checkpoints/policy.pt}
+    - {name: rl, label: bc_regret0_s1, checkpoint: runs/rl_bc_archive_regret_s1/checkpoints/policy.pt}
+    - {name: rl, label: cost_regret0_s1, checkpoint: runs/priced0_cost_regret_s1/checkpoints/policy.pt}
+    - {name: rl, label: bc_regret0.01_s1, checkpoint: runs/priced0.01_bc_regret_s1/checkpoints/policy.pt}
+    - {name: rl, label: cost_regret0.01_s1, checkpoint: runs/priced0.01_cost_regret_s1/checkpoints/policy.pt}
+    - {name: rl, label: bc_regret0.05_s1, checkpoint: runs/priced0.05_bc_regret_s1/checkpoints/policy.pt}
+    - {name: rl, label: cost_regret0.05_s1, checkpoint: runs/priced0.05_cost_regret_s1/checkpoints/policy.pt}
+    - {name: rl, label: bc_regret0.2_s1, checkpoint: runs/priced0.2_bc_regret_s1/checkpoints/policy.pt}
+    - {name: rl, label: cost_regret0.2_s1, checkpoint: runs/priced0.2_cost_regret_s1/checkpoints/policy.pt}
+  memory.budget.fraction: [0.02, 0.05, 0.1]

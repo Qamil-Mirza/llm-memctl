@@ -1,0 +1,19 @@
+# D1/D5: a priced archive. Archiving an item costs 0.01 (in queries); deleting an item that
+# is needed again costs about 1. The regret expert carries the price; 'bc' learns from it.
+schema_version: 1
+name: priced0.01_bc_regret_s1
+seed: 1
+env: {name: synthetic_recall, horizon: 200}
+agent: {name: scripted_reader, noise: 0.0}
+controller: {name: rl, hidden: 64, architecture: deepsets, retrieve_candidates: 8}
+memory:
+  allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+  embedder: hashing
+reward:
+  weights: {task_reward: 1.0, forced_fallback: -0.1, invalid_action: -0.1, archive_write: -0.01}
+training:
+  budget_fractions: [0.02, 0.05, 0.1, 0.25]
+  expert: {kind: regret, archive_cost: 0.01}
+  phases:
+    - {algorithm: bc, iterations: 10, episodes: 24, epochs: 3, lr: 0.003, dagger: true}
+  eval: {every: 2, episodes: 20}

@@ -1,0 +1,27 @@
+# D2: one policy trained on both task generators, episodes alternating: the recall task with
+# archive and retrieval, and the sequential workflow task (delete-only, as in Experiment 5b).
+# Specialists to compare against: configs/rl/d1/rl_bc_archive_regret_s*.yaml and rl_bc_workflow.
+schema_version: 1
+name: joint_bc_regret_s1
+seed: 1
+env: {name: synthetic_recall, horizon: 200}
+agent: {name: scripted_reader, noise: 0.0}
+controller: {name: rl, hidden: 64, architecture: deepsets, retrieve_candidates: 8}
+memory:
+  embedder: hashing
+training:
+  expert: {kind: regret}
+  tasks:
+    - label: recall
+      env: {name: synthetic_recall, horizon: 200}
+      agent: {name: scripted_reader, noise: 0.0}
+      memory: {allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]}
+      budget_fractions: [0.02, 0.05, 0.1, 0.25]
+    - label: workflow
+      env: {name: workflow}
+      agent: {name: scripted_tool_agent, noise: 0.0}
+      memory: {allowed_operations: [KEEP, EVICT, NO_OP]}
+      budget_fractions: [0.05, 0.1, 0.2, 0.4]
+  phases:
+    - {algorithm: bc, iterations: 20, episodes: 24, epochs: 3, lr: 0.003, dagger: true}
+  eval: {every: 4, episodes: 20}
