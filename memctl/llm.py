@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import json
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Callable, Protocol
@@ -127,6 +128,8 @@ class HuggingFaceLLM:
 class OpenAICompatibleLLM:
     """Talks to a chat-completions endpoint: vLLM, Ollama (`/v1`), llama.cpp server."""
 
+    RETRIES = 5  # a remote server behind a proxy sometimes answers 5xx, times out or sends an empty body
+
     def __init__(self, model_name: str, base_url: str, api_key: str | None = None, timeout_s: float = 300.0) -> None:
         self.name = model_name
         self.url = base_url.rstrip("/") + "/chat/completions"
@@ -146,8 +149,18 @@ class OpenAICompatibleLLM:
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
         request = urllib.request.Request(self.url, data=json.dumps(body).encode(), headers=headers)
-        with urllib.request.urlopen(request, timeout=self.timeout_s) as response:
-            return json.load(response)["choices"][0]["message"]["content"].strip()
+        for attempt in range(self.RETRIES + 1):
+            try:
+                with urllib.request.urlopen(request, timeout=self.timeout_s) as response:
+                    return json.load(response)["choices"][0]["message"]["content"].strip()
+            except urllib.error.HTTPError as error:
+                if error.code not in (429, 500, 502, 503, 504, 520, 522, 524) or attempt == self.RETRIES:
+                    raise
+            except (urllib.error.URLError, TimeoutError, ConnectionError, json.JSONDecodeError):
+                if attempt == self.RETRIES:
+                    raise
+            time.sleep(2 ** attempt)
+        raise AssertionError("unreachable")
 
 
 class TrackedLLM:
