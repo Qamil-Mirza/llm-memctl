@@ -61,6 +61,7 @@ commands given).
 | 13 | LongMemEval (all 500, 5 folds) and LoCoMo under the reviewed protocol: retrieval floor, no EVICT, reasoning reader, pre-registered gates | The floor fixes retrieval. Learned controllers keep more evidence at 5% but convert little: one paired win, one loss, none after Holm, none on the frontier. This reader refuses more as prompts grow (peak near 3k tokens). NEGATIVE, with a mechanism |
 | 14 | A token price for kept memory: labels counted in the budget, plug-in Bayes archiving at a pre-set price | No-go at the free gate: the priced rule never beats keep-last-0 + top 5 on evidence at equal memory; needed model AUC 0.62–0.74; a per-token price archives long turns, not lines. NEGATIVE (free) |
 | 15 | A query-aware floor head: which 5 of 16 to retrieve, learned listwise | Free gate: +0.08 all-found evidence at half the tokens. Reader: +0.047 accuracy (0.513 vs 0.466) at 745 vs 1,554 tokens; two of three arms win; Holm-adjusted p 0.058. First learned row beyond the rule frontier; replicates over 3 training seeds on a second host (+0.044, seed SD 0.002). POSITIVE |
+| 16 | Set-valued GRPO on the selection head with the reader's verdict as reward | Gate fails: +0.0125 (−0.005, +0.033) held-out over the imitation start; flat in 4 of 5 folds. Labels already a sufficient target for this head. NEGATIVE (pre-registered) |
 
 ---
 
@@ -2042,6 +2043,52 @@ is declared once and not swept.
     obvious candidate.
   - A fail means the evidence labels were already a sufficient target for a
     head this small.
+
+### 16a. Result: the GRPO gate fails (2026-10-07)
+
+Pod ji4gpj6dpi4tm0 (A40, CUDA 13.0 host) ran 18:45–19:30 UTC, about 0.74 h,
+about $0.36, for the §15c robustness check and this run; the user approved
+about $1.70, at most $2.70. The run is at 2eacf0d, not dirty. Peak RSS was
+663 MB per fold. `runs/lme_grpo_f*`.
+- **Cache integrity** after the cache-write race (b2088bf): 4,058 entries,
+  0 written under the wrong key, 1 in flight and read as a miss.
+- **Two failed launches** are in `runs/_aborted/` and are not reported.
+
+**Held-out gate** (80 questions per fold, 400 pooled; greedy top 5 of the
+GRPO head minus its `listsum` start, paired): **+0.0125, 95% interval
+−0.0050 to +0.0325. The interval includes 0, so the gate fails and no
+test-fold run follows**, as pre-registered.
+
+| fold | start | after GRPO | held-out curve (iterations 0 / 2 / 4 / 6) | groups with all rewards equal | kept after filter |
+|---|---|---|---|---|---|
+| 0 | 0.550 | 0.538 | 0.550 / 0.537 / 0.550 / 0.537 | 45–52% | 303 |
+| 1 | 0.625 | 0.613 | 0.625 / 0.625 / 0.637 / 0.613 | 44–49% | 303 |
+| 2 | 0.588 | 0.600 | 0.588 / 0.588 / 0.588 / 0.600 | 49–55% | 302 |
+| 3 | 0.538 | 0.538 | flat | 51–56% | 302 |
+| 4 | 0.463 | 0.538 | 0.463 / 0.487 / 0.500 / 0.537 | 52–61% | 301 |
+
+**What it means, as stated in advance.**
+- With this budget (6 iterations × 128 questions × 8 subsets), RL on the
+  reader's own verdict did not improve the selection beyond imitation of the
+  evidence labels by more than about 0.03, the gate's resolution. One fold
+  (4) moved by +0.075; the other four did not move.
+- Per the pre-registration, the evidence labels were already a sufficient
+  target for a head this small.
+
+**Why little moved.**
+- About half of the groups had all 8 rewards equal and carried no signal.
+- The reward's noise floor (1 answer in 50 from batch nondeterminism) is
+  comparable with the per-subset differences being learned.
+- The training-set reward rose in some folds (correct rate from 0.44 to
+  0.52–0.54 by iteration 3 or 4), but the gain did not reach the held-out
+  slice.
+
+**For RQ3.** GRPO's credit assignment was exact here (one question, one
+decision), so this is not a credit-assignment failure. On this task the
+binding constraint is the reward's information per sample, not the optimiser.
+This matches Experiment 10's finding on the synthetic task, where GRPO added
+about one point over imitation. A longer run is not proposed: the curve is
+flat in four folds of five, and the pre-registered gate decides.
 
 ## 5. The sequential task
 
