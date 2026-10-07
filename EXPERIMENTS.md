@@ -1973,6 +1973,20 @@ is declared once and not swept.
   - GRPO head against keep-last-0 + top 5: paired; the RQ4 question.
   - Holm over the comparisons that reach the test, the §13a decomposition,
     and per-type rows.
+- **Notes added at code review (before any paid call).**
+  - The anchor contributes nothing for a shortlist with no gold item: an
+    empty sum.
+  - Abstention questions drop out at the empty-memory filter: empty memory
+    gives "unknown", which is graded correct for them.
+  - The held-out slice is evaluated at the start and after iterations 2, 4
+    and 6, to give a learning curve.
+  - The gate's power: about 80 held-out questions per fold, 400 pooled, so
+    the paired interval is about ±0.04. A null means "no effect above about
+    0.04", not "no effect".
+  - The reward has a noise floor: on one host, about 1 answer in 50 changes
+    between identical repeated calls (vLLM batch nondeterminism, §15b).
+  - It runs on the robustness check's host and cache, so its starting
+    accuracy is comparable with that check.
 - **What a result means, stated in advance.**
   - A pass on RQ3 means RL on the reader's own correctness beats imitation of
     evidence labels. The per-type rows that move then show what the labels

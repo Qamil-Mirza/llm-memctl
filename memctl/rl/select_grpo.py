@@ -21,6 +21,7 @@ The reader prompt is built by the same LLMAgent as every sweep, so generations s
 from __future__ import annotations
 
 import argparse
+import hashlib
 import itertools
 import json
 import math
@@ -186,6 +187,7 @@ def train(config: dict) -> Path:
     log.write(json.dumps({"stage": "start", "train_cases": len(train_cases), "kept_after_filter": len(kept),
                           "held_cases": len(held_cases), "held_accuracy": float(np.mean(baseline))}) + "\n")
     log.flush()
+    curve, tie_rates = [{"iteration": 0, "held_accuracy": float(np.mean(baseline))}], []
 
     optimizer = torch.optim.Adam(policy.parameters(), lr=float(settings["lr"]))
     k, group = int(settings["k"]), int(settings["group"])
@@ -223,18 +225,28 @@ def train(config: dict) -> Path:
             loss.backward()
             torch.nn.utils.clip_grad_norm_(policy.parameters(), 1.0)
             optimizer.step()
-        log.write(json.dumps({"iteration": iteration, "questions": len(batch), "mean_reward": float(np.mean(rewards)),
-                              "correct_rate": float(np.mean([o[0] for o in outcomes])), "tie_groups": ties,
-                              "groups": len(batch), "loss": float(loss), "seconds": round(time.time() - started)}) + "\n")
+        row = {"iteration": iteration, "questions": len(batch), "mean_reward": float(np.mean(rewards)),
+               "correct_rate": float(np.mean([o[0] for o in outcomes])), "tie_groups": ties,
+               "groups": len(batch), "loss": float(loss), "seconds": round(time.time() - started)}
+        tie_rates.append(ties / max(1, len(batch)))
+        if (iteration + 1) % 2 == 0 and iteration + 1 < int(settings["iterations"]):  # learning curve on the held-out slice
+            row["held_accuracy"] = float(np.mean(evaluate(policy, held_cases, reader, k, int(settings["workers"]))))
+            curve.append({"iteration": iteration + 1, "held_accuracy": row["held_accuracy"]})
+        log.write(json.dumps(row) + "\n")
         log.flush()
 
     final = evaluate(policy, held_cases, reader, k, int(settings["workers"]))
     torch.save({"state_dict": policy.state_dict(), "policy": policy.config, "feature_version": 1,
                 "use_embeddings": False, "embedding_dim": 0, "columns": logits.shape[1]}, folder / "policy_grpo.pt")
     differences = [a - b for a, b in zip(final, baseline)]
+    curve.append({"iteration": int(settings["iterations"]), "held_accuracy": float(np.mean(final))})
+    checkpoint = config["controller"].get("checkpoint")
     summary = {"held_questions": len(held_cases), "start_accuracy": float(np.mean(baseline)),
                "grpo_accuracy": float(np.mean(final)), "paired_differences": differences,
-               "start_checkpoint": config["controller"].get("checkpoint")}
+               "start_checkpoint": checkpoint,
+               "start_checkpoint_sha256": hashlib.sha256(Path(checkpoint).read_bytes()).hexdigest() if checkpoint else None,
+               "train_cases": len(train_cases), "kept_after_filter": len(kept), "tie_rate_per_iteration": tie_rates,
+               "held_accuracy_curve": curve}
     (folder / "summary.json").write_text(json.dumps(summary, indent=2))
     metadata.update(status="completed", peak_rss_mb=peak_rss_mb(), seconds=round(time.time() - started))
     (folder / "metadata.json").write_text(json.dumps(metadata, indent=2, default=str))

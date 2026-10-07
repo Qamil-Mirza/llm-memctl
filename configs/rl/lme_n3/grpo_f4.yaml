@@ -1,5 +1,5 @@
 # Experiment 16 (pre-registered in EXPERIMENTS.md §16): set-valued GRPO on the selection head, fold 4 train part,
-# from the listsum checkpoint; frozen reader and judge of Experiment 13 (POD_URL filled in at launch).
+# from the listsum checkpoint; frozen reader and judge of Experiment 13 (POD_URL filled in at launch); same host and cache as the robustness run.
 schema_version: 1
 seed: 0
 env:
@@ -14,7 +14,7 @@ env:
     name: qwen2.5-7b-instruct
     base_url: POD_URL/v1
     timeout_s: 300
-    cache_dir: cache/generations_qwen7b_vllm_v2
+    cache_dir: cache/generations_qwen7b_vllm_v2_host2
     style: longmemeval
 agent:
   name: llm
@@ -26,7 +26,7 @@ agent:
     name: qwen2.5-7b-instruct
     base_url: POD_URL/v1
     timeout_s: 300
-    cache_dir: cache/generations_qwen7b_vllm_v2
+    cache_dir: cache/generations_qwen7b_vllm_v2_host2
 memory:
   allowed_operations:
   - KEEP
