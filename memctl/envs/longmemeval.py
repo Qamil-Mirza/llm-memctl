@@ -32,12 +32,14 @@ def _load(path: str) -> list[dict]:
     return json.loads(Path(path).read_text())
 
 
-def parse_instance(instance: dict, max_turn_tokens: int | None = None) -> tuple[QAEpisode, tuple[tuple[str, ...], ...]]:
+def parse_instance(instance: dict, max_turn_tokens: int | None = None,
+                   prefix: str = "") -> tuple[QAEpisode, tuple[tuple[str, ...], ...]]:
     """(episode, fallback evidence) for one LongMemEval instance.
 
     The fallback has one entry per answer session with no turn marked `has_answer`: that session's
     turn ids, any one of which counts. 41 of the 500 instances mark turns in only some of their
-    answer sessions, and 21 mark none."""
+    answer sessions, and 21 mark none. `prefix` is put before every turn id, so instances can share an
+    episode (filler sessions repeat across instances)."""
     order = sorted(range(len(instance["haystack_sessions"])), key=lambda n: instance["haystack_dates"][n])
     turns, text_of, marked = [], {}, []
     session_turns: dict[str, list[str]] = {}
@@ -47,9 +49,9 @@ def parse_instance(instance: dict, max_turn_tokens: int | None = None) -> tuple[
         session_id = instance["haystack_session_ids"][position]
         date = instance["haystack_dates"][position]
         for number, turn in enumerate(instance["haystack_sessions"][position]):
-            item_id = f"{session_id}:{number}"
+            item_id = f"{prefix}{session_id}:{number}"
             if item_id in text_of:  # a session id can repeat in a haystack
-                item_id = f"{session_id}#{position}:{number}"
+                item_id = f"{prefix}{session_id}#{position}:{number}"
             text = turn["content"]
             if max_turn_tokens:
                 from memctl.memory.items import truncate_tokens
@@ -69,6 +71,7 @@ def parse_instance(instance: dict, max_turn_tokens: int | None = None) -> tuple[
         str(instance["question_id"]),
         f"(asked on {instance.get('question_date', '')}) {instance['question']}",
         str(instance["answer"]), instance["question_type"], tuple(marked), unanswerable,
+        after=turns[-1].id if turns else None,
     )
     fallback = tuple(tuple(ids) for session, ids in session_turns.items() if session not in marked_sessions)
     return QAEpisode(str(instance["question_id"]), turns, [question], text_of), fallback
@@ -89,7 +92,11 @@ class LongMemEvalEnv(QAEnvironment):
         self.folds = dict(config["folds"]) if config.get("folds") else None
         if self.folds and self.subset:
             raise ValueError("set env.subset or env.folds, not both")
-        self._fallback: tuple[tuple[str, ...], ...] = ()
+        # Optional compose: m > 1 makes one training episode out of m instances: their sessions merged in
+        # date order, each question asked right after its own instance's last turn. One question per
+        # episode starves imitation of labels (Experiment 11, peer review T4); m questions give m.
+        self.compose = int(config.get("compose", 1))
+        self._fallback: dict[str, tuple[tuple[str, ...], ...]] = {}
         self._chosen: list[int] | None = None
         if not Path(self.path).exists():
             raise FileNotFoundError(f"LongMemEval not found at {self.path}. Download a split from {SOURCE}")
@@ -100,19 +107,30 @@ class LongMemEvalEnv(QAEnvironment):
             if self._chosen is None:
                 self._chosen = fold_indices(instances, int(self.folds.get("k", 5)), int(self.folds["fold"]),
                                             self.folds.get("part", "test"))
-            index = self._chosen[seed % len(self._chosen)]
+            pool = self._chosen
         else:
             start, end = self.subset or (0, len(instances))
-            index = start + seed % (end - start)
-        episode, self._fallback = parse_instance(instances[index], self.max_turn_tokens)
-        return episode
+            pool = list(range(start, end))
+        if self.compose <= 1:
+            episode, fallback = parse_instance(instances[pool[seed % len(pool)]], self.max_turn_tokens)
+            self._fallback = {episode.questions[0].id: fallback}
+            return episode
+        parts = [parse_instance(instances[pool[(seed * self.compose + j) % len(pool)]], self.max_turn_tokens, f"i{j}/")
+                 for j in range(self.compose)]
+        turns = sorted(((t.metadata.get("date", ""), j, n, t) for j, (e, _) in enumerate(parts) for n, t in enumerate(e.turns)),
+                       key=lambda row: row[:3])
+        self._fallback = {e.questions[0].id: fallback for e, fallback in parts}
+        text_of = {k: v for e, _ in parts for k, v in e.turn_text.items()}
+        return QAEpisode("+".join(e.id for e, _ in parts), [row[3] for row in turns],
+                         [q for e, _ in parts for q in e.questions], text_of)
 
     def get_ground_truth_dependencies(self) -> list[Dependency]:
         dependencies = super().get_ground_truth_dependencies()
         for number, dependency in enumerate(dependencies):
-            if self._fallback:
+            fallback = self._fallback.get(self._questions[dependency.query_id].id, ())
+            if fallback:
                 # An answer session with no marked turn: any one of its turns is accepted as evidence.
-                extra = tuple(EvidenceRequirement(ids, "") for ids in self._fallback)
+                extra = tuple(EvidenceRequirement(ids, "") for ids in fallback)
                 dependencies[number] = Dependency(
                     dependency.query_id, dependency.step, dependency.requirements + extra, dependency.gold,
                     dependency.category,

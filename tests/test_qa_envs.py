@@ -196,3 +196,27 @@ def test_the_longmemeval_judge_style_picks_the_official_prompt_for_each_question
     assert "Reply with exactly one word" in Judge({"backend": "stub"}).prompt("Q", "G", "R", "temporal-reasoning")
     with pytest.raises(ValueError):
         Judge({"style": "lenient", "backend": "stub"})
+
+
+@needs_longmemeval
+def test_a_composed_longmemeval_episode_asks_each_question_after_its_own_history():
+    env = build_env({"name": "longmemeval", "folds": {"k": 5, "fold": 0, "part": "train"}, "compose": 3})
+    first = env.reset(7)
+    order, answered = [first], []
+    while not env.is_done():
+        observation = env.get_observation()
+        if observation.requires_response:
+            answered.append((observation.id, len(order)))
+            dependencies = {d.query_id: d for d in env.get_ground_truth_dependencies()}
+            assert dependencies[observation.id].step == len(order)
+            assert all(i.startswith(f"i") for r in dependencies[observation.id].requirements for i in r.item_ids)
+        env.step("unknown" if observation.requires_response else None)
+        if env.get_observation() is not None:
+            order.append(env.get_observation())
+    assert len(answered) == 3 and len({o.id for o in order}) == len(order)
+    turns = [o for o in order if not o.requires_response]
+    dates = [t.metadata["date"] for t in turns]
+    assert dates == sorted(dates) and {t.id.split("/")[0] for t in turns} == {"i0", "i1", "i2"}
+    for query_id, position in answered:
+        before = order[position - 2]
+        assert before.id == env._questions[query_id].after or before.requires_response
