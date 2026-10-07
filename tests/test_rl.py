@@ -559,3 +559,25 @@ def test_a_resumed_run_keeps_the_git_state_of_every_session(tmp_path):
     log = RunLog(tmp_path / "cell", settings)
     assert log.resumed and [g["short"] for g in log.metadata["git_history"]][0] == "old0000"
     assert len(log.metadata["git_history"]) == 2
+
+
+def test_a_token_price_archives_kept_items_worth_less_than_their_tokens(tmp_path):
+    from memctl.features import GLOBAL_DIM, ITEM_DIM
+    from memctl.rl.policy import NeededModel
+
+    model = NeededModel(ITEM_DIM + GLOBAL_DIM)
+    for parameter in model.parameters():
+        torch.nn.init.zeros_(parameter)  # P(needed) = 0.5 for every item
+    torch.save({"state_dict": model.state_dict(), "config": model.config}, tmp_path / "needed.pt")
+
+    def run(price):
+        torch.manual_seed(0)
+        experiment = Experiment(config(fraction=0.5, operations=ARCHIVE_OPS, needed_model=str(tmp_path / "needed.pt"),
+                                       need_value=1.0, token_price=price))
+        episode = experiment.run_episode(seed=0, detail=False).episode
+        assert episode["invalid_actions"] == 0
+        return episode
+
+    free, priced = run(0.0), run(1.0)  # 0.5 x 1 < 1.0 x tokens for any item: everything but the newest goes
+    assert priced["active_tokens_mean"] < 0.5 * free["active_tokens_mean"]
+    assert run(1e-6)["active_tokens_mean"] == free["active_tokens_mean"]  # a negligible price changes nothing

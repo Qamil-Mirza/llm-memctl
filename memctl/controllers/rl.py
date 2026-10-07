@@ -151,6 +151,10 @@ class RLController(MemoryController):
         self.needed_model = NeededModel.load(config["needed_model"]) if config.get("needed_model") else None
         self.archive_price = float(config.get("archive_price", 0.0))
         self.need_value = float(config.get("need_value", 1.0))
+        # Token price (N1, Experiment 13): with a needed model, every decision also archives each kept item whose
+        # expected worth P(needed) x need_value is below token_price x its tokens, so memory is kept below the
+        # budget when keeping costs the reader more than it is likely to give. 0 (default) keeps the old rule.
+        self.token_price = float(config.get("token_price", 0.0))
         if config.get("checkpoint"):
             self.load(config["checkpoint"])
 
@@ -234,7 +238,8 @@ class RLController(MemoryController):
             )
         ] if floor else []
         over_budget = memory.active_tokens + floor_tokens > limit
-        if not over_budget and not shortlist:
+        pricing = self.token_price > 0 and self.needed_model is not None
+        if not over_budget and not shortlist and not pricing:
             self._info = {"floor_ids": [item.id for item in floor], "floor_tokens": floor_tokens} if floor else {}
             return floor_action
 
@@ -275,6 +280,9 @@ class RLController(MemoryController):
             item, operation = active[pick // N_REMOVALS], REMOVAL_OPERATIONS[pick % N_REMOVALS]
             parameters = {"ratio": self.compact_ratio} if operation in (Operation.COMPACT, Operation.COMPACT_AND_ARCHIVE) else {}
             actions.append(MemoryAction(operation, (item.id,), parameters=parameters))
+        priced = self._priced_archives(decision, active, task) if pricing else []
+        if priced:
+            actions.append(MemoryAction(Operation.MOVE_TO_ARCHIVE, tuple(priced), parameters={"method": "token_price"}))
         self._info = {
             "candidates": len(candidates),
             "floor_ids": [item.id for item in floor],
@@ -282,10 +290,27 @@ class RLController(MemoryController):
             "picks": [(decision.item_ids[p // N_REMOVALS], REMOVAL_OPERATIONS[p % N_REMOVALS].value) for p in decision.picks],
             "log_prob": decision.log_prob,
             "value": decision.value,
+            **({"priced_archives": priced} if pricing else {}),
         }
         if self.log_features:
             self._info["features"] = decision.items.round(4).tolist()
         return actions
+
+    def _priced_archives(self, decision: Decision, active: list[MemoryItem], task: TaskState) -> list[str]:
+        """Kept items not worth their tokens: P(needed) x need_value < token_price x tokens. Never the current
+        observation or an item this decision already removes; only when archiving is allowed."""
+        n = decision.n_active
+        if not n or not self.allows(Operation.MOVE_TO_ARCHIVE):
+            return []
+        picked = {pick // N_REMOVALS for pick in decision.picks}
+        rows = np.concatenate([decision.items[:n], np.repeat(decision.global_features[None, :], n, axis=0)], axis=1)
+        with torch.no_grad():
+            needed = torch.sigmoid(self.needed_model(torch.from_numpy(rows))).numpy()
+        return [
+            item.id for i, item in enumerate(active)
+            if i not in picked and item.id != task.observation.id
+            and needed[i] * self.need_value < self.token_price * item.token_count
+        ]
 
     def _choose(self, decision: Decision) -> None:
         """Fill in `picks`, `retrieved`, `log_prob` and `value`, from the policy or from the expert."""
