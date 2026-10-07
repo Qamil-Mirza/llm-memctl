@@ -1815,6 +1815,20 @@ user turns".
   | head's 5 | 78 | 60–101 |
   | BM25's top 5 | 148 | 76–435 |
 
+In one sentence: the user-only rule explains the head's token saving, but not
+its evidence gain.
+
+**Paid reader test (approved by the user on 2026-10-07, about $0.30–0.40).**
+`configs/sweeps/exp15/exp15_paid_f*.yaml`: the three arms and
+keep-last-0 + top 5 on all 500 questions, with the reader frozen at 7b5fc30 and
+the official judge. Criteria, as in §13:
+1. paired accuracy against keep-last-0 + top 5, 95% interval above 0, with
+   Holm over the three arms reported;
+2. place on the accuracy-against-tokens frontier;
+3. the §13a decomposition (P(all in view), P(correct | in view), the unknown
+   rate, prompt tokens), to separate the gain from more evidence and the gain
+   from fewer tokens.
+
 **Caveat.** The gate measures the same evidence labels the head was trained to
 find: `has_answer` turns, plus any turn of an unmarked answer session. Whether
 more labelled evidence, at half the tokens, turns into more correct answers is
