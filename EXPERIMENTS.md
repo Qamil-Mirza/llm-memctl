@@ -59,6 +59,7 @@ commands given).
 | 11 | Follow-the-clue with a 7B reader; LoCoMo and LongMemEval QA | The 7B gain holds (0.832 → 0.889 at 2%). On real conversations the learned policies lose to simple rules: they barely retrieve. PASSED (negative on benchmarks) |
 | 12 | Retrieval headroom: how much evidence search reaches (no reader) | Top 16 holds 0.12–0.16 more evidence than top 5; labels and BM25+bge fusion help LoCoMo, not LongMemEval. Gates for the pick-k head and better units passed. |
 | 13 | LongMemEval (all 500, 5 folds) and LoCoMo under the reviewed protocol: retrieval floor, no EVICT, reasoning reader, pre-registered gates | The floor fixes retrieval. Learned controllers keep more evidence at 5% but convert little: one paired win, one loss, none after Holm, none on the frontier. This reader refuses more as prompts grow (peak near 3k tokens). NEGATIVE, with a mechanism |
+| 14 | A token price for kept memory: labels counted in the budget, plug-in Bayes archiving at a pre-set price | (running: free gate first) |
 
 ---
 
@@ -1593,6 +1594,42 @@ cross-benchmark transfer test; it was not trained on LoCoMo.
   - Laptop: 12 training runs (62–71 min each, run together, under 1 GB each)
     and 252 gate cells (about 35 min for LongMemEval, about 3 h for LoCoMo
     with bge on CPU).
+
+## 14. A token price for kept memory (N1; 2026-10-07, pre-registered, free stage)
+
+The change Experiment 13 called for: the budget counts what the reader pays,
+and the controller is charged for what it keeps.
+
+- `memory.count_labels: true` (b45ed8e): each item's tokens include its
+  "speaker, date:" label, so the budget is the prompt.
+- The token price (dccff18): a plug-in Bayes rule over a learned P(needed
+  again | kept item). At every decision the controller archives each kept item
+  whose P(needed) × need_value is below token_price × its tokens.
+  - token_price = 3e-5 per token, fixed in advance from Experiment 13's FIFO
+    refusal curve.
+  - need_value = 0.44, also fixed in advance:
+    P(correct | evidence in view) − P(correct | not), FIFO filled to 5%, §13a.
+  - Prices of 1e-4 and 3e-4 are a declared sensitivity check, not tuning.
+  - The floor still fetches the top 5 at every question, so archived evidence
+    can come back.
+  - Unlike the reviewer's N1, the eviction policy is not retrained. The price
+    acts through the plug-in rule, so the composed-episode policy of
+    Experiment 13 is reused.
+- The needed model is trained per fold on the train part
+  (`configs/rl/lme_n1/needed_f*.yaml`): active items sampled at every
+  decision, hindsight labels. Base rate is about 0.6% needed.
+
+**Pre-registered gate (written before it ran).** No reader, LongMemEval test
+folds, labels counted (`configs/sweeps/exp14/`). A candidate cell (composed
+policy with price 3e-5, 1e-4, 3e-4; without price as a control) goes to the
+reader only if two things hold against keep-last-0 + top 5, the rule frontier
+of Experiment 13:
+1. its evidence in view, paired over questions, minus the rule's has a 95%
+   interval entirely above 0; and
+2. its mean memory tokens at the question are at most 1.1 times the rule's.
+
+Analysis: `python -m memctl.analysis.gate runs/exp14_gate_f* --frontier
+keep_last0_top5`. Paid cells, if any, go to the user with a cost first.
 
 ## 5. The sequential task
 

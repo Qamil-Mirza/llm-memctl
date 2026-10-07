@@ -90,11 +90,67 @@ def gate(sweeps: list[Path]) -> list[dict]:
     return rows
 
 
+def read_tokens(sweeps: list[Path]) -> dict[tuple[str, str, str], dict[tuple[str, int], float]]:
+    """Active memory (tokens) when the question was asked, per (cell key, question), from steps.jsonl. With
+    memory.count_labels this is the reader's prompt less its fixed instructions."""
+    tokens: dict[tuple[str, str, str], dict[tuple[str, int], float]] = defaultdict(dict)
+    for sweep in sweeps:
+        for cell in sweep.iterdir():
+            path = cell / "steps.jsonl"
+            if not path.exists():
+                continue
+            key = split_label(cell.name)
+            for line in path.open():
+                step = json.loads(line)
+                if step.get("requires_response"):
+                    tokens[key][(sweep.name, step["seed"])] = step["active_tokens_at_read"]
+    return tokens
+
+
+def frontier_gate(sweeps: list[Path], baseline: str, candidates: tuple[str, ...], slack: float = 0.10) -> list[dict]:
+    """Experiment 14's rule: a candidate cell is a go when its evidence in view minus the baseline's (the rule on
+    the frontier, any budget it was run at) has a paired 95% interval above 0 AND its mean tokens at the question
+    are at most (1 + slack) times the baseline's."""
+    values, tokens = load(sweeps), read_tokens(sweeps)
+    reference = {key: v for key, v in values.items() if key[0] == baseline}
+    rows = []
+    for (controller, target, fraction), candidate in sorted(values.items()):
+        if controller not in candidates:
+            continue
+        for (_, _, base_fraction), base in sorted(reference.items()):
+            shared = sorted(set(candidate) & set(base))
+            if len(shared) < 2:
+                continue
+            differences = [candidate[q] - base[q] for q in shared]
+            low, high = interval(differences)
+            cand_tokens = tokens[(controller, target, fraction)]
+            base_tokens = tokens[(baseline, "fill", base_fraction)]
+            ct = sum(cand_tokens.get(q, 0.0) for q in shared) / len(shared)
+            bt = sum(base_tokens.get(q, 0.0) for q in shared) / len(shared)
+            rows.append({"controller": controller, "budget": fraction, "baseline_budget": base_fraction, "n": len(shared),
+                         "baseline": sum(base[q] for q in shared) / len(shared),
+                         "candidate": sum(candidate[q] for q in shared) / len(shared),
+                         "difference": sum(differences) / len(differences), "low": low, "high": high,
+                         "tokens": ct, "baseline_tokens": bt, "go": low > 0 and ct <= (1 + slack) * bt})
+    return rows
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("sweeps", nargs="+", type=Path)
     parser.add_argument("--gate-file", type=Path, help="write the go cells as 'sweep label' lines for the paid run")
+    parser.add_argument("--frontier", help="Experiment 14 rule against this baseline label (e.g. keep_last0_top5)")
+    parser.add_argument("--candidates", default="compose_price3e-5,compose_price1e-4,compose_price3e-4,compose_floor5")
     args = parser.parse_args()
+    if args.frontier:
+        print(f"| candidate | budget | vs {args.frontier} at | n | baseline evidence | candidate evidence | difference (95% CI) | "
+              "tokens at question candidate / baseline | go |")
+        print("|---|---|---|---|---|---|---|---|---|")
+        for r in frontier_gate(args.sweeps, args.frontier, tuple(args.candidates.split(","))):
+            print(f"| {r['controller']} | {r['budget']} | {r['baseline_budget']} | {r['n']} | {r['baseline']:.3f} | "
+                  f"{r['candidate']:.3f} | {r['difference']:+.3f} ({r['low']:+.3f}, {r['high']:+.3f}) | "
+                  f"{r['tokens']:.0f} / {r['baseline_tokens']:.0f} | {'go' if r['go'] else 'no'} |")
+        return
     rows = gate(args.sweeps)
     print("| candidate | target | budget | n | FIFO evidence | candidate evidence | difference (95% CI) | "
           "memory tokens FIFO / candidate | go |")

@@ -1,0 +1,77 @@
+# Experiment 14 gate, LongMemEval fold 4: no reader, labels counted.
+name: exp14_gate_f4
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  agent:
+    name: 'null'
+  memory:
+    allowed_operations:
+    - KEEP
+    - MOVE_TO_ARCHIVE
+    - RETRIEVE_FROM_ARCHIVE
+    - NO_OP
+    embedder: hashing
+    count_labels: true
+  env:
+    name: longmemeval
+    path: data/longmemeval/longmemeval_s_cleaned.json
+    folds:
+      k: 5
+      fold: 4
+      part: test
+  logging:
+    detail_episodes: 100000
+grid:
+  controller:
+  - name: fifo
+    label: fifo_top5
+    removal:
+    - MOVE_TO_ARCHIVE
+    retrieve:
+      top_k: 5
+      fit: true
+      method: lexical
+  - name: archive_everything
+    label: keep_last0_top5
+    keep_last: 0
+    retrieve:
+      top_k: 5
+      method: lexical
+  - name: rl
+    label: compose_floor5
+    checkpoint: runs/lme_compose4_f4_s0/checkpoints/policy_best.pt
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    retrieval_method: lexical
+  - name: rl
+    label: compose_price3e-5
+    checkpoint: runs/lme_compose4_f4_s0/checkpoints/policy_best.pt
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    retrieval_method: lexical
+    needed_model: runs/lme_needed_f4/needed.pt
+    need_value: 0.44
+    token_price: 3.0e-05
+  - name: rl
+    label: compose_price1e-4
+    checkpoint: runs/lme_compose4_f4_s0/checkpoints/policy_best.pt
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    retrieval_method: lexical
+    needed_model: runs/lme_needed_f4/needed.pt
+    need_value: 0.44
+    token_price: 0.0001
+  - name: rl
+    label: compose_price3e-4
+    checkpoint: runs/lme_compose4_f4_s0/checkpoints/policy_best.pt
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    retrieval_method: lexical
+    needed_model: runs/lme_needed_f4/needed.pt
+    need_value: 0.44
+    token_price: 0.0003
+  memory.budget.fraction:
+  - 0.02
+  - 0.05
