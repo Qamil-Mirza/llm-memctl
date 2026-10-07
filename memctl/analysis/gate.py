@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import re
 from collections import defaultdict
 from pathlib import Path
 
@@ -23,8 +24,8 @@ CANDIDATES = ("learned_floor5", "compose_floor5", "synthetic_floor5")
 def split_label(cell: str) -> tuple[str, str, str]:
     """(controller, target tag, budget) from a cell name like 'compose_floor5_t2000__fraction0.02'."""
     label, _, fraction = cell.partition("__fraction")
-    controller, _, target = label.partition("_t")
-    return controller, (f"t{target}" if target else "fill"), fraction
+    match = re.fullmatch(r"(.+)_t(\d+)", label)  # not partition("_t"): "fifo_top5" contains it
+    return (match.group(1), f"t{match.group(2)}", fraction) if match else (label, "fill", fraction)
 
 
 def load(sweeps: list[Path]) -> dict[tuple[str, str, str], dict[tuple[str, int], float]]:

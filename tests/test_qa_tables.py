@@ -67,3 +67,4 @@ def test_the_evidence_gate_pairs_with_fifo_and_names_paid_cells(tmp_path):
     assert rows[("compose_floor5", "fill")]["go"] and not rows[("learned_floor5", "fill")]["go"]
     assert rows[("compose_floor5", "fill")]["n"] == 40 and abs(rows[("compose_floor5", "fill")]["difference"] - 0.4) < 1e-9
     assert split_label("compose_floor5_t2000__fraction0.01") == ("compose_floor5", "t2000", "0.01")
+    assert split_label("fifo_top5__fraction0.02") == ("fifo_top5", "fill", "0.02")
