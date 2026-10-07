@@ -48,6 +48,7 @@ class EpisodeSettings:
     history_tokens: int | None = None
     pricing: dict = field(default_factory=dict)
     interventions: dict = field(default_factory=dict)  # step -> [MemoryAction], applied by the harness
+    count_labels: bool = False  # memory.count_labels
 
 
 @dataclass
@@ -81,7 +82,7 @@ def run_episode(
 ) -> EpisodeResult:
     reward_fn = reward_fn or RewardFunction()
     shadows = shadows or []
-    state = MemoryState(settings.budget, settings.archive_budget, embedder)
+    state = MemoryState(settings.budget, settings.archive_budget, embedder, settings.count_labels)
     observation = env.reset(settings.seed)
     agent.reset(settings.seed)
     goal_embedding = embedder.embed(env.goal) if embedder and env.goal else None

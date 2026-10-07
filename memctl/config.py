@@ -38,6 +38,9 @@ DEFAULTS: dict = {
         "compression_model": None,  # a model config, when compressor or consolidator is "llm"
         "compact_ratio": 0.5,
         "store_agent_actions": False,
+        # Count each item's "speaker, date: " label (as the reader shows it) in its tokens, so the budget is
+        # the prompt the reader pays for (Experiment 13: labels were about 20 tokens a line, uncounted).
+        "count_labels": False,
     },
     "reward": {"weights": {"task_reward": 1.0, "forced_fallback": -0.1, "invalid_action": -0.1}},
     "hindsight": {"enabled": True},

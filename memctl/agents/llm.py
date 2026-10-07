@@ -10,7 +10,7 @@ import time
 
 from memctl.agents.base import Agent
 from memctl.llm import build_llm
-from memctl.memory.items import count_tokens
+from memctl.memory.items import count_tokens, label_prefix
 from memctl.memory.state import MemoryView
 from memctl.task import AgentStep, Observation, TaskState
 
@@ -52,9 +52,7 @@ def memory_line(item) -> str:
 
 
 def compact_line(item) -> str:
-    who = item.metadata.get("speaker") or item.source_type.value
-    when = item.metadata.get("date")
-    return f"{who}, {when}: {item.content}" if when else f"{who}: {item.content}"
+    return label_prefix(item.metadata, item.source_type) + item.content
 
 
 class LLMAgent(Agent):

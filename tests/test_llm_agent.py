@@ -167,3 +167,15 @@ def test_memory_order_and_line_labels_are_separate_options():
     for bad in ({"order": "random"}, {"labels": "none"}):
         with pytest.raises(ValueError):
             LLMAgent(bad)
+
+
+def test_with_counted_labels_an_items_tokens_are_the_line_the_reader_sees():
+    from memctl.agents.llm import compact_line
+    from memctl.memory.items import count_tokens
+    from memctl.memory.state import MemoryState
+
+    for counted in (False, True):
+        state = MemoryState(100, count_labels=counted)
+        item = state.ingest("t", "I went hiking.", SourceType.USER, metadata={"speaker": "Caroline", "date": "8 May 2023"})
+        expected = count_tokens(compact_line(item)) if counted else count_tokens("I went hiking.")
+        assert item.token_count == expected and state.active_tokens == expected
