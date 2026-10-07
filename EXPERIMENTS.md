@@ -1861,7 +1861,14 @@ in §13. The analysis is `runs/_pipelines/exp15_report.py`; its output is
   lie beyond the rule frontier. They remain far below the hindsight oracle
   (0.672 at 394).
 
-**Where the gain comes from.** Accuracy is the mixture
+**Where the gain comes from.** In one sentence: of the +0.047, about +0.041
+comes from having the evidence in view more often and about +0.006 from the
+conditional accuracies. P(correct | in view) is unchanged at half the tokens
+because both 745 and 1,554 tokens are below the context-rot onset. So the gain
+is selection, and there is unused room below the onset. That is the case for
+an adaptive k: show 8 turns instead of 5 when the head is unsure.
+
+In detail, accuracy is the mixture
 P(in view) × P(correct | in view) + (1 − P(in view)) × P(correct | not).
 
 - Keeping the rule's conditional accuracies and using `listsum`'s P(all in
@@ -1896,6 +1903,54 @@ half the prompt. This is RQ4's positive answer, with the caveats above: one
 benchmark, one reader, and a result that sits at the edge after a correction
 for three arms. LoCoMo would be a cross-benchmark transfer test. The adaptive
 number of turns (3, 5 or 8) is the declared next arm.
+
+## 16. Plan (not built): set-valued GRPO on the selection head, with the reader's verdict as reward
+
+Pre-registered plan, written 2026-10-07 for review before any code. This is
+the RQ3 experiment on real conversations. It is the first place where
+reinforcement learning has a credit-assignment problem it can solve exactly:
+one question, one decision, one judged answer.
+
+- **Policy.** The Experiment 15 selection head, which picks 5 of 16 BM25
+  candidates at the question, with keep-none. It starts from each fold's
+  `listsum` checkpoint.
+- **Action and probability.**
+  - The action is an unordered 5-subset of the 16.
+  - G = 8 subsets are sampled per question without replacement by
+    Gumbel-top-k on the head's logits.
+  - Their log-probabilities are the unordered-set probability of Kool et
+    al. 2020 (https://arxiv.org/abs/2002.06043), computed exactly over the
+    5! orders.
+- **Reward.** The frozen reader of Experiment 13 (7b5fc30 prompt) answers
+  with each subset; the official judge gives 1 or 0.
+- **Advantage.** Group-relative: each subset's reward minus the mean of its
+  8, as in Experiment 10's GRPO, with no value network. Groups where all 8
+  agree carry no signal and are counted.
+- **Loss.** PPO-clipped policy gradient on the set log-probability, plus an
+  imitation anchor: λ × the `listsum` loss on the gold evidence, λ = 0.5,
+  stated in advance. Learning rate 3e-4, 4 epochs per batch.
+- **Data and cost.**
+  - Training uses the train part of each fold: single-instance episodes, one
+    question each.
+  - About 1,000 questions per fold × 8 subsets × (answer + judge) is about
+    16k reader calls per fold. At Experiment 15's measured rate (2,000
+    answers + judges in about 3 minutes on one A40) that is about 25 minutes
+    per fold.
+  - All five folds take about 2 h of A40 including startup, about $1–2.
+  - Generations are cached, so repeated subsets cost nothing.
+- **Gate (needs a reader, so it is paid).** Before any test-fold run:
+  - hold out 20% of each fold's train part;
+  - accuracy of GRPO's greedy top 5 on that slice minus the `listsum`
+    start's, paired, with a 95% interval above 0;
+  - pooled over the five folds.
+- **Test (only if the gate passes).** The §15b protocol on the test parts,
+  against `listsum` and keep-last-0 + top 5, with Holm over the comparisons
+  and the §13a decomposition.
+- **What it answers (RQ3).** Whether the reader's own verdict improves a
+  selection learned from gold labels, where evidence labels and the reader
+  disagree. For example, a turn that holds the answer but distracts, or a
+  near-answer the judge accepts. A null here would say the gold labels
+  already capture what this reader needs.
 
 ## 5. The sequential task
 
