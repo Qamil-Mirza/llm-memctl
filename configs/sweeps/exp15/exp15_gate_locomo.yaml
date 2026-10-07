@@ -1,0 +1,61 @@
+# Experiment 15 transfer gate on LoCoMo (categories 1-4): LongMemEval-trained heads (fold 0) ranking the shared fusion
+# search's top 16, against fusion's own top 5; keep-none for both; no reader.
+name: exp15_gate_locomo
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 10
+  agent:
+    name: 'null'
+  memory:
+    allowed_operations:
+    - KEEP
+    - MOVE_TO_ARCHIVE
+    - RETRIEVE_FROM_ARCHIVE
+    - NO_OP
+    embedder: hashing
+    count_labels: true
+  env:
+    name: locomo
+    include_adversarial: false
+  logging:
+    detail_episodes: 100000
+grid:
+  controller:
+  - name: archive_everything
+    label: keep_last0_top5
+    keep_last: 0
+    retrieve:
+      top_k: 5
+      method: fusion
+      model: BAAI/bge-small-en-v1.5
+  - name: rl
+    label: head_listwise
+    checkpoint: runs/lme_head_listwise_f0/checkpoints/policy_best.pt
+    retrieval_method: fusion
+    retrieval_model: BAAI/bge-small-en-v1.5
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: head_listsum
+    checkpoint: runs/lme_head_listsum_f0/checkpoints/policy_best.pt
+    retrieval_method: fusion
+    retrieval_model: BAAI/bge-small-en-v1.5
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: head_residual
+    checkpoint: runs/lme_head_residual_f0/checkpoints/policy_best.pt
+    retrieval_method: fusion
+    retrieval_model: BAAI/bge-small-en-v1.5
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    floor_head: true
+    keep_none: true
+    residual: 20.0
+  memory.budget.fraction:
+  - 0.1

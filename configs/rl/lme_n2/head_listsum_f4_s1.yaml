@@ -1,0 +1,49 @@
+# Experiment 15 robustness: arm listsum, fold 4, training seed 1 (seed 0 is head_listsum_f4).
+schema_version: 1
+name: lme_head_listsum_f4_s1
+seed: 1
+env:
+  name: longmemeval
+  path: data/longmemeval/longmemeval_s_cleaned.json
+  folds:
+    k: 5
+    fold: 4
+    part: train
+  compose: 4
+agent:
+  name: 'null'
+controller:
+  name: rl
+  hidden: 64
+  architecture: deepsets
+  retrieval_method: lexical
+  retrieve_floor: 5
+  retrieve_candidates: 16
+  floor_head: true
+  keep_none: true
+memory:
+  allowed_operations:
+  - KEEP
+  - MOVE_TO_ARCHIVE
+  - RETRIEVE_FROM_ARCHIVE
+  - NO_OP
+  embedder: hashing
+  count_labels: true
+training:
+  budget_fractions:
+  - 0.0125
+  expert:
+    kind: regret
+    retrieval_risk: 0.36
+  phases:
+  - algorithm: bc
+    iterations: 10
+    episodes: 25
+    epochs: 4
+    lr: 0.003
+    dagger: true
+    retrieval_loss: listsum
+  eval:
+    every: 2
+    episodes: 5
+    metric: evidence
