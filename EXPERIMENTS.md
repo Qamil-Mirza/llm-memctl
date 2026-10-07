@@ -1239,6 +1239,77 @@ oracle included; single-session-user carries all the differences.
 LongMemEval questions, by question type with abstention apart) replaces the
 contiguous `subset`; all LongMemEval numbers above should be re-run on it.
 
+### 13a. LongMemEval learned rows: result (2026-10-07)
+
+The 25 gated cells (5 settings × 5 folds) against their FIFO partners with the
+same floor, 470 non-abstention questions pooled, paired by question
+(`runs/_pipelines/learned_report.py`, `mechanism_report.py`).
+
+| learned row (5%) | learned | FIFO | difference (95% CI) | prompt tokens learned / FIFO |
+|---|---|---|---|---|
+| composed-episode, fill | 0.419 | 0.372 | **+0.047 (+0.004, +0.089)** | 5,894 / 5,413 |
+| composed-episode, 4k | 0.426 | 0.423 | +0.002 (−0.043, +0.040) | 4,595 / 4,194 |
+| composed-episode, 3k | 0.396 | 0.438 | **−0.043 (−0.085, −0.004)** | 3,465 / 3,158 |
+| single-question, fill | 0.400 | 0.372 | +0.028 (−0.013, +0.066) | 5,853 / 5,413 |
+| single-question, 4k | 0.417 | 0.423 | −0.006 (−0.049, +0.034) | 4,508 / 4,194 |
+
+**Verdict under the pre-registered criteria.**
+
+- **Criterion 1 (paired against FIFO at the same budget and target).**
+  Learning beats recency in one of five settings: composed-episode training,
+  filled to 5%. It loses in one: the same policy at a 3k target. The other
+  three show no difference.
+- **Holm correction (computed afterwards, not pre-registered, so it does not
+  change the verdict).** With a Holm correction over the five tests, neither
+  the gain (p = 0.032, adjusted 0.16) nor the loss (p = 0.042, adjusted 0.17)
+  survives.
+- **Criterion 2 (frontier).** No learned row reaches the rule frontier:
+  keep-last-0 + top 5 scores 0.466 at 1,554 prompt tokens, and the best
+  learned row scores 0.426 at 4,595.
+- **Per-type differences** are descriptive. Preference is n = 30, and every
+  per-type interval includes 0.
+
+**Where the evidence went.** Questions are split by whether all their needed
+items were in view.
+
+| row (5%) | P(all in view) L / F | P(correct \| in view) L / F | P(correct \| not) L / F | memory lines L / F | content tokens per line L / F | label tokens L / F |
+|---|---|---|---|---|---|---|
+| composed, fill | 0.640 / 0.500 | 0.565 / 0.591 | 0.160 / 0.153 | 47.2 / 24.2 | 107 / 203 | 849 / 507 |
+| composed, 4k | 0.549 / 0.504 | 0.605 / 0.658 | 0.208 / 0.185 | 34.4 / 18.9 | 114 / 198 | 678 / 434 |
+| composed, 3k | 0.506 / 0.500 | 0.597 / 0.677 | 0.190 / 0.200 | 23.9 / 14.7 | 122 / 190 | 541 / 374 |
+| single-question, fill | 0.596 / 0.500 | 0.564 / 0.591 | 0.158 / 0.153 | 43.9 / 24.2 | 115 / 203 | 822 / 507 |
+| single-question, 4k | 0.555 / 0.504 | 0.602 / 0.658 | 0.187 / 0.185 | 30.3 / 18.9 | 128 / 198 | 633 / 434 |
+
+The learned policies have all the needed evidence in view more often (up to
+0.64 against 0.50). But **when the evidence is in view they answer correctly
+less often than FIFO in every row** (0.597 against 0.677 at 3k). They keep 1.6
+to 2 times as many memory lines, made of shorter turns, and each line carries
+a "speaker, date" label of about 18–25 tokens that the budget does not count.
+
+**Mechanism and limitation.**
+
+- *Limitation.* Matching on content tokens does not match prompt size, and the
+  gap grows with the number of lines. The pre-registered results stand as
+  run; nothing was re-matched.
+- *Mechanism.* The hindsight teacher rewards evidence per content token, so
+  short needed turns are cheap to keep. The reader's cost is per line, and for
+  this reader every extra line raises the refusal rate. The controller
+  optimises what the teacher asks for (+0.13 evidence at fill), and the reader
+  does not convert it.
+
+For RQ2 on real conversations: knowing what will be needed is not enough; the
+teacher must also price what is kept.
+
+**Next (not done).** One change, not two: count the per-line labels in the
+budget, so the budget is the prompt the reader actually pays for and the budget
+axis and the frontier axis are the same. Then give the regret teacher a cost
+per prompt token, calibrated from the refusal curve: FIFO accuracy against
+tokens at constant evidence, 0.438 at 3.2k to 0.372 at 5.4k. Labels are kept,
+because dates are needed for temporal questions and speakers on LoCoMo.
+Retrain on composed episodes, apply the evidence gate and a prompt-token gate
+with no reader, and pay for an evaluation only if the agent-null proxy places
+the policy ahead of keep-last-0 + top 5 on the frontier.
+
 ## 12. Retrieval headroom on LoCoMo and LongMemEval (2026-10-06)
 
 ```bash
