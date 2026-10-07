@@ -1,0 +1,69 @@
+# Experiment 18, EXPLORATORY (outside the pre-registered claims): the LongMemEval-trained listsum head (fold 0) ranking
+# the fusion top 16 on LoCoMo categories 1-4, against keep-last-0 + fusion top 5; frozen reader of Experiment 13.
+# One cell per conversation (seed 0-9, one episode each) so conversations run in parallel. Approved by the user.
+name: exp18_locomo
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 1
+  env:
+    name: locomo
+    include_adversarial: false
+    judge:
+      backend: openai
+      name: qwen2.5-7b-instruct
+      base_url: POD_URL/v1
+      timeout_s: 300
+      cache_dir: cache/generations_qwen7b_vllm_v2_exp18
+  agent:
+    name: llm
+    reasoning: true
+    labels: compact
+    max_new_tokens: 256
+    model:
+      backend: openai
+      name: qwen2.5-7b-instruct
+      base_url: POD_URL/v1
+      timeout_s: 300
+      cache_dir: cache/generations_qwen7b_vllm_v2_exp18
+  memory:
+    allowed_operations:
+    - KEEP
+    - MOVE_TO_ARCHIVE
+    - RETRIEVE_FROM_ARCHIVE
+    - NO_OP
+    embedder: hashing
+    count_labels: true
+  logging:
+    detail_episodes: 100000
+grid:
+  controller:
+  - name: archive_everything
+    label: keep_last0_top5_fusion
+    keep_last: 0
+    retrieve:
+      top_k: 5
+      method: fusion
+      model: BAAI/bge-small-en-v1.5
+  - name: rl
+    label: head_listsum_lme_f0
+    checkpoint: runs/lme_head_listsum_f0/checkpoints/policy_best.pt
+    retrieval_method: fusion
+    retrieval_model: BAAI/bge-small-en-v1.5
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    floor_head: true
+    keep_none: true
+  seed:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+  memory.budget.fraction:
+  - 0.1
