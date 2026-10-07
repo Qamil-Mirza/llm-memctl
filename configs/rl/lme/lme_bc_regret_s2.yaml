@@ -1,0 +1,17 @@
+# Regret imitation trained on LongMemEval-S questions 100-499 (without the follow-the-clue search), so that questions
+# 0-99 (Experiment 11c) stay held out. Imitation needs only hindsight labels, so the task model is null.
+schema_version: 1
+name: lme_bc_regret_s2
+seed: 2
+env: {name: longmemeval, path: data/longmemeval/longmemeval_s_cleaned.json, subset: [100, 500]}
+agent: {name: "null"}
+controller: {name: rl, hidden: 64, architecture: deepsets, retrieve_candidates: 8}
+memory:
+  allowed_operations: [KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+  embedder: hashing
+training:
+  budget_fractions: [0.05, 0.1]
+  expert: {kind: regret}
+  phases:
+    - {algorithm: bc, iterations: 10, episodes: 40, epochs: 3, lr: 0.003, dagger: true}
+  eval: {every: 2, episodes: 20}

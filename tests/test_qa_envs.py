@@ -123,3 +123,13 @@ def test_longmemeval_real_file_runs_with_archive_and_retrieval():
     episode = run_one(qa_config(env, controller, 0.25, ARCHIVE_OPS), seed=0).episode
     assert episode["queries"] == 1 and episode["retrieved_items"] > 0
     assert episode["env_stats"]["episode"] and episode["needed_hit_rate"] is not None
+
+
+@needs_longmemeval
+def test_a_longmemeval_subset_keeps_training_off_the_evaluation_questions():
+    whole = build_env({"name": "longmemeval"})
+    train = build_env({"name": "longmemeval", "subset": [100, 500]})
+    evaluated = {whole.load_episode(seed).id for seed in range(100)}
+    trained = {train.load_episode(seed).id for seed in range(100_000, 100_400)}
+    assert len(trained) == 400 and not evaluated & trained
+    assert train.load_episode(0).id == whole.load_episode(100).id

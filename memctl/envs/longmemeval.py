@@ -72,13 +72,17 @@ class LongMemEvalEnv(QAEnvironment):
         super().__init__(config)
         self.path = config.get("path", "data/longmemeval/longmemeval_oracle.json")
         self.max_turn_tokens = config.get("max_turn_tokens")
+        # Optional [start, end): seed s plays question start + s mod (end - start), so a training
+        # run can be kept off the questions an evaluation uses (seeds 0-99 play questions 0-99).
+        self.subset = tuple(config["subset"]) if config.get("subset") else None
         self._fallback: tuple[str, ...] = ()
         if not Path(self.path).exists():
             raise FileNotFoundError(f"LongMemEval not found at {self.path}. Download a split from {SOURCE}")
 
     def load_episode(self, seed: int) -> QAEpisode:
         instances = _load(self.path)
-        episode, self._fallback = parse_instance(instances[seed % len(instances)], self.max_turn_tokens)
+        start, end = self.subset or (0, len(instances))
+        episode, self._fallback = parse_instance(instances[start + seed % (end - start)], self.max_turn_tokens)
         return episode
 
     def get_ground_truth_dependencies(self) -> list[Dependency]:
