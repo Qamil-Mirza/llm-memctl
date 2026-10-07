@@ -2118,6 +2118,12 @@ of §16, roughly $2–3 for all folds. It is the only GRPO variant still judged
 promising for this problem, and it would be a methodological contribution if
 it worked. The alternative is to close RQ3 on the evidence above.
 
+**Decision (the user, 2026-10-07): RQ3 is closed on the evidence above.**
+§17 is not run. The thesis answers RQ3 as follows. With exact credit, GRPO
+adds at most about one point over imitation of hindsight labels, on the
+synthetic task and on real conversations. The limit is the information each
+sample carries, not credit assignment across time.
+
 ## 5. The sequential task
 
 ```bash
