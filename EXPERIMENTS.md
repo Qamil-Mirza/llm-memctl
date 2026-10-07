@@ -60,7 +60,7 @@ commands given).
 | 12 | Retrieval headroom: how much evidence search reaches (no reader) | Top 16 holds 0.12–0.16 more evidence than top 5; labels and BM25+bge fusion help LoCoMo, not LongMemEval. Gates for the pick-k head and better units passed. |
 | 13 | LongMemEval (all 500, 5 folds) and LoCoMo under the reviewed protocol: retrieval floor, no EVICT, reasoning reader, pre-registered gates | The floor fixes retrieval. Learned controllers keep more evidence at 5% but convert little: one paired win, one loss, none after Holm, none on the frontier. This reader refuses more as prompts grow (peak near 3k tokens). NEGATIVE, with a mechanism |
 | 14 | A token price for kept memory: labels counted in the budget, plug-in Bayes archiving at a pre-set price | No-go at the free gate: the priced rule never beats keep-last-0 + top 5 on evidence at equal memory; needed model AUC 0.62–0.74; a per-token price archives long turns, not lines. NEGATIVE (free) |
-| 15 | A query-aware floor head: which 5 of 16 to retrieve, learned listwise | (running: free gate first) |
+| 15 | A query-aware floor head: which 5 of 16 to retrieve, learned listwise | Passes the free gate: +0.08 all-found evidence over keep-last-0 + top 5 at half the tokens, all three arms; biggest on multi-session and temporal. Reader test pending (needs spend) |
 
 ---
 
@@ -1759,6 +1759,45 @@ The same gate is also run on each fold's *train* part
 (`exp15_gate_f*_train`), to show overfitting: about 27k parameters against
 about 1,000 training lists. The adaptive k (3, 5 or 8) waits for the next
 round.
+
+### 15a. Result: all three arms pass the free gate (2026-10-07)
+
+All runs are at 07b2166, not dirty; `runs/exp15_gate_table.md`. The baseline
+is keep-last-0 + top 5 (BM25). 500 test questions, paired. The head and the
+rule both retrieve exactly 5 turns per question.
+
+| arm | all-found evidence | Δ vs rule (95% CI) | share found | Δ | memory tokens at question |
+|---|---|---|---|---|---|
+| keep-last-0 + top 5 | 0.506 | — | 0.637 | — | 1,333 |
+| head, `listwise` | 0.592 | **+0.086 (+0.054, +0.120)** | 0.715 | +0.077 | 666 |
+| head, `listsum` | 0.590 | **+0.084 (+0.052, +0.118)** | 0.716 | +0.078 | 561 |
+| head, `residual` | 0.586 | **+0.080 (+0.048, +0.114)** | 0.708 | +0.070 | 613 |
+
+- **All three pass the pre-registered rule.** Each keeps all of a question's
+  evidence in view about 8 points more often, at under half the memory
+  tokens: the head picks shorter turns. The three arms do not differ from one
+  another.
+- **No sign of overfitting.** On the train parts the gains are similar
+  (+0.060 to +0.070 all-found).
+
+**All-found evidence by question type:**
+
+| arm | knowledge-update | multi-session | single-session-assistant | preference | single-session-user | temporal | abstention |
+|---|---|---|---|---|---|---|---|
+| keep-last-0 + top 5 | 0.625 | 0.182 | 0.875 | 0.300 | 0.828 | 0.472 | 0.500 |
+| head, `listsum` | 0.722 | 0.314 | 0.768 | 0.333 | 0.875 | 0.622 | 0.567 |
+| head, `listwise` | 0.736 | 0.314 | 0.786 | 0.267 | 0.891 | 0.614 | 0.600 |
+
+The gains come where evidence is spread or dated: multi-session (+0.13),
+temporal (+0.15) and knowledge-update (+0.10). The head loses on
+single-session-assistant (−0.09 to −0.11), where the evidence sits in the
+assistant's own, usually long, turns. The `listsum` loss did not separate from
+`listwise` on multi-session.
+
+**Caveat.** The gate measures the same evidence labels the head was trained to
+find: `has_answer` turns, plus any turn of an unmarked answer session. Whether
+more labelled evidence, at half the tokens, turns into more correct answers is
+the reader's test, which is a paid step.
 
 ## 5. The sequential task
 
