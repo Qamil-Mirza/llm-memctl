@@ -15,7 +15,10 @@ locally by token F1, which under-credits correct answers phrased differently.
 
 from __future__ import annotations
 
+import fcntl
+import hashlib
 import json
+import os
 import random
 from functools import lru_cache
 from pathlib import Path
@@ -30,7 +33,55 @@ SOURCE = "https://huggingface.co/datasets/xiaowu0162/longmemeval-cleaned"
 
 @lru_cache(maxsize=1)
 def _load(path: str) -> list[dict]:
+    """The whole file. About 2.3 GB of Python objects for the _s file: single-process tools only; an
+    environment reads the index and one shard per instance instead (_index, _instance)."""
     return json.loads(Path(path).read_text())
+
+
+@lru_cache(maxsize=4)
+def _sha256(source: Path) -> str:
+    digest = hashlib.sha256()
+    with open(source, "rb") as handle:
+        for block in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+@lru_cache(maxsize=4)
+def _shard_dir(path: str) -> Path:
+    """`<file>.shards/`: index.json (type and id of every question, plus the source's size and mtime) and
+    one NNNN.json per instance. Built once from the source, under a lock; rebuilt when the source's sha256
+    differs from the one recorded, so shards of another file are never loaded."""
+    source = Path(path)
+    folder = source.with_name(source.name + ".shards")
+    stamp = {"sha256": _sha256(source)}
+    index = folder / "index.json"
+    if index.exists() and json.loads(index.read_text()).get("source") == stamp:
+        return folder
+    folder.mkdir(exist_ok=True)
+    with open(folder / ".lock", "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)  # one builder; the others wait, then find it built
+        if index.exists() and json.loads(index.read_text()).get("source") == stamp:
+            return folder
+        instances = json.loads(source.read_text())
+        for number, instance in enumerate(instances):
+            (folder / f"{number:04d}.json").write_text(json.dumps(instance))
+        entries = [{"question_type": i["question_type"], "question_id": i["question_id"]} for i in instances]
+        tmp = folder / "index.json.tmp"
+        tmp.write_text(json.dumps({"source": stamp, "questions": entries}))
+        os.replace(tmp, index)
+    return folder
+
+
+@lru_cache(maxsize=4)
+def _index(path: str) -> list[dict]:
+    """Question type and id of every instance, in file order (what the splits need)."""
+    return json.loads((_shard_dir(path) / "index.json").read_text())["questions"]
+
+
+@lru_cache(maxsize=8)
+def _instance(path: str, number: int) -> dict:
+    return json.loads((_shard_dir(path) / f"{number:04d}.json").read_text())
 
 
 def parse_instance(instance: dict, max_turn_tokens: int | None = None,
@@ -103,7 +154,7 @@ class LongMemEvalEnv(QAEnvironment):
             raise FileNotFoundError(f"LongMemEval not found at {self.path}. Download a split from {SOURCE}")
 
     def load_episode(self, seed: int) -> QAEpisode:
-        instances = _load(self.path)
+        instances = _index(self.path)
         if self.folds:
             if self._chosen is None:
                 self._chosen = fold_indices(instances, int(self.folds.get("k", 5)), int(self.folds["fold"]),
@@ -113,12 +164,13 @@ class LongMemEvalEnv(QAEnvironment):
             start, end = self.subset or (0, len(instances))
             pool = list(range(start, end))
         if self.compose <= 1:
-            episode, fallback = parse_instance(instances[pool[seed % len(pool)]], self.max_turn_tokens)
+            episode, fallback = parse_instance(_instance(self.path, pool[seed % len(pool)]), self.max_turn_tokens)
             self._fallback = {episode.questions[0].id: fallback}
             return episode
         # A seed-derived sample, so groupings differ across seeds and DAgger iterations (not fixed quadruples).
         chosen = random.Random(seed).sample(pool, self.compose)
-        parts = [parse_instance(instances[index], self.max_turn_tokens, f"i{j}/") for j, index in enumerate(chosen)]
+        parts = [parse_instance(_instance(self.path, index), self.max_turn_tokens, f"i{j}/")
+                 for j, index in enumerate(chosen)]
         turns = sorted(((t.metadata.get("date", ""), j, n, t) for j, (e, _) in enumerate(parts) for n, t in enumerate(e.turns)),
                        key=lambda row: row[:3])
         self._fallback = {e.questions[0].id: fallback for e, fallback in parts}

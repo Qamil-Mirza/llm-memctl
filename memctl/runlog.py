@@ -91,6 +91,7 @@ class RunLogger:
             self._drop_unfinished_rows()
 
     def _write_metadata(self) -> None:
+        self.metadata["peak_rss_mb"] = peak_rss_mb()  # so a job queue can budget memory (2026-10-07 OOM incident)
         (self.folder / "metadata.json").write_text(json.dumps(self.metadata, indent=2, default=_default))
 
     def completed(self) -> set[str]:
@@ -120,3 +121,10 @@ class RunLogger:
 
 def _without_logging(config: dict) -> dict:
     return {key: value for key, value in (config or {}).items() if key not in ("logging", "episodes")}
+
+
+def peak_rss_mb() -> float:
+    """This process's peak resident memory so far, in MB (Linux reports ru_maxrss in KB)."""
+    import resource
+
+    return round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 1)

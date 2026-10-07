@@ -51,6 +51,7 @@ from memctl.controllers.rl import Decision, RLController
 from memctl.harness.runner import Experiment
 from memctl.rl.algorithms import ALGORITHMS
 from memctl.rl.expert import make_expert
+from memctl.runlog import peak_rss_mb
 from memctl.sysinfo import collect_metadata
 from memctl.util import merged
 
@@ -338,6 +339,7 @@ def train(config: dict, folder: str | Path | None = None, progress: bool = False
                "best_eval": best, "parameters": metadata["parameters"]}
     (folder / "summary.json").write_text(json.dumps(summary, indent=2))
     metadata["status"] = "completed"
+    metadata["peak_rss_mb"] = peak_rss_mb()
     (folder / "metadata.json").write_text(json.dumps(metadata, indent=2))
     return folder
 

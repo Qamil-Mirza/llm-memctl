@@ -229,3 +229,42 @@ def test_composed_groupings_differ_across_seeds():
     members = [set(g.split("+")) for g in groups]
     assert len(groups) == 20 and all(len(m) == 4 for m in members)
     assert len(set.union(*members)) > 30  # not 5 fixed quadruples cycling
+
+
+LONGMEMEVAL_S = Path("data/longmemeval/longmemeval_s_cleaned.json")
+
+
+@pytest.mark.skipif(not LONGMEMEVAL_S.exists(), reason="LongMemEval-S is not present")
+def test_sharded_loading_plays_exactly_the_full_file_episodes(monkeypatch):
+    """Every fold, 10 seeds, single and composed: the same episode, turns, questions and dependencies."""
+    import memctl.envs.longmemeval as lme
+    from memctl.splits import fold_indices
+
+    path = str(LONGMEMEVAL_S)
+    full = lme._load(path)
+    for fold in range(5):
+        assert fold_indices(full, 5, fold) == fold_indices(lme._index(path), 5, fold)
+
+    def play(env, seed):
+        first = env.reset(seed)
+        turns, dependencies = [(first.id, first.content)], []
+        while not env.is_done():
+            observation = env.get_observation()
+            if observation.requires_response:
+                dependencies.append(env.get_ground_truth_dependencies())
+            env.step("unknown" if observation.requires_response else None)
+            if env.get_observation() is not None:
+                turns.append((env.get_observation().id, env.get_observation().content))
+        episode = env._episode
+        return episode.id, turns, [(q.id, q.gold, q.category) for q in episode.questions], dependencies
+
+    for compose in (1, 4):
+        for fold in range(5):
+            config = {"name": "longmemeval", "path": path, "folds": {"k": 5, "fold": fold}, "compose": compose}
+            sharded = build_env(config)
+            with monkeypatch.context() as patch:  # the old loader: the whole file in this process
+                patch.setattr(lme, "_index", lambda p: full)
+                patch.setattr(lme, "_instance", lambda p, n: full[n])
+                whole = build_env(config)
+                expected = [play(whole, seed) for seed in range(10)]
+            assert [play(sharded, seed) for seed in range(10)] == expected
