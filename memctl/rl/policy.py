@@ -121,3 +121,35 @@ class KChooser(nn.Module):
         model.load_state_dict(checkpoint["state_dict"])
         model.eval()
         return model
+
+
+def k_masses(retrieve_logits: torch.Tensor, ks: tuple[int, ...]) -> list[float]:
+    """The head's softmax mass on its top k, for each k (Experiment 19b's one feature)."""
+    ranked = torch.sort(torch.softmax(retrieve_logits, dim=0), descending=True).values
+    return [float(ranked[:k].sum()) for k in ks]
+
+
+class MassChooser(nn.Module):
+    """P(all-found@k) = sigmoid(a_k x logit(mass_k) + b_k): Platt scaling on one feature per k (Experiment 19b)."""
+
+    def __init__(self, ks: tuple[int, ...] = (5, 8, 16)) -> None:
+        super().__init__()
+        self.config = {"ks": list(ks), "kind": "mass"}
+        self.a = nn.Parameter(torch.ones(len(ks)))
+        self.b = nn.Parameter(torch.zeros(len(ks)))
+
+    def forward(self, masses: torch.Tensor) -> torch.Tensor:
+        """Logits, one column per k, from the masses (rows x ks)."""
+        return self.a * torch.logit(masses.clamp(1e-4, 1 - 1e-4)) + self.b
+
+    def save(self, path: str | Path) -> None:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        torch.save({"config": self.config, "state_dict": self.state_dict()}, Path(path))
+
+    @staticmethod
+    def load(path: str | Path) -> "MassChooser":
+        checkpoint = torch.load(Path(path), weights_only=True)
+        model = MassChooser(tuple(checkpoint["config"]["ks"]))
+        model.load_state_dict(checkpoint["state_dict"])
+        model.eval()
+        return model

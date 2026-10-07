@@ -35,7 +35,7 @@ from memctl.memory.actions import MemoryAction, Operation
 from memctl.memory.items import Fidelity, MemoryItem, count_tokens
 from memctl.memory.state import MemoryView
 from memctl.retrieval import bridge_search, build_retriever
-from memctl.rl.policy import N_COLUMNS, REMOVAL_OPERATIONS, RETRIEVE_COLUMN, ItemPolicy, KChooser, NeededModel, k_features
+from memctl.rl.policy import N_COLUMNS, REMOVAL_OPERATIONS, RETRIEVE_COLUMN, ItemPolicy, KChooser, MassChooser, NeededModel, k_features, k_masses
 from memctl.task import TaskState
 
 N_REMOVALS = len(REMOVAL_OPERATIONS)
@@ -141,7 +141,10 @@ class RLController(MemoryController):
             raise ValueError(f"unknown k_mode {self.k_mode!r}")
         self.k_choices = tuple(int(k) for k in config.get("k_choices", (5, 8, 16)))
         self.k_delta = float(config.get("k_delta", 0.05))
-        self.k_chooser = KChooser.load(config["k_chooser"]) if self.k_mode == "adaptive" else None
+        # k_chooser_kind "mlp" (§19: 21 features) or "mass" (§19b: Platt scaling on the softmax mass on the top k).
+        self.k_chooser_kind = config.get("k_chooser_kind", "mlp")
+        chooser_class = MassChooser if self.k_chooser_kind == "mass" else KChooser
+        self.k_chooser = chooser_class.load(config["k_chooser"]) if self.k_mode == "adaptive" else None
         self.uses_hindsight = self.k_mode == "oracle"
         self.hindsight = None
         self._question_tokens = 0
@@ -403,7 +406,8 @@ class RLController(MemoryController):
         if self.k_mode == "fixed" and self.hindsight is None:
             return self.retrieve_floor
         features = k_features(retrieve_logits, self._question_tokens)
-        self._k_info = {"k_features": [round(x, 5) for x in features]}
+        masses = k_masses(retrieve_logits, self.k_choices)
+        self._k_info = {"k_features": [round(x, 5) for x in features], "k_mass": [round(x, 6) for x in masses]}
         labels = None
         if self.hindsight is not None:
             order = torch.argsort(retrieve_logits, descending=True).tolist()
@@ -417,7 +421,8 @@ class RLController(MemoryController):
             k = next((k for k, found in zip(self.k_choices, labels) if found), self.k_choices[-1])
         elif self.k_mode == "adaptive":
             with torch.no_grad():
-                p = torch.sigmoid(self.k_chooser(torch.tensor([features]))).squeeze(0).tolist()
+                rows = torch.tensor([masses if self.k_chooser_kind == "mass" else features])
+                p = torch.sigmoid(self.k_chooser(rows)).squeeze(0).tolist()
             self._k_info["k_predicted"] = [round(x, 4) for x in p]
             k = next(k for k, pk in zip(self.k_choices, p) if pk >= p[-1] - self.k_delta)
         else:

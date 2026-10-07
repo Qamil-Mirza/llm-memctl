@@ -709,3 +709,16 @@ def test_k_chooser_features_and_round_trip(tmp_path):
     loaded = KChooser.load(tmp_path / "k.pt")
     row = torch.tensor([full])
     assert torch.allclose(model(row), loaded(row)) and loaded.config["ks"] == [5, 8, 16]
+
+
+def test_mass_chooser_reads_the_softmax_mass_on_the_top_k(tmp_path):
+    from memctl.rl.policy import MassChooser, k_masses
+
+    masses = k_masses(torch.tensor([2.0, 0.0, 1.0, -1.0]), (1, 2, 4))
+    expected = torch.softmax(torch.tensor([2.0, 1.0, 0.0, -1.0]), 0).cumsum(0)
+    assert masses == pytest.approx([float(expected[0]), float(expected[1]), 1.0])
+    model = MassChooser((1, 2, 4))
+    rows = torch.tensor([[0.5, 0.8, 1.0]])
+    assert torch.allclose(torch.sigmoid(model(rows)), rows.clamp(1e-4, 1 - 1e-4))  # a = 1, b = 0 is the identity
+    model.save(tmp_path / "m.pt")
+    assert torch.allclose(MassChooser.load(tmp_path / "m.pt")(rows), model(rows))
