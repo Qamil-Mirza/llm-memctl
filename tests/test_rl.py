@@ -213,7 +213,8 @@ def test_training_writes_a_checkpoint_that_an_ordinary_run_can_evaluate(tmp_path
     assert checkpoint.exists() and (folder / "checkpoints" / "policy_phase0_bc.pt").exists()
     summary = json.loads((folder / "summary.json").read_text())
     assert (folder / "checkpoints" / "policy_best.pt").exists()
-    assert summary["best_eval"]["validation"] >= sum(summary["final_eval"].values()) / len(summary["final_eval"])
+    successes = [v for k, v in summary["final_eval"].items() if k.startswith("success")]
+    assert summary["best_eval"]["metric"] == "success" and summary["best_eval"]["validation"] >= sum(successes) / len(successes)
     assert settings["training"]["eval"].get("seed_offset", 50_000) != 0  # validation never uses the test seeds
 
     evaluation = resolve({**config(horizon=80), "episodes": 2, "controller": {"name": "rl", "checkpoint": str(checkpoint)}})
@@ -494,3 +495,18 @@ def test_a_floor_the_expert_makes_room_for_is_never_returned_by_the_harness():
         assert any(tokens for tokens, _ in floors) and all(tokens <= budget for tokens, budget in floors)
         if fraction == 0.05:  # at 2% the expert's own retrievals can overflow, with or without a floor
             assert not episode["action_counts"]["harness"]
+
+
+def test_without_a_task_model_validation_selects_on_evidence_in_context(tmp_path):
+    settings = config(horizon=80, operations=ARCHIVE_OPS)
+    settings["agent"] = {"name": "null"}
+    settings["name"] = "tiny_null"
+    settings["training"] = {
+        "phases": [{"algorithm": "bc", "iterations": 2, "episodes": 2, "epochs": 1}],
+        "eval": {"every": 1, "episodes": 2}, "budget_fractions": [0.1],
+    }
+    folder = train(settings, tmp_path / "train")
+    log = read_jsonl(folder / "train_log.jsonl")
+    assert all(row["success@0.1"] == 0 and 0 <= row["evidence@0.1"] <= 1 for row in log)
+    assert all(row["validation"] == row["evidence@0.1"] for row in log)
+    assert json.loads((folder / "summary.json").read_text())["best_eval"]["metric"] == "evidence"
