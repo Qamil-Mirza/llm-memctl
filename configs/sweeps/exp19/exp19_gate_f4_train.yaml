@@ -1,0 +1,139 @@
+# Experiment 19 gate (§19, pre-registered), LongMemEval fold 4, train part. No reader: a stub model answers so the
+# real prompt is built and counted. Arms on heads A and B (32 BM25 candidates); references keep-last-0 + top 5
+# and the §15 five-of-16 head.
+name: exp19_gate_f4_train
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 400
+  agent:
+    name: llm
+    reasoning: true
+    labels: compact
+    max_new_tokens: 256
+    model:
+      backend: stub
+  env:
+    name: longmemeval
+    path: data/longmemeval/longmemeval_s_cleaned.json
+    folds:
+      k: 5
+      fold: 4
+      part: train
+    judge:
+      backend: stub
+      style: longmemeval
+  memory:
+    allowed_operations:
+    - KEEP
+    - MOVE_TO_ARCHIVE
+    - RETRIEVE_FROM_ARCHIVE
+    - NO_OP
+    embedder: hashing
+    count_labels: true
+  logging:
+    detail_episodes: 100000
+grid:
+  controller:
+  - name: archive_everything
+    label: keep_last0_top5
+    keep_last: 0
+    retrieve:
+      top_k: 5
+      method: lexical
+  - name: rl
+    label: head15
+    checkpoint: /home/qamil-mirza/Code/llm-memctl/runs/lme_head_listsum_f4/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: heada_fixed5
+    checkpoint: runs/lme_n4_head_f4_a/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 5
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: heada_fixed8
+    checkpoint: runs/lme_n4_head_f4_a/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: heada_fixed16
+    checkpoint: runs/lme_n4_head_f4_a/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 16
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: heada_oraclek
+    checkpoint: runs/lme_n4_head_f4_a/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 5
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    k_mode: oracle
+  - name: rl
+    label: heada_adaptive
+    checkpoint: runs/lme_n4_head_f4_a/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 5
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    k_mode: adaptive
+    k_chooser: runs/exp19_chooser_f4/k_chooser.pt
+  - name: rl
+    label: headb_fixed5
+    checkpoint: runs/lme_n4_head_f4_b/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 5
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: headb_fixed8
+    checkpoint: runs/lme_n4_head_f4_b/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: headb_fixed16
+    checkpoint: runs/lme_n4_head_f4_b/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 16
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: headb_oraclek
+    checkpoint: runs/lme_n4_head_f4_b/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 5
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    k_mode: oracle
+  - name: rl
+    label: headb_adaptive
+    checkpoint: runs/lme_n4_head_f4_b/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 5
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    k_mode: adaptive
+    k_chooser: runs/exp19_chooser_f4/k_chooser.pt
+  memory.budget.fraction:
+  - 0.05

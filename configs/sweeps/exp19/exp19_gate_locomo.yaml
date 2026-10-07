@@ -1,0 +1,156 @@
+# Experiment 19 gate (§19, pre-registered), LoCoMo categories 1-4: transfer of the fold-0 heads and chooser, ranking the
+# shared fusion search's top 32. No reader (stub model, real prompt counted). One cell per conversation.
+name: exp19_gate_locomo
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 1
+  agent:
+    name: llm
+    reasoning: true
+    labels: compact
+    max_new_tokens: 256
+    model:
+      backend: stub
+  env:
+    name: locomo
+    include_adversarial: false
+    judge:
+      backend: stub
+  memory:
+    allowed_operations:
+    - KEEP
+    - MOVE_TO_ARCHIVE
+    - RETRIEVE_FROM_ARCHIVE
+    - NO_OP
+    embedder: hashing
+    count_labels: true
+  logging:
+    detail_episodes: 100000
+grid:
+  controller:
+  - name: archive_everything
+    label: keep_last0_top5
+    keep_last: 0
+    retrieve:
+      top_k: 5
+      method: fusion
+      model: BAAI/bge-small-en-v1.5
+  - name: rl
+    label: head15
+    checkpoint: /home/qamil-mirza/Code/llm-memctl/runs/lme_head_listsum_f0/checkpoints/policy_best.pt
+    retrieval_method: fusion
+    retrieval_model: BAAI/bge-small-en-v1.5
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: heada_fixed5
+    checkpoint: runs/lme_n4_head_f0_a/checkpoints/policy_best.pt
+    retrieval_method: fusion
+    retrieval_model: BAAI/bge-small-en-v1.5
+    retrieve_floor: 5
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: heada_fixed8
+    checkpoint: runs/lme_n4_head_f0_a/checkpoints/policy_best.pt
+    retrieval_method: fusion
+    retrieval_model: BAAI/bge-small-en-v1.5
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: heada_fixed16
+    checkpoint: runs/lme_n4_head_f0_a/checkpoints/policy_best.pt
+    retrieval_method: fusion
+    retrieval_model: BAAI/bge-small-en-v1.5
+    retrieve_floor: 16
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: heada_oraclek
+    checkpoint: runs/lme_n4_head_f0_a/checkpoints/policy_best.pt
+    retrieval_method: fusion
+    retrieval_model: BAAI/bge-small-en-v1.5
+    retrieve_floor: 5
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    k_mode: oracle
+  - name: rl
+    label: heada_adaptive
+    checkpoint: runs/lme_n4_head_f0_a/checkpoints/policy_best.pt
+    retrieval_method: fusion
+    retrieval_model: BAAI/bge-small-en-v1.5
+    retrieve_floor: 5
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    k_mode: adaptive
+    k_chooser: runs/exp19_chooser_f0/k_chooser.pt
+  - name: rl
+    label: headb_fixed5
+    checkpoint: runs/lme_n4_head_f0_b/checkpoints/policy_best.pt
+    retrieval_method: fusion
+    retrieval_model: BAAI/bge-small-en-v1.5
+    retrieve_floor: 5
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: headb_fixed8
+    checkpoint: runs/lme_n4_head_f0_b/checkpoints/policy_best.pt
+    retrieval_method: fusion
+    retrieval_model: BAAI/bge-small-en-v1.5
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: headb_fixed16
+    checkpoint: runs/lme_n4_head_f0_b/checkpoints/policy_best.pt
+    retrieval_method: fusion
+    retrieval_model: BAAI/bge-small-en-v1.5
+    retrieve_floor: 16
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: headb_oraclek
+    checkpoint: runs/lme_n4_head_f0_b/checkpoints/policy_best.pt
+    retrieval_method: fusion
+    retrieval_model: BAAI/bge-small-en-v1.5
+    retrieve_floor: 5
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    k_mode: oracle
+  - name: rl
+    label: headb_adaptive
+    checkpoint: runs/lme_n4_head_f0_b/checkpoints/policy_best.pt
+    retrieval_method: fusion
+    retrieval_model: BAAI/bge-small-en-v1.5
+    retrieve_floor: 5
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    k_mode: adaptive
+    k_chooser: runs/exp19_chooser_f0/k_chooser.pt
+  seed:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+  memory.budget.fraction:
+  - 0.1
