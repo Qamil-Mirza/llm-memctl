@@ -82,10 +82,16 @@ class RunLogger:
                     "Use a new experiment id, or delete the folder to start again."
                 )
         config_path.write_text(yaml.safe_dump(config, sort_keys=False))
+        previous = {}
+        if self.resumed and (self.folder / "metadata.json").exists():
+            previous = json.loads((self.folder / "metadata.json").read_text())
         self.metadata = {
             **collect_metadata(), "models": models or {}, "status": "running", "resumed": self.resumed,
             "experiment_id": self.folder.name,
         }
+        # A resumed folder holds episodes from every session that wrote to it: keep each one's git state.
+        history = previous.get("git_history") or ([previous["git"]] if previous.get("git") else [])
+        self.metadata["git_history"] = history + [self.metadata.get("git")]
         self._write_metadata()
         if self.resumed:
             self._drop_unfinished_rows()

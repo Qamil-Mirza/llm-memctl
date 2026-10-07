@@ -544,3 +544,18 @@ def test_fusion_ranks_by_reciprocal_rank_over_both_searches(monkeypatch):
     monkeypatch.setattr(fusion.dense, "search", lambda q, xs, k: [(items[1], 0.9), (items[2], 0.8)])
     ranked = [item.id for item, _ in fusion.search("q", items, 3)]
     assert ranked == ["o1", "o0", "o2"]  # o1 is in both lists
+
+
+def test_a_resumed_run_keeps_the_git_state_of_every_session(tmp_path):
+    from memctl.runlog import RunLogger as RunLog
+
+    settings = config(horizon=40)
+    RunLog(tmp_path / "cell", settings)
+    (tmp_path / "cell" / "episodes.jsonl").write_text("")
+    meta = json.loads((tmp_path / "cell" / "metadata.json").read_text())
+    meta["git"] = {"short": "old0000"}
+    meta["git_history"] = [{"short": "old0000"}]
+    (tmp_path / "cell" / "metadata.json").write_text(json.dumps(meta))
+    log = RunLog(tmp_path / "cell", settings)
+    assert log.resumed and [g["short"] for g in log.metadata["git_history"]][0] == "old0000"
+    assert len(log.metadata["git_history"]) == 2
