@@ -22,7 +22,7 @@ Draft of 2026-10-07. Every number here is in EXPERIMENTS.md, cited by section.
 
 On real long conversations with a searchable archive, the only learned decision that pays is query-aware: which
 few retrieved turns the reader sees. A query-aware selector that shows the reader eight relevant turns beats the
-five-turn selector, and beats FIFO at a third of FIFO's tokens. Showing sixteen adds evidence and loses accuracy.
+five-turn selector, and beats FIFO at a third of FIFO's tokens. Showing sixteen adds evidence and did not add accuracy.
 - A ~27k-parameter head, trained by imitation of gold evidence, picks 5 of 16 search candidates at the question.
 - It beats the best simple rule, keep-last-0 + top 5, with the 7B reader: **0.513 against 0.466** judge accuracy
   at **745 against 1,554** prompt tokens (Experiment 15b).
