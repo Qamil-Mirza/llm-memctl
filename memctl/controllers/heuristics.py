@@ -163,7 +163,15 @@ class PriorityController(MemoryController):
             return None
         config = self.retrieve_config
         query = task.observation.content
-        hits = self.retriever.search(query, memory.archived, int(config.get("top_k", 3)))
+        top_k = int(config.get("top_k", 3))
+        # Controls for a learned re-ranker (Experiment 15): search `candidates` deep, optionally keep only one
+        # speaker's turns, then take `top_k` by search order or, with rerank: shortest, by length.
+        pool = self.retriever.search(query, memory.archived, int(config.get("candidates", top_k)))
+        if config.get("speaker"):
+            pool = [(item, score) for item, score in pool if item.metadata.get("speaker") == config["speaker"]]
+        if config.get("rerank") == "shortest":
+            pool = sorted(pool, key=lambda pair: (pair[0].token_count, -pair[1]))
+        hits = pool[:top_k]
         hits = [(item, score) for item, score in hits if score >= float(config.get("min_score", 0.0))]
         if config.get("fit"):
             # As the RL controller's retrieval floor: top results in rank order while they fit in the

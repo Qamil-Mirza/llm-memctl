@@ -186,3 +186,25 @@ def test_a_fitted_retrieval_takes_only_what_fits_in_the_room():
     assert removed(actions, Operation.RETRIEVE_FROM_ARCHIVE) == ["o0"]  # the second hit would not fit beside it
     MemoryEngine().apply(state, actions)
     assert state.active_tokens <= state.budget
+
+
+def test_retrieval_controls_can_rerank_by_length_and_keep_one_speaker():
+    state = make_state([])
+    for number, (speaker, text) in enumerate([
+        ("assistant", "the vault code K93Q is in the long assistant answer about vault codes " * 3),
+        ("user", "my vault code is K93Q"),
+        ("user", "vault code K93Q noted for the vault"),
+    ]):
+        state.ingest(f"t{number}", text, SourceType.USER, metadata={"speaker": speaker})
+        state.move(f"t{number}", Tier.ARCHIVE, "MOVE_TO_ARCHIVE", "controller")
+    state.step = 9
+    state.ingest("q", "what is my vault code?", SourceType.USER)
+    for retrieve, expected in (({"top_k": 1, "candidates": 3, "rerank": "shortest"}, ["t1"]),
+                               ({"top_k": 2, "candidates": 3, "speaker": "user"}, None)):
+        controller = build_controller({"name": "archive_everything", "keep_last": 0, "retrieve": retrieve})
+        controller.reset(episode_info(state))
+        got = removed(controller.decide(state.view(), task_for(state, "q", query=True)), Operation.RETRIEVE_FROM_ARCHIVE)
+        if expected:
+            assert got == expected
+        else:
+            assert set(got) <= {"t1", "t2"} and got
