@@ -35,7 +35,7 @@ from memctl.memory.items import MemoryItem, count_tokens
 from memctl.retrieval import LexicalRetriever, bridge_search
 from memctl.runlog import collect_metadata
 
-KS = (5, 8, 12, 16, 20)
+KS = (5, 8, 12, 16, 20, 32)
 
 
 def label(turn) -> str:
