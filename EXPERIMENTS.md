@@ -2599,6 +2599,75 @@ report `runs/_pipelines/exp19d_report.py` → `runs/exp19d_report.md`.
   falling by about 9–10 points at about 2.6k tokens. Only §19c's own interval excludes 0. A pooled estimate was not
   pre-registered and is not claimed.
 
+## 20. A write action: the reader summarises the turns it cannot afford to show (N5; 2026-10-08, DRAFT pre-registration)
+
+**Status: draft, under review. Nothing runs until the text is agreed and the user approves the cost; every stage
+that writes a summary calls the reader, so even the free-looking gate is paid.**
+
+**Question.** §19 showed that on LongMemEval eight turns is about the most the reader uses well. Showing 16
+added evidence but no accuracy (§19c, §19d). The head ranks 32 candidates, so 24 of them are never seen. Can a
+*written* memory item, a short summary of the turns the reader cannot afford, add the evidence without the cost
+of the raw turns?
+
+**The action (declared now).**
+- **Writer:** the frozen reader (Qwen2.5-7B-Instruct, served as in §19c, temperature 0), with the existing
+  `LLMConsolidator` prompt (`memctl/memory/compress.py`), unchanged: "Merge the notes below into one note of at
+  most {limit} words. State each fact once. Keep every name, number and identifier. Reply with the merged note
+  only."
+- **Input:** the chosen turns as labelled text ("speaker (date): content"), so dates survive.
+- **Length cap:** 150 tokens (the limit in the prompt, with the output truncated to 150 tokens).
+- **Question-blind.** The writer does not see the question. The set to summarise depends on the question (it comes
+  from the head's ranking), but the summary text does not. This keeps it a memory write rather than a second
+  reading of the question; a question-aware writer is a possible later arm.
+- **Placement:** one item shown in place of the turns it summarises, marked as a note in the prompt.
+
+**Arms** (all on the §19 head A with 32 BM25 candidates; LongMemEval five test folds; tokens estimated from §19c):
+
+| arm | shown | expected prompt tokens |
+|---|---|---|
+| `fixed8` (reference, the current best) | raw ranks 1–8 | 1,049 (measured) |
+| `fixed8+sum` | raw ranks 1–8 + summary of ranks 9–32 | ≤ about 1,220 |
+| `sum16` | summary of ranks 1–16 only | ≤ about 330 |
+| `fixed16` (reference) | raw ranks 1–16 | 2,569 (measured) |
+| FIFO + floor, 5%, 3k target (reference) | — | 2,964 (measured) |
+
+**The free-gate measure (a reader-free proxy, declared now).** The gold evidence labels are turn ids, and a summary
+is not a turn, so all-found cannot score summary arms. The proxy is **gold-answer containment**: the normalised
+gold answer (`memctl.metrics.normalize_answer`, as in the F1 code) appears as a contiguous word sequence in the
+normalised prompt text.
+- It is reported beside all-found for the raw arms, so the two measures can be calibrated where both exist.
+- Abstention questions are excluded (470 questions).
+- It is conservative for summary arms: a paraphrase ("four hours" for "4 hours") is not counted.
+- Long or descriptive golds (for example preference questions) are rarely contained in any arm, so containment is
+  also reported by question type.
+
+**Gate (pre-registered, LongMemEval).** `fixed8+sum` goes to the reader only if both hold:
+1. Containment of `fixed8+sum` minus `fixed8`, paired by question, is at least +0.05, with a 95% interval
+   entirely above 0.
+2. Its mean prompt tokens are at most 1.5 × `fixed8`'s (about 1,574).
+
+`sum16` is reported against `fixed8` and `fixed16` as description; it does not gate.
+
+**LoCoMo** (categories 1–4, fold-0 heads, fusion search): the same arms, exploratory, as in §19c. Containment and
+tokens are reported without a verdict.
+
+**Reader stage (if the gate passes; criteria declared now).**
+- **Primary:** `fixed8+sum` minus `fixed8`, accuracy on LongMemEval, paired, 95% interval above 0.
+- Also reported: the §13a decomposition for the raw arms, the unknown rate, and prompt tokens for every arm.
+- LoCoMo stays exploratory.
+
+**Caveat.** Memory-R1's written facts came from GPT-4o-mini; here the writer is the 7B reader itself, so smaller
+gains are expected. **Expectation:** positive on containment, size unknown; accuracy is the reader's test.
+
+**Cost (NEEDS SPEND; estimated from §19c's measured throughput).**
+- Summary calls: one per question per summary arm. LongMemEval needs 500 × 2 = 1,000, with inputs of about 4.5k
+  tokens (24 turns) and outputs of at most 150. LoCoMo needs 1,540 × 2 = 3,080, with short inputs.
+- **Gate stage:** about 4,100 summary calls plus start-up, about 0.3–0.5 h, **about $0.15–0.25**.
+- **Reader stage (if the gate passes):** summaries are cached, so it is answers and judging only, at about §19c's
+  size. **About $0.30–0.45.**
+- Before either: a full-size stub-backend run of the whole pipeline (stub summaries) under `guard.sh`, with peak
+  RSS recorded.
+
 ## 5. The sequential task
 
 ```bash
