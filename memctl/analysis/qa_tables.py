@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import json
 import random
+import re
 from collections import defaultdict
 from functools import lru_cache
 from pathlib import Path
@@ -79,8 +80,12 @@ def cell_rows(cell: Path) -> list[dict]:
     episodes. Answers (for F1) and the memory at read time are in steps.jsonl only for the episodes
     logged in detail; elsewhere F1 is None and memory is the episode's mean active tokens.
     """
-    env = yaml.safe_load((cell / "config.yaml").read_text())["env"]
+    settings = yaml.safe_load((cell / "config.yaml").read_text())
+    env = settings["env"]
     lookup = question_table(env)
+    # A note that hit the output limit before "Answer:". The agent's own flag (agent_truncated) also counts
+    # a bare reply without the marker, mostly "unknown", so where outputs are logged they decide instead.
+    limit = int((settings.get("agent") or {}).get("max_new_tokens", 0) or 0)
     failed = set()
     with open(cell / "failures.jsonl") as handle:
         for line in handle:
@@ -114,15 +119,25 @@ def cell_rows(cell: Path) -> list[dict]:
                     "correct": float((seed, query_id) not in failed),
                     "f1": token_f1(step.get("agent_action") or "", gold) if step else None,
                     "tokens": prompt_tokens,
-                    # share of this episode's answers cut off before "Answer:" (reasoning reader only)
-                    "truncated": episode.get("agent_truncated", 0) / calls if calls else 0.0,
+                    "truncated": (float(is_truncated(step.get("agent_output"), limit)) if step and step.get("agent_output")
+                                  is not None else (episode.get("agent_truncated", 0) / calls if calls else 0.0)),
                     # the controller's own job: share of needed items in view when asked (episode level)
                     "evidence": episode.get("needed_hit_rate"),
                 })
     return rows
 
 
+def is_truncated(output: str | None, limit: int) -> bool:
+    """No "Answer:" marker and an output near the limit: the note ran out of room. The limit is in the
+    reader's tokens (subword pieces, more than words), so 70% of it in words-and-punctuation counts as at it."""
+    if not output or "answer:" in output.lower() or not limit:
+        return False
+    return len(re.findall(r"\w+|[^\w\s]", output)) >= 0.7 * limit
+
+
 def group_of(label: str) -> str:
+    """The controller group of a cell label: seeds (`_s0`) and LongMemEval folds (`fold3__`) pooled."""
+    label = re.sub(r"^fold\d+__", "", label)
     stem, _, seed = label.rpartition("_s")
     return stem if stem and seed.isdigit() else label
 

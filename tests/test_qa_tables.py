@@ -68,3 +68,11 @@ def test_the_evidence_gate_pairs_with_fifo_and_names_paid_cells(tmp_path):
     assert rows[("compose_floor5", "fill")]["n"] == 40 and abs(rows[("compose_floor5", "fill")]["difference"] - 0.4) < 1e-9
     assert split_label("compose_floor5_t2000__fraction0.01") == ("compose_floor5", "t2000", "0.01")
     assert split_label("fifo_top5__fraction0.02") == ("fifo_top5", "fill", "0.02")
+
+
+def test_a_bare_unknown_is_not_counted_as_a_truncated_note():
+    from memctl.analysis.qa_tables import is_truncated
+
+    assert not is_truncated("unknown", 256)
+    assert not is_truncated("long note " * 200 + "\nAnswer: 3", 256)
+    assert is_truncated("the user said " * 80, 256)
