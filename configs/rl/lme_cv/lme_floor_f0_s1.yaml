@@ -13,7 +13,9 @@ memory:
   embedder: hashing
 training:
   budget_fractions: [0.01, 0.02, 0.05]
-  expert: {kind: regret}
+  # retrieval_risk = 1 - BM25 share-found@5 on LongMemEval (0.644, Experiment 12): the chance the floor does not
+  # bring an archived needed item back. Without it every archive ties at regret 0 and the loss is 0.
+  expert: {kind: regret, retrieval_risk: 0.36}
   phases:
     - {algorithm: bc, iterations: 10, episodes: 40, epochs: 3, lr: 0.003, dagger: true}
   eval: {every: 2, episodes: 20, metric: evidence}
