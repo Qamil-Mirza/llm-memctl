@@ -2124,6 +2124,34 @@ adds at most about one point over imitation of hindsight labels, on the
 synthetic task and on real conversations. The limit is the information each
 sample carries, not credit assignment across time.
 
+## 18. Second-family judge check, and an exploratory LoCoMo reader test (2026-10-07, pre-registered)
+
+The user approved both, about $0.65–1.15 in all.
+
+**Judge check.**
+- **Question.** Every Experiment 13–16 cell was judged by Qwen2.5-7B on its own answers (official LongMemEval
+  prompts). Does a judge from another family agree, and does the ranking of controllers hold?
+- **Judge.** `ibm-granite/granite-3.1-8b-instruct` with the same official prompts, served by vLLM on its own
+  pod. Llama-3.1-8B, named in the plan, needs a gated licence the pod cannot accept; Granite is openly licensed
+  and from a different family.
+- **Sample.** 300 LongMemEval answers already generated: 75 each from Experiment 15's keep-last-0 + top 5 and
+  `head_listsum`, and from Experiment 13's FIFO + floor at 5% and the oracle at 2%. They are stratified by
+  question type, abstention excluded, seed 0.
+- **Four outputs, pre-registered.**
+  1. Agreement with the Qwen verdicts, as a share and as Cohen's kappa.
+  2. False-accept rate: each question graded against a planted wrong answer, another question's gold of the same
+     type.
+  3. False-reject rate: each question graded against its own gold, given as the answer.
+  4. Whether the controller ranking holds: the four controllers' accuracies under Granite in the same order as
+     under Qwen, with the paired difference of `head_listsum` minus keep-last-0 + top 5 and its interval.
+
+**Exploratory LoCoMo reader test.** This is outside the pre-registered claims and labelled exploratory in every
+table.
+- **What runs.** The fold-0 LongMemEval `listsum` head ranks the shared fusion search's top 16 on LoCoMo
+  categories 1–4 (keep-none, 5 shown), against keep-last-0 + fusion top 5, both under the frozen reader.
+- **Why.** Its evidence gain (+0.13 all-found, §15b) failed only the token rule, by 50 tokens.
+- **What is reported.** The paired accuracy difference, conversation-clustered, with the evidence decomposition.
+
 ## 5. The sequential task
 
 ```bash
