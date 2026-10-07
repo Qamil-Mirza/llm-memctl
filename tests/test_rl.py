@@ -547,6 +547,22 @@ def test_fusion_ranks_by_reciprocal_rank_over_both_searches(monkeypatch):
     assert ranked == ["o1", "o0", "o2"]  # o1 is in both lists
 
 
+def test_a_fused_top_k_does_not_depend_on_k(monkeypatch):
+    """Both lists are ranked to the same depth whatever k is asked for, so a top 5 is the head of a top 32
+    (§12's headroom fused BM25 cut at the largest k tabulated, and its fusion rows moved with that k)."""
+    from memctl.retrieval import FusionRetriever
+
+    rng = random.Random(0)
+    state = make_state([f"turn {n} word{n % 7} other{n % 5}" for n in range(80)])
+    items = state.active()
+    lexical, dense = rng.sample(items, len(items)), rng.sample(items, len(items))
+    fusion = FusionRetriever()
+    monkeypatch.setattr(fusion.lexical, "search", lambda q, xs, k: [(x, 1.0) for x in lexical[:k]])
+    monkeypatch.setattr(fusion.dense, "search", lambda q, xs, k: [(x, 1.0) for x in dense[:k]])
+    top = {k: [item.id for item, _ in fusion.search("q", items, k)] for k in (5, 16, 32, 50)}
+    assert all(top[k] == top[50][:k] for k in (5, 16, 32))  # up to the depth, 50
+
+
 def test_a_resumed_run_keeps_the_git_state_of_every_session(tmp_path):
     from memctl.runlog import RunLogger as RunLog
 
@@ -678,3 +694,31 @@ def test_the_vectorised_set_log_prob_matches_the_order_by_order_loop_in_value_an
         fast, slow = set_log_prob(a, subset), loop(b, subset)
         fast.backward(), slow.backward()
         assert abs(float(fast) - float(slow)) < 1e-5 and torch.allclose(a.grad, b.grad, atol=1e-5)
+
+
+def test_k_chooser_features_and_round_trip(tmp_path):
+    from memctl.rl.policy import K_FEATURE_DIM, KChooser, k_features
+
+    short = k_features(torch.tensor([3.0, 1.0, 2.0]), 12)  # a shortlist shorter than 16 is padded
+    assert len(short) == K_FEATURE_DIM and short[:4] == [3.0, 2.0, 1.0, 1.0] and short[16:19] == [0.0, 0.0, 0.0]
+    full = k_features(torch.arange(32, dtype=torch.float32), 12)
+    assert full[16:19] == [1.0, 1.0, 1.0]  # the gaps at ranks 5/6, 8/9 and 16/17
+    model = KChooser()
+    model.mean.fill_(0.5)
+    model.save(tmp_path / "k.pt")
+    loaded = KChooser.load(tmp_path / "k.pt")
+    row = torch.tensor([full])
+    assert torch.allclose(model(row), loaded(row)) and loaded.config["ks"] == [5, 8, 16]
+
+
+def test_mass_chooser_reads_the_softmax_mass_on_the_top_k(tmp_path):
+    from memctl.rl.policy import MassChooser, k_masses
+
+    masses = k_masses(torch.tensor([2.0, 0.0, 1.0, -1.0]), (1, 2, 4))
+    expected = torch.softmax(torch.tensor([2.0, 1.0, 0.0, -1.0]), 0).cumsum(0)
+    assert masses == pytest.approx([float(expected[0]), float(expected[1]), 1.0])
+    model = MassChooser((1, 2, 4))
+    rows = torch.tensor([[0.5, 0.8, 1.0]])
+    assert torch.allclose(torch.sigmoid(model(rows)), rows.clamp(1e-4, 1 - 1e-4))  # a = 1, b = 0 is the identity
+    model.save(tmp_path / "m.pt")
+    assert torch.allclose(MassChooser.load(tmp_path / "m.pt")(rows), model(rows))

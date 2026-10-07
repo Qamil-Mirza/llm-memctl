@@ -1,0 +1,39 @@
+# Experiment 19b cross-fitting (repeated to log the softmax mass), fold 2: head A ranks the 32 BM25 candidates of half B, which it
+# was not trained on; oracle mode logs the k-chooser's features and the all-found labels. No reader.
+name: exp19b_xfit_f2_a_on_b
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 200
+  agent:
+    name: 'null'
+  memory:
+    allowed_operations:
+    - KEEP
+    - MOVE_TO_ARCHIVE
+    - RETRIEVE_FROM_ARCHIVE
+    - NO_OP
+    embedder: hashing
+    count_labels: true
+  env:
+    name: longmemeval
+    path: data/longmemeval/longmemeval_s_cleaned.json
+    folds:
+      k: 5
+      fold: 2
+      part: train_b
+  logging:
+    detail_episodes: 100000
+grid:
+  controller:
+  - name: rl
+    label: heada_on_b
+    checkpoint: /home/qamil-mirza/Code/llm-memctl/runs/lme_n4_head_f2_a/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 5
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    k_mode: oracle
+  memory.budget.fraction:
+  - 0.05

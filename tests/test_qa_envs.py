@@ -149,6 +149,9 @@ def test_stratified_folds_cover_every_question_once_and_balance_question_types()
         assert len(test) == 20 and Counter(types[i] for i in test) == {"a": 10, "b": 6, "c": 4}
         assert sorted(test + fold_indices(instances, 5, fold, "train")) == list(range(100))
         assert 1 <= len(abstentions & set(test)) <= 3
+        half_a, half_b = fold_indices(instances, 5, fold, "train_a"), fold_indices(instances, 5, fold, "train_b")
+        assert sorted(half_a + half_b) == fold_indices(instances, 5, fold, "train") and len(half_a) == 40
+        assert Counter(types[i] for i in half_a) == {"a": 20, "b": 12, "c": 8}
     with pytest.raises(ValueError):
         fold_indices(instances, 5, 5)
 

@@ -1,0 +1,50 @@
+# Experiment 19 (N4): the §15 listsum head with a 32-candidate BM25 shortlist, trained on half b of fold 3's train part
+# (cross-fitting: the k-chooser learns from this head's outputs on the other half).
+schema_version: 1
+name: lme_n4_head_f3_b
+seed: 0
+env:
+  name: longmemeval
+  path: data/longmemeval/longmemeval_s_cleaned.json
+  folds:
+    k: 5
+    fold: 3
+    part: train_b
+  compose: 4
+agent:
+  name: 'null'
+controller:
+  name: rl
+  hidden: 64
+  architecture: deepsets
+  retrieval_method: lexical
+  retrieve_floor: 5
+  retrieve_candidates: 32
+  floor_head: true
+  keep_none: true
+memory:
+  allowed_operations:
+  - KEEP
+  - MOVE_TO_ARCHIVE
+  - RETRIEVE_FROM_ARCHIVE
+  - NO_OP
+  embedder: hashing
+  count_labels: true
+training:
+  budget_fractions:
+  - 0.0125
+  expert:
+    kind: regret
+    retrieval_risk: 0.36
+  phases:
+  - algorithm: bc
+    iterations: 10
+    episodes: 25
+    epochs: 4
+    lr: 0.003
+    dagger: true
+    retrieval_loss: listsum
+  eval:
+    every: 2
+    episodes: 5
+    metric: evidence

@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Learned Memory Control: One-Page Summary</title>
+<style>
+  @page { size: A4; margin: 11mm 12mm; }
+  :root { --ink: #1f1f1d; --muted: #5d5d58; --accent: #2a78d6; --rule: #d9d9d4; --good: #0c7a0c; --bad: #b3261e; }
+  * { box-sizing: border-box; }
+  body { font-family: "Helvetica Neue", Arial, sans-serif; font-size: 8.25pt; line-height: 1.32; color: var(--ink);
+         background: #fff; margin: 0; }
+  h1 { font-size: 13.5pt; margin: 0 0 1mm; }
+  .sub { color: var(--muted); font-size: 8pt; margin-bottom: 2.2mm; }
+  h2 { font-size: 9.2pt; color: var(--accent); margin: 2.4mm 0 1mm; padding-bottom: 0.6mm; border-bottom: 1px solid var(--rule);
+       text-transform: uppercase; letter-spacing: 0.03em; }
+  p { margin: 0 0 1.2mm; }
+  ul { margin: 0 0 1.2mm; padding-left: 4mm; }
+  li { margin: 0 0 0.6mm; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 6mm; }
+  table { width: 100%; border-collapse: collapse; font-size: 7.6pt; margin: 0.5mm 0 1.2mm; }
+  th, td { text-align: left; vertical-align: top; padding: 0.7mm 1.2mm; border-bottom: 1px solid var(--rule); }
+  th { color: var(--muted); font-weight: 600; }
+  .ok { color: var(--good); font-weight: 600; }
+  .no { color: var(--bad); font-weight: 600; }
+  .mix { color: #8a5a00; font-weight: 600; }
+  .rq { font-weight: 700; }
+  .foot { color: var(--muted); font-size: 7pt; margin-top: 1.5mm; border-top: 1px solid var(--rule); padding-top: 1mm; }
+</style>
+</head>
+<body>
+<h1>Learned memory control for long conversations: what we set out to do, and what we found</h1>
+<div class="sub">One-page summary · 7 October 2026 · Details and every number: EXPERIMENTS.md §1–§19d and docs/research/THESIS_RESULTS_OUTLINE.md</div>
+
+<h2>Aim</h2>
+<p>A language model answering questions about a long history (weeks of chat) cannot read all of it at once. A <b>memory
+controller</b> decides what stays in view, what goes to an archive, and what is searched back when a question arrives.
+We asked whether a <b>learned</b> controller (imitation of a hindsight teacher, then reinforcement learning) does
+better than simple rules at the same token budget. We tested on synthetic tasks, then on two real benchmarks
+(LoCoMo, LongMemEval), with a frozen 7B reader (Qwen2.5-7B) and an official judge. Every paid test was
+pre-registered: its success rule was written down and passed a free check before it ran.</p>
+
+<div class="cols">
+<div>
+<h2>Research questions</h2>
+<ul>
+  <li><span class="rq">RQ1.</span> Does a learned controller beat simple rules under the same budget?</li>
+  <li><span class="rq">RQ2.</span> Can a controller learn from hindsight (what later turned out to be needed)?</li>
+  <li><span class="rq">RQ3.</span> Does reinforcement learning (GRPO) add anything to imitation?</li>
+  <li><span class="rq">RQ4.</span> Does it hold up with real models and conversations, and when is it worth it?</li>
+</ul>
+
+<h2>What we did, and why it worked or not</h2>
+<table>
+  <tr><th>Step</th><th>Result</th><th>Why</th></tr>
+  <tr><td>Synthetic tasks: learn from a hindsight “regret” teacher plus a follow-the-clue search (§10–11)</td>
+      <td class="ok">Worked</td><td>Beats every rule, closes about half the gap to the hindsight oracle. Needs are structured and predictable.</td></tr>
+  <tr><td>Real chats: learn what to keep <i>before</i> the question (§13)</td>
+      <td class="no">Did not</td><td>Kept more evidence (+0.09–0.13) but no accuracy gain: the reader worsens past ~3k prompt tokens (“context rot”).</td></tr>
+  <tr><td>Charge a token price for kept memory (§14)</td>
+      <td class="no">No-go</td><td>Before the question, a turn’s later need is barely predictable (AUC 0.62–0.74).</td></tr>
+  <tr><td>Learn <i>at the question</i> which 5 of 16 search hits to show (§15)</td>
+      <td class="ok">Worked</td><td>0.513 vs 0.466 for the best rule, at half the tokens (745 vs 1,554); replicated over seeds and hosts.</td></tr>
+  <tr><td>GRPO on that selector, rewarded by the reader (§16)</td>
+      <td class="no">Did not</td><td>+0.013 (CI −0.005, +0.033). 44–61% of sample groups tie; each sample carries too little signal.</td></tr>
+  <tr><td>Second-family judge, Granite-8B (§18)</td>
+      <td class="ok">Confirms</td><td>97% agreement (κ 0.95), similar error rates; same ranking.</td></tr>
+  <tr><td>Show 8 instead of 5 turns (§19c)</td>
+      <td class="ok">Worked</td><td>0.545 vs 0.500 (+0.045, CI +0.011, +0.079) at 1,049 tokens; beats FIFO by +0.113 at a third of its tokens.</td></tr>
+  <tr><td>Choose how many turns per question (§19, §19b)</td>
+      <td class="no">Did not</td><td>A perfect chooser would halve the tokens at equal evidence; our two choosers could not tell easy questions from hard ones well enough.</td></tr>
+</table>
+</div>
+
+<div>
+<h2>Answers</h2>
+<ul>
+  <li><span class="rq">RQ1: Yes, but only at the question.</span> On synthetic tasks a learned controller wins
+    clearly. On real conversations, deciding what to keep beforehand does not beat rules; choosing which retrieved
+    turns the reader sees does: +0.047 over the best rule, then +0.045 more by showing eight turns.</li>
+  <li><span class="rq">RQ2: On synthetic tasks yes; on real chats, not enough.</span> Hindsight says what was needed,
+    but on real text that cannot be predicted before the question is asked. The useful signal arrives with the
+    question.</li>
+  <li><span class="rq">RQ3: At most about one point.</span> The limit is how much each reader-graded sample tells the
+    learner, not how credit is split over time.</li>
+  <li><span class="rq">RQ4: Yes, with a real 7B reader and two judges</span>; it is worth it when the prompt stays
+    small. With the same selector, 16 turns put more evidence in view than 8 but scored −0.057
+    (CI −0.096, −0.019): with the evidence present, accuracy fell from 0.68 to 0.58 at 2.6k tokens. A pre-registered
+    repeat (second head, second host) gave −0.026 (CI −0.066, +0.015), not significant, but the same fall with the
+    evidence present (0.71 to 0.62). LongMemEval is a
+    <i>selection</i> problem; LoCoMo is a <i>search</i> problem (evidence spread over many short turns).</li>
+</ul>
+
+<h2>Limitations</h2>
+<ul>
+  <li>One reader and one frozen prompt; the ~3k-token onset of context rot is measured for that pair only.</li>
+  <li>The positive reader result is pre-registered on LongMemEval only. The LoCoMo pick (5 turns) missed
+    (+0.023, CI −0.001, +0.048). The LoCoMo win of 16 turns over FIFO (0.344 vs 0.295 at a quarter of the tokens)
+    is exploratory.</li>
+  <li>The context-rot accuracy loss was significant in one of two runs; its confirmation missed. Both judges are
+    8B-class.</li>
+  <li>LoCoMo intervals rest on only 10 conversations. The §15 arm was the best of three before it was replicated.</li>
+</ul>
+
+<h2>Future work</h2>
+<ul>
+  <li>A larger, pre-registered test of the context-rot pair (more questions or seeds), since one confirmation missed.</li>
+  <li>A second reader of another family or size, to see whether the onset moves.</li>
+  <li>A chooser that reaches the per-question ceiling (half the tokens at equal evidence).</li>
+  <li>LoCoMo as a search problem: better retrieval units (fact keys, session-level search) and heads trained on LoCoMo.</li>
+  <li>A leave-one-out set reward for GRPO (declared, not run).</li>
+</ul>
+</div>
+</div>
+<div class="foot">Total GPU spend for all experiments: about $8.63 (RunPod A40, every launch approved in advance). Accuracy is the share of questions the judge marks correct; intervals are paired 95% bootstrap intervals.</div>
+</body>
+</html>
