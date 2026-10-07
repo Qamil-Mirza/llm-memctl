@@ -63,7 +63,7 @@ commands given).
 | 15 | A query-aware floor head: which 5 of 16 to retrieve, learned listwise | Free gate: +0.08 all-found evidence at half the tokens. Reader: +0.047 accuracy (0.513 vs 0.466) at 745 vs 1,554 tokens; two of three arms win; Holm-adjusted p 0.058. First learned row beyond the rule frontier; replicates over 3 training seeds on a second host (+0.044, seed SD 0.002). POSITIVE |
 | 16 | Set-valued GRPO on the selection head with the reader's verdict as reward | Gate fails: +0.0125 (−0.005, +0.033) held-out over the imitation start; flat in 4 of 5 folds. Labels already a sufficient target for this head. NEGATIVE (pre-registered) |
 | 18 | Second-family judge check; exploratory LoCoMo reader test | Granite agrees with Qwen on 97% (κ 0.95), similar error rates; ranking and the head's gain hold (+0.040, CI excludes 0). Exploratory: head transfers to LoCoMo, +0.087 (post hoc). CONFIRMS |
-| 19 | Adaptive k (5, 8 or 16 of 32), cross-fitted chooser, oracle-k ceiling | Pre-registered, free gate not yet run |
+| 19 | Adaptive k (5, 8 or 16 of 32), cross-fitted chooser, oracle-k ceiling | Free gate: more turns pay (LME `fixed8` +0.110 all-found at 1,050 tokens); oracle-k reaches `fixed16`'s evidence at 49% of the tokens on LME, 82% on LoCoMo (no-go); the chooser is miscalibrated and fails gate 4. §19b (one-feature chooser) pre-registered |
 
 ---
 
@@ -1287,6 +1287,12 @@ All requirements found (BM25 / fusion on LoCoMo, BM25 on LongMemEval):
 | LongMemEval multi-session | | | 0.182 | 0.446 |
 | LongMemEval temporal-reasoning | | | 0.496 | 0.709 |
 
+*Footnote (2026-10-07, §19a).* The fusion figures above were computed by a copy of reciprocal rank fusion inside
+`headroom.py` that cut BM25 at the largest k tabulated (20), while the shared `FusionRetriever` ranks both lists to
+depth 50. They are inflated by about 0.015–0.026. With the shared retriever (1e0a6a4), LoCoMo fusion all-found is
+0.465 @5 and 0.620 @16 (share found 0.514 and 0.681). Every controller run (§13 onward) used the shared retriever
+and is unaffected. The BM25 and dense rows are unchanged.
+
 Share found by type, BM25 @5 → @16: LoCoMo multi-hop 0.142 → 0.289 (fusion 0.253 →
 0.428), open-domain 0.224 → 0.276, single-hop 0.562 → 0.679, temporal 0.578
 → 0.682. LongMemEval knowledge-update 0.787 → 0.926, multi-session 0.435 →
@@ -2288,7 +2294,8 @@ the test-fold calibration is the real check against overfitting.
 
 **Expectations, written before the run.** From §15 and §18a, a shown turn costs about 149 tokens on LongMemEval
 and about 73 on LoCoMo.
-- **LoCoMo.** There is room in evidence: fusion all-found is 0.481 @5 and 0.646 @16 (§12). But `fixed16` costs
+- **LoCoMo.** There is room in evidence: fusion all-found is 0.481 @5 and 0.646 @16 (§12; corrected after the run
+  to 0.465 and 0.620, see §19a and the §12 footnote). But `fixed16` costs
   about 1.2k tokens, well under the onset and under the 2,000 guard. So adaptivity is probably not needed there,
   and the likely outcome is `fixed16` (or `fixed8`) to the reader.
 - **LongMemEval.** `fixed16` costs about 2.4k tokens, past the 2,000 guard and near the onset. That is where
@@ -2303,6 +2310,123 @@ passes, a reader cell like §15b/§18: that arm, the §15 head and FIFO + floor,
 and the official judge. Criteria: paired accuracy against the five-turn head, interval above 0; place on the
 accuracy-against-tokens frontier against FIFO + floor; the §13a decomposition. A full-size stub run under
 `guard.sh` precedes any launch. Rough cost, from §15b and §18: about $0.10–0.30.
+
+### 19a. Result: more turns pay; the chooser does not (2026-10-07)
+
+All runs are at 4b44dfd, not dirty. The heads were trained at 325dc7f. Report:
+`runs/_pipelines/exp19_report.py` → `runs/exp19_gate_report.md`. There is no reader: a stub model answers, so the
+real prompt is built and counted. All-found is paired against the §15 head with a 95% bootstrap interval.
+
+**LongMemEval** (500 test questions; head A, with head B as a replicate within about 0.015):
+
+| arm | all-found | Δ vs §15 head (95% CI) | prompt tokens | mean k |
+|---|---|---|---|---|
+| keep-last-0 + top 5 | 0.506 | −0.084 (−0.118, −0.052) | 1,551 | 5 |
+| §15 head (5 of 16) | 0.590 | — | 742 | 5 |
+| `fixed5` | 0.596 | +0.006 (−0.016, +0.026) | 715 | 5 |
+| `fixed8` | **0.700** | **+0.110 (+0.084, +0.138)** | 1,050 | 8 |
+| `fixed16` | 0.744 | +0.154 (+0.122, +0.186) | 2,566 | 16 |
+| `oracle-k` (ceiling) | 0.744 | +0.154 (+0.122, +0.186) | 1,265 | 8.6 |
+| `adaptive` | 0.674 | +0.084 (+0.056, +0.112) | 1,248 | 8.6 |
+
+**LoCoMo** (categories 1–4, fold-0 heads, 10 conversations, clustered by conversation):
+
+| arm | all-found | Δ vs §15 head (95% CI) | prompt tokens | mean k |
+|---|---|---|---|---|
+| keep-last-0 + top 5 | 0.204 | −0.132 (−0.146, −0.117) | 306 | 5 |
+| §15 head (5 of 16) | 0.336 | — | 365 | 5 |
+| `fixed5` | 0.372 | +0.036 (+0.020, +0.050) | 407 | 5 |
+| `fixed8` | 0.424 | +0.088 (+0.070, +0.103) | 511 | 8 |
+| `fixed16` | 0.465 | +0.129 (+0.108, +0.147) | 733 | 16 |
+| `oracle-k` (ceiling) | 0.469 | +0.133 (+0.115, +0.148) | 601 | 11.5 |
+| `adaptive` | 0.382 | +0.045 (+0.030, +0.059) | 430 | 5.7 |
+
+**Verdicts under the pre-registered gate.**
+- **LongMemEval: `fixed8` goes to the reader; adaptivity not needed.**
+  - Gate 3 (ceiling) passes: `oracle-k` keeps all of `fixed16`'s evidence at 49% of its tokens.
+  - Gate 4 fails: `fixed16` − `adaptive` = +0.070 (+0.048, +0.094), against the 0.02 bound.
+  - `fixed16` fails gate 2 (2,566 tokens, past the 2,000 guard).
+- **LoCoMo: `fixed5` goes to the reader by rule 4's fallback; adaptivity is a no-go by gate 3** (`oracle-k` saves
+  18% of `fixed16`'s tokens, under the 25% line).
+  - The fallback ("the smallest fixed k passing 1 and 2") was meant as Occam among arms of equal evidence. As
+    written it rewards the fewest tokens under the guard, so it picks `fixed5` although `fixed16` adds +0.093
+    all-found at 733 tokens.
+  - The rule is not amended after the fact. `fixed16` goes into the same reader cell as a labelled exploratory
+    arm. §19b corrects the fallback for future gates.
+- **Attribution (LongMemEval, head A).**
+  - Wider shortlist and retrain: +0.006 (−0.016, +0.026), neutral with half the training data. As the review
+    noted, this is conservative for gate 1.
+  - More turns (`fixed16` − `fixed5`): +0.148.
+  - Adaptivity (`adaptive` − `fixed16`): −0.070, at 49% of the tokens.
+
+**Why the chooser fails: calibration on the test folds** (head A's `oracle-k` cells; predicted / observed
+all-found, n, per bin):
+
+| k | 0–0.2 | 0.2–0.4 | 0.4–0.6 | 0.6–0.8 | 0.8–1 |
+|---|---|---|---|---|---|
+| 5 | 0.08 / 0.43, 94 | 0.29 / 0.41, 51 | 0.48 / 0.43, 63 | 0.71 / 0.58, 48 | 0.96 / 0.75, 244 |
+| 8 | 0.09 / 0.44, 61 | 0.29 / 0.53, 49 | 0.50 / 0.66, 47 | 0.69 / 0.69, 62 | 0.96 / 0.79, 281 |
+| 16 | 0.11 / 0.49, 45 | 0.31 / 0.64, 39 | 0.49 / 0.60, 40 | 0.71 / 0.69, 78 | 0.96 / 0.83, 298 |
+
+- The chooser is overconfident at both ends.
+- On LoCoMo it predicts about 1.0 for 1,449 of 1,535 questions (observed 0.37–0.47), so it collapses toward
+  k = 5.
+- Cross-fitting removed the in-sample bias, but a 21-feature network fit full-batch to 400 rows still overfits
+  (train loss 0.15–0.18).
+
+**LoCoMo arms are not exactly nested.** `oracle-k` is 0.004 above `fixed16` on LoCoMo, though equal by
+construction on LongMemEval.
+- The head's features include each turn's retrieval history: access count, time since access, and whether it was
+  retrieved before.
+- A LoCoMo conversation asks about 154 questions, so what an arm showed earlier changes its later rankings. At the
+  first question of each conversation, `oracle-k`'s shown set is a subset of `fixed16`'s in all 10 conversations.
+- Every arm answers the same 1,540 questions, so the pairing holds.
+
+**Headroom @32** (free; `runs/exp19_headroom/`). All-found, BM25 on LongMemEval: @16 0.706 → @32 0.779.
+Fusion on LoCoMo, with the shared retriever: @5 0.465, @8 0.518, @16 0.620, @32 0.713.
+
+**Correction to the §19 expectation line.** It quoted §12's fusion figures (0.481 @5, 0.646 @16). Those came from
+a copy of the fusion inside `headroom.py` that cut BM25 at the largest k tabulated. The tool now calls the shared
+retriever (1e0a6a4), and the figures of record are 0.465 @5 and 0.620 @16 (see the §12 footnote).
+
+**Train-part gate (overfitting check):** to be added when the run finishes.
+
+## 19b. Adaptive k with a one-feature chooser (N4b; 2026-10-07, pre-registered, free stage)
+
+**Why.** The §19a ceiling is real on LongMemEval: `oracle-k` keeps `fixed16`'s evidence at 49% of its tokens
+(1,265 against 2,566), +0.044 over `fixed8` for about 215 more tokens. The §19 chooser failed on calibration, not
+for lack of room. This is one more attempt, with a chooser that cannot overfit 400 rows, and it is time-boxed.
+
+**The chooser (declared before any run).**
+- **Input:** one feature per k, the head's softmax mass on its top k over the 32 candidates.
+- **Model:** for each k, Platt scaling on the logit of that mass (clamped to [1e-4, 1 − 1e-4]): P(all-found@k) =
+  sigmoid(a_k × logit(mass_k) + b_k). That is two parameters per k, fit by binary cross-entropy on the cross-fit
+  rows (head A on half B, head B on half A), as in §19. There is no network and there are no other features.
+- **Data:** the cross-fit runs are repeated at the §19b commit so that the mass is logged. The heads are §19's,
+  unchanged.
+
+**Calibration gate, before the δ rule is applied.** The expected calibration error, in 5 equal-width bins
+weighted by count, must be at most 0.10 for each k on the cross-fit rows of every fold. If it fails, §19b stops
+and the ceiling is the finding.
+
+**Arms and gate.**
+- The same arms as §19 (`fixed5/8/16`, `oracle-k`, and `adaptive` with the new chooser), the same gates 1–4, and
+  the same δ = 0.05.
+- LongMemEval only. LoCoMo is a declared no-go for adaptivity (§19a, an 18% ceiling) and stays closed.
+- Every arm is rerun at the §19b commit, so that all arms share one commit.
+- Test-fold calibration in 5 bins is reported as in §19a.
+
+**Correction of §19's fallback rule** (for this and later gates). When `adaptive` fails gate 4, the arm that goes
+to the reader is the fixed k that passes gates 1 and 2 with the **highest all-found**, its tokens under the guard.
+This is the Occam intended in §19; the §19 wording picked the fewest tokens instead.
+
+**Time box.** If §19b's `adaptive` does not pass gate 4 on the test folds, adaptivity stops. The finding is then
+the ceiling: `oracle-k` reaches `fixed16`'s evidence at 1,265 tokens, but no chooser tried here can find it.
+
+**Paid step (not approved).** One reader session after §19b, proposed to the user with its cost:
+- LongMemEval: `fixed8` (pre-registered by §19), §19b `adaptive` if it passes gate 4, the §15 head, and FIFO +
+  floor at 5%.
+- LoCoMo: `fixed5` (pre-registered), `fixed16` (exploratory, labelled), the §15 head, and FIFO + floor at 10%.
 
 ## 5. The sequential task
 
