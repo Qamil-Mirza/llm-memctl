@@ -16,6 +16,7 @@ from memctl.rl.expert import ARCHIVE, EVICT, make_expert
 from memctl.rl.policy import N_COLUMNS, ItemPolicy
 from memctl.rl.train import fill_returns, train
 from memctl.runlog import read_jsonl
+from memctl.memory.actions import Operation
 from memctl.memory.items import SourceType
 from tests.helpers import DELETE_ONLY, episode_info, make_state, task_for
 
@@ -589,3 +590,35 @@ def test_auc_counts_a_random_positive_above_a_random_negative():
     assert auc(np.array([0.9, 0.8, 0.1, 0.2]), np.array([1, 1, 0, 0])) == 1.0
     assert auc(np.array([0.1, 0.9]), np.array([1, 0])) == 0.0
     assert auc(np.array([0.5, 0.5]), np.array([1, 0])) == 0.5
+
+
+def test_keep_none_with_a_floor_head_retrieves_exactly_k_chosen_by_the_head(tmp_path):
+    torch.manual_seed(0)
+    experiment = Experiment(config(fraction=0.25, operations=ARCHIVE_OPS, keep_none=True, floor_head=True,
+                                   retrieve_floor=3, retrieve_candidates=8))
+    controller = experiment.controller
+    controller.record = True
+    emitted, decide = [], controller.decide
+
+    def spy(memory, task):
+        actions = decide(memory, task)
+        emitted.append((task.observation.requires_response, memory, actions))
+        return actions
+
+    controller.decide = spy
+    episode = experiment.run_episode(seed=0, detail=False).episode
+    assert episode["invalid_actions"] == 0
+    for asked, memory, actions in emitted:
+        kept = [i.id for i in memory.active if not i.pinned]
+        archived = {i for a in actions if a.operation is Operation.MOVE_TO_ARCHIVE for i in a.target_ids}
+        assert set(kept) - archived <= {memory.active[-1].id}  # everything but the newest goes to the archive
+    shortlists = [d for d in controller.recorded if d.retrieve_tokens]
+    assert shortlists and all(sum(d.retrieved) == min(3, len(d.retrieve_tokens)) for d in shortlists)
+
+    settings = config(horizon=80, operations=ARCHIVE_OPS, keep_none=True, floor_head=True, retrieve_floor=3, retrieve_candidates=8)
+    settings["name"] = "tiny_listwise"
+    settings["training"] = {"phases": [{"algorithm": "bc", "iterations": 2, "episodes": 3, "epochs": 2,
+                                        "retrieval_loss": "listwise"}], "eval": {"every": 1, "episodes": 2},
+                            "budget_fractions": [0.25]}
+    log = read_jsonl(train(settings, tmp_path / "train") / "train_log.jsonl")
+    assert all(row["expert_agreement"] is not None and 0 <= row["expert_agreement"] <= 1 for row in log)

@@ -33,6 +33,9 @@ def split_label(cell: str) -> tuple[str, str, str]:
 MEMORY: dict[tuple[str, str, str], dict[tuple[str, int], float]] = defaultdict(dict)
 
 
+MEASURE = "needed_hit_rate"  # evidence in view (share of a question's needs); "evidence_complete_rate": all of them
+
+
 def load(sweeps: list[Path]) -> dict[tuple[str, str, str], dict[tuple[str, int], float]]:
     values: dict[tuple[str, str, str], dict[tuple[str, int], float]] = defaultdict(dict)
     memory = MEMORY
@@ -44,8 +47,8 @@ def load(sweeps: list[Path]) -> dict[tuple[str, str, str], dict[tuple[str, int],
             key = split_label(cell.name)
             for line in path.open():
                 episode = json.loads(line)
-                if episode.get("needed_hit_rate") is not None:
-                    values[key][(sweep.name, episode["seed"])] = episode["needed_hit_rate"]
+                if episode.get(MEASURE) is not None:
+                    values[key][(sweep.name, episode["seed"])] = episode[MEASURE]
                     memory[key][(sweep.name, episode["seed"])] = episode.get("active_tokens_mean") or 0.0
     return values
 
@@ -141,7 +144,10 @@ def main() -> None:
     parser.add_argument("--gate-file", type=Path, help="write the go cells as 'sweep label' lines for the paid run")
     parser.add_argument("--frontier", help="Experiment 14 rule against this baseline label (e.g. keep_last0_top5)")
     parser.add_argument("--candidates", default="compose_price3e-5,compose_price1e-4,compose_price3e-4,compose_floor5")
+    parser.add_argument("--measure", default="needed_hit_rate", choices=["needed_hit_rate", "evidence_complete_rate"])
     args = parser.parse_args()
+    global MEASURE
+    MEASURE = args.measure
     if args.frontier:
         print(f"| candidate | budget | vs {args.frontier} at | n | baseline evidence | candidate evidence | difference (95% CI) | "
               "tokens at question candidate / baseline | go |")

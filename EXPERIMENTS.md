@@ -60,6 +60,7 @@ commands given).
 | 12 | Retrieval headroom: how much evidence search reaches (no reader) | Top 16 holds 0.12–0.16 more evidence than top 5; labels and BM25+bge fusion help LoCoMo, not LongMemEval. Gates for the pick-k head and better units passed. |
 | 13 | LongMemEval (all 500, 5 folds) and LoCoMo under the reviewed protocol: retrieval floor, no EVICT, reasoning reader, pre-registered gates | The floor fixes retrieval. Learned controllers keep more evidence at 5% but convert little: one paired win, one loss, none after Holm, none on the frontier. This reader refuses more as prompts grow (peak near 3k tokens). NEGATIVE, with a mechanism |
 | 14 | A token price for kept memory: labels counted in the budget, plug-in Bayes archiving at a pre-set price | No-go at the free gate: the priced rule never beats keep-last-0 + top 5 on evidence at equal memory; needed model AUC 0.62–0.74; a per-token price archives long turns, not lines. NEGATIVE (free) |
+| 15 | A query-aware floor head: which 5 of 16 to retrieve, learned listwise | (running: free gate first) |
 
 ---
 
@@ -1718,6 +1719,32 @@ the review:
    separate the 1% of items that matter.
 
 No paid cells were proposed.
+
+## 15. A query-aware floor head (N2; 2026-10-07, pre-registered, free stage)
+
+The only decision with information on these benchmarks is made at the
+question (§14a), so this learns it. Memory keeps nothing but the current turn
+(`keep_none`). At each question a head picks 5 of the 16 BM25 candidates
+(`floor_head`, a top-k by its logit), so the prompt has the same 5 retrieved
+lines as keep-last-0 + top 5. The only difference is *which* 5.
+
+- **Training.** Imitation with a listwise loss: minus the log of the softmax
+  mass on the gold evidence among the 16 candidates. It runs on composed
+  4-question episodes from each fold's train part, labels counted
+  (`configs/rl/lme_n2/head_f*.yaml`, commit below).
+- **Headroom.** §12: all-found recall@16 minus @5 is about 0.16 on
+  LongMemEval.
+
+**Pre-registered gate (written before it ran).** No reader, the five test folds
+(`configs/sweeps/exp15/`), 500 questions. The head goes to the reader only if
+its *all-found* evidence (`evidence_complete_rate`: every needed item in view)
+minus keep-last-0 + top 5's, paired over questions, has a 95% interval
+entirely above 0. Lines in the prompt are equal by construction (5 retrieved);
+mean memory tokens at the question are reported beside it. Analysis:
+`python -m memctl.analysis.gate runs/exp15_gate_f* --frontier keep_last0_top5
+--candidates head_top5 --measure evidence_complete_rate`; the token condition
+of that tool (≤ 1.1×) also applies. Declared but not built: an adaptive k
+(3, 5 or 8) chosen by the same head.
 
 ## 5. The sequential task
 

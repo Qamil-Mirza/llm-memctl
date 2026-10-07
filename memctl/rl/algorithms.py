@@ -25,7 +25,7 @@ from memctl.controllers.rl import N_REMOVALS, Decision, accepted_picks, evaluate
 from memctl.rl.policy import RETRIEVE_COLUMN, ItemPolicy
 
 
-def imitation_loss(policy: ItemPolicy, decision: Decision) -> tuple[torch.Tensor, int, int]:
+def imitation_loss(policy: ItemPolicy, decision: Decision, retrieval_loss: str = "bce") -> tuple[torch.Tensor, int, int]:
     """(loss, picks that matched the expert, picks) for one decision.
 
     The expert's removal sequence is followed step by step. At each step every
@@ -40,12 +40,20 @@ def imitation_loss(policy: ItemPolicy, decision: Decision) -> tuple[torch.Tensor
     if decision.expert_retrieved:
         target = torch.tensor(decision.expert_retrieved, dtype=torch.float32)
         retrieve_logits = logits[n:, RETRIEVE_COLUMN]
-        loss = loss + torch.nn.functional.binary_cross_entropy_with_logits(retrieve_logits, target, reduction="sum")
-        matched += int(((retrieve_logits > 0).float() == target).sum())
-        total += len(decision.expert_retrieved)
+        if retrieval_loss == "listwise":
+            # A ranking over the shortlist: minus the log of the softmax mass on the needed items. Unaffected by
+            # how rare positives are; a shortlist with no needed item carries no ranking signal and is skipped.
+            if target.sum() > 0:
+                loss = loss + torch.logsumexp(retrieve_logits, 0) - torch.logsumexp(retrieve_logits[target > 0], 0)
+                matched += int(bool(target[int(torch.argmax(retrieve_logits))] > 0))
+                total += 1
+        else:
+            loss = loss + torch.nn.functional.binary_cross_entropy_with_logits(retrieve_logits, target, reduction="sum")
+            matched += int(((retrieve_logits > 0).float() == target).sum())
+            total += len(decision.expert_retrieved)
         excess += sum(t for t, flag in zip(decision.retrieve_tokens, decision.expert_retrieved) if flag)
     mask = torch.from_numpy(decision.mask).clone()
-    while excess > 0:
+    while excess > 0 and n:
         accepted = accepted_picks(decision.expert_rank, mask)
         if not accepted:
             break
@@ -104,6 +112,7 @@ class BehaviourCloning:
     def __init__(self, settings: dict) -> None:
         self.epochs = int(settings.get("epochs", 4))
         self.batch_size = int(settings.get("batch_size", 64))
+        self.retrieval_loss = settings.get("retrieval_loss", "bce")  # bce | listwise (floor_head)
 
     def update(self, policy: ItemPolicy, optimizer: torch.optim.Optimizer, decisions: list[Decision], rng: random.Random) -> dict:
         labelled = [d for d in decisions if d.expert_rank is not None]
@@ -117,7 +126,8 @@ class BehaviourCloning:
             for start in range(0, len(order), self.batch_size):
                 losses = []
                 for decision in order[start : start + self.batch_size]:
-                    loss, hit, count = self.loss(policy, decision)
+                    loss, hit, count = (self.loss(policy, decision, self.retrieval_loss) if self.name == "bc"
+                                        else self.loss(policy, decision))
                     if count:
                         losses.append(loss)
                         matched += hit

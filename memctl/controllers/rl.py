@@ -124,6 +124,13 @@ class RLController(MemoryController):
         # and makes room for the floor items by eviction. 0 (default) leaves every retrieval to the policy.
         self.retrieve_floor = int(config.get("retrieve_floor", 0))
         self.retrieve_floor_tokens = int(config.get("retrieve_floor_tokens", 0))
+        # N2 (Experiment 15): floor_head lets the policy's retrieve column choose which `retrieve_floor` of the
+        # `retrieve_candidates` shortlist fill the floor (top k by logit), instead of the search's own top k.
+        # keep_none archives every kept item except the current observation at every step, so memory at a
+        # question is the question plus what is retrieved: the keep-last-0 + top-k rule with a learned choice
+        # of the k, which isolates the query-time decision.
+        self.floor_head = bool(config.get("floor_head", False))
+        self.keep_none = bool(config.get("keep_none", False))
         # Target fill: remove until active memory is at most this many tokens, even when the budget allows
         # more (a small reader can do worse with more context). None (default) fills up to the budget.
         self.target_tokens = int(config["target_tokens"]) if config.get("target_tokens") else None
@@ -225,7 +232,7 @@ class RLController(MemoryController):
         if self.retrieve_floor_tokens:
             room = min(room, self.retrieve_floor_tokens)
         floor, floor_tokens = [], 0
-        for item, _ in shortlist[: self.retrieve_floor]:
+        for item, _ in shortlist[: 0 if self.floor_head else self.retrieve_floor]:
             if floor_tokens + item.token_count > room:
                 break
             floor.append(item)
@@ -239,11 +246,15 @@ class RLController(MemoryController):
         ] if floor else []
         over_budget = memory.active_tokens + floor_tokens > limit
         pricing = self.token_price > 0 and self.needed_model is not None
-        if not over_budget and not shortlist and not pricing:
+        cleared = [item.id for item in memory.active if not item.pinned and item.id != task.observation.id] \
+            if self.keep_none else []
+        clear_action = [MemoryAction(Operation.MOVE_TO_ARCHIVE, tuple(cleared), parameters={"method": "keep_none"})] \
+            if cleared else []
+        if (not over_budget or self.keep_none) and not shortlist and not pricing:
             self._info = {"floor_ids": [item.id for item in floor], "floor_tokens": floor_tokens} if floor else {}
-            return floor_action
+            return clear_action + floor_action
 
-        active = [item for item in memory.active if not item.pinned]
+        active = [] if self.keep_none else [item for item in memory.active if not item.pinned]
         candidates = active + [item for item, _ in shortlist]
         savings = np.array([[self._saving(item, op) for op in REMOVAL_OPERATIONS] for item in active], dtype=np.int64)
         savings = savings.reshape(len(active), N_REMOVALS)
@@ -267,7 +278,7 @@ class RLController(MemoryController):
         if self.record:
             self.recorded.append(decision)
 
-        actions = list(floor_action)
+        actions = clear_action + list(floor_action)
         retrieved = [candidates[decision.n_active + j].id for j, flag in enumerate(decision.retrieved) if flag]
         if retrieved:
             actions.append(
@@ -325,6 +336,9 @@ class RLController(MemoryController):
             retrieve_logits = logits[n:, RETRIEVE_COLUMN]
             if self.follow_expert and decision.expert_retrieved is not None:
                 chosen = torch.tensor(decision.expert_retrieved, dtype=torch.float32)
+            elif self.floor_head:  # the k best by the head's logit (a ranking, not k independent yes/no)
+                chosen = torch.zeros_like(retrieve_logits)
+                chosen[torch.topk(retrieve_logits, min(self.retrieve_floor, len(retrieve_logits))).indices] = 1.0
             elif self.greedy:
                 chosen = (retrieve_logits > 0).float()
             else:
