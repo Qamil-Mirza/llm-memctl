@@ -155,6 +155,12 @@ def main() -> None:
                                 learned(SYNTHETIC, LOCOMO_SEARCH, "synthetic_floor5")],
                  "memory.budget.fraction": [0.05, 0.1, 0.25]},
     })
+    write("exp13_locomo_extra", "LoCoMo: the composed-episode LongMemEval policy (transfer), only where the LoCoMo gate passes.", {
+        "base": base(locomo_env, 10),
+        "grid": {"controller": [learned("runs/lme_compose4_f0_s0/checkpoints/policy_best.pt", LOCOMO_SEARCH,
+                                        "compose_floor5_lme_f0")],
+                 "memory.budget.fraction": [0.05, 0.1, 0.25]},
+    })
     write("exp13_locomo_keep", "LoCoMo keep-last-n with the fusion top 5 (budget-free).", {
         "base": base(locomo_env, 10),
         "grid": {"controller": [keep_last(LOCOMO_SEARCH, n, 5) for n in (0, 4, 16)], "memory.budget.fraction": [0.1]},
