@@ -1,12 +1,12 @@
 # Cross-fitted regret imitation on LongMemEval-S (peer review T1/N2): trained on the train part of stratified
-# fold 2 of 5 (env.folds), evaluated on its test part. Retrieval floor of 5 (labelled BM25, the shared LME
-# search), the head decides on ranks 6-16; no EVICT for the policy or the teacher; selection on evidence in view.
+# fold 2 of 5 (env.folds), evaluated on its test part. Retrieval floor of 5 (BM25, the shared LME
+# search; speaker/date labels lower BM25 recall on LongMemEval, Experiment 12), the head decides on ranks 6-16; no EVICT for the policy or the teacher; selection on evidence in view.
 schema_version: 1
 name: lme_floor_f2_s0
 seed: 0
 env: {name: longmemeval, path: data/longmemeval/longmemeval_s_cleaned.json, folds: {k: 5, fold: 2, part: train}}
 agent: {name: "null"}
-controller: {name: rl, hidden: 64, architecture: deepsets, retrieval_method: lexical_label, retrieve_floor: 5,
+controller: {name: rl, hidden: 64, architecture: deepsets, retrieval_method: lexical, retrieve_floor: 5,
              retrieve_candidates: 16}
 memory:
   allowed_operations: [KEEP, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
