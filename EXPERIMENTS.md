@@ -9,7 +9,7 @@ runs/<name>` (writes `runs/<name>/report.md` and `runs/<name>/plots/`; the
 commands given).
 
 **Contents** (sections are not in numeric order): 1, 1b, 1c, 1d, 2, 3, 4,
-4b, D1, GRPO, D2 (D2b), D5 (D5b, D5c), 8, 9, 5, 5b, 6, 6c, 7 (7a, 7b).
+4b, D1, GRPO, D2 (D2b), D5 (D5b, D5c), 8, 9, 10, 11, 5, 5b, 6, 6c, 7 (7a, 7b).
 
 **How to read the numbers**
 
@@ -55,6 +55,8 @@ commands given).
 | 7 | A real language model as task model and as controller | Smoke tests only; the task-model half is superseded by Experiments 8 and 9. PARTIAL |
 | 8 | A real language model (qwen2.5:3b) as the task model | A small, well-chosen memory beats full context; the D1 ranking holds. PASSED (1 seed, 30 episodes) |
 | 9 | …with Qwen2.5-7B as the task model, 100 episodes | Every D-series result holds; oracle-approx beats full context by +0.04–0.06; the remaining gap is archived-but-not-retrieved. PASSED |
+| 10 | Diagnostics; a follow-the-clue search for two-hop questions | GRPO's signal was real but the needed fact was out of reach; the search lifts imitation from 0.851 to 0.917 at 2% (oracle 0.966). PASSED (scripted reader) |
+| 11 | Follow-the-clue with a 7B reader; LoCoMo and LongMemEval QA | The 7B gain holds (0.832 → 0.889 at 2%). On real conversations the learned policies lose to simple rules: they barely retrieve. PASSED (negative on benchmarks) |
 
 ---
 
@@ -907,6 +909,219 @@ BC start −0.004 [−0.016, +0.008]; oracle − regret policy +0.105
   that shortlist. GRPO retrieved more (17.5 against 14.3 items per episode)
   at lower precision, cutting both-missing cases but not hop-2-only ones.
   Next steps: `docs/research/next_directions.html`.
+
+## 10. Diagnostics and the follow-the-clue search (2026-10-06)
+
+```bash
+# diagnostic 1: where the needed evidence sits when the controller decides (scripted reader, no LLM)
+python -m memctl.rl.shortlist --config configs/sweeps/exp9b_qwen7b_controllers.yaml --label bc_regret_s0 --out runs/diag1_shortlist
+# diagnostics 2-3: GRPO rerun with per-group logging, and best-of-8 filtered imitation
+python -m memctl.rl.train --config configs/rl/diag/diag2_grpo_audit_s0.yaml      # and _s1, _s2
+python -m memctl.rl.train --config configs/rl/diag/diag3_bestof8_s0.yaml         # and _s1, _s2
+python -m memctl.sweep --config configs/sweeps/diag_grpo_eval.yaml
+# follow-the-clue search: regret imitation with bridge_search on
+python -m memctl.rl.train --config configs/rl/bridge/rl_bc_bridge_regret_s0.yaml # and _s1, _s2
+python -m memctl.sweep --config configs/sweeps/bridge_eval.yaml
+```
+
+Follows the plan in `docs/research/next_directions.html`. Everything here uses
+the scripted reader on the recall task (seeds 0–99), with archive and
+retrieval allowed. **Provenance: diagnostics 2–3 at `c76b5cd`, the
+follow-the-clue runs at `5b4ceea`, diagnostic 1 at `831be0f`; every run
+`dirty: false`.**
+
+**Diagnostic 1: the second hop is half out of reach, half refused.** At every
+query, the rank of each needed fact in a lexical search of the whole archive
+with the question text. Misses where hop 1 was in view and hop 2 was archived
+and not retrieved, regret imitation at 2% (3 seeds):
+
+| rank of the hop-2 fact | 1–3 | 4–8 | 9–20 | >20 |
+|---|---|---|---|---|
+| misses (s0 / s1 / s2) | 22 / 24 / 23 | 80 / 84 / 80 | 54 / 55 / 56 | 39 / 37 / 36 |
+
+About 54% of these hop-2 facts are on the 8-item shortlist and the policy
+declines them (2 of 114 shortlisted hop-2 facts retrieved); 46% are beyond
+it. Hop-1 and one-hop facts on the shortlist are retrieved 97–99% of the
+time. The oracle's archive holds 4 items on average at 2% (it deletes what is
+never needed); the regret policy's holds 116, because a free archive makes
+archiving everything least-regret.
+
+**Diagnostic 2: GRPO's signal was real.** Over 540 GRPO groups (3 seeds × 180),
+84% differ in which questions were answered, 1% only in forced-fallback
+penalties, and 15% are fully tied (mostly at the 25% budget). The median
+untied group spans 0.09 task success. The std-scaling noise hypothesis of
+the next-directions report is rejected for this reward.
+
+**Diagnostic 3: GRPO adds no more than best-of-8 filtered imitation.** Task
+success, mean of 3 training seeds; in brackets the paired difference from
+regret imitation (D1):
+
+| controller | 2% | 5% | 10% | 25% |
+|---|---|---|---|---|
+| regret imitation (D1) | 0.851 | 0.887 | 0.930 | 0.987 |
+| imitation then GRPO (rerun, `diag2`) | 0.859 (+0.008 [+0.001, +0.015]) | 0.906 (+0.019) | 0.944 (+0.014) | 0.992 (+0.005) |
+| imitation then best-of-8 (`diag3`) | 0.861 (+0.010 [+0.004, +0.017]) | 0.896 (+0.009) | 0.944 (+0.014) | 0.988 (+0.001) |
+| oracle_approx | 0.966 (+0.115) | 1.000 | 1.000 | 1.000 |
+
+GRPO − best-of-8: −0.002 [−0.008, +0.003] at 2%, +0.010 [+0.003, +0.017] at
+5%. Both add about one point over imitation.
+
+**The follow-the-clue search.** `bridge_search` (`memctl/retrieval.py`) takes
+the best matches to the question that contain its rarest word (what the
+question names), and searches the archive again with the question's leftover
+words plus each seed's three rarest new words (the bridge entity). Up to 4
+items it finds join the 8-item shortlist, marked by a `bridge_score` feature
+(feature version 2; version 1 checkpoints load unchanged). It knows nothing of
+the task's sentence forms. Of the regret policy's 195 hop-2 misses (s0), the
+question search has 102 in its top 8; the bridge search has 184 in its top 4.
+
+| controller | 2% | 5% | 10% | 25% |
+|---|---|---|---|---|
+| fifo_archive_retrieve | 0.759 | 0.777 | 0.808 | 0.911 |
+| regret imitation (D1) | 0.851 | 0.887 | 0.930 | 0.987 |
+| **regret imitation + follow-the-clue** | **0.917** (+0.067 [+0.054, +0.079]) | **0.958** (+0.071 [+0.060, +0.083]) | **0.970** (+0.040 [+0.032, +0.048]) | **0.992** (+0.005 [+0.002, +0.009]) |
+| oracle_approx | 0.966 | 1.000 | 1.000 | 1.000 |
+
+Mean of 3 training seeds each; paired difference from D1 in brackets. The gap
+to the oracle at 2% falls from 0.115 to 0.048 [0.041, 0.057]. Hop-2 misses
+fall from ~195 to 23 / 22 / 54 per seed; retrieval recall rises from 0.83 to
+0.90 at the same precision (0.91).
+
+**GRPO on top of the follow-the-clue policy** (`configs/rl/grpo2/`, commit
+`831be0f`, all `dirty: false`). Four variants, each starting from the three
+follow-the-clue imitation policies, at matched experience (1,440 GRPO
+episodes): plain GRPO (group std, 24 episodes × 60 iterations); batch-level
+scaling computed per budget (`advantage: batch, stratify: true`, 96 × 15);
+the same plus per-question credit (`question_weight: 1`: every sample of a
+group meets the same question at the same step, so a decision also gets its
+episode's reward at that step minus the group's mean); and the same plus the
+regret expert's imitation loss (`imitation_weight: 0.5`).
+
+| controller | 2% | 5% | 10% | 25% |
+|---|---|---|---|---|
+| follow-the-clue imitation | 0.917 | 0.958 | 0.970 | 0.992 |
+| + plain GRPO | 0.928 (+0.011 [+0.004, +0.018]) | 0.976 (+0.017) | 0.983 (+0.013) | 0.995 |
+| + GRPO, batch scale per budget | 0.930 (+0.013 [+0.008, +0.018]) | 0.971 (+0.013) | 0.982 (+0.012) | 0.996 |
+| + per-question credit | 0.932 (+0.014 [+0.009, +0.020]) | 0.972 (+0.014) | 0.983 (+0.013) | 0.996 |
+| + expert loss | 0.929 (+0.012 [+0.007, +0.016]) | 0.969 (+0.011) | 0.982 (+0.012) | 0.996 |
+| oracle_approx | 0.966 | 1.000 | 1.000 | 1.000 |
+
+Against plain GRPO, no variant differs at 2% (largest +0.003 [−0.001,
++0.008], per-question credit) and all are 0.004–0.007 lower at 5%. GRPO now
+adds 1.1–1.4 points at 2% where it added 0.8 on the old shortlist, and the
+gap to the oracle at 2% is 0.034–0.038. The GRPO changes recommended by the
+next-directions report (batch scaling, budget strata, per-question credit,
+an imitation term) make no measurable difference at this scale.
+
+**What it shows**
+
+- The remaining gap of Experiment 9 was a retrieval problem, as the failure
+  breakdown said, and a generic multi-hop search closes 58% of it at 2%.
+- On the old shortlist RL had nothing to find: GRPO's groups differed in real
+  answers, but the decisive fact was rarely among the choices. RL and
+  best-of-8 imitation each added about a point. With the fact in reach GRPO
+  adds slightly more (1.1–1.4 points at 2%), and how its advantages are
+  computed does not matter.
+
+**What it does not show**
+
+- These are scripted-reader numbers. Whether the gain holds with Qwen2.5-7B
+  needs a rented GPU (Experiment 9's setup).
+- Remaining failures at 2% (~165 per seed against the oracle's 72) are half
+  one-hop. Facts ranked beyond 8 by the question search account for only
+  ~27 of them, so the hindsight reranker of the next-directions plan has a
+  ceiling of about 0.014 and is deferred.
+
+## 11. The follow-the-clue policy with a 7B reader, and LoCoMo and LongMemEval question answering (2026-10-06)
+
+```bash
+# vLLM v0.8.5, Qwen2.5-7B-Instruct bf16 served as qwen2.5-7b-instruct, max len 32,768, RunPod A40
+python -m memctl.sweep --config configs/sweeps/exp11a_qwen7b_bridge_recall.yaml --workers 8
+python -m memctl.sweep --config configs/sweeps/exp11b_locomo_qa.yaml --workers 11
+python -m memctl.sweep --config configs/sweeps/exp11c_longmemeval_qa.yaml --workers 5
+python -m memctl.rl.train --config configs/rl/lme/lme_bc_regret_s0.yaml        # and the other five
+python -m memctl.sweep --config configs/sweeps/exp11d_longmemeval_trained.yaml --workers 6
+# same server restarted with --max-model-len 65536 and YaRN (factor 2), separate cache
+python -m memctl.sweep --config configs/sweeps/exp11b_locomo_full_context.yaml --workers 1
+```
+
+One A40 for 6.07 hours at $0.49/hour, about $2.97. **Provenance: 11a–11c at
+`2d8fbf4` (which makes the generation cache's writes atomic; a first launch
+at `4549fdc` failed on half-written cache entries and was discarded),
+LongMemEval training at `a5f90b4`, 11d and the LoCoMo full-context run at
+later commits that change only documents; every cell `dirty: false`.** QA
+answers are judged by the same Qwen2.5-7B (LongMemEval's official metric is
+an LLM judge); a model judging its own answers may be lenient, so token F1
+is reported too. LoCoMo's adversarial category is counted (the right answer
+is a refusal).
+
+**11a: the follow-the-clue gain holds with a 7B reader.** Recall task,
+Experiment 9's seeds and prompt; cells shared with Experiment 9 reproduce it
+from the cache. Mean of 3 training seeds; paired difference from regret
+imitation in brackets.
+
+| controller | 2% | 5% | 10% | 25% |
+|---|---|---|---|---|
+| fifo_archive_retrieve | 0.741 | 0.761 | 0.787 | 0.857 |
+| regret imitation (D1) | 0.832 | 0.861 | 0.884 | 0.908 |
+| **+ follow-the-clue search** | **0.889** (+0.057 [+0.045, +0.069]) | **0.913** (+0.051) | **0.917** (+0.033) | 0.910 (+0.002) |
+| oracle_approx | 0.938 | 0.955 | 0.949 | 0.948 |
+| full context (Experiment 9) | 0.898 | | | |
+
+The gap to the oracle at 2% falls from 0.106 to 0.049, as with the scripted
+reader (0.115 to 0.048).
+
+**11b–11d: on real conversations the learned policies lose to simple
+rules.** Judge accuracy / token F1, query-weighted. LoCoMo: all 10
+conversations (1,986 questions). LongMemEval-S: questions 0–99, about 115k
+history tokens each.
+
+| controller | LoCoMo 10% | LoCoMo 25% | LongMemEval 5% | LongMemEval 10% |
+|---|---|---|---|---|
+| full context (64k YaRN server) | 0.510 / 0.312 | | not run (too long) | |
+| fifo_archive_retrieve (top 5) | 0.382 / 0.397 | 0.400 / 0.382 | 0.470 / 0.550 | 0.420 / 0.410 |
+| salience_archive_retrieve (top 5) | 0.375 / 0.388 | 0.410 / 0.395 | 0.360 / 0.398 | 0.290 / 0.294 |
+| keep last 4 + retrieve top 5 | 0.339 / 0.343 | 0.339 / 0.343 | 0.530 / 0.595 | 0.530 / 0.595 |
+| regret imitation, synthetic-trained (3 seeds) | 0.285 / 0.294 | 0.331 / 0.336 | 0.240 / 0.255 | 0.240 / 0.259 |
+| + follow-the-clue, synthetic-trained (3 seeds) | 0.289 / 0.301 | 0.326 / 0.328 | 0.300 / 0.336 | 0.273 / 0.297 |
+| regret imitation, trained on LongMemEval 100–499 (3 seeds) | | | 0.183 / 0.204 | 0.173 / 0.191 |
+| + follow-the-clue, trained on LongMemEval 100–499 (3 seeds) | | | 0.227 / 0.247 | 0.270 / 0.269 |
+| oracle_approx | 0.505 / 0.520 | 0.501 / 0.512 | 0.650 / 0.654 | 0.650 / 0.654 |
+
+**Why** (retrieval statistics, 10% budget). The heuristics retrieve their
+top 5 at every question (LongMemEval recall of needed items 0.65–0.66,
+LoCoMo 0.35). The synthetic-trained policies retrieve almost nothing on real
+text: 0–1 items per LongMemEval question and 2–70 per LoCoMo conversation of
+~199 questions, recall 0.00–0.03; their failures are mostly
+`archived_not_retrieved`. Their retrieval head learned when to fire on
+templated facts, and conversational turns score differently. The
+LongMemEval-trained policies never retrieve (0 per question): an episode has
+one question at its end, so almost every retrieval label is 0, and the head
+learns to say no. Two of their three seeds also fail mostly by `evicted`:
+with a single question, nearly every turn is never needed, the regret
+teacher accepts deleting it, and the policy deletes evidence too.
+
+**What it shows**
+
+- The follow-the-clue result (Experiment 10) holds with a 7B reader.
+- On LoCoMo and LongMemEval, memory management matters: the hindsight
+  oracle beats the best simple rule by 0.10–0.12. The learned controller
+  does not capture it. Trained on synthetic recall it does not transfer;
+  trained on LongMemEval as set up here it learns not to retrieve.
+- On LoCoMo, full context (0.510) matches the oracle (0.505) by the judge,
+  but its F1 is far lower (0.312 against 0.520): with the whole
+  conversation in view the model answers at length, which the judge
+  accepts and F1 does not.
+
+**What it does not show**
+
+- Whether a learned controller can help on these benchmarks. The obvious
+  next tests: let a fixed top-k retrieval run beside the learned removal
+  policy; reweight the retrieval labels (or train on LoCoMo-style episodes
+  with many questions); price deletion of an unseen-future item instead of
+  treating it as free when only one question follows.
+- Full context on LongMemEval-S (about 115k tokens per question) was not
+  run; published results report it.
 
 ## 5. The sequential task
 

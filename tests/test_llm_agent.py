@@ -120,3 +120,16 @@ def test_openai_backend_does_not_retry_client_errors(monkeypatch):
     with pytest.raises(urllib.error.HTTPError):
         llm_module.OpenAICompatibleLLM("m", "http://example.invalid/v1").generate("q")
     assert len(calls) == 1
+
+
+def test_the_generation_cache_ignores_a_half_written_entry(tmp_path):
+    from memctl.llm import TrackedLLM, build_llm
+
+    llm = build_llm({"backend": "stub", "cache_dir": str(tmp_path)})
+    first = llm.generate("## Memory\\nthe code is K93Q\\n## Current input\\nwhat is the code?", 8)
+    entry = next(tmp_path.rglob("*.json"))
+    entry.write_text('{"prompt": "trunc')  # another process caught mid-write
+    again = build_llm({"backend": "stub", "cache_dir": str(tmp_path)})
+    assert again.generate("## Memory\\nthe code is K93Q\\n## Current input\\nwhat is the code?", 8) == first
+    assert again.cache_hits == 0 and not list(tmp_path.rglob("*.tmp"))
+    assert isinstance(again, TrackedLLM)

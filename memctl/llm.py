@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import time
 import urllib.error
 import urllib.request
@@ -163,6 +164,14 @@ class OpenAICompatibleLLM:
         raise AssertionError("unreachable")
 
 
+def _read_cached(path: Path) -> str | None:
+    """The cached output, or None if there is none (or the file is unreadable: generate again)."""
+    try:
+        return json.loads(path.read_text())["output"]
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        return None
+
+
 class TrackedLLM:
     """Wraps a backend: counts usage and, with `cache_dir`, saves every generation to disk."""
 
@@ -181,15 +190,19 @@ class TrackedLLM:
             material = {"prompt": prompt, "max_new_tokens": max_new_tokens, **self.settings}
             key = hashlib.sha256(json.dumps(material, sort_keys=True).encode()).hexdigest()
             path = self.cache_dir / key[:2] / f"{key}.json"
-            if path.exists():
+            cached = _read_cached(path)
+            if cached is not None:
                 self.cache_hits += 1
-                output = json.loads(path.read_text())["output"]
-                self.usage.add(prompt, output, time.perf_counter() - started)
-                return output
+                self.usage.add(prompt, cached, time.perf_counter() - started)
+                return cached
         output = self.backend.generate(prompt, max_new_tokens)
         if path is not None:
+            # Several processes share one cache and often send the same prompt: write to a private
+            # file and rename it into place, so no reader ever sees a half-written entry.
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(json.dumps({"prompt": prompt, "max_new_tokens": max_new_tokens, **self.settings, "output": output}))
+            partial = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+            partial.write_text(json.dumps({"prompt": prompt, "max_new_tokens": max_new_tokens, **self.settings, "output": output}))
+            os.replace(partial, path)
         self.usage.add(prompt, output, time.perf_counter() - started)
         return output
 

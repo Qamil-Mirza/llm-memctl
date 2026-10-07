@@ -301,6 +301,30 @@ def test_group_advantages_are_standardised_within_each_group():
     assert rows[2][2][0].advantage == 0.0 and rows[3][2][0].advantage == 0.0  # no spread, no signal
 
 
+def test_group_advantage_modes():
+    from memctl.rl.train import group_spread, set_group_advantages
+
+    make = lambda: Decision(1, np.zeros((1, 1), np.float32), np.zeros(1, np.float32), ["a"], [("a",)], 1,
+                            np.ones((1, 4), np.int64), np.ones((1, 4), bool), 1)
+
+    def advantages(mode, values=((0, 1.0), (0, 3.0), (1, 5.0), (1, 5.1))):
+        rows = [(group, value, [make()]) for group, value in values]
+        set_group_advantages(rows, mode)
+        return [row[2][0].advantage for row in rows]
+
+    assert advantages("std")[2:] == pytest.approx([-1.0, 1.0], abs=1e-3)  # a 0.1 gap becomes a full +-1
+    assert advantages("mean") == pytest.approx([-1.0, 1.0, -0.05, 0.05])  # Dr. GRPO keeps it small
+    batch = advantages("batch")
+    assert batch[1] / batch[3] == pytest.approx(20.0)  # one scale for the batch
+    assert advantages("best") == [0.0, 1.0, 0.0, 1.0]
+    assert advantages("best", ((0, 2.0), (0, 2.0))) == [0.0, 0.0]  # a shared best teaches nothing
+    with pytest.raises(ValueError):
+        advantages("nope")
+    assert group_spread({"returns": [3.0, 3.0], "success": [0.5, 0.5]})["source"] == "tied"
+    assert group_spread({"returns": [3.0, 2.9], "success": [0.5, 0.5]})["source"] == "fallbacks_only"
+    assert group_spread({"returns": [3.0, 2.0], "success": [0.5, 0.4]})["source"] == "answers"
+
+
 def test_samples_of_one_episode_differ_only_by_sample_offset():
     experiment = Experiment(config(operations=ARCHIVE_OPS, greedy=False))
     controller = experiment.controller
@@ -324,3 +348,61 @@ def test_grpo_training_runs_and_logs(tmp_path):
     }
     log = read_jsonl(train(settings, tmp_path / "train") / "train_log.jsonl")
     assert [row["algorithm"] for row in log] == ["grpo", "grpo"] and "success@0.05" in log[1]
+
+
+def test_the_bridge_search_follows_the_first_fact_to_the_second():
+    from memctl.retrieval import LexicalRetriever, bridge_search
+
+    facts = [f"As of step {n}, the priority of node-{n} is X{n}." for n in range(10, 30)]
+    facts += ["As of step 40, the courier of sensor-171 is clerk-172.",
+              "As of step 42, the priority of clerk-172 is M37M.",
+              "Question: what is the route of order-147?", "Question: what is the priority of the courier of sensor-171?"]
+    items = make_state(facts, budget=10_000).active()
+    hop1, hop2, question = items[20], items[21], items[-1]
+    archive = [item for item in items if item.id not in (hop1.id, question.id)]
+    retriever = LexicalRetriever()
+    first = [item.id for item, _ in retriever.search(question.content, archive, 8)]
+    assert hop2.id not in first  # the question's words do not reach it
+    found = bridge_search(retriever, question.content, [hop1, question], archive, 4, exclude=(question.id,))
+    assert found[0][0].id == hop2.id
+
+
+def test_bridge_search_policies_use_feature_version_2_and_old_checkpoints_still_load(tmp_path):
+    old = RLController({"hidden": 16}, seed=0)
+    old.save(tmp_path / "v1.pt")
+    new = RLController({"hidden": 16, "bridge_search": True}, seed=0)
+    assert new.featurizer.version == 2 and new.featurizer.item_dim == old.featurizer.item_dim + 1
+    new.save(tmp_path / "v2.pt")
+    assert RLController({"checkpoint": str(tmp_path / "v1.pt")}).featurizer.version == 1
+    assert RLController({"checkpoint": str(tmp_path / "v2.pt"), "bridge_search": True}).featurizer.version == 2
+    with pytest.raises(ValueError):
+        RLController({"checkpoint": str(tmp_path / "v2.pt")})
+    result = run_one(config(fraction=0.05, operations=ARCHIVE_OPS), seed=1, controller=new)
+    assert result.episode["action_counts"]["controller"].get("RETRIEVE_FROM_ARCHIVE", 0) > 0
+
+
+def test_stratified_batch_advantages_and_per_question_credit():
+    from memctl.rl.train import set_group_advantages
+
+    make = lambda step: Decision(step, np.zeros((1, 1), np.float32), np.zeros(1, np.float32), ["a"], [("a",)], 1,
+                                 np.ones((1, 4), np.int64), np.ones((1, 4), bool), 1)
+    rows = [(0, 1.0, [make(5)], {5: 1.0}), (0, 0.0, [make(5)], {5: 0.0}),
+            (1, 10.0, [make(5)], {}), (1, 0.0, [make(5)], {})]
+    set_group_advantages(rows, "batch", strata={0: 0.02, 1: 0.25})
+    assert [r[2][0].advantage for r in rows] == pytest.approx([1.0, -1.0, 1.0, -1.0], abs=1e-4)  # each budget its own scale
+    set_group_advantages(rows, "mean", question_weight=2.0)
+    assert rows[0][2][0].advantage == pytest.approx(0.5 + 2.0 * 0.5)  # episode credit plus the question it answered
+    assert rows[2][2][0].advantage == pytest.approx(5.0)
+
+
+def test_grpo_can_keep_the_expert_in_its_loss(tmp_path):
+    settings = config(horizon=60, operations=ARCHIVE_OPS)
+    settings["name"] = "tiny_grpo"
+    settings["training"] = {
+        "phases": [{"algorithm": "grpo", "iterations": 1, "episodes": 4, "group": 2, "epochs": 1,
+                    "advantage": "batch", "stratify": True, "question_weight": 1.0, "imitation_weight": 0.5}],
+        "eval": {"every": 0, "episodes": 1}, "budget_fractions": [0.05], "expert": {"kind": "regret"},
+    }
+    folder = train(settings, tmp_path / "train")
+    row = read_jsonl(folder / "train_log.jsonl")[0]
+    assert "imitation_loss" in row and len(read_jsonl(folder / "groups.jsonl")) == 2

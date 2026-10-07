@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Thesis Proposal</title>
+<script>
+window.MathJax = { tex: { inlineMath: [["\\(", "\\)"]], displayMath: [["\\[", "\\]"]] }, svg: { fontCache: "global" } };
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js"></script>
+<style>
+@page { size: Letter; margin: 1in; }
+:root { --ink: #000; --muted: #444; --box: #fff4cc; --boxline: #c99a00; --line: #888; }
+body { font-family: "Times New Roman", Times, serif; font-size: 11pt; line-height: 1.3; color: var(--ink); background: #fff; margin: 0; }
+h1 { font-size: 15pt; margin: 0 0 2pt; }
+h2 { font-size: 12pt; margin: 8pt 0 3pt; }
+h3 { font-size: 11pt; margin: 8pt 0 2pt; }
+p { margin: 0 0 5pt; }
+ol, ul { margin: 0 0 5pt; padding-left: 18pt; }
+.rq { list-style: none; padding-left: 8pt; }
+.rq li { padding-left: 2.6em; text-indent: -2.6em; }
+li { margin-bottom: 2pt; }
+.page { page-break-after: always; }
+.sub { font-weight: bold; margin-bottom: 6pt; }
+.novel { background: var(--box); border-left: 3pt solid var(--boxline); padding: 5pt 8pt 3pt; margin: 6pt 0; }
+.novel h2 { margin-top: 0; }
+.novel ol { margin-bottom: 2pt; }
+mark { background: var(--box); padding: 0 1pt; }
+.small { font-size: 9.5pt; color: var(--muted); }
+figure { margin: 6pt 0 8pt; page-break-inside: avoid; }
+figcaption { font-size: 9.5pt; color: var(--muted); margin-top: 2pt; }
+svg text { font-family: "Times New Roman", Times, serif; }
+table { border-collapse: collapse; font-size: 10pt; margin: 4pt 0 6pt; }
+th, td { border-bottom: 0.5pt solid var(--line); padding: 2pt 8pt 2pt 0; text-align: left; }
+.eq { margin: 3pt 0 5pt; }
+.keep { page-break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<div class="page">
+<h1>Teaching a Small Model to Manage an AI Agent's Memory</h1>
+<p class="sub">Thesis proposal (updated October 2026)</p>
+
+<h2>The problem</h2>
+<p>AI agents built on large language models can only read a limited amount of text at once. In a long task, like a support chat that runs for days, the history soon grows past that limit, so something has to decide what the model keeps, what gets filed away, and what gets thrown out. Most systems use fixed rules like "keep the most recent messages," which are cheap but often throw away the one fact that ends up mattering.</p>
+
+<h2>Research questions</h2>
+<p>Overall: can a very small, separate model learn these memory decisions better than fixed rules, without retraining the language model itself?</p>
+<ol class="rq">
+<li><strong>RQ1.</strong> Under a tight memory budget, can a small learned controller beat fixed memory rules?</li>
+<li><strong>RQ2.</strong> What is the right way to learn from hindsight, when the controller can't see the future that its teacher sees?</li>
+<li><strong>RQ3.</strong> Does reinforcement learning (GRPO) add anything beyond imitation, and does it matter how it assigns credit to each decision?</li>
+<li><strong>RQ4.</strong> Does it hold up with real language models and real long conversations, and when is it worth it over a simple rule?</li>
+</ol>
+
+<h2>My approach</h2>
+<p>I built a test framework where a frozen language model answers questions while a separate "memory controller" decides what to keep, archive, delete or retrieve. The controller is tiny (about 27,000 parameters) and trains on a laptop. Because my tasks are simulated, I know afterwards which facts were needed, and I use that hindsight to build a teacher for the controller to copy, then try reinforcement learning (GRPO) on top.</p>
+
+<div class="novel">
+<h2>What is new in this work</h2>
+<ol>
+<li><strong>A tiny controller kept separate from a frozen language model (RQ1, RQ4).</strong> Most recent work retrains the language model itself; here only the small controller learns, so it can sit in front of any model. With Qwen2.5-7B reading, it matches showing the model everything while using 40% of the text.</li>
+<li><strong>A "regret" teacher for copying hindsight (RQ2).</strong> Copying an all-knowing teacher works badly (34% right at a tight budget), because the student can't see what it sees. Copying a teacher that accepts every choice that costs nothing gets 85%, beating every fixed rule I tested.</li>
+<li><strong>Finding that search, not learning, was the bottleneck, and fixing it (RQ1, RQ3).</strong> Most remaining mistakes were two-step questions whose second fact never showed up as an option. A simple "follow the clue" search raised accuracy from 85% to 92% (83% to 89% with Qwen2.5-7B), about half the gap to a perfect controller.</li>
+<li><strong>Free per-question credit for GRPO (RQ3).</strong> The simulator replays exactly, so each decision can be credited for its own question at no extra cost. GRPO adds about one point; the credit method made no difference.</li>
+</ol>
+</div>
+
+<h2>What I will do next</h2>
+<ol>
+<li>(RQ4) Test on two public benchmarks of long conversations, LoCoMo and LongMemEval. So far simple rules win, because my controller rarely retrieves on real conversations. Next it will always retrieve the top few results and learn only what to keep.</li>
+<li>(RQ2) Study memory that costs something to store, where filing everything away is no longer free.</li>
+<li>(RQ4) Work out when a small learned controller is worth it, and when a simple rule is enough.</li>
+</ol>
+
+<h2>Why it matters</h2>
+<p>If a small, cheap model can manage memory well, any agent could use it without retraining a large model. If it can't, knowing why still helps anyone building agents that need to remember.</p>
+</div>
+
+<h1>Addendum: formulations and diagrams</h1>
+<p class="small">Notation follows the code in <code>memctl/</code>. Numbers are from EXPERIMENTS.md (Experiments D1, 9 and 10), scripted reader unless marked 7B; learned results are means of three training seeds.</p>
+
+<figure class="keep">
+<svg viewBox="0 0 640 170" width="100%" role="img" aria-label="System diagram">
+  <defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#000"/></marker></defs>
+  <rect x="5" y="55" width="110" height="50" fill="#fff" stroke="#000"/>
+  <text x="60" y="76" text-anchor="middle" font-size="12">Environment</text>
+  <text x="60" y="92" text-anchor="middle" font-size="10">facts, questions</text>
+  <rect x="165" y="10" width="190" height="65" fill="#fff" stroke="#000"/>
+  <text x="260" y="30" text-anchor="middle" font-size="12">Active memory (budget B)</text>
+  <text x="260" y="48" text-anchor="middle" font-size="10">what the language model reads</text>
+  <rect x="165" y="95" width="190" height="65" fill="#f2f2f2" stroke="#000"/>
+  <text x="260" y="117" text-anchor="middle" font-size="12">Archive</text>
+  <text x="260" y="135" text-anchor="middle" font-size="10">searchable, not read</text>
+  <rect x="405" y="10" width="125" height="65" fill="#fff" stroke="#000"/>
+  <text x="467" y="35" text-anchor="middle" font-size="12">Frozen LLM</text>
+  <text x="467" y="52" text-anchor="middle" font-size="10">answers questions</text>
+  <rect x="405" y="95" width="125" height="65" fill="#fff4cc" stroke="#c99a00"/>
+  <text x="467" y="117" text-anchor="middle" font-size="12">Controller π</text>
+  <text x="467" y="134" text-anchor="middle" font-size="10">27.5k parameters</text>
+  <text x="467" y="149" text-anchor="middle" font-size="10">evict / archive / retrieve</text>
+  <line x1="115" y1="72" x2="163" y2="45" stroke="#000" marker-end="url(#ar)"/>
+  <line x1="355" y1="42" x2="403" y2="42" stroke="#000" marker-end="url(#ar)"/>
+  <line x1="240" y1="75" x2="240" y2="93" stroke="#000" marker-end="url(#ar)"/>
+  <line x1="280" y1="95" x2="280" y2="77" stroke="#000" marker-end="url(#ar)"/>
+  <text x="196" y="88" font-size="9">archive</text>
+  <text x="285" y="88" font-size="9">retrieve</text>
+  <line x1="405" y1="128" x2="357" y2="128" stroke="#c99a00" stroke-dasharray="4 3" marker-end="url(#ar)"/>
+  <line x1="636" y1="128" x2="533" y2="128" stroke="#000" marker-end="url(#ar)"/>
+  <text x="586" y="120" text-anchor="middle" font-size="10">hindsight</text>
+  <text x="586" y="143" text-anchor="middle" font-size="10">teacher (training)</text>
+</svg>
+<figcaption>Figure 1. The controller decides what the frozen language model sees. During training only, a hindsight teacher labels its decisions.</figcaption>
+</figure>
+
+<h2>A. Setup</h2>
+<p>At step \(t\) the memory state is \(s_t = (\mathcal{A}_t, \mathcal{R}_t)\): the active items, whose tokens must fit a budget \(\sum_{i\in\mathcal{A}_t} \ell_i \le B\), and the archive. The budget is a fraction of the whole history, \(B = f \cdot L\) with \(f \in \{2, 5, 10, 25\}\%\). When the active memory is over budget, the controller removes items one at a time, each by an operation \(o \in \{\textsf{evict}, \textsf{archive}\}\), until it fits. When a question arrives, it may retrieve items from a shortlist \(\mathcal{C}_t\) of the archive. The reward is the number of questions answered correctly, minus 0.1 for every forced fallback eviction:</p>
+<div class="eq">\[ R = \sum_{t} r_t, \qquad r_t = \mathbb{1}[\text{question at } t \text{ answered correctly}] - 0.1\, F_t . \]</div>
+
+<h2>B. Policy</h2>
+<p>A DeepSets scorer gives each candidate item \(i\) (features \(x_i\), plus mean and max pooled summaries of all candidates and global features \(g_t\)) one logit per operation, \(z_{i,o} = f_\theta(x_i, \bar{x}, g_t)\), and a retrieval logit \(z_{i,\text{ret}}\). Removals are a sequence of softmax draws without replacement over the remaining (item, operation) pairs, and retrievals are independent Bernoulli draws:</p>
+<div class="eq">\[ \pi_\theta(a_t \mid s_t) = \prod_{j\in\mathcal{C}_t} \sigma(z_{j,\text{ret}})^{y_j}\,\big(1-\sigma(z_{j,\text{ret}})\big)^{1-y_j} \; \prod_{k=1}^{K} \frac{\exp z_{(i_k,o_k)}}{\sum_{(i,o)\in M_k} \exp z_{(i,o)}} , \]</div>
+<p>where \(M_k\) is the set of pairs still available at the \(k\)-th removal.</p>
+
+<h2>C. Hindsight and the two teachers</h2>
+<p>A reference pass with unlimited memory gives every item's next need \(n_i(t)\): the first later step whose question uses it (\(\infty\) if never). The <em>oracle</em> teacher deletes never-needed items, then archives in order of furthest next need: one action per state. The <mark>regret teacher</mark> charges each (item, operation) its regret with the oracle playing on, and accepts every action of least regret:</p>
+<div class="eq">\[ \text{reg}(i,\textsf{evict}) = \mathbb{1}[n_i(t)<\infty], \qquad \text{reg}(i,\textsf{archive}) = c + \rho\,\mathbb{1}[n_i(t)<\infty], \qquad A^*(s_t) = \arg\min_{(i,o)} \text{reg}(i,o), \]</div>
+<p>with archive price \(c = 0\) and retrieval risk \(\rho = 0\) here. For a never-needed item both operations then cost 0. The oracle breaks that tie towards deletion, which a learner that cannot see the future cannot imitate, so it learns to delete needed items too. The student is trained by DAgger with a set-valued loss: at each removal along the teacher's sequence, the probability mass the policy puts on the accepted set; for retrieval, a cross-entropy against "needed right now":</p>
+<div class="eq">\[ \mathcal{L}_{\text{BC}}(\theta) = -\sum_{k} \log \sum_{a\in A^*_k} \pi_\theta(a \mid s, M_k) \; - \sum_{j\in\mathcal{C}_t} \Big[ y^*_j \log \sigma(z_{j,\text{ret}}) + (1-y^*_j)\log\big(1-\sigma(z_{j,\text{ret}})\big) \Big], \quad y^*_j = \mathbb{1}[n_j(t) = t]. \]</div>
+<table>
+<tr><th>Teacher copied (2% budget)</th><th>Scripted reader</th><th>Qwen2.5-7B</th></tr>
+<tr><td>Oracle teacher</td><td>0.335</td><td>0.320</td></tr>
+<tr><td><mark>Regret teacher</mark></td><td>0.851</td><td>0.832</td></tr>
+<tr><td>Best fixed rule (FIFO with archive)</td><td>0.759</td><td>0.741</td></tr>
+</table>
+
+<h2>D. GRPO</h2>
+<p>For each training episode (one seed and one budget) the policy samples a group of \(G = 8\) rollouts with returns \(R_1,\dots,R_G\). Every decision in rollout \(g\) gets the same group-standardised advantage, and the policy is updated with PPO's clipped objective and an entropy bonus, with no value network:</p>
+<div class="eq">\[ \hat{A}_g = \frac{R_g - \mu_G}{\sigma_G + \epsilon}, \qquad \mathcal{J}(\theta) = \mathbb{E}\Big[\min\big(\rho_t \hat{A}_g,\; \text{clip}(\rho_t, 1-\varepsilon, 1+\varepsilon)\,\hat{A}_g\big)\Big] + \beta\, \mathcal{H}(\pi_\theta), \quad \rho_t = \frac{\pi_\theta(a_t\mid s_t)}{\pi_{\theta_\text{old}}(a_t\mid s_t)}, \]</div>
+<p>with \(\varepsilon = 0.2\), \(\beta = 0.01\), 4 epochs per batch, and \(\hat{A}_g = 0\) when the group is tied.</p>
+
+<h2>E. Modifications of GRPO tested</h2>
+<ol>
+<li><strong>Batch scale, per budget</strong> (after Dr. GRPO and Lite PPO). Centre within the group, but scale by the spread of the whole batch within the same budget stratum \(k\), so nearly tied groups are not blown up to \(\pm 1\):
+<div class="eq">\[ \hat{A}_g = \frac{R_g - \mu_G}{\sigma_{B,k} + \epsilon}, \qquad \sigma_{B,k}^2 = \frac{1}{|B_k|}\sum_{g\in B_k} (R_g - \mu_{G(g)})^2 . \]</div></li>
+<li><strong>Best-of-\(G\) imitation</strong> (RAFT), a filtered-imitation baseline: \(\hat{A}_g = \mathbb{1}\big[R_g = \max_{g'} R_{g'} \text{ and unique}\big]\).</li>
+<li><mark><strong>Per-question credit.</strong></mark> All \(G\) rollouts of a group replay the same seed, so they meet the same question at the same step \(t\). A decision at \(t\) also gets its rollout's reward at \(t\) relative to the group's mean reward at \(t\), at no extra cost:
+<div class="eq">\[ \hat{A}_{g,t} = \hat{A}_g + \omega \big( r^{(g)}_t - \bar{r}_t \big), \qquad \bar{r}_t = \frac{1}{G}\sum_{g'} r^{(g')}_t, \quad \omega = 1 . \]</div></li>
+<li><strong>Expert kept in the loss</strong> (after CHORD and SRFT): \(\mathcal{L} = -\mathcal{J}(\theta) + \lambda\, \mathcal{L}_{\text{BC}}(\theta)\) with \(\lambda = 0.5\), the regret teacher labelling the learner's own states.</li>
+</ol>
+
+<figure class="keep">
+<svg viewBox="0 0 640 150" width="100%" role="img" aria-label="Per-question credit diagram">
+  <text x="10" y="16" font-size="11">One group: 8 replays of the same episode (seed, budget)</text>
+  <g font-size="10">
+    <text x="10" y="44">rollout 1</text><text x="10" y="70">rollout 2</text><text x="10" y="96">rollout 8</text><text x="30" y="83">⋮</text>
+  </g>
+  <g stroke="#000">
+    <line x1="70" y1="40" x2="600" y2="40"/><line x1="70" y1="66" x2="600" y2="66"/><line x1="70" y1="92" x2="600" y2="92"/>
+  </g>
+  <g fill="#fff4cc" stroke="#c99a00">
+    <rect x="215" y="28" width="22" height="74"/><rect x="415" y="28" width="22" height="74"/>
+  </g>
+  <g font-size="10" text-anchor="middle">
+    <text x="226" y="122">question at step t</text><text x="426" y="122">question at step t′</text>
+    <text x="226" y="44">✓</text><text x="226" y="70">✗</text><text x="226" y="96">✓</text>
+    <text x="426" y="44">✓</text><text x="426" y="70">✓</text><text x="426" y="96">✗</text>
+  </g>
+  <g font-size="10">
+    <text x="608" y="44">R₁</text><text x="608" y="70">R₂</text><text x="608" y="96">R₈</text>
+  </g>
+  <text x="10" y="142" font-size="10">GRPO credits every decision in a rollout with one number, from R₁…R₈. Per-question credit also compares the rollouts at each question (columns).</text>
+</svg>
+<figcaption>Figure 2. Episode-level against per-question credit in one GRPO group.</figcaption>
+</figure>
+
+<h2>F. The follow-the-clue search</h2>
+<p>The controller can only retrieve from a shortlist: the top 8 archive items for the question \(q\) by BM25. In a two-hop question the second fact names an entity the question never mentions, so it is rarely on that list (Figure 3). The search adds a second pass. Let \(W(x)\) be the content words of \(x\) and \(\text{df}(w)\) the number of memory items containing \(w\).</p>
+<ol>
+<li>Anchor: the question's rarest word in memory, \(w^* = \arg\min_{w\in W(q),\, \text{df}(w)>0} \text{df}(w)\) (what the question names).</li>
+<li>Seeds: the best BM25 matches to \(q\) in active memory or the archive that contain \(w^*\) and add new words; the first \(m = 2\) are used.</li>
+<li>For each seed \(s\), a second query: the question's words the seed lacks, plus the seed's \(c = 3\) rarest new words (the bridge entity):
+<div class="eq">\[ q'(s) = \big(W(q)\setminus W(s)\big) \;\cup\; \text{rarest}_c\big(W(s)\setminus W(q)\big) . \]</div></li>
+<li>The top \(k = 4\) archive items by \(\max_s \text{BM25}(q'(s), \cdot)\) join the shortlist, with a feature marking them.</li>
+</ol>
+
+<figure class="keep">
+<svg viewBox="0 0 640 140" width="100%" role="img" aria-label="Follow-the-clue example">
+  <defs><marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#000"/></marker></defs>
+  <rect x="5" y="10" width="190" height="56" fill="#fff" stroke="#000"/>
+  <text x="15" y="28" font-size="10">Question</text>
+  <text x="15" y="44" font-size="10">"What is the priority of the</text>
+  <text x="15" y="58" font-size="10">courier of <tspan font-weight="bold">sensor-171</tspan>?"</text>
+  <rect x="225" y="10" width="190" height="56" fill="#fff" stroke="#000"/>
+  <text x="235" y="28" font-size="10">Hop 1 (found by the question)</text>
+  <text x="235" y="44" font-size="10">"the courier of sensor-171</text>
+  <text x="235" y="58" font-size="10">is <tspan font-weight="bold">clerk-172</tspan>"</text>
+  <rect x="445" y="10" width="190" height="56" fill="#fff4cc" stroke="#c99a00"/>
+  <text x="455" y="28" font-size="10">Hop 2 (archived)</text>
+  <text x="455" y="44" font-size="10">"the priority of <tspan font-weight="bold">clerk-172</tspan></text>
+  <text x="455" y="58" font-size="10">is M37M"</text>
+  <line x1="195" y1="38" x2="223" y2="38" stroke="#000" marker-end="url(#ar2)"/>
+  <line x1="415" y1="38" x2="443" y2="38" stroke="#000" marker-end="url(#ar2)"/>
+  <text x="5" y="88" font-size="10">Question search: hop 2 shares only "priority" with the question, like hundreds of archived facts.</text>
+  <text x="5" y="103" font-size="10">Second query from the seed: "priority … clerk-172" puts it first.</text>
+  <text x="5" y="124" font-size="10">Reach of the regret policy's 195 hop-2 misses (seed 0): 102 in the question top 8, 184 in the clue search's top 4.</text>
+</svg>
+<figcaption>Figure 3. Why two-hop questions failed, and how the second search reaches the missing fact.</figcaption>
+</figure>
+
+<h2>G. Results of the changes (2% budget, scripted reader, 3 seeds each)</h2>
+<table>
+<tr><th>Controller</th><th>Task success</th><th>Paired difference (95% CI)</th></tr>
+<tr><td>Regret imitation</td><td>0.851</td><td></td></tr>
+<tr><td>+ follow-the-clue search</td><td>0.917</td><td>+0.067 [+0.054, +0.079] vs regret imitation</td></tr>
+<tr><td>&nbsp;&nbsp;+ plain GRPO</td><td>0.928</td><td>+0.011 [+0.004, +0.018] vs follow-the-clue</td></tr>
+<tr><td>&nbsp;&nbsp;+ GRPO, batch scale per budget</td><td>0.930</td><td>+0.013 [+0.008, +0.018]</td></tr>
+<tr><td>&nbsp;&nbsp;+ per-question credit</td><td>0.932</td><td>+0.014 [+0.009, +0.020]</td></tr>
+<tr><td>&nbsp;&nbsp;+ expert kept in the loss</td><td>0.929</td><td>+0.012 [+0.007, +0.016]</td></tr>
+<tr><td>Hindsight oracle (upper reference)</td><td>0.966</td><td></td></tr>
+</table>
+<p class="keep">With Qwen2.5-7B as the reader (Experiment 11a, 100 episodes, same seeds):</p>
+<table>
+<tr><th>Controller (Qwen2.5-7B)</th><th>2%</th><th>10%</th><th>Paired difference at 2% (95% CI)</th></tr>
+<tr><td>FIFO with archive</td><td>0.741</td><td>0.787</td><td></td></tr>
+<tr><td>Regret imitation</td><td>0.832</td><td>0.884</td><td></td></tr>
+<tr><td>+ follow-the-clue search</td><td>0.889</td><td>0.917</td><td>+0.057 [+0.045, +0.069]</td></tr>
+<tr><td>Hindsight oracle</td><td>0.938</td><td>0.949</td><td></td></tr>
+<tr><td>Full context (no budget)</td><td colspan="2">0.898</td><td></td></tr>
+</table>
+<p class="small">All GRPO variants were run at matched experience (1,440 episodes). None differs from plain GRPO at 2% (largest +0.003 [−0.001, +0.008]). Before the search fix, GRPO and best-of-8 imitation each added under one point (0.859 and 0.861 against 0.851).</p>
+
+</body>
+</html>

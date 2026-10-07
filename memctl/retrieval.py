@@ -72,6 +72,52 @@ class EmbeddingRetriever:
         return [pair for pair in scored[:k] if pair[1] > 0]
 
 
+def bridge_search(
+    retriever: Retriever, query: str, active: Sequence[MemoryItem], archived: Sequence[MemoryItem],
+    k: int, seeds: int = 2, exclude: Sequence[str] = (), clue_words: int = 3,
+) -> list[tuple[MemoryItem, float]]:
+    """Follow-the-clue search for multi-hop questions: the archive items reached through a bridge.
+
+    A two-hop question ("the priority of the courier of sensor-171") names the first fact's
+    subject but not the second fact's ("clerk-172"), so a search with the question's words cannot
+    find the second fact. Seeds are the best matches to the question, in active memory and the
+    archive, that contain the question's rarest word (what it names). Each of the first `seeds`
+    gives a second query: the question's words the seed lacks, plus the seed's `clue_words`
+    rarest words the question lacks (the bridge entity, not the filler around it). The `k` best
+    archive items for those queries are returned, best first, each with its best score. Nothing
+    here knows the task's sentence forms.
+    """
+    pool = [item for item in list(active) + list(archived) if item.id not in set(exclude)]
+    if not pool or not archived or k <= 0:
+        return []
+    question = set(content_words(query))
+    # The first hop is about what the question names, which is its rarest word in memory (the entity,
+    # not "question" or "what"): seeds must contain it. Without such a word, any match may seed.
+    words_of = {item.id: set(content_words(item.content)) for item in pool}
+    frequency = Counter(word for item in pool for word in words_of[item.id])
+    present = [word for word in question if frequency[word]]
+    anchor = min(present, key=lambda word: (frequency[word], word)) if present else None
+    best: dict[str, tuple[MemoryItem, float]] = {}
+    used = 0
+    for seed, _ in retriever.search(query, pool, len(pool)):
+        if anchor is not None and anchor not in words_of[seed.id]:
+            continue
+        words = words_of[seed.id]
+        # The seed's clue is its rarest new words (the bridge entity), not the filler around it.
+        new = sorted(words - question, key=lambda word: (frequency[word], word))[:clue_words]
+        if not new:
+            continue
+        second = " ".join(sorted(question - words) + new)
+        for item, score in retriever.search(second, [a for a in archived if a.id != seed.id], k):
+            if score > best.get(item.id, (None, 0.0))[1]:
+                best[item.id] = (item, score)
+        used += 1
+        if used == seeds:
+            break
+    ranked = sorted(best.values(), key=lambda pair: (-pair[1], pair[0].created_at))
+    return ranked[:k]
+
+
 def build_retriever(method: str = "lexical", embedder: Embedder | None = None) -> Retriever:
     if method == "lexical":
         return LexicalRetriever()

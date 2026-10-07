@@ -10,7 +10,8 @@ What each algorithm needs on a `Decision`:
 - `cost`       expert costs (`expert_cost`), plus `expert_rank` and `expert_retrieved`
 - `reinforce`  `return_to_go`
 - `ppo`        `return_to_go`, and the `log_prob` and `value` recorded when it was taken
-- `grpo`       `advantage` (set by the trainer from a group of samples of one episode) and `log_prob`
+- `grpo`       `advantage` (set by the trainer from a group of samples of one episode) and `log_prob`;
+               expert labels too when `imitation_weight` is set
 """
 
 from __future__ import annotations
@@ -199,7 +200,14 @@ class GroupRelative(PolicyGradient):
 
     name = "grpo"
 
+    def __init__(self, settings: dict) -> None:
+        super().__init__(settings)
+        # Optional: keep the expert's imitation loss in the objective (CHORD / SRFT style), on a
+        # sample of labelled decisions as large as each policy-gradient batch.
+        self.imitation_weight = float(settings.get("imitation_weight", 0.0))
+
     def update(self, policy: ItemPolicy, optimizer: torch.optim.Optimizer, decisions: list[Decision], rng: random.Random) -> dict:
+        labelled = [d for d in decisions if d.expert_rank is not None] if self.imitation_weight else []
         decisions = [d for d in decisions if (d.picks or d.retrieved) and d.advantage]
         if not decisions:
             return {"loss": None, "decisions": 0}
@@ -221,11 +229,16 @@ class GroupRelative(PolicyGradient):
                 policy_loss = torch.stack(policy_terms).mean()
                 entropy = torch.stack(entropies).mean()
                 loss = policy_loss - self.entropy_coef * entropy
+                if labelled:
+                    terms = [imitation_loss(policy, d)[0] for d in rng.sample(labelled, min(len(labelled), len(batch)))]
+                    imitation = torch.stack(terms).mean()
+                    loss = loss + self.imitation_weight * imitation
+                    last["imitation_loss"] = imitation.item()
                 optimizer.zero_grad()
                 loss.backward()
                 torch.nn.utils.clip_grad_norm_(policy.parameters(), 1.0)
                 optimizer.step()
-                last = {"loss": loss.item(), "policy_loss": policy_loss.item(), "entropy": entropy.item()}
+                last.update({"loss": loss.item(), "policy_loss": policy_loss.item(), "entropy": entropy.item()})
         return {**last, "decisions": len(decisions)}
 
 
