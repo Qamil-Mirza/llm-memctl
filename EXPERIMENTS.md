@@ -1239,6 +1239,56 @@ oracle included; single-session-user carries all the differences.
 LongMemEval questions, by question type with abstention apart) replaces the
 contiguous `subset`; all LongMemEval numbers above should be re-run on it.
 
+## 12. Retrieval headroom on LoCoMo and LongMemEval (2026-10-06)
+
+```bash
+python -m memctl.rl.headroom --dataset locomo --dense --out runs/t2_headroom/locomo.json      # ~2 min CPU
+python -m memctl.rl.headroom --dataset longmemeval --out runs/t2_headroom/longmemeval.json    # ~3 min CPU
+```
+
+No controller and no reader. Every turn of the history is a candidate, the
+question is the query, and a requirement counts as found when any of its
+items is in the top k. The share found bounds what a retrieval floor of k, or
+a pick-k-of-N head over a shortlist of N, can reach. Questions with evidence
+labels only, refusal-scored ones left out: LoCoMo 1,535, LongMemEval-S 470.
+`bm25_label` prefixes "speaker (date):" to each turn; `bm25_bridge` adds the
+follow-the-clue search's 4 items to the top k; `dense` is bge-small-en-v1.5
+on labelled text; `fusion` is reciprocal rank fusion (k = 60) of
+`bm25_label` and `dense`.
+
+Requirements found in the top k, all questions:
+
+| search | LoCoMo @5 | @8 | @12 | @16 | @20 | LongMemEval @5 | @8 | @12 | @16 | @20 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| bm25 | 0.468 | 0.513 | 0.552 | 0.584 | 0.608 | 0.644 | 0.720 | 0.774 | 0.806 | 0.822 |
+| bm25_label | 0.519 | 0.564 | 0.609 | 0.637 | 0.654 | 0.643 | 0.713 | 0.761 | 0.788 | 0.805 |
+| bm25_bridge (k + 4 items) | 0.482 | 0.525 | 0.563 | 0.593 | 0.617 | 0.655 | 0.724 | 0.776 | 0.807 | 0.823 |
+| dense (bge-small) | 0.448 | 0.518 | 0.576 | 0.613 | 0.640 | | | | | |
+| **fusion** | **0.530** | **0.610** | **0.674** | **0.707** | **0.739** | | | | | |
+
+By type, BM25 @5 → @16: LoCoMo multi-hop 0.142 → 0.289 (fusion 0.253 →
+0.428), open-domain 0.224 → 0.276, single-hop 0.562 → 0.679, temporal 0.578
+→ 0.682. LongMemEval knowledge-update 0.787 → 0.926, multi-session 0.435 →
+0.659, single-session-assistant 0.875 → 0.929, preference 0.339 → 0.561,
+single-session-user 0.836 → 0.945, temporal 0.635 → 0.810.
+
+**What it shows**
+
+- There is room above a top-5 floor on both benchmarks. Recall@16 minus
+  recall@5 is 0.116 on LoCoMo (BM25; 0.177 with fusion) and 0.162 on
+  LongMemEval. A pick-5-of-16 head trained on evidence labels has up to that
+  much to gain, so the review's gate for building it (≥ 0.10) passes on both.
+- On LoCoMo, how turns are indexed matters. Speaker and date in the indexed
+  text add 0.051 at @5, and fusing with bge-small adds 0.062 at @5 and 0.097
+  at @8. Dense search alone is worse than BM25 at @5, which matches §6c,
+  where bge replaced BM25. The gate for better units (≥ 0.05 at @5) passes on
+  LoCoMo. On LongMemEval labels add nothing (the question date already
+  carries the time), and BM25 is near its ceiling for single-session types.
+- Follow-the-clue adds little on real text (+0.01): its rarest-word anchor
+  was built for templated identifiers.
+- Multi-hop (LoCoMo) and multi-session and preference (LongMemEval) are the
+  hard cases for search itself: under half their evidence is in the top 5.
+
 ## 5. The sequential task
 
 ```bash
