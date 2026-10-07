@@ -86,7 +86,9 @@ Before the chapter is final, the Experiment 15 head row should be added to it.
     everywhere on LongMemEval (§13 gate).
   - Training on one question per episode transfers negatively to LoCoMo at every budget. Training on composed
     multi-question episodes transfers on evidence at 25% (§13 LoCoMo gate). This motivates the composed episodes.
-- **Tables:** §12 headroom; §13b; §15b LoCoMo transfer.
+- **Exploratory transfer of the head to LoCoMo** (§18a, post hoc): 0.242 against 0.155 for keep-last-0 +
+  top 5, at 365 against 306 tokens. It improves in every category, and stays below FIFO at 10%.
+- **Tables:** §12 headroom; §13b; §15b LoCoMo transfer; §18a.
 
 ## Protocol section (methods)
 
@@ -97,6 +99,11 @@ Before the chapter is final, the Experiment 15 head row should be added to it.
 - **Pre-registration.** Every gate and every success criterion was written before its run.
 - **Statistics.** Paired bootstrap intervals, Holm where several arms are tested, the evidence decomposition, and
   prompt tokens beside every accuracy.
+- **Second-family judge (§18a).** Granite-3.1-8B re-judged a stratified sample and all of the head's and the
+  rule's answers.
+  - It agrees with the Qwen judge on 97% of verdicts (κ 0.95).
+  - Its error rates are similar: false-accept 3.0% against 1.7%, false-reject 4.1% against 2.7%.
+  - The ranking of controllers is unchanged. The head's gain holds: +0.040 (+0.002, +0.079) against +0.047.
 - **Run-to-run variation.** The judge's verdict is stable: 50/50 identical on repeated prompts. Parsed answers
   vary by 1 in 50 on one host and 6 in 50 across hosts. This is why accuracy is reported with intervals.
 - **Costs.** About $3.70 of GPU in all, each run approved in advance.
@@ -113,13 +120,9 @@ Before the chapter is final, the Experiment 15 head row should be added to it.
 
 - **One reader and one frozen prompt** (Qwen2.5-7B-Instruct, the 7b5fc30 prompt). The ~3k-token onset of context
   rot is measured for that pair only.
-- **The judge is the reader's own model.**
-  - Every Experiment 13–16 cell is judged by Qwen2.5-7B on its own answers, with LongMemEval's official prompts.
-  - The planned second-family judge check never ran: Llama-3.1-8B re-judging a stratified sample, with
-    false-accept and false-reject tests. That would cost about $0.50–1 and is the user's call.
-  - The ranking of controllers is what matters and probably holds, but it has not been shown.
-- **The positive reader result is on one benchmark.** LoCoMo was not tested with the reader for the head: it
-  failed the gate's token rule.
+- **The positive reader result is pre-registered on one benchmark.** On LoCoMo the head's reader test is
+  exploratory, run after the gate said no: +0.087 accuracy in transfer (§18a), but no frontier win, because
+  LoCoMo is a search problem.
 - **A selection step precedes the replication.** The `listsum` arm was the best of three declared arms.
 - **LoCoMo intervals resample only 10 conversations**, so they undercover.
 
