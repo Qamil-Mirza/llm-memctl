@@ -678,3 +678,18 @@ def test_the_vectorised_set_log_prob_matches_the_order_by_order_loop_in_value_an
         fast, slow = set_log_prob(a, subset), loop(b, subset)
         fast.backward(), slow.backward()
         assert abs(float(fast) - float(slow)) < 1e-5 and torch.allclose(a.grad, b.grad, atol=1e-5)
+
+
+def test_k_chooser_features_and_round_trip(tmp_path):
+    from memctl.rl.policy import K_FEATURE_DIM, KChooser, k_features
+
+    short = k_features(torch.tensor([3.0, 1.0, 2.0]), 12)  # a shortlist shorter than 16 is padded
+    assert len(short) == K_FEATURE_DIM and short[:4] == [3.0, 2.0, 1.0, 1.0] and short[16:19] == [0.0, 0.0, 0.0]
+    full = k_features(torch.arange(32, dtype=torch.float32), 12)
+    assert full[16:19] == [1.0, 1.0, 1.0]  # the gaps at ranks 5/6, 8/9 and 16/17
+    model = KChooser()
+    model.mean.fill_(0.5)
+    model.save(tmp_path / "k.pt")
+    loaded = KChooser.load(tmp_path / "k.pt")
+    row = torch.tensor([full])
+    assert torch.allclose(model(row), loaded(row)) and loaded.config["ks"] == [5, 8, 16]

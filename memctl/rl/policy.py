@@ -13,6 +13,7 @@ Architectures:
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 import torch
@@ -78,6 +79,45 @@ class NeededModel(nn.Module):
     def load(path: str | Path) -> "NeededModel":
         checkpoint = torch.load(Path(path), weights_only=True)
         model = NeededModel(**checkpoint["config"])
+        model.load_state_dict(checkpoint["state_dict"])
+        model.eval()
+        return model
+
+
+K_FEATURE_DIM = 16 + 3 + 2  # sorted top-16 logits, gaps at ranks 5/6, 8/9 and 16/17, softmax entropy, log question tokens
+
+
+def k_features(retrieve_logits: torch.Tensor, question_tokens: int) -> list[float]:
+    """What the k-chooser sees of one ranking (Experiment 19): the head's view of the shortlist, not the items."""
+    ranked = torch.sort(retrieve_logits, descending=True).values.tolist()
+    top = (ranked + [ranked[-1]] * 16)[:16] if ranked else [0.0] * 16
+    gaps = [ranked[i - 1] - ranked[i] if len(ranked) > i else 0.0 for i in (5, 8, 16)]
+    entropy = float(torch.distributions.Categorical(logits=retrieve_logits).entropy()) if ranked else 0.0
+    return top + gaps + [entropy, math.log1p(question_tokens)]
+
+
+class KChooser(nn.Module):
+    """P(every gold item is in the head's top k), one output per k (Experiment 19), from `k_features`."""
+
+    def __init__(self, ks: tuple[int, ...] = (5, 8, 16), hidden: int = 32) -> None:
+        super().__init__()
+        self.config = {"ks": list(ks), "hidden": hidden}
+        self.register_buffer("mean", torch.zeros(K_FEATURE_DIM))
+        self.register_buffer("std", torch.ones(K_FEATURE_DIM))
+        self.net = nn.Sequential(nn.Linear(K_FEATURE_DIM, hidden), nn.ReLU(), nn.Linear(hidden, len(ks)))
+
+    def forward(self, rows: torch.Tensor) -> torch.Tensor:
+        """Logits, one column per k."""
+        return self.net((rows - self.mean) / self.std)
+
+    def save(self, path: str | Path) -> None:
+        Path(path).parent.mkdir(parents=True, exist_ok=True)
+        torch.save({"config": self.config, "state_dict": self.state_dict()}, Path(path))
+
+    @staticmethod
+    def load(path: str | Path) -> "KChooser":
+        checkpoint = torch.load(Path(path), weights_only=True)
+        model = KChooser(tuple(checkpoint["config"]["ks"]), checkpoint["config"]["hidden"])
         model.load_state_dict(checkpoint["state_dict"])
         model.eval()
         return model

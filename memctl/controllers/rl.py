@@ -32,10 +32,10 @@ import torch
 from memctl.controllers.base import EpisodeInfo, Feedback, MemoryController
 from memctl.features import ITEM_FEATURES, GLOBAL_DIM, VERSION_FEATURES, Featurizer
 from memctl.memory.actions import MemoryAction, Operation
-from memctl.memory.items import Fidelity, MemoryItem
+from memctl.memory.items import Fidelity, MemoryItem, count_tokens
 from memctl.memory.state import MemoryView
 from memctl.retrieval import bridge_search, build_retriever
-from memctl.rl.policy import N_COLUMNS, REMOVAL_OPERATIONS, RETRIEVE_COLUMN, ItemPolicy, NeededModel
+from memctl.rl.policy import N_COLUMNS, REMOVAL_OPERATIONS, RETRIEVE_COLUMN, ItemPolicy, KChooser, NeededModel, k_features
 from memctl.task import TaskState
 
 N_REMOVALS = len(REMOVAL_OPERATIONS)
@@ -131,6 +131,21 @@ class RLController(MemoryController):
         # of the k, which isolates the query-time decision.
         self.floor_head = bool(config.get("floor_head", False))
         self.keep_none = bool(config.get("keep_none", False))
+        # N4 (Experiment 19): how many of the head's ranking fill the floor. "fixed" shows retrieve_floor;
+        # "oracle" the smallest of k_choices whose top k holds every requirement of the question (hindsight),
+        # else the largest; "adaptive" the smallest whose predicted all-found probability (k_chooser) is within
+        # k_delta of the largest's. With hindsight the step also logs the chooser's features and the all-found
+        # labels, which is how the chooser's training lists are collected.
+        self.k_mode = config.get("k_mode", "fixed")
+        if self.k_mode not in ("fixed", "oracle", "adaptive"):
+            raise ValueError(f"unknown k_mode {self.k_mode!r}")
+        self.k_choices = tuple(int(k) for k in config.get("k_choices", (5, 8, 16)))
+        self.k_delta = float(config.get("k_delta", 0.05))
+        self.k_chooser = KChooser.load(config["k_chooser"]) if self.k_mode == "adaptive" else None
+        self.uses_hindsight = self.k_mode == "oracle"
+        self.hindsight = None
+        self._question_tokens = 0
+        self._k_info: dict = {}
         # Target fill: remove until active memory is at most this many tokens, even when the budget allows
         # more (a small reader can do worse with more context). None (default) fills up to the budget.
         self.target_tokens = int(config["target_tokens"]) if config.get("target_tokens") else None
@@ -180,6 +195,9 @@ class RLController(MemoryController):
         self.retriever = build_retriever(self.config.get("retrieval_method", "lexical"), episode.embedder,
                                          self.config.get("retrieval_model"))
 
+    def receive_hindsight(self, hindsight) -> None:
+        self.hindsight = hindsight
+
     def update(self, feedback: Feedback) -> None:
         if self.record:
             self.rewards.append((feedback.step, feedback.reward))
@@ -207,7 +225,8 @@ class RLController(MemoryController):
         return item.token_count
 
     def decide(self, memory: MemoryView, task: TaskState) -> list[MemoryAction]:
-        self._info = {}
+        self._info, self._k_info = {}, {}
+        self._question_tokens = count_tokens(task.observation.content)
         for item in memory.active:  # keep lineage up to date even on steps with no decision
             self._root_ids(item)
         shortlist: list[tuple[MemoryItem, float]] = []
@@ -340,7 +359,8 @@ class RLController(MemoryController):
                 chosen = torch.tensor(decision.expert_retrieved, dtype=torch.float32)
             elif self.floor_head:  # the k best by the head's logit (a ranking, not k independent yes/no)
                 chosen = torch.zeros_like(retrieve_logits)
-                chosen[torch.topk(retrieve_logits, min(self.retrieve_floor, len(retrieve_logits))).indices] = 1.0
+                k = self._floor_k(retrieve_logits, decision)
+                chosen[torch.topk(retrieve_logits, min(k, len(retrieve_logits))).indices] = 1.0
             elif self.greedy:
                 chosen = (retrieve_logits > 0).float()
             else:
@@ -378,8 +398,35 @@ class RLController(MemoryController):
             excess -= int(savings[pick // N_REMOVALS, pick % N_REMOVALS])
         decision.log_prob = log_prob
 
+    def _floor_k(self, retrieve_logits: torch.Tensor, decision: Decision) -> int:
+        """How many of the head's ranking to show (Experiment 19)."""
+        if self.k_mode == "fixed" and self.hindsight is None:
+            return self.retrieve_floor
+        features = k_features(retrieve_logits, self._question_tokens)
+        self._k_info = {"k_features": [round(x, 5) for x in features]}
+        labels = None
+        if self.hindsight is not None:
+            order = torch.argsort(retrieve_logits, descending=True).tolist()
+            requirements = [r for d in self.hindsight.dependencies if d.step == decision.step for r in d.requirements]
+            labels = []
+            for k in self.k_choices:
+                shown = {root for j in order[:k] for root in decision.roots[decision.n_active + j]}
+                labels.append(all(shown & set(r.item_ids) for r in requirements))
+            self._k_info["k_labels"] = labels
+        if self.k_mode == "oracle":
+            k = next((k for k, found in zip(self.k_choices, labels) if found), self.k_choices[-1])
+        elif self.k_mode == "adaptive":
+            with torch.no_grad():
+                p = torch.sigmoid(self.k_chooser(torch.tensor([features]))).squeeze(0).tolist()
+            self._k_info["k_predicted"] = [round(x, 4) for x in p]
+            k = next(k for k, pk in zip(self.k_choices, p) if pk >= p[-1] - self.k_delta)
+        else:
+            k = self.retrieve_floor
+        self._k_info["k"] = k
+        return k
+
     def decision_info(self) -> dict:
-        return self._info
+        return {**self._info, **self._k_info} if self._k_info else self._info
 
     # ---- checkpoints ------------------------------------------------------------------
 
