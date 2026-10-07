@@ -104,9 +104,21 @@ Before the chapter is final, the Experiment 15 head row should be added to it.
   - It agrees with the Qwen judge on 97% of verdicts (κ 0.95).
   - Its error rates are similar: false-accept 3.0% against 1.7%, false-reject 4.1% against 2.7%.
   - The ranking of controllers is unchanged. The head's gain holds: +0.040 (+0.002, +0.079) against +0.047.
+  - Both judges are 8B-class; a frontier judge was not available.
 - **Run-to-run variation.** The judge's verdict is stable: 50/50 identical on repeated prompts. Parsed answers
   vary by 1 in 50 on one host and 6 in 50 across hosts. This is why accuracy is reported with intervals.
-- **Costs.** About $3.70 of GPU in all, each run approved in advance.
+- **Costs.** All GPU was a RunPod A40 at $0.49/h, each run approved by the user in advance.
+
+  | experiment | pod time | cost |
+  |---|---|---|
+  | 9: a 7B task model on the synthetic task | 2.76 h | $1.35 |
+  | 11: follow-the-clue with a 7B reader; first LoCoMo and LongMemEval | 6.07 h | $2.97 |
+  | 13: the reviewed protocol on both benchmarks | 6.64 h | $3.25 |
+  | 15: the floor head with the reader | 0.16 h | $0.08 |
+  | 15c + 16: robustness check and GRPO | 0.74 h | $0.36 |
+  | 18: second judge and LoCoMo exploratory | 0.32 h | $0.16 |
+  | **benchmark programme (13–18)** | 7.86 h | **$3.85** |
+  | **all experiments** | 16.69 h | **$8.17** |
 - **Provenance.**
   - Every run records its commit and a dirty flag.
   - The sharded LongMemEval loader has a test showing it plays the same episodes as the full file.
@@ -131,3 +143,15 @@ Before the chapter is final, the Experiment 15 head row should be added to it.
 - **Done:** the retrieval floor and context rot (§13), the floor head (§15).
 - **Closed:** RQ3.
 - **Next:** adaptive k, then writing.
+
+## Next build: adaptive k (motivation)
+
+- **The case, from the §18a LoCoMo row.** The head beats the five-turn rule by +0.087 at 365 prompt tokens, in
+  every category. Both stay far below FIFO at 10% (0.299 at 2,917 tokens). On LoCoMo, five short turns are too
+  few, and at 365 tokens the reader is nowhere near the ~3k onset of context rot.
+- **The proposal.** A head that chooses k from {5, 8, 16} per question, from a wider fusion shortlist, could
+  approach FIFO at 10% at a fraction of its tokens.
+- **Where k matters.** Most on LoCoMo, where the evidence is spread over several short turns. Least on
+  LongMemEval, where k = 5 is already well under the onset.
+- **Gate.** No reader, as before: all-found evidence and prompt tokens against FIFO + floor and the five-turn
+  head, pre-registered before it runs.
