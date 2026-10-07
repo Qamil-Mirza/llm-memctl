@@ -1895,6 +1895,18 @@ P(in view) × P(correct | in view) + (1 − P(in view)) × P(correct | not).
 The rows are descriptive. The one loss, single-session-assistant, matches the
 evidence loss in §15a.
 
+**LoCoMo transfer (free gate; `runs/exp15_gate_locomo_table.md`).** The fold-0
+LongMemEval heads rank the shared fusion search's top 16 on LoCoMo categories
+1–4, against fusion's own top 5, with keep-none and no reader.
+
+- All-found evidence rises from 0.206 to 0.33–0.34: +0.13, interval about
+  +0.11 to +0.15 over 10 conversations. Share-found rises by +0.11 to +0.12.
+- But the head's five turns take 144–146 memory tokens against the rule's 94.
+  That breaks the pre-registered 1.1× token condition, so the result is
+  *no-go* by the rule, though the evidence gain transfers.
+- The absolute difference is small (about 50 tokens; LoCoMo turns are short).
+  No LoCoMo reader cell is proposed under this rule.
+
 **For the thesis.** On real conversations with a searchable archive, the
 learned decision that pays is query-aware: which retrieved turns fill the few
 lines the reader sees. A small head (about 27k parameters) trained by
