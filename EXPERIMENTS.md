@@ -1334,6 +1334,16 @@ above 0. Go cells are run with the reader; no-go cells are not, and are
 reported only in the evidence table. A controller that keeps no more
 evidence than FIFO cannot be expected to answer better, so this saves GPU
 time without choosing on the test answers.
+The gate table also gives mean active memory (tokens) for each pair; the pairs
+are matched by construction (same budget or target), and a pair more than 10%
+apart is flagged but still decided by the rule.
+
+**Pre-registered accuracy criterion for the learned rows (written before they
+run).** A learned controller *wins* in a (budget, target) cell when its judge
+accuracy (categories 1–4 on LoCoMo, abstention left out on LongMemEval) minus
+FIFO's at the same budget and target, paired over the same questions and
+pooled over the five folds, has a 95% bootstrap interval entirely above 0.
+Per-type differences are secondary and reported without a decision.
 
 ## 5. The sequential task
 

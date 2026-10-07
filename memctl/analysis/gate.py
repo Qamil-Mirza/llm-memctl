@@ -28,8 +28,14 @@ def split_label(cell: str) -> tuple[str, str, str]:
     return (match.group(1), f"t{match.group(2)}", fraction) if match else (label, "fill", fraction)
 
 
+# Mean active memory (tokens) per (cell key, question): with no reader there is no prompt, so this stands in for
+# prompt size. Filled by load().
+MEMORY: dict[tuple[str, str, str], dict[tuple[str, int], float]] = defaultdict(dict)
+
+
 def load(sweeps: list[Path]) -> dict[tuple[str, str, str], dict[tuple[str, int], float]]:
     values: dict[tuple[str, str, str], dict[tuple[str, int], float]] = defaultdict(dict)
+    memory = MEMORY
     for sweep in sweeps:
         for cell in sweep.iterdir():
             path = cell / "episodes.jsonl"
@@ -40,6 +46,7 @@ def load(sweeps: list[Path]) -> dict[tuple[str, str, str], dict[tuple[str, int],
                 episode = json.loads(line)
                 if episode.get("needed_hit_rate") is not None:
                     values[key][(sweep.name, episode["seed"])] = episode["needed_hit_rate"]
+                    memory[key][(sweep.name, episode["seed"])] = episode.get("active_tokens_mean") or 0.0
     return values
 
 
@@ -74,7 +81,12 @@ def gate(sweeps: list[Path]) -> list[dict]:
         rows.append({"controller": controller, "target": target, "budget": fraction, "n": len(shared),
                      "fifo": sum(baseline[q] for q in shared) / len(shared),
                      "candidate": sum(candidate[q] for q in shared) / len(shared),
-                     "difference": sum(differences) / len(differences), "low": low, "high": high, "go": low > 0})
+                     "difference": sum(differences) / len(differences), "low": low, "high": high, "go": low > 0,
+                     "fifo_memory": sum(MEMORY[(BASELINE, target, fraction)].get(q, 0.0) for q in shared) / len(shared),
+                     "candidate_memory": sum(MEMORY[(controller, target, fraction)].get(q, 0.0) for q in shared) / len(shared)})
+        last = rows[-1]
+        # Matched by construction (same budget or target); a gap over 10% is flagged, not used to decide.
+        last["memory_flag"] = abs(last["candidate_memory"] - last["fifo_memory"]) > 0.1 * max(last["fifo_memory"], 1.0)
     return rows
 
 
@@ -84,11 +96,14 @@ def main() -> None:
     parser.add_argument("--gate-file", type=Path, help="write the go cells as 'sweep label' lines for the paid run")
     args = parser.parse_args()
     rows = gate(args.sweeps)
-    print("| candidate | target | budget | n | FIFO evidence | candidate evidence | difference (95% CI) | go |")
-    print("|---|---|---|---|---|---|---|---|")
+    print("| candidate | target | budget | n | FIFO evidence | candidate evidence | difference (95% CI) | "
+          "memory tokens FIFO / candidate | go |")
+    print("|---|---|---|---|---|---|---|---|---|")
     for r in rows:
+        flag = " (>10% apart)" if r["memory_flag"] else ""
         print(f"| {r['controller']} | {r['target']} | {r['budget']} | {r['n']} | {r['fifo']:.3f} | {r['candidate']:.3f} | "
-              f"{r['difference']:+.3f} ({r['low']:+.3f}, {r['high']:+.3f}) | {'go' if r['go'] else 'no'} |")
+              f"{r['difference']:+.3f} ({r['low']:+.3f}, {r['high']:+.3f}) | {r['fifo_memory']:.0f} / "
+              f"{r['candidate_memory']:.0f}{flag} | {'go' if r['go'] else 'no'} |")
     if args.gate_file:
         lines = []
         for r in rows:

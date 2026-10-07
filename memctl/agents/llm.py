@@ -106,6 +106,8 @@ class LLMAgent(Agent):
             answer = output if truncated else (parsed or "unknown")
         info = {
             "output": output,
+            # True when the output has no "Answer:" marker. Despite the name this includes a bare reply such as
+            # "unknown", not only a note cut off at max_new_tokens; analysis/qa_tables.is_truncated separates them.
             "truncated": truncated,
             "prompt_tokens": count_tokens(prompt),
             "output_tokens": count_tokens(output),
