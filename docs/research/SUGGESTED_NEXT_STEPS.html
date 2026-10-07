@@ -1,0 +1,181 @@
+<!doctype html><html lang='en'><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Suggested next steps</title><style>
+:root { --bg:#fbfaf7; --fg:#1d1d1f; --muted:#5b5b63; --accent:#1f5fae; --line:#e3e0d8; --card:#ffffff; --code:#f1efe9; --ok:#2a7a3b; --warn:#a85d00; --bad:#a32020; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#16171a; --fg:#e8e6e1; --muted:#a3a3ab; --accent:#7fb0f0; --line:#2e3036; --card:#1e2024; --code:#26282d; --ok:#6fcf86; --warn:#f0b35a; --bad:#f08080; } }
+:root[data-theme="dark"] { --bg:#16171a; --fg:#e8e6e1; --muted:#a3a3ab; --accent:#7fb0f0; --line:#2e3036; --card:#1e2024; --code:#26282d; --ok:#6fcf86; --warn:#f0b35a; --bad:#f08080; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.6 Georgia, 'Times New Roman', serif; }
+main { max-width: 880px; margin: 0 auto; padding: 32px 16px 64px; }
+h1 { font-size: 1.9rem; line-height:1.25; margin: 0 0 8px; }
+h2 { font-size: 1.35rem; margin: 36px 0 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+h3 { font-size: 1.1rem; margin: 24px 0 8px; }
+a { color: var(--accent); }
+code { background: var(--code); padding: 1px 4px; border-radius: 3px; font-size: .9em; }
+pre { background: var(--code); padding: 10px 12px; border-radius: 4px; overflow-x: auto; font-size: .85em; line-height: 1.45; }
+.meta { color: var(--muted); font: 14px/1.5 system-ui, sans-serif; margin-bottom: 20px; }
+.table { overflow-x: auto; margin: 14px 0; }
+table { border-collapse: collapse; width: 100%; font: 14px/1.45 system-ui, sans-serif; background: var(--card); }
+th, td { border: 1px solid var(--line); padding: 6px 8px; text-align: left; vertical-align: top; }
+th { background: var(--code); }
+blockquote { margin: 12px 0; padding: 8px 14px; border-left: 3px solid var(--accent); color: var(--muted); }
+li { margin-bottom: 6px; }
+.ok { color: var(--ok); font-weight: bold; } .warn { color: var(--warn); font-weight: bold; } .bad { color: var(--bad); font-weight: bold; }
+.box { background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 12px 16px; margin: 14px 0; }
+.box h3 { margin-top: 4px; }
+</style></head><body><main>
+<h1>Suggested next steps</h1>
+<p class="meta">Peer review of <a href="public_benchmarks.html">public_benchmarks.html</a> against the code and run logs, 2026-10-06. Advisory only: nothing in the repo was changed. Written for the executor agent. Claims checked against <code>memctl/controllers/rl.py</code>, <code>memctl/rl/expert.py</code>, <code>memctl/rl/algorithms.py</code>, <code>memctl/envs/{locomo,longmemeval}.py</code>, <code>memctl/judge.py</code>, the LongMemEval training logs under <code>runs/lme_*</code>, and the two dataset files.</p>
+
+<p class="meta"><strong>Addendum added 2026-10-07</strong> after Experiment 13 ran the plan below: <a href="#addendum">results, what the plan got right and wrong, and the revised next steps</a>.</p>
+<h2>Verdict</h2>
+<p><strong>The diagnosis in the note is right and its top two changes should be built first, as one change. Four things need correcting before the plan is handed over.</strong></p>
+<ol>
+<li><span class="bad">The LongMemEval held-out set is not what the note thinks it is.</span> The cleaned file is sorted by question type. Questions 0–99 are 70 single-session-user and 30 multi-session. The held-out set contains <em>zero</em> temporal-reasoning (133 in the file), knowledge-update (78), single-session-assistant (56) and preference (30) questions. Those are exactly the types where deciding what to keep matters most, and the types where the field's systems differ most. Every LongMemEval number in Experiment 11 (0.53 for keep-last-4, 0.65 oracle, 0.17–0.30 learned) is a number on the easiest 20% of the benchmark. The training split 100–499 has a different type mix from the test split, so "trained on LongMemEval" was also trained off-distribution. This must be fixed before Rank 1, not after, or the first measured gain will not be believable.</li>
+<li><span class="warn">The training failure is label starvation and a teacher with no signal, not label imbalance.</span> The note says "almost every retrieval label is 0". The code says otherwise. The shortlist is only built when <code>requires_response</code> is true (<code>rl.py</code>, <code>decide</code>), so on LongMemEval there is exactly <em>one</em> retrieval decision per episode, with at most 8 labels, against about 210 removal decisions per episode (8,438 decisions in the first 40 episodes of <code>runs/lme_bc_regret_s0/train_log.jsonl</code>). Retrieval labels are under 4% of training rows and the BCE term is summed into a loss dominated by removals. Worse, the removal labels carry no information: with a free archive and one question, nearly every turn is never-needed, and the regret expert accepts both EVICT and ARCHIVE for a never-needed item at cost 0. Expert agreement is 0.99999 and the loss is 7e-5 from the first iteration. The policy learned a trivial task and chose EVICT or ARCHIVE by noise, which is why two seeds deleted evidence. The fix is the same as the note's Rank 2, but the reasoning matters for what to log and for what success looks like.</li>
+<li><span class="warn">The budget fraction is the wrong axis for the thesis claim.</span> At 5% and 10% of a 115k-token history, the active budget is 5.7k–11.5k tokens. The note itself cites that an 8B reader degrades past about 3k retrieved tokens, and keep-last-4 wins on LongMemEval while ignoring the budget entirely (same score at 5% and 10%). So the heuristic that wins is the one that <em>under-fills</em>. The thesis should report accuracy against tokens actually placed in the prompt, as a frontier, and should add 1% and 2% budgets on LongMemEval. That is where a controller that chooses well has room to beat a controller that fills to the line.</li>
+<li><span class="warn">Rank 3 needs a measurement gate before it is built.</span> A pick-k-of-N head can only help if items ranked 6–20 by BM25 contain evidence that items 1–5 miss. On LongMemEval, BM25 top-5 already reaches recall 0.65 and the published BM25 session recall@5 is 0.63 against 0.72 for the best dense model. Measure recall@{5,8,12,16,20} on both benchmarks with the scripted reader first (one hour, no GPU). If recall@16 is within a few points of recall@5, skip Rank 3 on that benchmark.</li>
+</ol>
+
+<h2>In plain words</h2>
+<p><strong>What I found.</strong> The note's main idea is correct: stop asking the manager "should I look things up?", make looking automatic, and let it decide what to keep. But the test it was graded on was lopsided. The 100 test questions we used are the two easiest kinds, and none of the kinds where remembering the <em>latest</em> version of a fact, or the <em>date</em> of something, matters. We also misread why training failed. The manager was shown about two hundred "throw out or file away" decisions for every one "look it up" decision, and for the throw-out decisions the teacher said "either is fine" almost every time. So it learned nothing useful and flipped coins.</p>
+<p><strong>Why it matters.</strong> If we build the fix and measure it on the lopsided test, a thesis examiner will find the problem in five minutes. If we fix the test first, the same experiment becomes a result we can defend.</p>
+<p><strong>What to do.</strong> Fix the test set and the grading this week. Then make look-up automatic and remove "throw away" from the manager's choices on real conversations. Then measure whether the manager, choosing what stays on the desk, beats the simple rules when the desk is small. Everything else waits on those numbers.</p>
+
+<h2>Claims checked</h2>
+<div class="table"><table><thead><tr><th>Claim in the note</th><th>Status</th><th>Evidence</th></tr></thead><tbody>
+<tr><td>Learned policies retrieve almost nothing on real text; heuristics retrieve top-5 every question</td><td class="ok">Confirmed</td><td>EXPERIMENTS §11 retrieval stats; <code>PriorityController</code> searches on every <code>requires_response</code> step</td></tr>
+<tr><td>Retrieval decision is a per-candidate Bernoulli with threshold 0 at eval</td><td class="ok">Confirmed</td><td><code>rl.py</code> <code>_choose</code>: <code>chosen = (retrieve_logits &gt; 0)</code>; BCE with <code>reduction="sum"</code> in <code>algorithms.py</code></td></tr>
+<tr><td>"Almost every retrieval label is 0" on LongMemEval</td><td class="bad">Not supported</td><td>One retrieval decision per episode (shortlist built only at the question). Labels are few, not mostly zero. With ~1.7 <code>has_answer</code> turns per instance and BM25 recall ~0.65, roughly 1 in 8 shortlist labels is positive</td></tr>
+<tr><td>Teacher treats deletion as free when one question follows</td><td class="ok">Confirmed, and worse</td><td><code>expert.py</code>: regret(EVICT)=regret(ARCHIVE)=0 for never-needed items; tie order is by next need, so the EVICT/ARCHIVE choice is unconstrained. Agreement 0.99999 at iteration 0</td></tr>
+<tr><td>Held-out LongMemEval = questions 0–99</td><td class="bad">Type-skewed</td><td>File sorted by type: 0–99 = 70 single-session-user + 30 multi-session; 6 abstention items. Whole file: 133 multi-session, 133 temporal, 78 knowledge-update, 70 ssu, 56 ssa, 30 preference, 30 abstention</td></tr>
+<tr><td>LoCoMo adversarial counted, refusal scored correct</td><td class="ok">Confirmed</td><td><code>locomo.py</code> <code>include_adversarial=True</code> default; <code>metrics.score_answer</code> uses <code>is_refusal</code>. Adversarial is 446 of 1,986 questions (22%)</td></tr>
+<tr><td>Qwen2.5-7B judges its own answers</td><td class="ok">Confirmed</td><td><code>exp11c</code> config: judge and agent are the same served model. Judge prompt is strict ("state the same thing"), which is better than Mem0's "be generous"</td></tr>
+<tr><td>Speaker names absent from indexed LoCoMo text</td><td class="ok">Confirmed</td><td><code>locomo.py</code>: speaker only in <code>metadata</code>, not in <code>text</code>. Same for LongMemEval role and date</td></tr>
+<tr><td>LongMemEval has no evidence-only or full-context row</td><td class="ok">Confirmed; evidence-only is cheap</td><td><code>data/longmemeval/longmemeval_oracle.json</code> is already present</td></tr>
+<tr><td>Expected +0.2 on LongMemEval from the retrieval floor</td><td class="warn">Optimistic</td><td>Floor brings the learned controller to the <em>fifo+retrieve</em> level (0.42–0.47 on the old subset), not to keep-last-4 (0.53), unless the policy also under-fills. State it as "+0.15–0.25 to the fifo level"</td></tr>
+</tbody></table></div>
+
+<h2>Revised plan</h2>
+<p>Ordered by what must be true before the next step is worth doing. Costs assume the A40 setup of Experiment 11 ($0.49/hour, about 12k prompt tokens/s). Gain figures are estimates and are labelled as such. Each step has an acceptance test the executor can check without judgement calls.</p>
+
+<div class="box"><h3>Step 0. Fix the evaluation so that any later number can enter the thesis</h3>
+<p><strong>Laptop plus one A40 session of about 2 hours (~$1). Do this before anything else.</strong></p>
+<ul>
+<li><strong>LongMemEval split.</strong> Replace the 0–99 subset with a stratified split by <code>question_type</code>. Recommended: 5 folds over all 500, each fold holding about 27 multi-session, 27 temporal, 16 knowledge-update, 14 ssu, 11 ssa, 6 preference, 6 abstention. Heuristics and the oracle are evaluated on all 500 directly. Trained policies are cross-fitted: train on 4 folds, evaluate on the fifth, report the pooled 500. Add a <code>subset</code> option that takes a list of question ids or a fold index, since <code>subset: [100, 500]</code> is a contiguous range today. Report accuracy per type; the headline is the pooled mean. Report the 30 <code>_abs</code> questions separately.</li>
+<li><strong>LoCoMo headline.</strong> Set <code>include_adversarial: false</code> for the headline (categories 1–4, 1,540 questions) and report category 5 as its own row. Always report the per-category breakdown. State that the release is <code>locomo10.json</code>, 10 conversations.</li>
+<li><strong>Judge check.</strong> Serve a second-family judge on the same pod (Llama-3.1-8B-Instruct is one vLLM restart). Re-judge a stratified sample of about 300 cached answers from Experiment 11 across controllers and categories, and report agreement with the Qwen judge. Run a false-accept test: for 100 questions, feed the judge a wrong but on-topic answer (another question's gold from the same conversation) and report the accept rate. If the user supplies an OpenAI key, use GPT-4o-mini on the same sample as the third judge. Keep token F1 beside every judge score.</li>
+<li><strong>Ceilings.</strong> Run the evidence-only reader on LongMemEval (<code>longmemeval_oracle.json</code>, all 500, one controller, cheap). Do not attempt 115k full context on the A40; cite the published 0.454 (Llama-3.1-8B) and say so.</li>
+<li><strong>Tokens in the prompt.</strong> Make sure every sweep row records mean and median prompt tokens at answer time. Every results table from now on carries that column.</li>
+<li><strong>Uncertainty.</strong> Paired bootstrap over questions (LongMemEval) and over conversations (LoCoMo) for every difference between controllers, as Experiment 10 already does for the synthetic task. Training seeds stay as separate rows; report mean and range.</li>
+</ul>
+<p><strong>Accept when:</strong> a per-type LongMemEval table exists for keep-last-4, fifo+retrieve, oracle and evidence-only on all 500; the LoCoMo table has a category 1–4 headline; judge agreement and false-accept rate are written in EXPERIMENTS.md. <strong>Expect:</strong> the LongMemEval heuristic scores to fall when temporal and knowledge-update questions enter, probably by 5–10 points. That is not bad news. It widens the gap a controller can close.</p></div>
+
+<div class="box"><h3>Step 1. Make the learned controller unable to fail by omission (the note's Ranks 1 and 2, built together)</h3>
+<p><strong>Laptop to build, hours. One A40 eval of the new LongMemEval split and LoCoMo (~$2–3).</strong></p>
+<ul>
+<li><strong>Retrieval floor.</strong> Add a controller option, e.g. <code>retrieve_floor: 5</code>, to the RL controller. At a <code>requires_response</code> step, the top-<code>floor</code> BM25 items are retrieved unconditionally, and the policy's Bernoulli head decides only for shortlist ranks 6–N and for the follow-the-clue items. Set the floor on the expert labels too, so imitation trains the head on the remaining candidates only. Keep the floor to BM25 alone; do not fold the bridge items into it. That keeps a learned retrieval decision that can be measured as "what the head adds above the floor".</li>
+<li><strong>Remove EVICT on the benchmarks.</strong> Set <code>allowed_operations: [KEEP, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]</code> in the LoCoMo and LongMemEval configs for every learned controller and for the regret teacher. Storage is not the scarce resource in these benchmarks and no published system deletes. This removes the coin flip described above entirely. Do not instead price the archive: a priced archive makes the teacher prefer deletion for never-needed items, which is the opposite of what is wanted here (D5 already shows this dynamic).</li>
+<li><strong>Allow under-filling.</strong> Give the policy a way to stop below the budget. The cheapest version is a global "target fill" the controller archives down to, swept as a hyperparameter (e.g. fill to 2k, 3k, 4k tokens) and reported on the tokens axis. A learned stop is a later refinement.</li>
+<li><strong>Baseline family.</strong> Add the heuristic grid "keep last n, retrieve top k" for n in {0, 4, 8, 16} and k in {3, 5, 8}. This is the honest bar. The current keep-last-4 is one point of it.</li>
+<li><strong>Budgets.</strong> On LongMemEval evaluate at fractions {0.01, 0.02, 0.05}. Drop 0.10. On LoCoMo keep {0.10, 0.25} and add 0.05.</li>
+</ul>
+<p><strong>Accept when:</strong> the learned controller's retrieval recall equals the heuristics' (about 0.65 LongMemEval, 0.35 LoCoMo); <code>evicted</code> failures are zero by construction; the policy with the floor is within the paired interval of fifo+retrieve at the same tokens used. <strong>Expect:</strong> LongMemEval learned ≈ 0.40–0.50 on the stratified set (estimate), equal to fifo+retrieve. Any difference between the learned controller and fifo+retrieve at matched tokens is now the eviction policy's own contribution. <strong>If the learned controller still trails fifo at matched tokens</strong>, the eviction features do not transfer from synthetic text, and Step 4 (training on real episodes) moves ahead of Steps 2–3.</p></div>
+
+<div class="box"><h3>Step 2. Measure the headroom before building anything else (one hour, no GPU)</h3>
+<ul>
+<li>Recall@{5, 8, 12, 16, 20} of needed items for BM25 on both benchmarks, per question type, with the scripted harness (<code>memctl/rl/shortlist.py</code> already does the rank analysis for the synthetic task).</li>
+<li>The same with speaker name and session date prepended to each indexed turn, and with the <code>bridge_search</code> items added.</li>
+<li>On LoCoMo, the same for BM25 + bge-small score fusion (both scores min-max normalised, summed), since the earlier bge-small run replaced BM25 rather than fusing with it.</li>
+</ul>
+<p><strong>Decision rule:</strong> build Step 3 on a benchmark only if recall@16 exceeds recall@5 by at least 0.10 there. Build Step 5 (units and fusion) on LoCoMo only if the fused or name-dated index raises recall@5 by at least 0.05. Record the curves in EXPERIMENTS.md either way; they are a thesis figure.</p></div>
+
+<div class="box"><h3>Step 3. Pick-k-of-N retrieval head (the note's Rank 3), conditional on Step 2</h3>
+<p><strong>Laptop, 1–2 days, no LLM for training.</strong> Widen the shortlist to 16–20. Replace the per-candidate Bernoulli with a Plackett-Luce distribution over the shortlist and sample exactly k without replacement (Gumbel-top-k). Initialise the head so that its scores reproduce BM25 rank order. Train with listwise cross-entropy against the gold evidence ids (LoCoMo <code>evidence</code>, LongMemEval <code>has_answer</code>, both already parsed into <code>Dependency</code> objects). This gives a dense per-question label that is independent of the one-question-per-episode problem, and the action cannot be empty. KVP and MemSkill are the precedents to cite. <strong>Accept when:</strong> recall@5 on held-out folds beats BM25 ordering before any LLM evaluation; then one A40 eval (~$1–2) to confirm the judge score moves. <strong>Risk:</strong> KVP found supervised ranking losses worse than its RL ranking objective under tight budgets. If the supervised head only matches BM25, do not spend GPU hours on RL for it; report the null result and move on.</p></div>
+
+<div class="box"><h3>Step 4. Train the eviction policy on real episodes (the note's Rank 5)</h3>
+<p><strong>Laptop, 1 day.</strong> Two sources of dense labels on real text:</p>
+<ul>
+<li><strong>LoCoMo conversation split.</strong> All questions come after the conversation, so during the stream the regret labels are already dense (about 24% of turns are evidence for some later question). Use a conversation-level split (6 train / 2 validation / 2 test, as MemSkill) and disclose it. Bootstrap over conversations.</li>
+<li><strong>Composed LongMemEval episodes.</strong> Concatenate the haystacks of several instances in date order and ask all their questions at the end, or interleave questions at the point after their last evidence session. This gives 5–10 questions per episode and a mix of types. It is the same construction MemAgent and MEM1 used on synthetic data, but with real sessions. Drop questions the reader answers correctly with an empty memory (MemAgent's filter), so every reward depends on memory.</li>
+</ul>
+<p><strong>Accept when:</strong> on held-out folds, learned eviction with the retrieval floor beats fifo+retrieve at matched tokens, paired interval excluding zero. This is the first fair test of RQ1 on real text and is the headline experiment of the thesis. <strong>If it fails</strong>, the thesis result is "with retrieval fixed, a learned eviction policy does not beat recency on conversational QA at these budgets", with the knowledge-update and temporal rows as the place to look for why. That is a reportable, defensible result.</p></div>
+
+<div class="box"><h3>Step 5. Better retrieval units on LoCoMo (the note's Rank 4), conditional on Step 2</h3>
+<p>Prepend speaker and date to indexed text (both benchmarks; it is free). Fuse BM25 with bge-small instead of replacing it. Add a rule-based date filter for questions that name a month or year. Defer 7B-extracted fact keys until the cheaper changes have been measured; they cost an A40 pass over all turns and add a confound (the extractor is the reader).</p></div>
+
+<div class="box"><h3>Step 6. Reader formatting (the note's Rank 6)</h3>
+<p>Chronological order with session dates, retrieved items placed just before the question. One A40 eval. Expect every controller to rise together. Only the ranking matters for the thesis; run it once, on the final controller set, and report both formats for the heuristic rows so the effect size is visible.</p></div>
+
+<h3>Deferred, with reasons</h3>
+<ul>
+<li><strong>REPLUG-style labels (Rank 7).</strong> Useful only if Step 3's evidence-id labels prove noisy. Decide after Step 3.</li>
+<li><strong>GRPO with the 7B reader in the loop (Rank 8).</strong> On the synthetic task GRPO added about one point over imitation when the right fact was in reach. Nothing in the benchmark results suggests the reward is the bottleneck. Run it only if Step 4 shows a learned eviction gain worth sharpening, and budget tens of dollars.</li>
+<li><strong>Compaction at tight budgets.</strong> Worth a heuristic-only pilot at 1–2% on LongMemEval after Step 1, with summaries as extra keys. Not before.</li>
+<li><strong>Propensity-sampled archive slot (CMP).</strong> Only relevant once Step 3 is trained with RL rather than imitation.</li>
+</ul>
+
+<h2>What the thesis should claim, given the above</h2>
+<ul>
+<li><strong>The negative result is a contribution.</strong> A learned gate on "whether to retrieve" is the wrong abstraction for conversational memory under a budget. The field's learned systems all fix retrieval on; the experiment shows why, and the training-log analysis (one retrieval decision per episode, a teacher indifferent between archive and delete) shows the mechanism.</li>
+<li><strong>The headline experiment is Step 4.</strong> Retrieval held fixed, eviction learned, measured against the keep-last-n / top-k family at matched prompt tokens, on a stratified LongMemEval and categories 1–4 of LoCoMo, with per-type rows.</li>
+<li><strong>The headline figure is a frontier.</strong> Judge accuracy against mean prompt tokens, one curve per controller family, with the evidence-only ceiling as a horizontal line. A controller that is on the frontier at 2–3k tokens is the thesis's "small reader does better with less, if it is the right less".</li>
+<li><strong>Comparisons are to small-reader results only.</strong> Memory-R1's Qwen-2.5-7B rows and LongMemEval's Llama-3.1-8B rows. The 90+ figures with GPT-5-class readers are a different experiment and should be described as such in one sentence.</li>
+</ul>
+
+<h2>Three things that need the user, not the executor</h2>
+<ol>
+<li>Is an OpenAI (or other outside-family) key available for the judge check? Without it the second judge is Llama-3.1-8B on the same pod, which is adequate but weaker.</li>
+<li>GPU budget for Steps 0–4 is roughly $8–12 in total at A40 prices. Confirm that ceiling, and whether each pod launch still needs a go-ahead or the autonomy grant covers it.</li>
+<li>The stratified LongMemEval set will almost certainly lower the heuristic and oracle numbers already in the proposal and EXPERIMENTS §11. Those rows should be re-labelled "questions 0–99, single-session-user and multi-session only" rather than deleted, and the proposal's next-steps paragraph updated once Step 0 is done.</li>
+</ol>
+
+<h2 id="addendum">Addendum, 2026-10-07: what Experiment 13 found and what to do next</h2>
+<p class="meta">Steps 0, 1, 2 and 4 of the plan above were built and run on 2026-10-06/07 (branch <code>retrieval-floor</code>, EXPERIMENTS.md §12–13c, final commit 3032cb9). One A40 for 6.64 h, about $3.25. Every learned cell passed a pre-registered, reader-free evidence gate before it was paid for. The numbers below are from §13; the figure is <code>docs/research/figures/exp13_frontier.png</code>.</p>
+
+<h3>In plain words</h3>
+<p><strong>What we found.</strong> The learned controller now does the job it was trained for: when a question arrives, all the needed evidence is on the desk more often than with the simple rule (0.64 against 0.50 of questions on LongMemEval at a filled 5% budget). But the reader does not answer better. It keeps twice as many, shorter pages, and this 7B reader gets worse as the pile grows, even when the answer is in it. The best controller on both benchmarks is the plainest one: pull the five most relevant turns and keep almost nothing else.</p>
+<p><strong>Why it matters.</strong> The teacher rewards having the right pages. The reader pays per page. Those are different objectives, and on real conversations the difference decides the result. That is a clean answer to RQ2: hindsight about what will be needed is not enough; the teacher must also price what is kept.</p>
+<p><strong>What to do next.</strong> Make the budget the prompt the reader actually pays for, labels included, and charge the teacher for every token kept, with the charge fixed in advance from the measured refusal curve. Retrain on the laptop, gate without a reader, and pay for an evaluation only if the policy lands ahead of the best simple rule on the accuracy-versus-tokens frontier.</p>
+
+<h3>Results against the pre-registered criteria</h3>
+<div class="table"><table><thead><tr><th>Benchmark, setting</th><th>Learned</th><th>FIFO + same floor</th><th>Paired Δ (95% CI)</th><th>Best rule at ≤ tokens</th><th>Verdict</th></tr></thead><tbody>
+<tr><td>LongMemEval, 5% filled (composed-episode policy)</td><td>0.419 at 5,894 tok</td><td>0.372 at 5,413</td><td>+0.047 (+0.004, +0.089)</td><td>keep-last-0 + top 5: 0.466 at 1,554</td><td>beats recency at the same fill (does not survive Holm over 5 tests); below the rule frontier</td></tr>
+<tr><td>LongMemEval, 5%, 4k target</td><td>0.426 at 4,595</td><td>0.423 at 4,194</td><td>+0.002 (−0.043, +0.040)</td><td>same</td><td>no difference</td></tr>
+<tr><td>LongMemEval, 5%, 3k target</td><td>0.396 at 3,465</td><td>0.438 at 3,158</td><td>−0.043 (−0.085, −0.004)</td><td>same</td><td>loses (does not survive Holm)</td></tr>
+<tr><td>LongMemEval, 1–2%, any target</td><td colspan="4">no-go at the evidence gate: the floor does all the work, neither trained policy keeps more evidence than FIFO</td><td>not run with the reader</td></tr>
+<tr><td>LoCoMo cat. 1–4, 25% (composed policy, cross-benchmark transfer)</td><td>0.290 at 6,810</td><td>0.273 at 7,384</td><td>+0.017 (−0.017, +0.049)</td><td>FIFO + floor at 10%: 0.299 at 2,917</td><td>no difference; below the frontier</td></tr>
+<tr><td>Synthetic-trained policy, both benchmarks</td><td colspan="4">loses 0.05–0.09 evidence to FIFO at every LongMemEval setting; passes the LoCoMo gate only at 25% and then ties FIFO (0.284)</td><td>eviction features do not transfer (RQ4)</td></tr>
+</tbody></table></div>
+
+<h3>The mechanism, in numbers</h3>
+<ul>
+<li><strong>The reader refuses more as the prompt grows, at constant evidence.</strong> With all evidence in view in both cases, "unknown" rises from 0.079 (oracle, 399 tokens) to 0.296 (full evidence sessions, 6,223 tokens), and accuracy falls from 0.672 to 0.449. Inside FIFO alone, evidence stays at 0.62–0.63 while accuracy falls from 0.438 at 3.2k tokens to 0.372 at 5.4k. FIFO peaks near 3k prompt tokens on both benchmarks, and the LoCoMo oracle falls from 0.468 to 0.421 as its own prompt grows from 1.0k to 3.4k.</li>
+<li><strong>The learned policy's evidence gain is eaten by the lines it comes with.</strong> In all five LongMemEval settings it has the evidence in view more often, and in all five it answers correctly <em>less</em> often when the evidence is in view (0.597 against 0.677 at the 3k target). It keeps 1.6–2× as many memory lines (47 against 24 at fill), of shorter turns (107 against 203 content tokens per line), each carrying an 18–25 token "speaker, date" label the budget never counted.</li>
+<li><strong>The two benchmarks fail differently.</strong> On LongMemEval the five retrieved turns usually hold the evidence (0.62–0.64), so the problem is selection. On LoCoMo they rarely do (keep-last + top 5 has 0.18–0.21 in view), the evidence is spread over several short turns, and the problem is search. Fusion raised LoCoMo evidence by 0.03–0.05 and accuracy by about 0.01.</li>
+</ul>
+
+<h3>What the plan above got right, and what it got wrong</h3>
+<ul>
+<li><span class="ok">Right:</span> the retrieval floor removed the omission failure entirely (learned retrieval recall now equals the heuristics'); the LongMemEval subset was lopsided and the stratified folds changed every number; composed multi-question episodes were what gave the teacher signal (every composed row beats the single-question row on evidence); the budget fraction was the wrong axis, and the frontier figure is now the thesis's main figure.</li>
+<li><span class="warn">Partly right:</span> the teacher fix. Dropping EVICT removed the coin flip, but with a free archive every removal still tied at zero regret; the signal only appeared after pricing the floor's miss rate (<code>retrieval_risk</code> = 0.36, measured, not tuned). And it was still the wrong objective: it prices missing evidence but not the tokens kept.</li>
+<li><span class="bad">Wrong:</span> the estimate that the floor alone would lift the learned controller by about +0.2 on LongMemEval to the heuristics' level. It lifted evidence to the FIFO level, but accuracy depends on prompt size, which the floor does not fix. The estimate ignored the refusal mechanism, which nobody had measured yet. The per-type rows I called "where the controller should show value" (temporal, knowledge-update) show no learned gain; the few per-type gains are on multi-session and preference and all per-type intervals include 0.</li>
+<li><span class="warn">Not built:</span> the pick-k-of-N retrieval head (Rank 3). Its headroom gate passed on both benchmarks (recall@16 exceeds recall@5 by 0.12–0.16). It is still worth building, in a specific form: see next steps.</li>
+</ul>
+
+<h3>Revised next steps, ranked</h3>
+<div class="box"><h3>N1. Budget in prompt tokens, and a teacher that prices what it keeps (laptop; reader only after a free gate)</h3>
+<p>One change, pre-specified in §13a. Count the per-line labels in the budget, so the budget is the prompt the reader pays for and the budget axis and the frontier axis coincide. Add a cost per prompt token to the regret of keeping an item, calibrated from FIFO's refusal curve at constant evidence: 0.066 accuracy per 2.26k tokens, about 3×10<sup>−5</sup> per token. Retrain on composed episodes (5 folds). Gate without a reader on two quantities at once: evidence in view and prompt tokens, against FIFO + floor and against keep-last-0 + top 5. <strong>Pay for an evaluation only if</strong> the agent-null proxy places the policy ahead of keep-last-0 + top 5 on the frontier (more evidence at equal or fewer tokens). <strong>Done when:</strong> the learned row is on or above the rule frontier on the LongMemEval figure, paired interval against the rule at matched tokens excluding 0. If it is not, the thesis reports that a hindsight teacher with a token price still does not beat top-5 retrieval for this reader, with the frontier as evidence.</p></div>
+<div class="box"><h3>N2. A pick-k-of-N head that swaps lines rather than adds them (laptop; Rank 3 reborn)</h3>
+<p>The decomposition says evidence is still the second lever: P(correct | all in view) is 0.57–0.68 against 0.15–0.21 without. The gate passed. Build it as a replace-k, not an add-k: the head chooses which 5 of the 16 shortlisted items fill the floor's five slots, with listwise cross-entropy against the gold evidence ids, so it can raise evidence at zero change in lines. Evaluate recall@5 against BM25 order on held-out folds before any reader. Do N1 first, since N2 inherits its budget definition.</p></div>
+<div class="box"><h3>N3. LoCoMo is a search problem: retrieval units, not eviction (laptop + one A40 pass)</h3>
+<p>Do not spend more on LoCoMo eviction. Evidence in view is 0.18–0.21 for the retrieval-only rules, and §12's all-found recall for multi-hop is 0.04 at top-5. The levers are session-level retrieval (return the whole session of a matching turn, as EmergenceMem does) and 7B-extracted fact keys as <em>extra</em> keys over raw turns (LongMemEval's own result). Measure all-found recall@5 with the scripted harness first; a reader pass only if recall moves by 0.10 or more.</p></div>
+<div class="box"><h3>N4. One check that the turning point is the reader's, not the benchmark's (NEEDS SPEND, about $1)</h3>
+<p>The 3k-token turning point and the refusal curve are measured for one reader and one frozen prompt. Run the FIFO series and the oracle once with Llama-3.1-8B-Instruct as the reader under the same prompt. If the turning point moves, the thesis says "for small readers, where the turning point sits decides the budget"; if it does not, it is a property of this prompt. Either way it is one paragraph the examiner will ask for.</p></div>
+<div class="box"><h3>N5. Writing: what the thesis can now claim</h3>
+<ul>
+<li><strong>RQ1 (learned vs rules under a budget):</strong> yes on the synthetic task (Experiments 10–11a); on real conversations, learning beats recency at the same fill in one of five settings and never beats the best simple rule on the frontier.</li>
+<li><strong>RQ2 (learning from hindsight):</strong> the regret teacher works when its prices are right. On real conversations it needed a measured miss rate to have any signal, and it still rewards evidence per content token while the reader pays per line. The next teacher prices tokens.</li>
+<li><strong>RQ3 (GRPO):</strong> unchanged; about one point over imitation on the synthetic task, credit assignment immaterial. Not attempted on real conversations because imitation's objective was the bottleneck, not its optimiser.</li>
+<li><strong>RQ4 (real models, real conversations, when is it worth it):</strong> a learned retrieve gate is the wrong abstraction (Experiment 11); always-retrieve plus learned eviction keeps more evidence but is not worth it over top-5 retrieval for a 7B reader, because the reader degrades past about 3k prompt tokens. The frontier figure and the decomposition table are the evidence. Synthetic-trained eviction does not transfer; composed real-episode training does, on evidence.</li>
+<li>Report every number with its protocol: stratified folds, categories 1–4, abstention apart, official LongMemEval judge prompts, the frozen reader and its one disclosed revision, paired bootstrap, the Holm sentence, and prompt tokens beside every accuracy.</li>
+</ul></div>
+</main></body></html>
