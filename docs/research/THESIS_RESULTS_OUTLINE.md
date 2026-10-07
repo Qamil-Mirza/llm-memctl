@@ -2,6 +2,22 @@
 
 Draft of 2026-10-07. Every number here is in EXPERIMENTS.md, cited by section.
 
+## Contributions (mapped to research questions)
+
+1. **(RQ1, RQ4) A query-aware selection head** that beats the best simple rule on LongMemEval with a 7B reader, at
+   half the prompt (§15). It is the first learned controller beyond the rule frontier on real conversations.
+2. **(RQ1, RQ2) The regret teacher and follow-the-clue search on synthetic tasks**, closing about half the gap to
+   the hindsight oracle (D1, §10–11a).
+3. **(RQ2, RQ4) Measured limits of query-blind memory control on conversational QA.**
+   - Context rot: the reader degrades past about 3k prompt tokens even with all the evidence in view (§13).
+   - The query-blind ceiling: before the question arrives, a turn's later need is barely predictable (AUC
+     0.62–0.74, §14a).
+4. **(RQ3) GRPO with exact credit adds at most about a point over imitation**, on both tasks. The limit is
+   information per sample (§10, §16a).
+5. **(Method) Pre-registered gating of paid cells without a reader.** Every model-graded cell first passed a free
+   check, written down before it ran. Experiments 14–16 spent about $0.44 of an approved $1.70 and never chose
+   rows after seeing the test answers. The method is reusable.
+
 ## Headline
 
 On real long conversations with a searchable archive, the only learned decision that pays is query-aware: which
@@ -9,12 +25,14 @@ few retrieved turns the reader sees.
 - A ~27k-parameter head, trained by imitation of gold evidence, picks 5 of 16 search candidates at the question.
 - It beats the best simple rule, keep-last-0 + top 5, with the 7B reader: **0.513 against 0.466** judge accuracy
   at **745 against 1,554** prompt tokens (Experiment 15b).
-- The gain replicates across three training seeds on a second host: +0.044, seed SD 0.002 (15c).
+- The arm was **selected as the best of three declared losses, then replicated across seeds and a host**:
+  +0.044, seed SD 0.002 (15c).
 
 **Headline figure:** accuracy against prompt tokens on both benchmarks (`docs/research/figures/exp13_frontier.png`).
 Before the chapter is final, the Experiment 15 head row should be added to it.
 
-**Headline table:** Experiment 15b (accuracy, the paired difference, and the evidence decomposition).
+**Headline table:** Experiment 15b (accuracy, the paired difference, the evidence decomposition, and the
+"unknown" rate, since context rot is the mechanism the chapter argues).
 
 ## RQ1: Does a learned controller beat simple rules under the same budget?
 
@@ -63,6 +81,11 @@ Before the chapter is final, the Experiment 15 head row should be added to it.
   - LongMemEval is a selection problem: about 0.63 of the evidence is already in BM25's top 5.
   - LoCoMo is a search problem: only 0.18–0.21 is, and multi-hop questions need all of it (§12, §13b).
   - The head's evidence gain transfers to LoCoMo (+0.13 all-found), but it fails the gate's token rule (§15b).
+- **Transfer.**
+  - Synthetic-trained eviction does not transfer to real conversations: −0.05 to −0.09 evidence almost
+    everywhere on LongMemEval (§13 gate).
+  - Training on one question per episode transfers negatively to LoCoMo at every budget. Training on composed
+    multi-question episodes transfers on evidence at 25% (§13 LoCoMo gate). This motivates the composed episodes.
 - **Tables:** §12 headroom; §13b; §15b LoCoMo transfer.
 
 ## Protocol section (methods)
@@ -77,6 +100,28 @@ Before the chapter is final, the Experiment 15 head row should be added to it.
 - **Run-to-run variation.** The judge's verdict is stable: 50/50 identical on repeated prompts. Parsed answers
   vary by 1 in 50 on one host and 6 in 50 across hosts. This is why accuracy is reported with intervals.
 - **Costs.** About $3.70 of GPU in all, each run approved in advance.
+- **Provenance.**
+  - Every run records its commit and a dirty flag.
+  - The sharded LongMemEval loader has a test showing it plays the same episodes as the full file.
+  - An out-of-memory incident is recorded, and the partial runs it left are quarantined in `runs/_aborted/`.
+  - The cache was scanned after a thread race: 0 entries under the wrong key.
+- **Memory rules.**
+  - Every laptop job runs under a memory guard.
+  - Every paid launch is preceded by a full-size dry run with a stub model, with peak RSS recorded.
+
+## Limitations
+
+- **One reader and one frozen prompt** (Qwen2.5-7B-Instruct, the 7b5fc30 prompt). The ~3k-token onset of context
+  rot is measured for that pair only.
+- **The judge is the reader's own model.**
+  - Every Experiment 13–16 cell is judged by Qwen2.5-7B on its own answers, with LongMemEval's official prompts.
+  - The planned second-family judge check never ran: Llama-3.1-8B re-judging a stratified sample, with
+    false-accept and false-reject tests. That would cost about $0.50–1 and is the user's call.
+  - The ranking of controllers is what matters and probably holds, but it has not been shown.
+- **The positive reader result is on one benchmark.** LoCoMo was not tested with the reader for the head: it
+  failed the gate's token rule.
+- **A selection step precedes the replication.** The `listsum` arm was the best of three declared arms.
+- **LoCoMo intervals resample only 10 conversations**, so they undercover.
 
 ## Proposal next-steps (to update)
 
