@@ -82,7 +82,7 @@ class QAEnvironment(TaskEnvironment):
             question = self._questions[current.id]
             scores = score_answer(agent_action or "", question.gold, question.unanswerable)
             if self.judge is not None and not question.unanswerable:
-                scores["correct"] = self.judge.is_correct(question.question, question.gold, agent_action or "")
+                scores["correct"] = self.judge.is_correct(question.question, question.gold, agent_action or "", question.category)
                 scores["decided_by"] = f"judge ({self.judge.name})"
             self._scores.append({**scores, "category": question.category})
             self._last_reward = float(scores["correct"])

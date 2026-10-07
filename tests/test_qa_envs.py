@@ -184,3 +184,15 @@ def test_answer_sessions_without_marked_turns_still_count_as_evidence():
     unmarked = set(instances[partial]["answer_session_ids"]) - marked_sessions(instances[partial])
     whole_sessions = [r for r in dependency.requirements if len(r.item_ids) > 1]
     assert len(whole_sessions) == len(unmarked) and any(len(r.item_ids) == 1 for r in dependency.requirements)
+
+
+def test_the_longmemeval_judge_style_picks_the_official_prompt_for_each_question_type():
+    judge = Judge({"style": "longmemeval", "backend": "stub"})
+    temporal = judge.prompt("How many days?", "18", "19 days", "temporal-reasoning")
+    assert "off-by-one" in temporal and temporal.endswith("Answer yes or no only.")
+    assert "Rubric: G" in judge.prompt("Q", "G", "R", "single-session-preference")
+    assert "updated answer" in judge.prompt("Q", "G", "R", "knowledge-update")
+    assert judge.prompt("Q", "G", "R", "multi-session") == judge.prompt("Q", "G", "R", "single-session-user")
+    assert "Reply with exactly one word" in Judge({"backend": "stub"}).prompt("Q", "G", "R", "temporal-reasoning")
+    with pytest.raises(ValueError):
+        Judge({"style": "lenient", "backend": "stub"})
