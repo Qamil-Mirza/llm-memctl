@@ -63,7 +63,7 @@ commands given).
 | 15 | A query-aware floor head: which 5 of 16 to retrieve, learned listwise | Free gate: +0.08 all-found evidence at half the tokens. Reader: +0.047 accuracy (0.513 vs 0.466) at 745 vs 1,554 tokens; two of three arms win; Holm-adjusted p 0.058. First learned row beyond the rule frontier; replicates over 3 training seeds on a second host (+0.044, seed SD 0.002). POSITIVE |
 | 16 | Set-valued GRPO on the selection head with the reader's verdict as reward | Gate fails: +0.0125 (−0.005, +0.033) held-out over the imitation start; flat in 4 of 5 folds. Labels already a sufficient target for this head. NEGATIVE (pre-registered) |
 | 18 | Second-family judge check; exploratory LoCoMo reader test | Granite agrees with Qwen on 97% (κ 0.95), similar error rates; ranking and the head's gain hold (+0.040, CI excludes 0). Exploratory: head transfers to LoCoMo, +0.087 (post hoc). CONFIRMS |
-| 19 | Adaptive k (5, 8 or 16 of 32), cross-fitted chooser, oracle-k ceiling | Free gate: more turns pay (LME `fixed8` +0.110 all-found at 1,050 tokens); oracle-k reaches `fixed16`'s evidence at 49% of the tokens on LME, 82% on LoCoMo (no-go); the chooser is miscalibrated and fails gate 4. §19b (one-feature chooser) pre-registered |
+| 19 | Adaptive k (5, 8 or 16 of 32), cross-fitted chooser, oracle-k ceiling | Free gate: more turns pay (LME `fixed8` +0.110 all-found at 1,050 tokens); oracle-k reaches `fixed16`'s evidence at 49% of the tokens on LME, 82% on LoCoMo (no-go); the chooser is miscalibrated and fails gate 4. §19b one-feature chooser: calibrated (ECE ≤ 0.06), 0.718 at 1,437 tokens, fails gate 4 narrowly; adaptivity stopped, the ceiling is the finding. `fixed8` (LME) and `fixed5` + exploratory `fixed16` (LoCoMo) go to the reader |
 
 ---
 
@@ -2427,6 +2427,31 @@ the ceiling: `oracle-k` reaches `fixed16`'s evidence at 1,265 tokens, but no cho
 - LongMemEval: `fixed8` (pre-registered by §19), §19b `adaptive` if it passes gate 4, the §15 head, and FIFO +
   floor at 5%.
 - LoCoMo: `fixed5` (pre-registered), `fixed16` (exploratory, labelled), the §15 head, and FIFO + floor at 10%.
+
+### 19b-a. Result: calibrated, closer, still short; adaptivity stops (2026-10-07)
+
+All runs are at ac3bd67, not dirty; the heads are §19's. Report: `runs/exp19b_gate_report.md`. The fixed arms,
+`oracle-k` and the references reproduce §19a exactly at the new commit.
+
+- **Calibration gate passes.** The expected calibration error on the cross-fit rows is 0.013–0.060 per k and
+  fold, against the 0.10 limit. The fitted slopes are small (a ≈ 0.7–0.9 at k = 5, about 0.3 at k = 16), so the
+  chooser separates easy from hard questions only weakly. On the test folds it is calibrated (top bin at k = 5:
+  0.87 predicted, 0.87 observed).
+- **Gate 4 fails on both heads**, narrowly:
+
+  | head | `adaptive` all-found | tokens | mean k | `fixed16` − `adaptive` (95% CI) | 0.75 × `fixed16` tokens |
+  |---|---|---|---|---|---|
+  | A (primary) | 0.718 | 1,437 | 10.3 | +0.026 (+0.012, +0.042) | 1,925 |
+  | B (replicate) | 0.720 | 1,703 | 11.5 | +0.020 (+0.008, +0.034) | 1,959 |
+
+  The token condition holds; the evidence condition (upper bound ≤ 0.02) does not.
+- **Verdict.** By the corrected fallback (the fixed k passing gates 1 and 2 with the highest all-found), `fixed8`
+  goes to the reader on LongMemEval, as in §19a; `fixed16` fails the guard.
+- **Time box reached: adaptivity stops.** The finding is the ceiling. `oracle-k` keeps `fixed16`'s evidence at
+  1,265 tokens (49%). The best chooser tried here, one feature with Platt scaling, gets within 0.026 at 1,437
+  tokens (56%), and the first, a 21-feature network, falls 0.070 short.
+- **Against `fixed8`, descriptively.** `adaptive` is +0.018 all-found at +387 tokens. It is not sent to the
+  reader, since it did not pass its gate.
 
 ## 5. The sequential task
 
