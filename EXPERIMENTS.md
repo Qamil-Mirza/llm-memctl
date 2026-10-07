@@ -1906,51 +1906,68 @@ number of turns (3, 5 or 8) is the declared next arm.
 
 ## 16. Plan (not built): set-valued GRPO on the selection head, with the reader's verdict as reward
 
-Pre-registered plan, written 2026-10-07 for review before any code. This is
-the RQ3 experiment on real conversations. It is the first place where
-reinforcement learning has a credit-assignment problem it can solve exactly:
-one question, one decision, one judged answer.
+Pre-registered plan, written 2026-10-07 and revised after review, before any
+code. It is the RQ3 experiment on real conversations: one question, one
+decision, one judged answer, so credit assignment is exact. Every choice below
+is declared once and not swept.
 
-- **Policy.** The Experiment 15 selection head, which picks 5 of 16 BM25
-  candidates at the question, with keep-none. It starts from each fold's
-  `listsum` checkpoint.
+- **Policy.** The Experiment 15 selection head (5 of 16 BM25 candidates, at
+  the question, keep-none), started from each fold's `listsum` checkpoint.
+  One RL seed per fold; the two extra `listsum` seeds already trained are the
+  variance reference.
 - **Action and probability.**
-  - The action is an unordered 5-subset of the 16.
+  - The action is an unordered 5-subset.
   - G = 8 subsets are sampled per question without replacement by
-    Gumbel-top-k on the head's logits.
-  - Their log-probabilities are the unordered-set probability of Kool et
-    al. 2020 (https://arxiv.org/abs/2002.06043), computed exactly over the
-    5! orders.
-- **Reward.** The frozen reader of Experiment 13 (7b5fc30 prompt) answers
-  with each subset; the official judge gives 1 or 0.
-- **Advantage.** Group-relative: each subset's reward minus the mean of its
-  8, as in Experiment 10's GRPO, with no value network. Groups where all 8
-  agree carry no signal and are counted.
+    Gumbel-top-k.
+  - Their log-probability is the unordered-set probability of Kool et al.
+    2020 (https://arxiv.org/abs/2002.06043), computed exactly over the 5!
+    orders.
+- **Reward.** The frozen reader and official judge of Experiment 13 (7b5fc30)
+  give 1 or 0. To this is added a dense auxiliary term so that near-ties still
+  carry signal: 0.2 × token F1 between the answer and the gold.
+- **Advantage.** Group-mean baseline (reward minus the mean of its 8), with no
+  division by the group's standard deviation. A binary reward makes that
+  division explode on near-ties; Experiment 10 found the forms equivalent in
+  effect.
+- **Ties.**
+  - Before training, one reader call per train question with empty memory;
+    questions it answers correctly without memory are dropped (MemAgent's
+    filter).
+  - The share of groups with all-equal rewards is logged and reported every
+    iteration.
 - **Loss.** PPO-clipped policy gradient on the set log-probability, plus an
-  imitation anchor: λ × the `listsum` loss on the gold evidence, λ = 0.5,
-  stated in advance. Learning rate 3e-4, 4 epochs per batch.
-- **Data and cost.**
-  - Training uses the train part of each fold: single-instance episodes, one
-    question each.
-  - About 1,000 questions per fold × 8 subsets × (answer + judge) is about
-    16k reader calls per fold. At Experiment 15's measured rate (2,000
-    answers + judges in about 3 minutes on one A40) that is about 25 minutes
-    per fold.
-  - All five folds take about 2 h of A40 including startup, about $1–2.
-  - Generations are cached, so repeated subsets cost nothing.
-- **Gate (needs a reader, so it is paid).** Before any test-fold run:
-  - hold out 20% of each fold's train part;
-  - accuracy of GRPO's greedy top 5 on that slice minus the `listsum`
-    start's, paired, with a 95% interval above 0;
-  - pooled over the five folds.
-- **Test (only if the gate passes).** The §15b protocol on the test parts,
-  against `listsum` and keep-last-0 + top 5, with Holm over the comparisons
-  and the §13a decomposition.
-- **What it answers (RQ3).** Whether the reader's own verdict improves a
-  selection learned from gold labels, where evidence labels and the reader
-  disagree. For example, a turn that holds the answer but distracts, or a
-  near-answer the judge accepts. A null here would say the gold labels
-  already capture what this reader needs.
+  imitation anchor of λ = 0.1 × the `listsum` loss. It is small on purpose:
+  it keeps the head off degenerate subsets without tying it to the evidence
+  labels, which RL is meant to go beyond (the reader may prefer a short
+  unlabelled turn to a long labelled one). Learning rate 3e-4, 4 epochs per
+  batch.
+- **Cost (an upper bound).** Per fold:
+  - at most 1,000 train questions × 8 subsets × 2 calls (answer and judge):
+    about 16k;
+  - the empty-memory filter: about 400 calls;
+  - gate evaluations on the held-out 20% (about 200 questions × 2 calls × 5
+    evaluations): about 2,000.
+
+  That is about 18k calls per fold and about 90k for all five. The generation
+  cache makes a repeated (subset, question) pair free, and repeats grow as the
+  policy sharpens. Training runs fewer requests in parallel than Experiment
+  15's sweep, so allow 30–40 min per fold: about 3 h of A40 with startup,
+  **about $1.50, at most $2.50**.
+- **Gate (paid, needs the reader).** On a held-out 20% of each fold's train
+  part: the greedy top-5 accuracy of the GRPO head minus its `listsum`
+  start's, paired, pooled over folds, with a 95% interval above 0.
+- **Test (only if the gate passes).** The §15b protocol on the test parts.
+  - GRPO head against its `listsum` start: paired; the RQ3 question.
+  - GRPO head against keep-last-0 + top 5: paired; the RQ4 question.
+  - Holm over the comparisons that reach the test, the §13a decomposition,
+    and per-type rows.
+- **What a result means, stated in advance.**
+  - A pass on RQ3 means RL on the reader's own correctness beats imitation of
+    evidence labels. The per-type rows that move then show what the labels
+    were missing; single-session-assistant, where the head loses, is the
+    obvious candidate.
+  - A fail means the evidence labels were already a sufficient target for a
+    head this small.
 
 ## 5. The sequential task
 
