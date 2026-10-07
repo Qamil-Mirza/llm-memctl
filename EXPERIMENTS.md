@@ -60,7 +60,7 @@ commands given).
 | 12 | Retrieval headroom: how much evidence search reaches (no reader) | Top 16 holds 0.12–0.16 more evidence than top 5; labels and BM25+bge fusion help LoCoMo, not LongMemEval. Gates for the pick-k head and better units passed. |
 | 13 | LongMemEval (all 500, 5 folds) and LoCoMo under the reviewed protocol: retrieval floor, no EVICT, reasoning reader, pre-registered gates | The floor fixes retrieval. Learned controllers keep more evidence at 5% but convert little: one paired win, one loss, none after Holm, none on the frontier. This reader refuses more as prompts grow (peak near 3k tokens). NEGATIVE, with a mechanism |
 | 14 | A token price for kept memory: labels counted in the budget, plug-in Bayes archiving at a pre-set price | No-go at the free gate: the priced rule never beats keep-last-0 + top 5 on evidence at equal memory; needed model AUC 0.62–0.74; a per-token price archives long turns, not lines. NEGATIVE (free) |
-| 15 | A query-aware floor head: which 5 of 16 to retrieve, learned listwise | Free gate: +0.08 all-found evidence at half the tokens. Reader: +0.047 accuracy (0.513 vs 0.466) at 745 vs 1,554 tokens; two of three arms win; Holm-adjusted p 0.058. First learned row beyond the rule frontier. POSITIVE (borderline after Holm) |
+| 15 | A query-aware floor head: which 5 of 16 to retrieve, learned listwise | Free gate: +0.08 all-found evidence at half the tokens. Reader: +0.047 accuracy (0.513 vs 0.466) at 745 vs 1,554 tokens; two of three arms win; Holm-adjusted p 0.058. First learned row beyond the rule frontier; replicates over 3 training seeds on a second host (+0.044, seed SD 0.002). POSITIVE |
 
 ---
 
@@ -1906,6 +1906,38 @@ LongMemEval heads rank the shared fusion search's top 16 on LoCoMo categories
   *no-go* by the rule, though the evidence gain transfers.
 - The absolute difference is small (about 50 tokens; LoCoMo turns are short).
   No LoCoMo reader cell is proposed under this rule.
+
+### 15c. Robustness: the gain replicates across training seeds and on a second host (2026-10-07)
+
+Pod ji4gpj6dpi4tm0: an A40 on a CUDA 13.0 host, because A40s on 12.8 hosts
+were out of stock. The user approved this check. All cells ran on this one host
+with a fresh cache (`exp15_host_f*`, c6a9752): keep-last-0 + top 5 and the
+`listsum` head from training seeds 0, 1 and 2.
+
+**Host check, measured before the run.**
+- The judge's verdict was identical in every comparison (50/50).
+- 50 cached prompts from the first host, regenerated here with no cache, gave
+  the same parsed answer 44/50 times.
+- The same 50 prompts generated twice on this host gave the same answer
+  49/50 times.
+- So about 1 answer in 50 changes from vLLM's batch nondeterminism alone, and
+  about 5 in 50 when the host changes. The wording moves; correctness barely
+  does. This is also why accuracy is reported here with a bootstrap interval,
+  not as a bare three-decimal number.
+
+| row (host 2) | accuracy | Δ vs keep-last-0 + top 5 (95% CI) |
+|---|---|---|
+| keep-last-0 + top 5 | 0.457 | — |
+| head `listsum`, seed 0 | 0.504 | +0.047 (+0.009, +0.087) |
+| head `listsum`, seed 1 | 0.500 | +0.043 (+0.004, +0.081) |
+| head `listsum`, seed 2 | 0.500 | +0.043 (+0.004, +0.083) |
+| mean over the three seeds | | **+0.044 (+0.008, +0.082)**, seed SD 0.002 |
+
+**The gain replicates.** Every training seed beats the rule on its own, on a
+second host, by the same amount. The seed-averaged paired interval excludes 0.
+"Borderline after Holm" in §15b was a statement about three loss arms, not
+about the result's stability. The partial cells of the first attempt on this
+host, made before the host check, are in `runs/_aborted/` and are not reported.
 
 **For the thesis.** On real conversations with a searchable archive, the
 learned decision that pays is query-aware: which retrieved turns fill the few
