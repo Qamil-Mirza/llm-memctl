@@ -1794,6 +1794,27 @@ single-session-assistant (−0.09 to −0.11), where the evidence sits in the
 assistant's own, usually long, turns. The `listsum` loss did not separate from
 `listwise` on multi-session.
 
+**Controls (review; free; `exp15_control_f*`).** Two rules on the same 16
+BM25 candidates test whether the head only learned "evidence turns are short
+user turns".
+
+| rule | all-found | head (`listsum`) minus rule | memory tokens |
+|---|---|---|---|
+| shortest 5 of 16 | 0.382 | +0.208 (+0.166, +0.250) | 357 |
+| user turns only, top 5 of 16 | 0.530 | +0.060 (+0.028, +0.094) | 566 |
+
+- **Neither rule comes within the head's interval**, so the head learned
+  something beyond length and speaker.
+- **The user-only rule matches the head's tokens.** The token saving comes
+  largely from preferring user turns; the evidence gain does not.
+- **Lengths of the chosen turns** (tokens, labels counted):
+
+  | | median | interquartile range |
+  |---|---|---|
+  | gold evidence | 79 | 67–93 |
+  | head's 5 | 78 | 60–101 |
+  | BM25's top 5 | 148 | 76–435 |
+
 **Caveat.** The gate measures the same evidence labels the head was trained to
 find: `has_answer` turns, plus any turn of an unmarked answer session. Whether
 more labelled evidence, at half the tokens, turns into more correct answers is
