@@ -21,7 +21,8 @@ Draft of 2026-10-07. Every number here is in EXPERIMENTS.md, cited by section.
 ## Headline
 
 On real long conversations with a searchable archive, the only learned decision that pays is query-aware: which
-few retrieved turns the reader sees.
+few retrieved turns the reader sees. A query-aware selector that shows the reader eight relevant turns beats the
+five-turn selector, and beats FIFO at a third of FIFO's tokens. Showing sixteen adds evidence and loses accuracy.
 - A ~27k-parameter head, trained by imitation of gold evidence, picks 5 of 16 search candidates at the question.
 - It beats the best simple rule, keep-last-0 + top 5, with the 7B reader: **0.513 against 0.466** judge accuracy
   at **745 against 1,554** prompt tokens (Experiment 15b).
@@ -29,8 +30,12 @@ few retrieved turns the reader sees.
   +0.044, seed SD 0.002 (15c).
 - **Showing 8 of 32 instead of 5 of 16 adds +0.045 more** (§19c, pre-registered): 0.545 against 0.500 at 1,049
   tokens, and +0.113 over FIFO + floor at a third of its tokens.
-- **Context rot on a controlled pair** (§19c, exploratory): the same head showing 16 turns has more evidence in view
-  but answers worse, −0.057 against 8 turns. P(correct | in view) falls from 0.676 to 0.575 at 2,569 tokens.
+- **Context rot on a controlled pair** (§19c): the same head showing 16 turns has more evidence in view (+0.045)
+  but answers worse, −0.057 (−0.096, −0.019) against 8 turns. P(correct | in view) falls from 0.676 to 0.575 at
+  2,569 tokens.
+  - Status: exploratory, with its purpose declared before the run; one run on one host.
+  - Confirmatory step, named but not run: the same pair with head B on a second host, about $0.15, if an examiner
+    asks.
 
 **Headline figure:** accuracy against prompt tokens on both benchmarks (`docs/research/figures/exp13_frontier.png`).
 Before the chapter is final, the Experiment 15 head row should be added to it.
@@ -94,7 +99,10 @@ Before the chapter is final, the Experiment 15 head row should be added to it.
   top 5, at 365 against 306 tokens. It improves in every category, and stays below FIFO at 10%.
 - **More turns on LoCoMo** (§19c, exploratory): the head showing 16 turns reaches 0.344 at 734 tokens, above
   FIFO + floor at 10% (0.295 at 3,087), +0.049 (+0.034, +0.062). It is the first LoCoMo row above the FIFO frontier.
-  The pre-registered pick (5 turns) did not pass.
+  - The pre-registered pick, 5 turns, did not pass (+0.023, CI −0.001 to +0.048).
+  - It was the official pick only because §19's fallback rule chose the fewest tokens under the guard rather than
+    the most evidence. That mis-specification was corrected in §19b, after the fact, so 16 turns stays
+    exploratory.
 - **Tables:** §12 headroom; §13b; §15b LoCoMo transfer; §18a.
 
 ## Protocol section (methods)
