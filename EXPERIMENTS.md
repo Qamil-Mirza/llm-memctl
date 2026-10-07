@@ -63,7 +63,7 @@ commands given).
 | 15 | A query-aware floor head: which 5 of 16 to retrieve, learned listwise | Free gate: +0.08 all-found evidence at half the tokens. Reader: +0.047 accuracy (0.513 vs 0.466) at 745 vs 1,554 tokens; two of three arms win; Holm-adjusted p 0.058. First learned row beyond the rule frontier; replicates over 3 training seeds on a second host (+0.044, seed SD 0.002). POSITIVE |
 | 16 | Set-valued GRPO on the selection head with the reader's verdict as reward | Gate fails: +0.0125 (−0.005, +0.033) held-out over the imitation start; flat in 4 of 5 folds. Labels already a sufficient target for this head. NEGATIVE (pre-registered) |
 | 18 | Second-family judge check; exploratory LoCoMo reader test | Granite agrees with Qwen on 97% (κ 0.95), similar error rates; ranking and the head's gain hold (+0.040, CI excludes 0). Exploratory: head transfers to LoCoMo, +0.087 (post hoc). CONFIRMS |
-| 19 | Adaptive k (5, 8 or 16 of 32), cross-fitted chooser, oracle-k ceiling | Free gate: more turns pay (LME `fixed8` +0.110 all-found at 1,050 tokens); oracle-k reaches `fixed16`'s evidence at 49% of the tokens on LME, 82% on LoCoMo (no-go); the chooser is miscalibrated and fails gate 4. §19b one-feature chooser: calibrated (ECE ≤ 0.06), 0.718 at 1,437 tokens, fails gate 4 narrowly; adaptivity stopped, the ceiling is the finding. `fixed8` (LME) and `fixed5` + exploratory `fixed16` (LoCoMo) go to the reader |
+| 19 | Adaptive k (5, 8 or 16 of 32); reader test §19c | Adaptivity stopped at its time box (the ceiling is the finding). Reader: LME `fixed8` 0.545 vs §15 head 0.500 (+0.045, CI +0.011..+0.079) at 1,049 tokens, PASS; LoCoMo `fixed5` +0.023 (CI −0.001..+0.048), no pass. Exploratory: LME `fixed16` −0.057 vs `fixed8` (context rot on a controlled pair); LoCoMo `fixed16` 0.344 at 734 tokens beats FIFO 10% (0.295 at 3,087). $0.36 |
 
 ---
 
@@ -2389,7 +2389,10 @@ Fusion on LoCoMo, with the shared retriever: @5 0.465, @8 0.518, @16 0.620, @32 
 a copy of the fusion inside `headroom.py` that cut BM25 at the largest k tabulated. The tool now calls the shared
 retriever (1e0a6a4), and the figures of record are 0.465 @5 and 0.620 @16 (see the §12 footnote).
 
-**Train-part gate (overfitting check):** to be added when the run finishes.
+**Train-part gate (overfitting check; `runs/exp19_gate_train_report.md`).**
+- The fixed arms match the test folds (head A: `fixed8` +0.096 and `fixed16` +0.146 over the §15 head, against
+  +0.110 and +0.154 on test), so the heads do not overfit.
+- The §19 chooser does better on the train parts (0.712) than on test (0.674), as expected for an overfit chooser.
 
 ## 19b. Adaptive k with a one-feature chooser (N4b; 2026-10-07, pre-registered, free stage)
 
@@ -2489,6 +2492,64 @@ are paired; reader frozen at 7b5fc30; official judge):
 - Hard stop at 1 hour of pod time (about $0.49). Estimate from the measured §18a and §15b throughput: about
   $0.30.
 - The pod is verified terminated with list-pods afterwards.
+
+### 19c-a. Result: eight turns win on LongMemEval; sixteen lose (context rot); on LoCoMo the primary misses, sixteen beat FIFO (2026-10-07)
+
+Pod v7ddalhf74kxrh (A40, $0.49/h): created 21:51:40 UTC, reader ready 21:56:43, all 60 cells done 22:35:03,
+terminated about 22:36, verified with list-pods. About 0.74 h, about $0.36. Sweeps `exp19_paid_*` at 316c35e; reader
+frozen at 7b5fc30; official judge. Report: `runs/_pipelines/exp19_paid_report.py` → `runs/exp19_paid_report.md`.
+Figure: `docs/research/figures/exp19c_frontier.png`.
+
+**LongMemEval** (470 non-abstention questions, paired by question):
+
+| row | accuracy | Δ vs §15 head (95% CI) | P(all in view) | P(correct \| in view) | P(correct \| not) | unknown | prompt tokens |
+|---|---|---|---|---|---|---|---|
+| §15 head (5 of 16) | 0.500 | — | 0.591 | 0.683 | 0.234 | 0.217 | 745 |
+| **`fixed8` (primary)** | **0.545** | **+0.045 (+0.011, +0.079)** | 0.702 | 0.676 | 0.236 | 0.151 | 1,049 |
+| `fixed16` (exploratory) | 0.487 | −0.013 (−0.053, +0.026) | 0.747 | 0.575 | 0.227 | 0.219 | 2,569 |
+| FIFO + floor, 5%, 3k target | 0.432 | −0.068 (−0.111, −0.028) | 0.498 | 0.684 | 0.182 | 0.338 | 2,964 |
+
+**LoCoMo** (categories 1–4, 1,540 questions per arm, clustered by conversation):
+
+| row | accuracy | Δ vs §15 head (95% CI) | P(all in view) | P(correct \| in view) | P(correct \| not) | unknown | prompt tokens |
+|---|---|---|---|---|---|---|---|
+| §15 head (5 of 16) | 0.244 | — | 0.334 | 0.592 | 0.068 | 0.490 | 365 |
+| **`fixed5` (primary)** | 0.267 | +0.023 (−0.001, +0.048) | 0.372 | 0.586 | 0.078 | 0.431 | 407 |
+| `fixed16` (exploratory) | **0.344** | +0.101 (+0.077, +0.122) | 0.466 | 0.595 | 0.125 | 0.305 | 734 |
+| FIFO + floor, 10% | 0.295 | +0.052 (+0.023, +0.081) | 0.427 | 0.538 | 0.115 | 0.277 | 3,087 |
+
+**Verdicts under the pre-registered criteria.**
+- **LongMemEval primary: pass.** `fixed8` beats the §15 head by +0.045 (+0.011, +0.079) at 1,049 tokens.
+  - It also beats FIFO + floor by +0.113 (+0.072, +0.155) at about a third of the tokens.
+  - The gain is evidence: P(all in view) rises from 0.591 to 0.702, and P(correct | in view) stays level (0.683 →
+    0.676), because 1,049 tokens is still below the onset.
+- **LoCoMo primary: no pass.** `fixed5` minus the §15 head is +0.023 (−0.001, +0.048); the interval touches 0. Its
+  extra evidence (+0.038 in view) is too small to show in accuracy.
+
+**Exploratory rows (no verdict; post hoc in the sense of §19a).**
+- **Context rot, measured directly (LongMemEval `fixed16` against `fixed8`): −0.057 (−0.096, −0.019).**
+  - `fixed16` has more evidence in view (0.747 against 0.702).
+  - But at 2,569 tokens, P(correct | in view) falls from 0.676 to 0.575.
+  - Same head, same ranking, the same question set. The only change is 8 more turns, and the reader answers worse
+    with the evidence in front of it. This is the mechanism the thesis argues (§13a), now on a controlled pair.
+- **LoCoMo `fixed16`: 0.344 at 734 tokens, against FIFO + floor at 10%, 0.295 at 3,087.** The difference is +0.049
+  (+0.034, +0.062).
+  - This is the first row on LoCoMo above the FIFO frontier, at about a quarter of its tokens.
+  - On LoCoMo, 16 short turns are still far below the onset, so more evidence converts: P(correct | in view) stays
+    at 0.595.
+  - It is exploratory. It was not the arm the §19 rule picked, so it is evidence, not a claim.
+
+**Same-host replicate** (new generations on the new host; the earlier figures stand):
+
+| row | earlier | §19c |
+|---|---|---|
+| LongMemEval §15 head | 0.513 at 745 (§15b) | 0.500 at 745 |
+| LongMemEval FIFO + floor 5%, 3k target | 0.438 at 3,158 (§13a, all 500 questions with abstention) | 0.432 at 2,964 (470 questions) |
+| LoCoMo §15 head (LongMemEval-trained, fold 0) | 0.242 at 365 (§18a) | 0.244 at 365 |
+| LoCoMo FIFO + floor 10% | 0.299 at 2,917 (§13b) | 0.295 at 3,087 |
+
+The differences are within the run-to-run variation of §15c. (The FIFO prompt tokens differ a little because §13
+counted all questions, including refusal-scored ones.)
 
 ## 5. The sequential task
 
