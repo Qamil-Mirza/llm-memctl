@@ -1,5 +1,7 @@
 """A language model as the task model, swapped in without touching the harness."""
 
+import pytest
+
 from memctl.agents.llm import LLMAgent
 from memctl.config import resolve
 from memctl.harness.runner import Experiment
@@ -146,3 +148,22 @@ def test_a_reasoning_reader_writes_a_note_and_its_final_answer_is_parsed_out():
     assert "absolute dates" in prompts[0] and prompts[0].rstrip().endswith("Note:")
     silent = LLMAgent({"reasoning": True}, llm=ScriptedLLM(lambda prompt: "Answer:"))
     assert silent.act(state.view(), question, TaskState(3, "", question)).action == "unknown"
+    # A note cut off before its answer is graded whole and flagged, never turned into a refusal.
+    cut = LLMAgent({"reasoning": True}, llm=ScriptedLLM(lambda prompt: "The line [o0] says the code is K93Q and"))
+    step = cut.act(state.view(), question, TaskState(3, "", question))
+    assert step.action == "The line [o0] says the code is K93Q and" and step.info["truncated"]
+    assert not LLMAgent({"reasoning": True}, llm=ScriptedLLM(lambda p: output)).act(
+        state.view(), question, TaskState(3, "", question)).info["truncated"]
+
+
+def test_memory_order_and_line_labels_are_separate_options():
+    state = make_state([FACT, "As of step 2, the serial of node-12 is B77Z.", "Question: what is the access code of vault-317?"])
+    question = Observation("o2", state.get("o2").content, SourceType.USER, requires_response=True)
+    prompts = []
+    agent = LLMAgent({"labels": "compact", "order": "arrival"}, llm=ScriptedLLM(lambda p: prompts.append(p) or "K93Q"))
+    agent.act(state.view(), question, TaskState(3, "", question))
+    assert "[o0]" not in prompts[0] and FACT in prompts[0] and prompts[0].rstrip().endswith("Answer:")
+    assert LLMAgent({"reasoning": True}).order == "arrival" and LLMAgent({}).order == "memory"
+    for bad in ({"order": "random"}, {"labels": "none"}):
+        with pytest.raises(ValueError):
+            LLMAgent(bad)

@@ -30,14 +30,14 @@ REASONING_INSTRUCTIONS = (
 )
 
 
-def final_answer(output: str) -> str:
-    """The text after the last 'Answer:' marker, else the last non-empty line."""
+def final_answer(output: str) -> str | None:
+    """The text after the last 'Answer:' marker; None when there is no marker (a note cut off at the
+    token limit, usually), so the caller can grade the whole output instead of a fragment of it."""
     marker = output.lower().rfind("answer:")
-    if marker >= 0:
-        rest = output[marker + len("answer:"):].strip()
-        return rest.splitlines()[0].strip() if rest else ""
-    lines = [line.strip() for line in output.splitlines() if line.strip()]
-    return lines[-1] if lines else ""
+    if marker < 0:
+        return None
+    rest = output[marker + len("answer:"):].strip()
+    return rest.splitlines()[0].strip() if rest else ""
 
 
 def memory_line(item) -> str:
@@ -45,6 +45,12 @@ def memory_line(item) -> str:
     when = item.metadata.get("date")
     label = f"{who}, {when}" if when else who
     return f"[{item.id}] ({label}) {item.content}"
+
+
+def compact_line(item) -> str:
+    who = item.metadata.get("speaker") or item.source_type.value
+    when = item.metadata.get("date")
+    return f"{who}, {when}: {item.content}" if when else f"{who}: {item.content}"
 
 
 class LLMAgent(Agent):
@@ -59,12 +65,22 @@ class LLMAgent(Agent):
         # reasoning: a brief note, then "Answer: ..." (parsed out); memory is shown in the order it
         # arrived, so items retrieved from the archive sit at their place in the conversation.
         self.reasoning = bool(config.get("reasoning", False))
+        # order: "arrival" (by created_at) or "memory" (active-list order); a separate switch so the
+        # reasoning prompt can be ablated on its own. Default: arrival with reasoning, memory without.
+        self.order = config.get("order", "arrival" if self.reasoning else "memory")
+        if self.order not in ("arrival", "memory"):
+            raise ValueError(f"unknown agent order {self.order!r}")
+        # labels: "full" "[id] (speaker, date) text" or "compact" "speaker, date: text" (ids are long on
+        # LongMemEval and only the scripted reader uses them; the budget counts content tokens only).
+        self.labels = config.get("labels", "full")
+        if self.labels not in ("full", "compact"):
+            raise ValueError(f"unknown agent labels {self.labels!r}")
 
     def build_prompt(self, memory: MemoryView, observation: Observation, task: TaskState) -> str:
         items = [item for item in memory.active if item.id != observation.id]
-        if self.reasoning:
+        if self.order == "arrival":
             items.sort(key=lambda item: item.created_at)
-        lines = [memory_line(item) for item in items]
+        lines = [memory_line(item) if self.labels == "full" else compact_line(item) for item in items]
         instructions = self.instructions or task.goal or DEFAULT_INSTRUCTIONS
         if self.reasoning:
             instructions = f"{instructions}\n{REASONING_INSTRUCTIONS}"
@@ -77,8 +93,16 @@ class LLMAgent(Agent):
         prompt = self.build_prompt(memory, observation, task)
         started = time.perf_counter()
         output = self.llm.generate(prompt, self.max_new_tokens).strip()
-        answer = (final_answer(output) or "unknown") if self.reasoning else output
+        truncated = False
+        answer = output
+        if self.reasoning:
+            parsed = final_answer(output)
+            # No marker: grade the whole output, never turn it into a refusal (refusals score on abstention).
+            truncated = parsed is None
+            answer = output if truncated else (parsed or "unknown")
         info = {
+            "output": output,
+            "truncated": truncated,
             "prompt_tokens": count_tokens(prompt),
             "output_tokens": count_tokens(output),
             "model_calls": 1,
