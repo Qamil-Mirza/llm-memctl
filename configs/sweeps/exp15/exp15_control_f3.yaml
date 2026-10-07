@@ -1,0 +1,51 @@
+# Experiment 15 control (review): length and speaker rules on the same 16 BM25 candidates, fold 3, no reader.
+name: exp15_control_f3
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  agent:
+    name: 'null'
+  memory:
+    allowed_operations:
+    - KEEP
+    - MOVE_TO_ARCHIVE
+    - RETRIEVE_FROM_ARCHIVE
+    - NO_OP
+    embedder: hashing
+    count_labels: true
+  env:
+    name: longmemeval
+    path: data/longmemeval/longmemeval_s_cleaned.json
+    folds:
+      k: 5
+      fold: 3
+      part: test
+  logging:
+    detail_episodes: 100000
+grid:
+  controller:
+  - name: archive_everything
+    label: keep_last0_top5
+    keep_last: 0
+    retrieve:
+      top_k: 5
+      method: lexical
+  - name: archive_everything
+    label: keep_last0_shortest5of16
+    keep_last: 0
+    retrieve:
+      top_k: 5
+      method: lexical
+      candidates: 16
+      rerank: shortest
+  - name: archive_everything
+    label: keep_last0_user5of16
+    keep_last: 0
+    retrieve:
+      top_k: 5
+      method: lexical
+      candidates: 16
+      speaker: user
+  memory.budget.fraction:
+  - 0.05

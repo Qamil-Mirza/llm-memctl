@@ -67,6 +67,7 @@ class Experiment:
             agent = build_agent(self.config["agent"]) if real else NullAgent({})
             settings = EpisodeSettings(
                 f"reference-{seed}", seed, UNLIMITED, detail=False,
+                count_labels=bool(self.config["memory"].get("count_labels", False)),
                 store_agent_actions=self.config["memory"]["store_agent_actions"],
                 max_steps=self.config["compute_budget"]["max_steps_per_episode"],
             )
@@ -107,6 +108,7 @@ class Experiment:
             history_tokens=history,
             pricing=self.config["pricing"],
             interventions=interventions or {},
+            count_labels=bool(self.config["memory"].get("count_labels", False)),
         )
         return run_episode(
             self.env, self.agent, self.controller, self.engine(), settings, self.reward_fn,

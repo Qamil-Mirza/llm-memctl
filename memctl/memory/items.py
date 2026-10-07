@@ -32,6 +32,13 @@ class SourceType(str, Enum):
 _TOKEN_PATTERN = re.compile(r"\w+|[^\w\s]")
 
 
+def label_prefix(metadata: dict, source_type) -> str:
+    """The "speaker, date: " a compact-labelled reader puts before an item (agents/llm.py compact_line)."""
+    who = metadata.get("speaker") or getattr(source_type, "value", str(source_type))
+    when = metadata.get("date")
+    return f"{who}, {when}: " if when else f"{who}: "
+
+
 def count_tokens(text: str) -> int:
     """Count tokens as words plus punctuation marks.
 

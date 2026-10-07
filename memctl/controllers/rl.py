@@ -30,7 +30,7 @@ import numpy as np
 import torch
 
 from memctl.controllers.base import EpisodeInfo, Feedback, MemoryController
-from memctl.features import GLOBAL_DIM, VERSION_FEATURES, Featurizer
+from memctl.features import ITEM_FEATURES, GLOBAL_DIM, VERSION_FEATURES, Featurizer
 from memctl.memory.actions import MemoryAction, Operation
 from memctl.memory.items import Fidelity, MemoryItem
 from memctl.memory.state import MemoryView
@@ -119,10 +119,27 @@ class RLController(MemoryController):
         self.bridge_search = bool(config.get("bridge_search", False))
         self.bridge_candidates = int(config.get("bridge_candidates", 4))
         self.bridge_seeds = int(config.get("bridge_seeds", 2))
+        # Retrieval floor: the top `retrieve_floor` search results are retrieved at every question, outside
+        # the policy (no decision, no label). The policy still sees and decides on the rest of the shortlist,
+        # and makes room for the floor items by eviction. 0 (default) leaves every retrieval to the policy.
+        self.retrieve_floor = int(config.get("retrieve_floor", 0))
+        self.retrieve_floor_tokens = int(config.get("retrieve_floor_tokens", 0))
+        # N2 (Experiment 15): floor_head lets the policy's retrieve column choose which `retrieve_floor` of the
+        # `retrieve_candidates` shortlist fill the floor (top k by logit), instead of the search's own top k.
+        # keep_none archives every kept item except the current observation at every step, so memory at a
+        # question is the question plus what is retrieved: the keep-last-0 + top-k rule with a learned choice
+        # of the k, which isolates the query-time decision.
+        self.floor_head = bool(config.get("floor_head", False))
+        self.keep_none = bool(config.get("keep_none", False))
+        # Target fill: remove until active memory is at most this many tokens, even when the budget allows
+        # more (a small reader can do worse with more context). None (default) fills up to the budget.
+        self.target_tokens = int(config["target_tokens"]) if config.get("target_tokens") else None
         self.featurizer = Featurizer(bool(config.get("use_embeddings", False)), int(config.get("embedding_dim", 0)),
                                      version=2 if self.bridge_search else 1)
+        residual = config.get("residual")  # Experiment 15: logit + alpha x retrieval score on the retrieve column
         self.policy = ItemPolicy(
-            self.featurizer.item_dim, GLOBAL_DIM, int(config.get("hidden", 64)), config.get("architecture", "deepsets")
+            self.featurizer.item_dim, GLOBAL_DIM, int(config.get("hidden", 64)), config.get("architecture", "deepsets"),
+            residual, ITEM_FEATURES.index("retrieval_score") if residual is not None else None,
         )
         self.model_id = f"item-policy-{self.policy.architecture}-h{self.policy.config['hidden']}"
         self.generator = torch.Generator().manual_seed(seed)
@@ -143,6 +160,10 @@ class RLController(MemoryController):
         self.needed_model = NeededModel.load(config["needed_model"]) if config.get("needed_model") else None
         self.archive_price = float(config.get("archive_price", 0.0))
         self.need_value = float(config.get("need_value", 1.0))
+        # Token price (N1, Experiment 13): with a needed model, every decision also archives each kept item whose
+        # expected worth P(needed) x need_value is below token_price x its tokens, so memory is kept below the
+        # budget when keeping costs the reader more than it is likely to give. 0 (default) keeps the old rule.
+        self.token_price = float(config.get("token_price", 0.0))
         if config.get("checkpoint"):
             self.load(config["checkpoint"])
 
@@ -156,7 +177,8 @@ class RLController(MemoryController):
         self.recorded, self.rewards, self._roots = [], [], {}
         key = (self.seed, episode.seed) if not self.sample_offset else (self.seed, episode.seed, self.sample_offset)
         self.generator.manual_seed(hash(key) % (2**31))
-        self.retriever = build_retriever(self.config.get("retrieval_method", "lexical"), episode.embedder)
+        self.retriever = build_retriever(self.config.get("retrieval_method", "lexical"), episode.embedder,
+                                         self.config.get("retrieval_model"))
 
     def update(self, feedback: Feedback) -> None:
         if self.record:
@@ -200,25 +222,54 @@ class RLController(MemoryController):
             bridge = {item.id: score / top_bridge for item, score in found}
             listed = {item.id for item, _ in shortlist}
             shortlist = shortlist + [(item, 0.0) for item, _ in found if item.id not in listed]
-        if not memory.over_budget and not shortlist:
-            return []
-
-        active = [item for item in memory.active if not item.pinned] if memory.over_budget or shortlist else []
-        candidates = active + [item for item, _ in shortlist]
         top = max((score for _, score in shortlist), default=1.0) or 1.0
         scores = {item.id: score / top for item, score in shortlist}
+        # With a floor of k the head decides on ranks k+1..retrieve_candidates (plus bridge items), so set
+        # retrieve_candidates above the floor. When the shortlist is no longer than the floor (a small
+        # archive early in an episode) the head has nothing to decide on that question, by design.
+        # The floor takes the top results in rank order while they fit in the limit beside pinned items (and
+        # under retrieve_floor_tokens, if set), so the harness never has to return a floor item.
+        limit = min(memory.budget, self.target_tokens) if self.target_tokens else memory.budget
+        room = limit - sum(item.token_count for item in memory.active if item.pinned)
+        if self.retrieve_floor_tokens:
+            room = min(room, self.retrieve_floor_tokens)
+        floor, floor_tokens = [], 0
+        for item, _ in shortlist[: 0 if self.floor_head else self.retrieve_floor]:
+            if floor_tokens + item.token_count > room:
+                break
+            floor.append(item)
+            floor_tokens += item.token_count
+        shortlist = shortlist[len(floor):]
+        floor_action = [
+            MemoryAction(
+                Operation.RETRIEVE_FROM_ARCHIVE, tuple(item.id for item in floor),
+                parameters={"query": task.observation.content, "method": f"floor+{self.retriever.name}"},
+            )
+        ] if floor else []
+        over_budget = memory.active_tokens + floor_tokens > limit
+        pricing = self.token_price > 0 and self.needed_model is not None
+        cleared = [item.id for item in memory.active if not item.pinned and item.id != task.observation.id] \
+            if self.keep_none else []
+        clear_action = [MemoryAction(Operation.MOVE_TO_ARCHIVE, tuple(cleared), parameters={"method": "keep_none"})] \
+            if cleared else []
+        if (not over_budget or self.keep_none) and not shortlist and not pricing:
+            self._info = {"floor_ids": [item.id for item in floor], "floor_tokens": floor_tokens} if floor else {}
+            return clear_action + floor_action
+
+        active = [] if self.keep_none else [item for item in memory.active if not item.pinned]
+        candidates = active + [item for item, _ in shortlist]
         savings = np.array([[self._saving(item, op) for op in REMOVAL_OPERATIONS] for item in active], dtype=np.int64)
         savings = savings.reshape(len(active), N_REMOVALS)
         decision = Decision(
             step=memory.step,
             items=self.featurizer.items(candidates, memory, task, scores, bridge),
-            global_features=self.featurizer.globals(memory, task),
+            global_features=self.featurizer.globals(memory, task, limit, floor_tokens),
             item_ids=[item.id for item in candidates],
             roots=[self._root_ids(item) for item in candidates],
             n_active=len(active),
             savings=savings,
             mask=savings > 0,
-            excess=memory.active_tokens - memory.budget,
+            excess=memory.active_tokens + floor_tokens - limit,
             retrieve_tokens=[item.token_count for item, _ in shortlist],
         )
         if self.expert is not None:
@@ -229,7 +280,7 @@ class RLController(MemoryController):
         if self.record:
             self.recorded.append(decision)
 
-        actions = []
+        actions = clear_action + list(floor_action)
         retrieved = [candidates[decision.n_active + j].id for j, flag in enumerate(decision.retrieved) if flag]
         if retrieved:
             actions.append(
@@ -242,15 +293,37 @@ class RLController(MemoryController):
             item, operation = active[pick // N_REMOVALS], REMOVAL_OPERATIONS[pick % N_REMOVALS]
             parameters = {"ratio": self.compact_ratio} if operation in (Operation.COMPACT, Operation.COMPACT_AND_ARCHIVE) else {}
             actions.append(MemoryAction(operation, (item.id,), parameters=parameters))
+        priced = self._priced_archives(decision, active, task) if pricing else []
+        if priced:
+            actions.append(MemoryAction(Operation.MOVE_TO_ARCHIVE, tuple(priced), parameters={"method": "token_price"}))
         self._info = {
             "candidates": len(candidates),
+            "floor_ids": [item.id for item in floor],
+            "floor_tokens": floor_tokens,
             "picks": [(decision.item_ids[p // N_REMOVALS], REMOVAL_OPERATIONS[p % N_REMOVALS].value) for p in decision.picks],
             "log_prob": decision.log_prob,
             "value": decision.value,
+            **({"priced_archives": priced} if pricing else {}),
         }
         if self.log_features:
             self._info["features"] = decision.items.round(4).tolist()
         return actions
+
+    def _priced_archives(self, decision: Decision, active: list[MemoryItem], task: TaskState) -> list[str]:
+        """Kept items not worth their tokens: P(needed) x need_value < token_price x tokens. Never the current
+        observation or an item this decision already removes; only when archiving is allowed."""
+        n = decision.n_active
+        if not n or not self.allows(Operation.MOVE_TO_ARCHIVE):
+            return []
+        picked = {pick // N_REMOVALS for pick in decision.picks}
+        rows = np.concatenate([decision.items[:n], np.repeat(decision.global_features[None, :], n, axis=0)], axis=1)
+        with torch.no_grad():
+            needed = torch.sigmoid(self.needed_model(torch.from_numpy(rows))).numpy()
+        return [
+            item.id for i, item in enumerate(active)
+            if i not in picked and item.id != task.observation.id
+            and needed[i] * self.need_value < self.token_price * item.token_count
+        ]
 
     def _choose(self, decision: Decision) -> None:
         """Fill in `picks`, `retrieved`, `log_prob` and `value`, from the policy or from the expert."""
@@ -265,6 +338,9 @@ class RLController(MemoryController):
             retrieve_logits = logits[n:, RETRIEVE_COLUMN]
             if self.follow_expert and decision.expert_retrieved is not None:
                 chosen = torch.tensor(decision.expert_retrieved, dtype=torch.float32)
+            elif self.floor_head:  # the k best by the head's logit (a ranking, not k independent yes/no)
+                chosen = torch.zeros_like(retrieve_logits)
+                chosen[torch.topk(retrieve_logits, min(self.retrieve_floor, len(retrieve_logits))).indices] = 1.0
             elif self.greedy:
                 chosen = (retrieve_logits > 0).float()
             else:
@@ -333,6 +409,7 @@ class RLController(MemoryController):
                              "disagree: version 2 policies are trained with bridge_search: true")
         self.featurizer = Featurizer(checkpoint["use_embeddings"], checkpoint["embedding_dim"], version=version)
         settings = checkpoint["policy"]
-        self.policy = ItemPolicy(settings["item_dim"], settings["global_dim"], settings["hidden"], settings["architecture"])
+        self.policy = ItemPolicy(settings["item_dim"], settings["global_dim"], settings["hidden"], settings["architecture"],
+                                 settings.get("residual"), settings.get("residual_index"))
         self.policy.load_state_dict(checkpoint["state_dict"])
         self.model_id = f"item-policy-{settings['architecture']}-h{settings['hidden']}"

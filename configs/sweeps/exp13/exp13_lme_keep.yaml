@@ -1,0 +1,122 @@
+# LongMemEval keep-last-n x top-k (budget-free), every fold.
+name: exp13_lme_keep
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env:
+    name: longmemeval
+    path: data/longmemeval/longmemeval_s_cleaned.json
+    folds:
+      k: 5
+      fold: 0
+      part: test
+    judge:
+      backend: openai
+      name: qwen2.5-7b-instruct
+      base_url: POD_URL/v1
+      timeout_s: 300
+      cache_dir: cache/generations_qwen7b_vllm_v2
+      style: longmemeval
+  agent:
+    name: llm
+    reasoning: true
+    labels: compact
+    max_new_tokens: 256
+    model:
+      backend: openai
+      name: qwen2.5-7b-instruct
+      base_url: POD_URL/v1
+      timeout_s: 300
+      cache_dir: cache/generations_qwen7b_vllm_v2
+  memory:
+    allowed_operations:
+    - KEEP
+    - MOVE_TO_ARCHIVE
+    - RETRIEVE_FROM_ARCHIVE
+    - NO_OP
+    embedder: hashing
+  logging:
+    detail_episodes: 100000
+grid:
+  env.folds.fold:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  controller:
+  - name: archive_everything
+    label: keep_last0_top3
+    keep_last: 0
+    retrieve:
+      top_k: 3
+      method: lexical
+  - name: archive_everything
+    label: keep_last0_top5
+    keep_last: 0
+    retrieve:
+      top_k: 5
+      method: lexical
+  - name: archive_everything
+    label: keep_last0_top8
+    keep_last: 0
+    retrieve:
+      top_k: 8
+      method: lexical
+  - name: archive_everything
+    label: keep_last4_top3
+    keep_last: 4
+    retrieve:
+      top_k: 3
+      method: lexical
+  - name: archive_everything
+    label: keep_last4_top5
+    keep_last: 4
+    retrieve:
+      top_k: 5
+      method: lexical
+  - name: archive_everything
+    label: keep_last4_top8
+    keep_last: 4
+    retrieve:
+      top_k: 8
+      method: lexical
+  - name: archive_everything
+    label: keep_last8_top3
+    keep_last: 8
+    retrieve:
+      top_k: 3
+      method: lexical
+  - name: archive_everything
+    label: keep_last8_top5
+    keep_last: 8
+    retrieve:
+      top_k: 5
+      method: lexical
+  - name: archive_everything
+    label: keep_last8_top8
+    keep_last: 8
+    retrieve:
+      top_k: 8
+      method: lexical
+  - name: archive_everything
+    label: keep_last16_top3
+    keep_last: 16
+    retrieve:
+      top_k: 3
+      method: lexical
+  - name: archive_everything
+    label: keep_last16_top5
+    keep_last: 16
+    retrieve:
+      top_k: 5
+      method: lexical
+  - name: archive_everything
+    label: keep_last16_top8
+    keep_last: 16
+    retrieve:
+      top_k: 8
+      method: lexical
+  memory.budget.fraction:
+  - 0.05

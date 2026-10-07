@@ -25,6 +25,7 @@ class QAItem:
     category: str
     evidence_ids: tuple[str, ...]
     unanswerable: bool = False
+    after: str | None = None  # ask right after this turn; None: after the whole history
 
 
 @dataclass
@@ -66,10 +67,17 @@ class QAEnvironment(TaskEnvironment):
         questions = episode.questions[: self.max_questions] if self.max_questions else episode.questions
         self._episode = episode
         self._questions = {f"q{number:04d}": question for number, question in enumerate(questions)}
-        self._observations = list(episode.turns) + [
-            Observation(query_id, f"Question: {question.question}", SourceType.USER, requires_response=True)
-            for query_id, question in self._questions.items()
-        ]
+        asked_after: dict[str | None, list[Observation]] = {}
+        for query_id, question in self._questions.items():
+            asked_after.setdefault(question.after, []).append(
+                Observation(query_id, f"Question: {question.question}", SourceType.USER, requires_response=True))
+        self._observations = []
+        for turn in episode.turns:
+            self._observations.append(turn)
+            self._observations.extend(asked_after.pop(turn.id, []))
+        self._observations.extend(asked_after.pop(None, []))
+        self._observations.extend(o for rest in asked_after.values() for o in rest)  # an `after` not in the history
+        self._step_of = {o.id: n + 1 for n, o in enumerate(self._observations)}
         self.horizon = len(self._observations)
         self._index, self._last_reward, self._scores = 0, 0.0, []
         return self._observations[0]
@@ -82,7 +90,7 @@ class QAEnvironment(TaskEnvironment):
             question = self._questions[current.id]
             scores = score_answer(agent_action or "", question.gold, question.unanswerable)
             if self.judge is not None and not question.unanswerable:
-                scores["correct"] = self.judge.is_correct(question.question, question.gold, agent_action or "")
+                scores["correct"] = self.judge.is_correct(question.question, question.gold, agent_action or "", question.category)
                 scores["decided_by"] = f"judge ({self.judge.name})"
             self._scores.append({**scores, "category": question.category})
             self._last_reward = float(scores["correct"])
@@ -105,16 +113,15 @@ class QAEnvironment(TaskEnvironment):
 
     def get_ground_truth_dependencies(self) -> list[Dependency]:
         seen = {observation.id for observation in self._observations[: self._index + 1]}
-        turns = len(self._episode.turns)
         dependencies = []
-        for position, (query_id, question) in enumerate(self._questions.items()):
+        for query_id, question in self._questions.items():
             if query_id not in seen:
                 continue
             requirements = tuple(
                 EvidenceRequirement((evidence_id,), self._episode.turn_text.get(evidence_id, ""))
                 for evidence_id in question.evidence_ids
             )
-            dependencies.append(Dependency(query_id, turns + position + 1, requirements, question.gold, question.category))
+            dependencies.append(Dependency(query_id, self._step_of[query_id], requirements, question.gold, question.category))
         return dependencies
 
     def episode_stats(self) -> dict:

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 
-from memctl.memory.items import Fidelity, MemoryItem, SourceType, Tier, count_tokens
+from memctl.memory.items import Fidelity, MemoryItem, SourceType, Tier, count_tokens, label_prefix
 
 HISTORY_IN_VIEW = 64  # how many recent action and retrieval records a view carries
 
@@ -43,8 +43,9 @@ class MemoryView:
 
 
 class MemoryState:
-    def __init__(self, budget: int, archive_budget: int | None = None, embedder=None) -> None:
+    def __init__(self, budget: int, archive_budget: int | None = None, embedder=None, count_labels: bool = False) -> None:
         self.budget = budget
+        self.count_labels = count_labels  # item tokens include their reader label (memory.count_labels)
         self.archive_budget = archive_budget
         self.embedder = embedder
         self.step = 0
@@ -124,7 +125,8 @@ class MemoryState:
         item = MemoryItem(
             id=item_id,
             content=content,
-            token_count=count_tokens(content),
+            token_count=count_tokens(label_prefix(dict(metadata or {}), source_type) + content
+                                     if self.count_labels else content),
             created_at=self.step,
             source_type=SourceType(source_type),
             fidelity=fidelity,

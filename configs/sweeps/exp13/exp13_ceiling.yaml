@@ -1,0 +1,51 @@
+# Evidence-only reader: full context of longmemeval_oracle.json (evidence sessions only).
+name: exp13_ceiling
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env:
+    name: longmemeval
+    path: data/longmemeval/longmemeval_oracle.json
+    folds:
+      k: 5
+      fold: 0
+      part: test
+    judge:
+      backend: openai
+      name: qwen2.5-7b-instruct
+      base_url: POD_URL/v1
+      timeout_s: 300
+      cache_dir: cache/generations_qwen7b_vllm_v2
+      style: longmemeval
+  agent:
+    name: llm
+    reasoning: true
+    labels: compact
+    max_new_tokens: 256
+    model:
+      backend: openai
+      name: qwen2.5-7b-instruct
+      base_url: POD_URL/v1
+      timeout_s: 300
+      cache_dir: cache/generations_qwen7b_vllm_v2
+  memory:
+    allowed_operations:
+    - KEEP
+    - MOVE_TO_ARCHIVE
+    - RETRIEVE_FROM_ARCHIVE
+    - NO_OP
+    embedder: hashing
+  logging:
+    detail_episodes: 100000
+grid:
+  env.folds.fold:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  controller:
+  - name: full_context
+  memory.budget.fraction:
+  - 1.0

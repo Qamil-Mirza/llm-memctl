@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -200,7 +201,8 @@ class TrackedLLM:
             # Several processes share one cache and often send the same prompt: write to a private
             # file and rename it into place, so no reader ever sees a half-written entry.
             path.parent.mkdir(parents=True, exist_ok=True)
-            partial = path.with_name(f"{path.name}.{os.getpid()}.tmp")
+            # Unique per process and thread: threads of one process may write the same key at once.
+            partial = path.with_name(f"{path.name}.{os.getpid()}.{threading.get_ident()}.tmp")
             partial.write_text(json.dumps({"prompt": prompt, "max_new_tokens": max_new_tokens, **self.settings, "output": output}))
             os.replace(partial, path)
         self.usage.add(prompt, output, time.perf_counter() - started)

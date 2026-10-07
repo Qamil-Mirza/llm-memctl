@@ -48,6 +48,7 @@ class EpisodeSettings:
     history_tokens: int | None = None
     pricing: dict = field(default_factory=dict)
     interventions: dict = field(default_factory=dict)  # step -> [MemoryAction], applied by the harness
+    count_labels: bool = False  # memory.count_labels
 
 
 @dataclass
@@ -81,7 +82,7 @@ def run_episode(
 ) -> EpisodeResult:
     reward_fn = reward_fn or RewardFunction()
     shadows = shadows or []
-    state = MemoryState(settings.budget, settings.archive_budget, embedder)
+    state = MemoryState(settings.budget, settings.archive_budget, embedder, settings.count_labels)
     observation = env.reset(settings.seed)
     agent.reset(settings.seed)
     goal_embedding = embedder.embed(env.goal) if embedder and env.goal else None
@@ -229,6 +230,7 @@ def run_episode(
         totals.update(
             agent_prompt_tokens=int(agent_info.get("prompt_tokens", 0)),
             agent_output_tokens=int(agent_info.get("output_tokens", 0)),
+            agent_truncated=int(bool(agent_info.get("truncated", False))),
             task_model_calls=int(agent_info.get("model_calls", 0)),
             controller_model_calls=int(decision.get("model_calls", 0)),
             controller_input_tokens=int(decision.get("input_tokens", 0)),
@@ -285,6 +287,8 @@ def run_episode(
                     "forced_actions": [o.log_row() for o in forced],
                     "retrieved_ids": retrieved_ids,
                     "agent_action": agent_step.action if agent_step else None,
+                    "agent_output": agent_step.info.get("output") if agent_step else None,
+                    "agent_prompt_tokens": agent_step.info.get("prompt_tokens") if agent_step else None,
                     "agent_used_item_ids": list(agent_step.used_item_ids) if agent_step else [],
                     "scored": scored,
                     "correct": correct,
@@ -338,6 +342,7 @@ def run_episode(
         "controller_latency_s": totals["controller_latency_us"] / 1e6,
         "agent_latency_s": totals["agent_latency_us"] / 1e6,
         "tokens_processed": totals["agent_prompt_tokens"] + totals["controller_input_tokens"],
+        "agent_truncated": totals["agent_truncated"],
         "task_model_calls": totals["task_model_calls"],
         "controller_model_calls": totals["controller_model_calls"],
         "estimated_cost_usd": cost,

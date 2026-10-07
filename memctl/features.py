@@ -117,11 +117,14 @@ class Featurizer:
         return rows
 
     @staticmethod
-    def globals(memory: MemoryView, task: TaskState) -> np.ndarray:
+    def globals(memory: MemoryView, task: TaskState, limit: int | None = None, pending: int = 0) -> np.ndarray:
+        """`limit` replaces the budget in the two fill features (a controller's token target); `pending`
+        adds tokens about to arrive (a retrieval floor), so the features agree with what must be freed."""
+        limit, active = limit or memory.budget, memory.active_tokens + pending
         return np.array(
             [
-                min(3.0, memory.active_tokens / memory.budget),
-                min(2.0, max(0, memory.active_tokens - memory.budget) / memory.budget),
+                min(3.0, active / limit),
+                min(2.0, max(0, active - limit) / limit),
                 memory.step / (task.horizon or 1000),
                 len(memory.active) / 100.0,
                 min(5.0, memory.archive_tokens / memory.budget),

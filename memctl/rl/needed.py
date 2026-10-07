@@ -60,7 +60,11 @@ def rows_of(decision) -> np.ndarray:
     return np.concatenate([decision.items[:n], np.repeat(decision.global_features[None, :], n, axis=0)], axis=1)
 
 
-def collect(experiment: Experiment, seeds: range, fractions: list[float], rng: random.Random) -> tuple[np.ndarray, np.ndarray]:
+def collect(experiment: Experiment, seeds: range, fractions: list[float], rng: random.Random,
+            rows: str = "removed", per_decision: int = 8) -> tuple[np.ndarray, np.ndarray]:
+    """Features and hindsight labels (needed again or not). `rows`: "removed" uses the items the policy removes
+    (P(needed | the policy chose to remove it)); "active" samples up to `per_decision` active items at every
+    decision (P(needed | in memory)), what a rule over all kept items needs."""
     controller = experiment.controller
     controller.record, controller.greedy = True, True
     features, labels = [], []
@@ -70,13 +74,16 @@ def collect(experiment: Experiment, seeds: range, fractions: list[float], rng: r
         experiment.run_episode(seed=seed, detail=False)
         experiment._hindsight.pop(seed, None)
         for decision in controller.recorded:
-            if not decision.picks:
+            if rows == "active":
+                chosen = rng.sample(range(decision.n_active), min(per_decision, decision.n_active))
+            elif decision.picks:
+                chosen = [pick // N_REMOVALS for pick in decision.picks]
+            else:
                 continue
-            rows = rows_of(decision)
-            for pick in decision.picks:
-                i = pick // N_REMOVALS
+            table = rows_of(decision)
+            for i in chosen:
                 need = min(hindsight.next_need(root, decision.step) for root in decision.roots[i])
-                features.append(rows[i])
+                features.append(table[i])
                 labels.append(float(need != NEVER))
     return np.array(features, dtype=np.float32), np.array(labels, dtype=np.float32)
 
@@ -127,9 +134,11 @@ def fit(config: dict) -> Path:
     torch.manual_seed(int(config["seed"]))
     experiment = Experiment(config)
     offset = int(settings["seed_offset"]) + 1000 * int(config["seed"])
-    train_x, train_y = collect(experiment, range(offset, offset + int(settings["episodes"])), settings["budget_fractions"], rng)
+    rows, per = settings.get("rows", "removed"), int(settings.get("per_decision", 8))
+    train_x, train_y = collect(experiment, range(offset, offset + int(settings["episodes"])), settings["budget_fractions"],
+                               rng, rows, per)
     held = range(offset + int(settings["episodes"]), offset + int(settings["episodes"]) + int(settings["held_out"]))
-    test_x, test_y = collect(experiment, held, settings["budget_fractions"], rng)
+    test_x, test_y = collect(experiment, held, settings["budget_fractions"], rng, rows, per)
 
     model = NeededModel(train_x.shape[1], int(settings["hidden"]))
     optimizer = torch.optim.Adam(model.parameters(), lr=float(settings["lr"]), weight_decay=1e-4)
@@ -141,9 +150,12 @@ def fit(config: dict) -> Path:
         optimizer.step()
     with torch.no_grad():
         probabilities = torch.sigmoid(model(torch.from_numpy(test_x))).numpy()
-    need_value = estimate_need_value(
-        experiment, model, range(held.stop, held.stop + int(settings["value_episodes"])), settings["budget_fractions"], rng,
-    )
+    if int(settings["value_episodes"]) > 0:
+        need_value = estimate_need_value(
+            experiment, model, range(held.stop, held.stop + int(settings["value_episodes"])), settings["budget_fractions"], rng,
+        )
+    else:  # fixed in advance (needed.need_value), e.g. from a measured accuracy difference
+        need_value = {"value": float(settings.get("need_value", 1.0)), "fixed": True}
     report = {
         "need_value": need_value,
         **collect_metadata(), "policy": config["controller"].get("checkpoint"),

@@ -10,7 +10,7 @@ import time
 
 from memctl.agents.base import Agent
 from memctl.llm import build_llm
-from memctl.memory.items import count_tokens
+from memctl.memory.items import count_tokens, label_prefix
 from memctl.memory.state import MemoryView
 from memctl.task import AgentStep, Observation, TaskState
 
@@ -19,12 +19,40 @@ DEFAULT_INSTRUCTIONS = (
     "Answer with a short phrase. If the memory does not contain the answer, reply: unknown"
 )
 
+# Added after the task instructions when `reasoning: true`. A 7B reader asked for a short phrase cannot
+# count across sessions or do date arithmetic, and falls back to "unknown" or "yesterday" even with
+# the evidence in view (Experiment 11e); a short note before the answer is LongMemEval's Chain-of-Note.
+REASONING_INSTRUCTIONS = (
+    "Each memory line shows who said it and when. First write a brief note of at most 80 words: name the "
+    "facts that bear on the question in a few words each (do not copy whole lines), then do any counting, "
+    "adding or date arithmetic. Give dates as absolute dates (for example 7 May 2023), never relative ones "
+    "such as 'yesterday' or 'last year'. If the question asks for advice or a suggestion, answer with a "
+    "brief suggestion that uses what the memory says about the user. Reply unknown only if the memory has "
+    "nothing at all on the topic. End with one line of the form 'Answer: <short phrase>'."
+)
+# Experiment 13's first check used an earlier wording (no 80-word limit, no advice sentence): 10.6% of
+# notes ran out of tokens before "Answer:" and every preference question was answered "unknown".
+
+
+def final_answer(output: str) -> str | None:
+    """The text after the last 'Answer:' marker; None when there is no marker (a note cut off at the
+    token limit, usually), so the caller can grade the whole output instead of a fragment of it."""
+    marker = output.lower().rfind("answer:")
+    if marker < 0:
+        return None
+    rest = output[marker + len("answer:"):].strip()
+    return rest.splitlines()[0].strip() if rest else ""
+
 
 def memory_line(item) -> str:
     who = item.metadata.get("speaker") or item.source_type.value
     when = item.metadata.get("date")
     label = f"{who}, {when}" if when else who
     return f"[{item.id}] ({label}) {item.content}"
+
+
+def compact_line(item) -> str:
+    return label_prefix(item.metadata, item.source_type) + item.content
 
 
 class LLMAgent(Agent):
@@ -36,22 +64,51 @@ class LLMAgent(Agent):
         self.model_id = self.llm.name
         self.max_new_tokens = int(config.get("max_new_tokens", 48))
         self.instructions = config.get("instructions")
+        # reasoning: a brief note, then "Answer: ..." (parsed out); memory is shown in the order it
+        # arrived, so items retrieved from the archive sit at their place in the conversation.
+        self.reasoning = bool(config.get("reasoning", False))
+        # order: "arrival" (by created_at) or "memory" (active-list order); a separate switch so the
+        # reasoning prompt can be ablated on its own. Default: arrival with reasoning, memory without.
+        self.order = config.get("order", "arrival" if self.reasoning else "memory")
+        if self.order not in ("arrival", "memory"):
+            raise ValueError(f"unknown agent order {self.order!r}")
+        # labels: "full" "[id] (speaker, date) text" or "compact" "speaker, date: text" (ids are long on
+        # LongMemEval and only the scripted reader uses them; the budget counts content tokens only).
+        self.labels = config.get("labels", "full")
+        if self.labels not in ("full", "compact"):
+            raise ValueError(f"unknown agent labels {self.labels!r}")
 
     def build_prompt(self, memory: MemoryView, observation: Observation, task: TaskState) -> str:
-        lines = [memory_line(item) for item in memory.active if item.id != observation.id]
+        items = [item for item in memory.active if item.id != observation.id]
+        if self.order == "arrival":
+            items.sort(key=lambda item: item.created_at)
+        lines = [memory_line(item) if self.labels == "full" else compact_line(item) for item in items]
         instructions = self.instructions or task.goal or DEFAULT_INSTRUCTIONS
+        if self.reasoning:
+            instructions = f"{instructions}\n{REASONING_INSTRUCTIONS}"
         return "\n".join(
             [instructions, "", "## Memory", *(lines or ["(empty)"]), "", "## Current input", observation.content, "",
-             "Answer:"]
+             "Note:" if self.reasoning else "Answer:"]
         )
 
     def act(self, memory: MemoryView, observation: Observation, task: TaskState) -> AgentStep:
         prompt = self.build_prompt(memory, observation, task)
         started = time.perf_counter()
-        answer = self.llm.generate(prompt, self.max_new_tokens).strip()
+        output = self.llm.generate(prompt, self.max_new_tokens).strip()
+        truncated = False
+        answer = output
+        if self.reasoning:
+            parsed = final_answer(output)
+            # No marker: grade the whole output, never turn it into a refusal (refusals score on abstention).
+            truncated = parsed is None
+            answer = output if truncated else (parsed or "unknown")
         info = {
+            "output": output,
+            # True when the output has no "Answer:" marker. Despite the name this includes a bare reply such as
+            # "unknown", not only a note cut off at max_new_tokens; analysis/qa_tables.is_truncated separates them.
+            "truncated": truncated,
             "prompt_tokens": count_tokens(prompt),
-            "output_tokens": count_tokens(answer),
+            "output_tokens": count_tokens(output),
             "model_calls": 1,
             "latency_s": time.perf_counter() - started,
         }

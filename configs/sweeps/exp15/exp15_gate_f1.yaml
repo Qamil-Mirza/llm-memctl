@@ -1,0 +1,60 @@
+# Experiment 15 gate, LongMemEval fold 1, test part: no reader; three declared head arms against BM25's top 5.
+name: exp15_gate_f1
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  agent:
+    name: 'null'
+  memory:
+    allowed_operations:
+    - KEEP
+    - MOVE_TO_ARCHIVE
+    - RETRIEVE_FROM_ARCHIVE
+    - NO_OP
+    embedder: hashing
+    count_labels: true
+  env:
+    name: longmemeval
+    path: data/longmemeval/longmemeval_s_cleaned.json
+    folds:
+      k: 5
+      fold: 1
+      part: test
+  logging:
+    detail_episodes: 100000
+grid:
+  controller:
+  - name: archive_everything
+    label: keep_last0_top5
+    keep_last: 0
+    retrieve:
+      top_k: 5
+      method: lexical
+  - name: rl
+    label: head_listwise
+    checkpoint: runs/lme_head_listwise_f1/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: head_listsum
+    checkpoint: runs/lme_head_listsum_f1/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: head_residual
+    checkpoint: runs/lme_head_residual_f1/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    floor_head: true
+    keep_none: true
+    residual: 20.0
+  memory.budget.fraction:
+  - 0.05

@@ -1,0 +1,25 @@
+# N1 (Experiment 14): P(needed again | kept), for the token-price rule, on the train part of LongMemEval fold 0.
+# Rows are active items sampled at every decision of the composed-episode policy (lme_compose4_f0_s0) with the
+# retrieval floor, labels counted in the budget. need_value is fixed in advance at 0.44 = P(correct | evidence in
+# view) - P(correct | not) for FIFO filled to 5% in Experiment 13a (0.591 - 0.153).
+schema_version: 1
+name: lme_needed_f0
+seed: 0
+env: {name: longmemeval, path: data/longmemeval/longmemeval_s_cleaned.json, folds: {k: 5, fold: 0, part: train}}
+agent: {name: "null"}
+controller: {name: rl, checkpoint: runs/lme_compose4_f0_s0/checkpoints/policy_best.pt, retrieval_method: lexical,
+             retrieve_floor: 5, retrieve_candidates: 16}
+memory:
+  allowed_operations: [KEEP, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+  embedder: hashing
+  count_labels: true
+needed:
+  episodes: 120
+  held_out: 30
+  seed_offset: 200000
+  budget_fractions: [0.02, 0.05]
+  rows: active
+  per_decision: 2
+  value_episodes: 0
+  need_value: 0.44
+  output: runs/lme_needed_f0

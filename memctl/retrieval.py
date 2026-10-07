@@ -23,18 +23,25 @@ class Retriever(Protocol):
         ...
 
 
+def labelled_text(item: MemoryItem) -> str:
+    """The item as a search sees it with labels: "speaker (date): content" (Experiment 12)."""
+    who, when = item.metadata.get("speaker", ""), item.metadata.get("date", "")
+    return f"{who} ({when}): {item.content}" if who or when else item.content
+
+
 class LexicalRetriever:
-    """BM25 over content words, with document frequencies taken from the candidates."""
+    """BM25 over content words, with document frequencies taken from the candidates. With `labels`,
+    each item is indexed with its speaker and date (labelled_text)."""
 
-    name = "lexical"
-
-    def __init__(self, k1: float = 1.2, b: float = 0.75) -> None:
-        self.k1, self.b = k1, b
+    def __init__(self, k1: float = 1.2, b: float = 0.75, labels: bool = False) -> None:
+        self.k1, self.b, self.labels = k1, b, labels
+        self.name = "lexical_label" if labels else "lexical"
 
     def search(self, query: str, items: Sequence[MemoryItem], k: int) -> list[tuple[MemoryItem, float]]:
         if not items or k <= 0:
             return []
-        documents = [Counter(content_words(item.content)) for item in items]
+        text = labelled_text if self.labels else (lambda item: item.content)
+        documents = [Counter(content_words(text(item))) for item in items]
         lengths = [sum(document.values()) for document in documents]
         average = sum(lengths) / len(lengths) or 1.0
         frequency = Counter(word for document in documents for word in document)
@@ -70,6 +77,67 @@ class EmbeddingRetriever:
             scored.append((item, cosine(vector, embedding)))
         scored.sort(key=lambda pair: (-pair[1], pair[0].created_at))
         return [pair for pair in scored[:k] if pair[1] > 0]
+
+
+_DENSE_MODELS: dict[str, object] = {}
+_DENSE_VECTORS: dict[tuple[str, str], object] = {}
+
+
+class DenseRetriever:
+    """Cosine similarity of sentence embeddings of labelled text, from a sentence-transformers model.
+    Models and vectors are cached per process, so every cell of a sweep embeds a turn once."""
+
+    def __init__(self, model: str = "BAAI/bge-small-en-v1.5", device: str = "cpu") -> None:
+        self.model_name, self.device = model, device
+        self.name = f"dense:{model}"
+
+    def _model(self):
+        if self.model_name not in _DENSE_MODELS:
+            from sentence_transformers import SentenceTransformer  # optional dependency
+
+            _DENSE_MODELS[self.model_name] = SentenceTransformer(self.model_name, device=self.device)
+        return _DENSE_MODELS[self.model_name]
+
+    def vectors(self, texts: list[str]):
+        import numpy as np
+
+        missing = list(dict.fromkeys(t for t in texts if (self.model_name, t) not in _DENSE_VECTORS))
+        if missing:
+            encoded = self._model().encode(missing, normalize_embeddings=True, batch_size=64, show_progress_bar=False)
+            for text, vector in zip(missing, encoded):
+                _DENSE_VECTORS[(self.model_name, text)] = np.asarray(vector, dtype=np.float32)
+        return np.stack([_DENSE_VECTORS[(self.model_name, t)] for t in texts])
+
+    def search(self, query: str, items: Sequence[MemoryItem], k: int) -> list[tuple[MemoryItem, float]]:
+        if not items or k <= 0:
+            return []
+        scores = self.vectors([labelled_text(item) for item in items]) @ self.vectors([query])[0]
+        scored = sorted(zip(items, (float(x) for x in scores)), key=lambda pair: (-pair[1], pair[0].created_at))
+        return [pair for pair in scored[:k] if pair[1] > 0]
+
+
+class FusionRetriever:
+    """Reciprocal rank fusion (constant 60) of labelled BM25 and dense search, each ranked to `depth`.
+    The score is the fused RRF score, not a BM25 score: a policy's retrieval-score feature (score over
+    the best score in the shortlist) changes meaning with it."""
+
+    def __init__(self, model: str = "BAAI/bge-small-en-v1.5", depth: int = 50, constant: int = 60) -> None:
+        self.lexical, self.dense = LexicalRetriever(labels=True), DenseRetriever(model)
+        self.depth, self.constant = depth, constant
+        self.name = f"fusion:{model}"
+
+    def search(self, query: str, items: Sequence[MemoryItem], k: int) -> list[tuple[MemoryItem, float]]:
+        if not items or k <= 0:
+            return []
+        depth = max(self.depth, k)
+        fused: dict[str, float] = {}
+        by_id = {}
+        for ranking in (self.lexical.search(query, items, depth), self.dense.search(query, items, depth)):
+            for rank, (item, _) in enumerate(ranking, 1):
+                by_id[item.id] = item
+                fused[item.id] = fused.get(item.id, 0.0) + 1.0 / (self.constant + rank)
+        scored = sorted(((by_id[i], score) for i, score in fused.items()), key=lambda pair: (-pair[1], pair[0].created_at))
+        return scored[:k]
 
 
 def bridge_search(
@@ -118,11 +186,21 @@ def bridge_search(
     return ranked[:k]
 
 
-def build_retriever(method: str = "lexical", embedder: Embedder | None = None) -> Retriever:
+RETRIEVAL_METHODS = ("lexical", "lexical_label", "embedding", "dense", "fusion")
+
+
+def build_retriever(method: str = "lexical", embedder: Embedder | None = None, model: str | None = None) -> Retriever:
+    """`model` names the sentence-transformers model of `dense` and `fusion` (default bge-small)."""
     if method == "lexical":
         return LexicalRetriever()
+    if method == "lexical_label":
+        return LexicalRetriever(labels=True)
     if method == "embedding":
         if embedder is None:
             raise ValueError("embedding retrieval needs memory.embedder to be set")
         return EmbeddingRetriever(embedder)
-    raise KeyError(f"unknown retrieval method '{method}' (known: lexical, embedding)")
+    if method == "dense":
+        return DenseRetriever(model or "BAAI/bge-small-en-v1.5")
+    if method == "fusion":
+        return FusionRetriever(model or "BAAI/bge-small-en-v1.5")
+    raise KeyError(f"unknown retrieval method '{method}' (known: {', '.join(RETRIEVAL_METHODS)})")

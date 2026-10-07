@@ -1,5 +1,7 @@
 """A language model as the task model, swapped in without touching the harness."""
 
+import pytest
+
 from memctl.agents.llm import LLMAgent
 from memctl.config import resolve
 from memctl.harness.runner import Experiment
@@ -133,3 +135,56 @@ def test_the_generation_cache_ignores_a_half_written_entry(tmp_path):
     assert again.generate("## Memory\\nthe code is K93Q\\n## Current input\\nwhat is the code?", 8) == first
     assert again.cache_hits == 0 and not list(tmp_path.rglob("*.tmp"))
     assert isinstance(again, TrackedLLM)
+
+
+def test_a_reasoning_reader_writes_a_note_and_its_final_answer_is_parsed_out():
+    state = make_state([FACT, "As of step 2, the serial of node-12 is B77Z.", "Question: what is the access code of vault-317?"])
+    prompts = []
+    output = "The line [o0] gives the code of vault-317.\nAnswer: K93Q"
+    agent = LLMAgent({"reasoning": True}, llm=ScriptedLLM(lambda prompt: prompts.append(prompt) or output))
+    question = Observation("o2", state.get("o2").content, SourceType.USER, requires_response=True)
+    step = agent.act(state.view(), question, TaskState(3, "Answer with the value.", question))
+    assert step.action == "K93Q" and step.used_item_ids == ("o0",)
+    assert "absolute dates" in prompts[0] and prompts[0].rstrip().endswith("Note:")
+    silent = LLMAgent({"reasoning": True}, llm=ScriptedLLM(lambda prompt: "Answer:"))
+    assert silent.act(state.view(), question, TaskState(3, "", question)).action == "unknown"
+    # A note cut off before its answer is graded whole and flagged, never turned into a refusal.
+    cut = LLMAgent({"reasoning": True}, llm=ScriptedLLM(lambda prompt: "The line [o0] says the code is K93Q and"))
+    step = cut.act(state.view(), question, TaskState(3, "", question))
+    assert step.action == "The line [o0] says the code is K93Q and" and step.info["truncated"]
+    assert not LLMAgent({"reasoning": True}, llm=ScriptedLLM(lambda p: output)).act(
+        state.view(), question, TaskState(3, "", question)).info["truncated"]
+
+
+def test_memory_order_and_line_labels_are_separate_options():
+    state = make_state([FACT, "As of step 2, the serial of node-12 is B77Z.", "Question: what is the access code of vault-317?"])
+    question = Observation("o2", state.get("o2").content, SourceType.USER, requires_response=True)
+    prompts = []
+    agent = LLMAgent({"labels": "compact", "order": "arrival"}, llm=ScriptedLLM(lambda p: prompts.append(p) or "K93Q"))
+    agent.act(state.view(), question, TaskState(3, "", question))
+    assert "[o0]" not in prompts[0] and FACT in prompts[0] and prompts[0].rstrip().endswith("Answer:")
+    assert LLMAgent({"reasoning": True}).order == "arrival" and LLMAgent({}).order == "memory"
+    for bad in ({"order": "random"}, {"labels": "none"}):
+        with pytest.raises(ValueError):
+            LLMAgent(bad)
+
+
+def test_with_counted_labels_an_items_tokens_are_the_line_the_reader_sees():
+    from memctl.agents.llm import compact_line
+    from memctl.memory.items import count_tokens
+    from memctl.memory.state import MemoryState
+
+    for counted in (False, True):
+        state = MemoryState(100, count_labels=counted)
+        item = state.ingest("t", "I went hiking.", SourceType.USER, metadata={"speaker": "Caroline", "date": "8 May 2023"})
+        expected = count_tokens(compact_line(item)) if counted else count_tokens("I went hiking.")
+        assert item.token_count == expected and state.active_tokens == expected
+
+
+def test_threads_writing_the_same_cache_key_do_not_collide(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+
+    llm = TrackedLLM(ScriptedLLM(lambda prompt: "same answer"), str(tmp_path), {"name": "x"})
+    with ThreadPoolExecutor(16) as pool:
+        answers = list(pool.map(lambda _: llm.generate("one prompt", 8), range(64)))
+    assert set(answers) == {"same answer"}

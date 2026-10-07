@@ -51,6 +51,7 @@ from memctl.controllers.rl import Decision, RLController
 from memctl.harness.runner import Experiment
 from memctl.rl.algorithms import ALGORITHMS
 from memctl.rl.expert import make_expert
+from memctl.runlog import peak_rss_mb
 from memctl.sysinfo import collect_metadata
 from memctl.util import merged
 
@@ -58,7 +59,9 @@ TRAINING_DEFAULTS = {
     "seed_offset": 100_000,
     "budget_fractions": None,
     "phases": [{"algorithm": "bc", "iterations": 8, "episodes": 16}],
-    "eval": {"every": 4, "episodes": 20, "seed_offset": 50_000},
+    # metric: which validation score picks policy_best.pt: "success", "evidence" (evidence-in-context),
+    # or "auto" (evidence when there is no task model, else success).
+    "eval": {"every": 4, "episodes": 20, "seed_offset": 50_000, "metric": "auto"},
     "max_dataset": 40_000,
     "expert": {"kind": "oracle"},
 }
@@ -152,7 +155,10 @@ def group_spread(member: dict) -> dict:
 
 def evaluate_policy(experiment: Experiment, episodes: int, fractions: list[float] | None, seed_offset: int = 50_000,
                     prefix: str = "") -> dict:
-    """Mean task success of the greedy policy on the validation seeds (seed_offset, seed_offset + 1, ...)."""
+    """Mean task success and evidence-in-context rate of the greedy policy on the validation seeds
+    (seed_offset, seed_offset + 1, ...). Evidence-in-context is the share of a question's needed items
+    that are active when it is asked (`needed_hit_rate`); it needs no reader, so it is the validation
+    signal when the task model is absent and task success is always 0."""
     controller: RLController = experiment.controller
     saved = (controller.greedy, controller.record, controller.expert, controller.follow_expert)
     saved_budget = copy.deepcopy(experiment.config["memory"]["budget"])
@@ -163,10 +169,14 @@ def evaluate_policy(experiment: Experiment, episodes: int, fractions: list[float
             if fraction is not None:
                 experiment.config["memory"]["budget"] = {"fraction": fraction}
             seeds = range(seed_offset, seed_offset + episodes)
-            values = [experiment.run_episode(seed=seed, detail=False).episode["task_success"] for seed in seeds]
+            runs = [experiment.run_episode(seed=seed, detail=False).episode for seed in seeds]
             for seed in seeds:
                 experiment._hindsight.pop(seed, None)
-            results[prefix + ("success" if fraction is None else f"success@{fraction:g}")] = sum(values) / len(values)
+            suffix = "" if fraction is None else f"@{fraction:g}"
+            results[prefix + "success" + suffix] = sum(e["task_success"] for e in runs) / len(runs)
+            evidence = [e["needed_hit_rate"] for e in runs if e.get("needed_hit_rate") is not None]
+            if evidence:
+                results[prefix + "evidence" + suffix] = sum(evidence) / len(evidence)
     finally:
         controller.greedy, controller.record, controller.expert, controller.follow_expert = saved
         experiment.config["memory"]["budget"] = saved_budget
@@ -204,6 +214,17 @@ def train(config: dict, folder: str | Path | None = None, progress: bool = False
         for prefix, task_experiment, task_fractions in tasks:
             scores.update(evaluate_policy(task_experiment, eval_episodes, task_fractions, eval_offset, prefix))
         return scores
+
+    metric = settings["eval"]["metric"]
+    if metric == "auto":
+        metric = "evidence" if (experiment.config.get("agent") or {}).get("name", "null") == "null" else "success"
+    if metric not in ("success", "evidence"):
+        raise ValueError(f"unknown training.eval.metric {metric!r}")
+
+    def selection(scores: dict) -> float:
+        """The validation score: the mean of the chosen metric over tasks and budgets."""
+        chosen = [v for k, v in scores.items() if k.split("@")[0].rpartition("/")[2].endswith(metric)]
+        return sum(chosen) / len(chosen) if chosen else 0.0
 
     controller.record = True
     metadata = {**collect_metadata(), "models": experiment.models(), "status": "running",
@@ -295,9 +316,11 @@ def train(config: dict, folder: str | Path | None = None, progress: bool = False
             if every and (iteration + 1) % every == 0:
                 scores = evaluate_all()
                 row.update(scores)
-                validation = sum(scores.values()) / len(scores)
+                validation = selection(scores)
+                row["validation"] = validation
                 if validation > best["validation"]:
-                    best = {"validation": validation, "episodes_total": episodes_run, "phase": phase_number, **scores}
+                    best = {"validation": validation, "metric": metric, "episodes_total": episodes_run,
+                            "phase": phase_number, **scores}
                     controller.save(folder / "checkpoints" / "policy_best.pt")
                     row["best_so_far"] = True
             with log_path.open("a") as file:
@@ -309,13 +332,14 @@ def train(config: dict, folder: str | Path | None = None, progress: bool = False
 
     controller.save(folder / "checkpoints" / "policy.pt")
     final = evaluate_all()
-    if sum(final.values()) / len(final) > best["validation"]:
-        best = {"validation": sum(final.values()) / len(final), "episodes_total": episodes_run, "phase": "final", **final}
+    if selection(final) > best["validation"]:
+        best = {"validation": selection(final), "metric": metric, "episodes_total": episodes_run, "phase": "final", **final}
         controller.save(folder / "checkpoints" / "policy_best.pt")
     summary = {"episodes_trained": episodes_run, "seconds": round(time.time() - started, 1), "final_eval": final,
                "best_eval": best, "parameters": metadata["parameters"]}
     (folder / "summary.json").write_text(json.dumps(summary, indent=2))
     metadata["status"] = "completed"
+    metadata["peak_rss_mb"] = peak_rss_mb()
     (folder / "metadata.json").write_text(json.dumps(metadata, indent=2))
     return folder
 

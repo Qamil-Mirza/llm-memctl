@@ -57,6 +57,11 @@ commands given).
 | 9 | …with Qwen2.5-7B as the task model, 100 episodes | Every D-series result holds; oracle-approx beats full context by +0.04–0.06; the remaining gap is archived-but-not-retrieved. PASSED |
 | 10 | Diagnostics; a follow-the-clue search for two-hop questions | GRPO's signal was real but the needed fact was out of reach; the search lifts imitation from 0.851 to 0.917 at 2% (oracle 0.966). PASSED (scripted reader) |
 | 11 | Follow-the-clue with a 7B reader; LoCoMo and LongMemEval QA | The 7B gain holds (0.832 → 0.889 at 2%). On real conversations the learned policies lose to simple rules: they barely retrieve. PASSED (negative on benchmarks) |
+| 12 | Retrieval headroom: how much evidence search reaches (no reader) | Top 16 holds 0.12–0.16 more evidence than top 5; labels and BM25+bge fusion help LoCoMo, not LongMemEval. Gates for the pick-k head and better units passed. |
+| 13 | LongMemEval (all 500, 5 folds) and LoCoMo under the reviewed protocol: retrieval floor, no EVICT, reasoning reader, pre-registered gates | The floor fixes retrieval. Learned controllers keep more evidence at 5% but convert little: one paired win, one loss, none after Holm, none on the frontier. This reader refuses more as prompts grow (peak near 3k tokens). NEGATIVE, with a mechanism |
+| 14 | A token price for kept memory: labels counted in the budget, plug-in Bayes archiving at a pre-set price | No-go at the free gate: the priced rule never beats keep-last-0 + top 5 on evidence at equal memory; needed model AUC 0.62–0.74; a per-token price archives long turns, not lines. NEGATIVE (free) |
+| 15 | A query-aware floor head: which 5 of 16 to retrieve, learned listwise | Free gate: +0.08 all-found evidence at half the tokens. Reader: +0.047 accuracy (0.513 vs 0.466) at 745 vs 1,554 tokens; two of three arms win; Holm-adjusted p 0.058. First learned row beyond the rule frontier; replicates over 3 training seeds on a second host (+0.044, seed SD 0.002). POSITIVE |
+| 16 | Set-valued GRPO on the selection head with the reader's verdict as reward | Gate fails: +0.0125 (−0.005, +0.033) held-out over the imitation start; flat in 4 of 5 folds. Labels already a sufficient target for this head. NEGATIVE (pre-registered) |
 
 ---
 
@@ -1073,10 +1078,16 @@ reader (0.115 to 0.048).
 
 **11b–11d: on real conversations the learned policies lose to simple
 rules.** Judge accuracy / token F1, query-weighted. LoCoMo: all 10
-conversations (1,986 questions). LongMemEval-S: questions 0–99, about 115k
-history tokens each.
+conversations (1,986 questions, *including* the 446 adversarial ones; see
+11e for the conventional scoring). LongMemEval-S: questions 0–99, about 115k
+history tokens each. **These are single-session-user and multi-session
+questions only** (70 + 30, 6 abstention): the file is sorted by question
+type, so questions 0–99 hold none of the temporal-reasoning,
+knowledge-update, single-session-assistant or preference questions. The
+LongMemEval columns below describe the easiest fifth of the benchmark, not
+LongMemEval as a whole; 11e gives the split that fixes this.
 
-| controller | LoCoMo 10% | LoCoMo 25% | LongMemEval 5% | LongMemEval 10% |
+| controller | LoCoMo 10% | LoCoMo 25% | LongMemEval q0–99 5% | LongMemEval q0–99 10% |
 |---|---|---|---|---|
 | full context (64k YaRN server) | 0.510 / 0.312 | | not run (too long) | |
 | fifo_archive_retrieve (top 5) | 0.382 / 0.397 | 0.400 / 0.382 | 0.470 / 0.550 | 0.420 / 0.410 |
@@ -1095,11 +1106,18 @@ text: 0–1 items per LongMemEval question and 2–70 per LoCoMo conversation of
 ~199 questions, recall 0.00–0.03; their failures are mostly
 `archived_not_retrieved`. Their retrieval head learned when to fire on
 templated facts, and conversational turns score differently. The
-LongMemEval-trained policies never retrieve (0 per question): an episode has
-one question at its end, so almost every retrieval label is 0, and the head
-learns to say no. Two of their three seeds also fail mostly by `evicted`:
-with a single question, nearly every turn is never needed, the regret
-teacher accepts deleting it, and the policy deletes evidence too.
+LongMemEval-trained policies never retrieve (0 per question). The cause is
+label *starvation*, not imbalance: the shortlist is built only at a question
+step, so a LongMemEval episode has exactly one retrieval decision (at most 8
+labels) against about 210 removal decisions (8,438 decisions in 40 episodes
+of `lme_bc_regret_s0`). The head barely trains, and at evaluation the rule
+is deterministic (retrieve iff logit > 0), so a head whose logits sit below
+0 never fires. The removal labels carry no signal either: with one question
+nearly every turn is never needed, and the regret teacher gives EVICT and
+ARCHIVE the same regret (0) for those, so expert agreement is 0.99999 and
+the loss 7e-5 from the first iteration while the EVICT/ARCHIVE choice is a
+coin flip. Two of the three seeds land on deleting, and fail mostly by
+`evicted`. (Found by the peer review of 2026-10-06.)
 
 **What it shows**
 
@@ -1122,6 +1140,989 @@ teacher accepts deleting it, and the policy deletes evidence too.
   treating it as free when only one question follows.
 - Full context on LongMemEval-S (about 115k tokens per question) was not
   run; published results report it.
+
+### 11e. Re-scoring Experiment 11 by the field's conventions (2026-10-06)
+
+```bash
+python -m memctl.analysis.qa_tables runs/exp11b_locomo_qa runs/exp11b_locomo_full_context \
+  --exclude full_context__fraction0.1 full_context__fraction0.25 --baseline fifo_archive_retrieve --per-category
+python -m memctl.analysis.qa_tables runs/exp11c_longmemeval_qa runs/exp11d_longmemeval_trained \
+  --baseline fifo_archive_retrieve --per-category
+```
+
+No new runs: verdicts are rebuilt per question from `failures.jsonl`
+(every episode). Headline accuracy leaves out the refusal-scored questions
+(LoCoMo category 5, adversarial; LongMemEval `_abs`), which Mem0, Zep and
+Memory-R1 also leave out: they are scored by `is_refusal`, so a controller
+that keeps less and refuses more gains on them. For example, in conversation
+0 the learned `bc_bridge_s0` scores 0.957 on adversarial questions and
+0.00–0.10 on every other category. Intervals resample clusters
+(conversations for LoCoMo, questions for LongMemEval); the Δ column is
+paired with FIFO on the same questions, seeds averaged within a cluster.
+F1 is only available for the episode logged in detail (conversation 0 /
+question 0), so it is not a headline here; future sweeps should log every
+episode in detail. With only 10 LoCoMo conversations the cluster bootstrap
+undercovers; the tool also prints a question-level paired interval, which
+ignores within-conversation dependence. Here both exclude 0 wherever one
+does. Prompt tokens (reader prompt per question, `tokens_processed /
+task_model_calls`, every episode) count the speaker, date and id label on
+each memory line, about 1.9 times the memory's own tokens on LoCoMo. At 10%:
+oracle 2,196, FIFO 3,388, learned about 3,050, keep-last-4 272, full context
+32,506. On LongMemEval at 5%: oracle 236, keep-last-4 2,326, FIFO 5,305.
+Keep-last-4 beats FIFO there with less than half the prompt.
+
+LoCoMo, categories 1–4 (1,540 questions):
+
+| controller | 10% | Δ vs FIFO | 25% | Δ vs FIFO | category 5 (refusal-scored), 10% |
+|---|---|---|---|---|---|
+| full context (64k YaRN) | 0.462 (0.425–0.495) | | | | 0.675 |
+| oracle_approx | 0.384 (0.346–0.414) | +0.160 (+0.132, +0.182) | 0.378 | +0.121 | 0.922 |
+| fifo_archive_retrieve | 0.224 (0.198–0.251) | – | 0.257 | – | 0.926 |
+| salience_archive_retrieve | 0.218 | −0.006 (−0.025, +0.009) | 0.281 | +0.023 (+0.001, +0.045) | 0.917 |
+| keep last 4 + retrieve top 5 | 0.151 | −0.073 | 0.151 | −0.106 | 0.989 |
+| regret imitation (3 seeds) | 0.086 | −0.138 (−0.165, −0.111) | 0.161 | −0.096 | 0.972 |
+| + follow-the-clue (3 seeds) | 0.094 | −0.130 (−0.157, −0.105) | 0.163 | −0.095 | 0.962 |
+
+Per category at 10% (multi-hop / open-domain / single-hop / temporal):
+full context 0.305 / 0.062 / 0.674 / 0.162; oracle 0.280 / 0.052 / 0.572 /
+0.081; FIFO 0.078 / 0.021 / 0.360 / 0.056; learned 0.07–0.08 / 0.02 /
+0.12–0.13 / 0.03. Temporal accuracy is low for every controller, full context
+included, although each memory line carries its session date: the reader
+answers in relative terms ("yesterday") where the gold answer is a date. That
+is a reader-prompt issue, not a memory one.
+
+LongMemEval-S questions 0–99 without abstention (94 questions; two types
+only, see above):
+
+| controller | 5% | Δ vs FIFO | 10% | Δ vs FIFO |
+|---|---|---|---|---|
+| oracle_approx | 0.628 (0.521–0.723) | +0.191 (+0.106, +0.277) | 0.628 | +0.245 |
+| keep last 4 + retrieve top 5 | 0.500 | +0.064 (+0.021, +0.117) | 0.500 | +0.117 |
+| fifo_archive_retrieve | 0.436 (0.340–0.532) | – | 0.383 | – |
+| salience_archive_retrieve | 0.319 | −0.117 | 0.245 | −0.138 |
+| + follow-the-clue, synthetic (3 seeds) | 0.255 | −0.181 (−0.270, −0.096) | 0.227 | −0.156 |
+| regret imitation, synthetic (3 seeds) | 0.191 | −0.245 | 0.191 | −0.191 |
+| + follow-the-clue, LongMemEval 100–499 (3 seeds) | 0.177 | −0.259 | 0.223 | −0.160 |
+| regret imitation, LongMemEval 100–499 (3 seeds) | 0.131 | −0.305 | 0.121 | −0.262 |
+
+Multi-session questions are near 0 for every controller (0.00–0.07), the
+oracle included; single-session-user carries all the differences.
+
+**What it shows**
+
+- The conventional scoring makes every LoCoMo number lower and the gaps
+  larger. Counting category 5 had flattered the controllers that keep the
+  least: the learned ones and keep-last-4 score 0.96–0.99 there.
+- The conclusions of 11b–11d stand, with intervals: on both benchmarks the
+  learned controllers trail FIFO by 0.10–0.30, and the paired intervals
+  exclude 0.
+- On LoCoMo the oracle now trails full context (0.384 against 0.462). Three
+  explanations, not yet separated: keeping only annotated evidence misses
+  context the reader uses; the evidence annotations are incomplete (an audit
+  found 6.4% of LoCoMo answers wrong, and evidence lists were not audited);
+  and at 10% the oracle cannot hold all evidence, which is 31% of tokens.
+- The reader prompt caps two LongMemEval types for every controller. 28 of
+  the oracle's 30 multi-session failures at 5% are `task_model_reasoning`
+  (evidence in view, answer wrong), mostly "unknown" where the gold is a
+  count or a duration. Temporal questions get relative answers
+  ("yesterday"). A short-phrase prompt with 32 output tokens leaves no room
+  to count or do date arithmetic. `agent.reasoning: true` (a brief note,
+  then `Answer: ...`, memory in arrival order) is the fix to verify on the
+  oracle cell before controllers are re-run; it uses a fresh cache, so the
+  rows above stay reproducible.
+- LongMemEval evidence labels: 41 of 500 instances mark `has_answer` turns
+  in only some of their answer sessions, and 21 mark none. The environment
+  now adds one requirement per unmarked answer session (any of its turns),
+  where before it fell back to the answer sessions only when nothing was
+  marked. The 11c/11d numbers were scored under the old rule.
+- The judge is strict, which brings false rejects as well as false accepts.
+  In one oracle failure the gold is "I have worked on or bought five model
+  kits..." and the answer "5" was judged wrong. The planned second-judge
+  check should measure both directions.
+
+**Next (evaluation protocol).** `env.folds` (stratified 5-fold over all 500
+LongMemEval questions, by question type with abstention apart) replaces the
+contiguous `subset`; all LongMemEval numbers above should be re-run on it.
+
+## 12. Retrieval headroom on LoCoMo and LongMemEval (2026-10-06)
+
+```bash
+python -m memctl.rl.headroom --dataset locomo --dense --out runs/t2_headroom/locomo.json      # ~2 min CPU
+python -m memctl.rl.headroom --dataset longmemeval --out runs/t2_headroom/longmemeval.json    # ~3 min CPU
+```
+
+Clean run at commit 1d8a93e (`runs/t2_headroom/*.json`). No controller and
+no reader. Every turn of the history is a candidate, the question is the
+query, and a requirement (one evidence turn, or for an unmarked LongMemEval
+answer session any of its turns) counts as found when one of its items is in
+the top k. Two rules per question: the *share* of its requirements found,
+and whether *all* of them are found. The all-found rule bounds a controller
+on questions that need several pieces of evidence (LoCoMo multi-hop,
+LongMemEval multi-session). The share found bounds what a retrieval floor of k, or
+a pick-k-of-N head over a shortlist of N, can reach. Questions with evidence
+labels only, refusal-scored ones left out: LoCoMo 1,535, LongMemEval-S 470.
+`bm25_label` prefixes "speaker (date):" to each turn; `bm25_bridge` adds the
+follow-the-clue search's 4 items to the top k; `dense` is bge-small-en-v1.5
+on labelled text; `fusion` is reciprocal rank fusion (k = 60) of
+`bm25_label` and `dense`.
+
+Requirements found in the top k, all questions:
+
+| search | LoCoMo @5 | @8 | @12 | @16 | @20 | LongMemEval @5 | @8 | @12 | @16 | @20 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| bm25 | 0.468 | 0.513 | 0.552 | 0.584 | 0.608 | 0.644 | 0.720 | 0.774 | 0.806 | 0.822 |
+| bm25_label | 0.519 | 0.564 | 0.609 | 0.637 | 0.654 | 0.643 | 0.713 | 0.761 | 0.788 | 0.805 |
+| bm25_bridge (k + 4 items) | 0.482 | 0.525 | 0.563 | 0.593 | 0.617 | 0.655 | 0.724 | 0.776 | 0.807 | 0.823 |
+| dense (bge-small) | 0.448 | 0.518 | 0.576 | 0.613 | 0.640 | | | | | |
+| **fusion** | **0.530** | **0.610** | **0.674** | **0.707** | **0.739** | | | | | |
+
+All requirements found (BM25 / fusion on LoCoMo, BM25 on LongMemEval):
+
+| | LoCoMo @5 | @16 | LongMemEval @5 | @16 |
+|---|---|---|---|---|
+| all questions | 0.432 / 0.481 | 0.533 / 0.646 | 0.517 | 0.706 |
+| LoCoMo multi-hop | 0.036 / 0.085 | 0.114 / 0.209 | | |
+| LongMemEval multi-session | | | 0.182 | 0.446 |
+| LongMemEval temporal-reasoning | | | 0.496 | 0.709 |
+
+Share found by type, BM25 @5 → @16: LoCoMo multi-hop 0.142 → 0.289 (fusion 0.253 →
+0.428), open-domain 0.224 → 0.276, single-hop 0.562 → 0.679, temporal 0.578
+→ 0.682. LongMemEval knowledge-update 0.787 → 0.926, multi-session 0.435 →
+0.659, single-session-assistant 0.875 → 0.929, preference 0.339 → 0.561,
+single-session-user 0.836 → 0.945, temporal 0.635 → 0.810.
+
+**What it shows**
+
+- There is room above a top-5 floor on both benchmarks. Recall@16 minus
+  recall@5 is 0.116 on LoCoMo (BM25; 0.177 with fusion) and 0.162 on
+  LongMemEval. A pick-5-of-16 head trained on evidence labels has up to that
+  much to gain, so the review's gate for building it (≥ 0.10) passes on both.
+- On LoCoMo, how turns are indexed matters. Speaker and date in the indexed
+  text add 0.051 at @5, and fusing with bge-small adds 0.062 at @5 and 0.097
+  at @8. Dense search alone is worse than BM25 at @5, which matches §6c,
+  where bge replaced BM25. The gate for better units (≥ 0.05 at @5) passes on
+  LoCoMo. On LongMemEval labels add nothing (the question date already
+  carries the time), and BM25 is near its ceiling for single-session types.
+- Follow-the-clue adds little on real text (+0.01): its rarest-word anchor
+  was built for templated identifiers.
+- Multi-hop (LoCoMo) and multi-session and preference (LongMemEval) are the
+  hard cases for search itself: under half their evidence is in the top 5.
+  By the all-found rule it is worse: a LoCoMo multi-hop question has all its
+  evidence in the BM25 top 16 4% → 11% of the time, and a LongMemEval
+  multi-session question 18% (top 5) → 45% (top 16).
+- On LongMemEval, speaker and date labels slightly *lower* BM25 recall
+  (0.806 → 0.788 at @16), so the shared LongMemEval search stays plain BM25;
+  on LoCoMo it is labelled BM25 fused with bge-small. Dense search was not
+  measured on LongMemEval (about 250k turn embeddings on CPU).
+
+## 13. LongMemEval and LoCoMo under the reviewed protocol (2026-10-07)
+
+Sweeps: `configs/sweeps/exp13/` (generated by `make.py`). Reader frozen at
+7b5fc30 for the whole experiment: Qwen2.5-7B-Instruct, reasoning note then
+`Answer:`, compact labels, memory in arrival order, 256 output tokens,
+LongMemEval's official judge prompts (`judge.style: longmemeval`), LoCoMo
+categories 1–4. Shared search per benchmark: plain BM25 on LongMemEval,
+labelled BM25 fused with bge-small on LoCoMo (Experiment 12). No EVICT for any
+controller. Stratified 5-fold LongMemEval, every controller on all 500
+questions (learned ones on the test part of the fold they were not trained on).
+
+**Pre-registered evidence gate (written before any learned cell is run).**
+Learned controllers go to the GPU only through this gate. With no reader
+(`agent: null`, `exp13_gate_f*`, free), each candidate (single-question
+trained `learned_floor5`, composed-episode trained `compose_floor5`,
+synthetic-trained `synthetic_floor5`) and `fifo_top5` run on every test fold
+at 1/2/5% and at targets of 2k/3k/4k tokens (2% and 5% only). The measure is
+evidence in view at the question (`needed_hit_rate`), paired with FIFO over
+the 500 questions. A (candidate, budget, target) cell is a **go** when the
+pooled paired 95% bootstrap interval of (candidate − FIFO) lies entirely
+above 0. Go cells are run with the reader; no-go cells are not, and are
+reported only in the evidence table. A controller that keeps no more
+evidence than FIFO cannot be expected to answer better, so this saves GPU
+time without choosing on the test answers.
+The gate table also gives mean active memory (tokens) for each pair; the pairs
+are matched by construction (same budget or target), and a pair more than 10%
+apart is flagged but still decided by the rule.
+
+**Pre-registered accuracy criterion for the learned rows (written before they
+run).** A learned controller *wins* in a (budget, target) cell when its judge
+accuracy (categories 1–4 on LoCoMo, abstention left out on LongMemEval) minus
+FIFO's at the same budget and target, paired over the same questions and
+pooled over the five folds, has a 95% bootstrap interval entirely above 0.
+Per-type differences are secondary and reported without a decision.
+
+**Gate result (LongMemEval, 2026-10-07; agent null, 500 questions pooled over
+the five test folds; gate code 8e1b1c5, checkpoints 2567c3e chosen by
+validation evidence).** Evidence in view at the question, candidate − FIFO
+with the same floor at the same budget or target, paired 95% interval.
+
+| candidate | budget, target | FIFO | candidate | difference | memory FIFO / candidate | |
+|---|---|---|---|---|---|---|
+| composed-episode trained | 5%, fill | 0.638 | 0.771 | +0.133 (+0.102, +0.163) | 4,784 / 4,863 | go |
+| composed-episode trained | 5%, 4k | 0.636 | 0.713 | +0.076 (+0.045, +0.106) | 3,699 / 3,798 | go |
+| composed-episode trained | 5%, 3k | 0.633 | 0.670 | +0.037 (+0.009, +0.064) | 2,733 / 2,850 | go |
+| single-question trained | 5%, fill | 0.638 | 0.732 | +0.094 (+0.064, +0.124) | 4,784 / 4,908 | go |
+| single-question trained | 5%, 4k | 0.636 | 0.690 | +0.054 (+0.024, +0.082) | 3,699 / 3,837 | go |
+| composed-episode trained | 1–2%, any | 0.59–0.63 | 0.59–0.63 | −0.003 to +0.005 | | no |
+| single-question trained | 1–2%, any; 5% 2k | 0.59–0.64 | 0.58–0.64 | −0.030 to +0.005 | | no |
+| synthetic-trained | any | 0.59–0.64 | 0.52–0.64 | −0.09 to +0.001 | | no |
+
+The full table (36 rows) is `runs/exp13_gate_table.md`. Targets at or above the
+budget equal the fill row. The one memory flag (>10% apart) is on every 1%
+row, where the learned floor holds about 975 tokens to FIFO's 809; all are
+no-go.
+
+- At 1–2% the retrieval floor does all the work: neither trained policy keeps
+  more evidence than FIFO with the same floor.
+- The synthetic-trained policy loses 0.05–0.09 evidence almost everywhere:
+  its eviction features do not transfer to real conversations even with the
+  floor (RQ4).
+- Training on composed four-question episodes beats single-question training
+  in every 5% row (+0.133 against +0.094 at fill): more questions per episode
+  give the imitation teacher signal it lacked (Experiment 11, T4).
+
+**Written before the paid learned cells ran.** The go rows sit at 2.7–4.9k
+prompt tokens, where this reader refuses more as the prompt grows (see the
+unknown-rate table). The evidence gain may therefore not turn into accuracy;
+the 3k row is where it most plausibly does. Whatever the accuracy criterion
+gives on these rows is the answer to RQ4; no rows are re-selected afterwards.
+
+**Two comparisons per learned row (stated before the learned rows landed).**
+(1) The pre-registered paired difference against FIFO with the same floor at
+the same budget and target answers *does learning beat recency at the same
+fill?* (RQ1). (2) The row's place on the accuracy-against-prompt-tokens
+frontier, against the best rule-based row at equal or fewer prompt tokens,
+answers *is a learned controller worth it over a simple rule?* (RQ4). On
+LongMemEval the rule frontier is keep-last-0 + top 5 (0.466 at 1,554 tokens)
+and FIFO + floor at 1% (0.440 at 1,148). A win on (1) alone means learning
+beats recency at the same fill; a win on both means the learned controller is
+worth having.
+
+**Gate result (LoCoMo; agent null, categories 1–4, the shared fusion floor,
+fill only; `runs/exp13_gate_locomo_table.md`).** The LongMemEval-trained
+policies (fold-0 checkpoints) are a cross-benchmark transfer test. The gate
+pairs per episode, and a LoCoMo episode is a conversation, so n = 10 and the
+interval resamples conversations; with 10 clusters it undercovers. The rule
+was not changed. Both go intervals sit far from 0 (lower bounds +0.074 and
++0.054), so undercoverage is unlikely to flip them.
+
+| candidate | 5% | 10% | 25% |
+|---|---|---|---|
+| composed-episode trained (transfer) | −0.029 | −0.014 | **+0.096 (+0.074, +0.119) go** |
+| single-question trained (transfer) | −0.080 | −0.097 | −0.060 |
+| synthetic-trained | −0.027 | −0.032 | **+0.082 (+0.054, +0.107) go** |
+
+(Evidence in view, candidate − FIFO; FIFO itself 0.318 / 0.399 / 0.510.)
+
+*Hypothesis (both benchmarks): nothing at tight budgets, gains at the
+loosest.* At tight budgets the floor and the question fill the budget and
+nothing is left to choose; at loose budgets the policy has a real choice over
+what else to keep. The LongMemEval target rows (3k, 4k) test this: if the
+learned gain tracks the room left after the floor, the reading holds.
+
+*Hypothesis (transfer): turn length.* Single-question LongMemEval training
+transfers negatively to LoCoMo at every budget, composed training transfers
+at 25%, and the synthetic policy passes on LoCoMo at 25% though it failed
+everywhere on LongMemEval. LoCoMo turns are short (mean 26 words, median 22),
+like the synthetic facts (about 11 words), while LongMemEval turns are long
+(mean 161, median 75; every tenth instance sampled). A policy's size and
+recency features may mean different things at these lengths. Not tested.
+
+**Two comparisons for the paid LoCoMo learned rows (stated before they
+landed):** paired accuracy against `fifo_top5_fusion` at 25%, and position on
+the accuracy-against-prompt-tokens frontier against the best LoCoMo rule at
+equal or fewer tokens (from the keep grid). Full context is a further
+reference on LoCoMo, where conversations fit in context: 0.462 on categories
+1–4 (§11e), with the earlier short-phrase reader, so not directly comparable.
+
+**FIFO with the same floor, LongMemEval, all five folds (the learned rows'
+partners).** Evidence in view stays at 0.62–0.63 while accuracy falls as the
+prompt grows: 0.438 at 3,157 tokens (5%, 3k target), 0.423 at 4,197 (4k),
+0.372 at 5,415 (filled to 5%). This is the refusal effect inside a single
+controller. The oracle row (0.672, 394 tokens) is the same at 1, 2 and 5%:
+it drops everything never needed, so the budget never binds.
+
+### 13a. LongMemEval learned rows: result (2026-10-07)
+
+The 25 gated cells (5 settings × 5 folds) against their FIFO partners with the
+same floor, 470 non-abstention questions pooled, paired by question
+(`runs/_pipelines/learned_report.py`, `mechanism_report.py`).
+
+| learned row (5%) | learned | FIFO | difference (95% CI) | prompt tokens learned / FIFO |
+|---|---|---|---|---|
+| composed-episode, fill | 0.419 | 0.372 | **+0.047 (+0.004, +0.089)** | 5,894 / 5,413 |
+| composed-episode, 4k | 0.426 | 0.423 | +0.002 (−0.043, +0.040) | 4,595 / 4,194 |
+| composed-episode, 3k | 0.396 | 0.438 | **−0.043 (−0.085, −0.004)** | 3,465 / 3,158 |
+| single-question, fill | 0.400 | 0.372 | +0.028 (−0.013, +0.066) | 5,853 / 5,413 |
+| single-question, 4k | 0.417 | 0.423 | −0.006 (−0.049, +0.034) | 4,508 / 4,194 |
+
+**Verdict under the pre-registered criteria.**
+
+- **Criterion 1 (paired against FIFO at the same budget and target).**
+  Learning beats recency in one of five settings: composed-episode training,
+  filled to 5%. It loses in one: the same policy at a 3k target. The other
+  three show no difference.
+- **Holm correction (computed afterwards, not pre-registered, so it does not
+  change the verdict).** With a Holm correction over the five tests, neither
+  the gain (p = 0.032, adjusted 0.16) nor the loss (p = 0.042, adjusted 0.17)
+  survives.
+- **Criterion 2 (frontier).** No learned row reaches the rule frontier:
+  keep-last-0 + top 5 scores 0.466 at 1,554 prompt tokens, and the best
+  learned row scores 0.426 at 4,595.
+- **Per-type differences** are descriptive. Preference is n = 30, and every
+  per-type interval includes 0.
+
+**Where the evidence went.** Questions are split by whether all their needed
+items were in view.
+
+| row (5%) | P(all in view) L / F | P(correct \| in view) L / F | P(correct \| not) L / F | memory lines L / F | content tokens per line L / F | label tokens L / F |
+|---|---|---|---|---|---|---|
+| composed, fill | 0.640 / 0.500 | 0.565 / 0.591 | 0.160 / 0.153 | 47.2 / 24.2 | 107 / 203 | 849 / 507 |
+| composed, 4k | 0.549 / 0.504 | 0.605 / 0.658 | 0.208 / 0.185 | 34.4 / 18.9 | 114 / 198 | 678 / 434 |
+| composed, 3k | 0.506 / 0.500 | 0.597 / 0.677 | 0.190 / 0.200 | 23.9 / 14.7 | 122 / 190 | 541 / 374 |
+| single-question, fill | 0.596 / 0.500 | 0.564 / 0.591 | 0.158 / 0.153 | 43.9 / 24.2 | 115 / 203 | 822 / 507 |
+| single-question, 4k | 0.555 / 0.504 | 0.602 / 0.658 | 0.187 / 0.185 | 30.3 / 18.9 | 128 / 198 | 633 / 434 |
+
+Answers judged correct without all their evidence in view (0.15–0.21) mostly
+had part of it in view: 17 of 27 for the composed policy filled to 5%, 30 of
+36 for FIFO. The rest are the reader's own knowledge, or the judge accepting a
+near answer.
+
+The learned policies have all the needed evidence in view more often (up to
+0.64 against 0.50). But **when the evidence is in view they answer correctly
+less often than FIFO in every row** (0.597 against 0.677 at 3k). They keep 1.6
+to 2 times as many memory lines, made of shorter turns, and each line carries
+a "speaker, date" label of about 18–25 tokens that the budget does not count.
+
+**Context rot.** The reader gets worse as the prompt grows, even when the
+evidence is present ("context rot"). Here the symptom is refusal: with all
+the evidence in view, "unknown" rises from 0.079 at 399 prompt tokens (the
+oracle) to 0.296 at 6,223 (the evidence-only ceiling). The onset is about 3k
+prompt tokens for this reader and prompt. The effect is known:
+- Liu et al. 2023, "Lost in the Middle" (https://arxiv.org/abs/2307.03172).
+- Chroma's 2025 report on context rot (https://research.trychroma.com/context-rot).
+- LongMemEval's own finding that an 8B reader drops past about 3k retrieved
+  tokens (https://arxiv.org/abs/2410.10813).
+
+The controller's job is therefore to keep the prompt small and right, not to
+fill the budget. The 3k onset is measured for one reader and one prompt;
+checking another reader is the next paid step (N4 in
+docs/research/SUGGESTED_NEXT_STEPS.html).
+
+**Mechanism and limitation.**
+
+- *Limitation.* Matching on content tokens does not match prompt size, and the
+  gap grows with the number of lines. The pre-registered results stand as
+  run; nothing was re-matched.
+- *Mechanism.* The hindsight teacher rewards evidence per content token, so
+  short needed turns are cheap to keep. The reader's cost is per line, and for
+  this reader every extra line raises the refusal rate. The controller
+  optimises what the teacher asks for (+0.13 evidence at fill), and the reader
+  does not convert it.
+
+For RQ2 on real conversations: knowing what will be needed is not enough; the
+teacher must also price what is kept.
+
+**Next (not done).** One change, not two: count the per-line labels in the
+budget, so the budget is the prompt the reader actually pays for and the budget
+axis and the frontier axis are the same. Then give the regret teacher a cost
+per prompt token, calibrated from the refusal curve: FIFO accuracy against
+tokens at constant evidence, 0.438 at 3.2k to 0.372 at 5.4k. That is 0.066
+accuracy per 2.26k tokens, about 3e-5 per prompt token, added to the regret of
+keeping an item, so the teacher is indifferent between keeping a needed item
+and the accuracy its extra tokens cost. The value is set in advance, not tuned. Labels are kept,
+because dates are needed for temporal questions and speakers on LoCoMo.
+Retrain on composed episodes, apply the evidence gate and a prompt-token gate
+with no reader, and pay for an evaluation only if the agent-null proxy places
+the policy ahead of keep-last-0 + top 5 on the frontier.
+
+### 13b. LoCoMo: result (2026-10-07)
+
+Categories 1–4 (1,540 questions), the shared fusion search, paired by
+conversation with FIFO at the same budget.
+
+| row | 5% | 10% | 25% | prompt tokens at 10% |
+|---|---|---|---|---|
+| oracle (hindsight) | 0.468 | 0.438 | 0.421 | 1,664 |
+| FIFO + floor (fusion) | 0.237 | **0.299** | 0.273 | 2,917 |
+| FIFO + floor (BM25, links to 11e) | 0.236 | 0.288 | 0.279 | 2,926 |
+| salience + floor (fusion) | 0.198 | 0.228 | 0.288 | 2,845 |
+| keep last 0/4/16 + fusion top 5 (budget-free) | | 0.155 / 0.170 / 0.184 | | 306 / 359 / 577 |
+| composed-episode policy (LongMemEval transfer) | | | 0.290 (+0.017, −0.017 to +0.049) | 6,810 at 25% |
+| synthetic-trained policy | | | 0.284 (+0.011, −0.022 to +0.041) | 6,879 at 25% |
+
+**Verdict.** Neither learned row wins on either criterion. Both are level with
+FIFO at 25%, and both lie below FIFO at 10% (0.299 at 2,917 tokens), the
+best rule at equal or fewer tokens. The composed-episode policy is a
+cross-benchmark transfer test; it was not trained on LoCoMo.
+
+- **The same turning point on both benchmarks (context rot, §13a).** FIFO
+  peaks near 3k prompt tokens: on LoCoMo 0.299 at 2.9k, then 0.273 at 7.4k; on LongMemEval 0.438 at
+  3.2k, then 0.372 at 5.4k. The LoCoMo oracle also falls as its prompt grows:
+  0.468 at 1.0k to 0.421 at 3.4k. With about 154 questions per conversation,
+  more items stay needed at larger budgets. See
+  `docs/research/figures/exp13_frontier.png`, produced by
+  `memctl/analysis/frontier_plot.py`.
+- **The two benchmarks fail differently.** On LongMemEval the five retrieved
+  turns usually hold the evidence (0.62–0.64 in view), and the problem is
+  selection. On LoCoMo they rarely do: keep-last + top 5 has 0.18–0.21 in
+  view. The evidence is spread over several short turns, and multi-hop
+  questions need all of them, so the problem is search. Fusion raised
+  evidence by 0.03–0.05 but accuracy by about 0.01. LoCoMo gains therefore
+  have to come from retrieval units (fact keys, session-level retrieval), not
+  from eviction, as the all-found curves of §12 predicted.
+- **Full context on LoCoMo** (0.462 on categories 1–4, §11e) was run only
+  with the earlier short-phrase reader. It was not re-run under the frozen
+  reader, so it is a reference under a different prompt.
+
+### 13c. Provenance and cost
+
+- **Reader frozen at 7b5fc30.** The check (both versions) and the ceiling ran
+  from 7b5fc30.
+- **Cells relaunched after the OOM incident.** At 21:58 PDT on 2026-10-06,
+  running 12 trainings and a 16-worker sweep on the laptop, each process
+  parsing the whole LongMemEval file, exhausted memory. Every job and the
+  sessions running them were killed. Everything after that ran from 2567c3e
+  (sharded loading, verified identical by a test), with jobs under a memory
+  guard.
+- **Cells holding episodes from both commits.** The first 16 `exp13_lme_keep`
+  cells hold episodes from both commits. Their metadata records a
+  reconstructed `git_history`, with the logs it rests on. The 5 ceiling cells
+  hold only 7b5fc30 episodes.
+- **Checkpoints.** All checkpoints were trained at 2567c3e (configs from
+  69fd0f5 and f045f01). The gates ran at 8e1b1c5 and df3c7b0.
+- **Cost.**
+  - GPU: one A40 pod, 6.64 h (04:29–05:05 and 05:10–11:12 UTC on 2026-10-07)
+    at $0.49/h, about $3.25. The user approved $3.50–5.
+  - Laptop: 12 training runs (62–71 min each, run together, under 1 GB each)
+    and 252 gate cells (about 35 min for LongMemEval, about 3 h for LoCoMo
+    with bge on CPU).
+
+## 14. A token price for kept memory (N1; 2026-10-07, pre-registered, free stage)
+
+The change Experiment 13 called for: the budget counts what the reader pays,
+and the controller is charged for what it keeps.
+
+- `memory.count_labels: true` (b45ed8e): each item's tokens include its
+  "speaker, date:" label, so the budget is the prompt.
+- The token price (dccff18): a plug-in Bayes rule over a learned P(needed
+  again | kept item). At every decision the controller archives each kept item
+  whose P(needed) × need_value is below token_price × its tokens.
+  - token_price = 3e-5 per token, fixed in advance from Experiment 13's FIFO
+    refusal curve.
+  - need_value = 0.44, also fixed in advance:
+    P(correct | evidence in view) − P(correct | not), FIFO filled to 5%, §13a.
+  - Prices of 1e-4 and 3e-4 are a declared sensitivity check, not tuning.
+  - The floor still fetches the top 5 at every question, so archived evidence
+    can come back.
+  - Unlike the reviewer's N1, the eviction policy is not retrained. The price
+    acts through the plug-in rule, so the composed-episode policy of
+    Experiment 13 is reused.
+- The needed model is trained per fold on the train part
+  (`configs/rl/lme_n1/needed_f*.yaml`): active items sampled at every
+  decision, hindsight labels. Base rate is about 0.6% needed.
+
+**Pre-registered gate (written before it ran).** No reader, LongMemEval test
+folds, labels counted (`configs/sweeps/exp14/`). A candidate cell (composed
+policy with price 3e-5, 1e-4, 3e-4; without price as a control) goes to the
+reader only if two things hold against keep-last-0 + top 5, the rule frontier
+of Experiment 13:
+1. its evidence in view, paired over questions, minus the rule's has a 95%
+   interval entirely above 0; and
+2. its mean memory tokens at the question are at most 1.1 times the rule's.
+
+Analysis: `python -m memctl.analysis.gate runs/exp14_gate_f* --frontier
+keep_last0_top5`. Paid cells, if any, go to the user with a cost first.
+
+### 14a. Result: no-go (2026-10-07)
+
+The arm is a **priced archive (plug-in)**: a learned needed model plus a fixed
+decision rule. It is not a learned eviction policy, so it supports no RQ1
+claim about learned eviction.
+- **Order at each decision:** floor retrieval, then the composed-episode
+  policy's own retrieval and its removals for any overflow, then the price
+  rule over the items the policy kept.
+- **Pricing makes a decision every step**, so the rule can keep memory below
+  the budget.
+- **Budgets are not comparable to §13 at the same fraction.** With labels
+  counted, the history is about 7.5% longer. Mean budgets here are 2,192
+  tokens at 2% and 5,481 at 5%.
+
+**Gate** (`runs/exp14_gate_table.md`; 500 questions, no reader). Against
+keep-last-0 + top 5 (evidence 0.630–0.637 at 1,218–1,333 tokens), no cell
+passes the pre-registered rule. The cells that keep more evidence do so only
+with 2.5–4 times the tokens:
+
+| row | evidence | Δ vs keep-last-0 + top 5 (95% CI) | Δ vs unpriced policy, same budget | memory tokens / lines at the question |
+|---|---|---|---|---|
+| priced 3e-5, 5% | 0.767 | +0.130 (+0.099, +0.161) | −0.001 | 5,282 / 51.1 |
+| priced 1e-4, 5% | 0.683 | +0.046 (+0.020, +0.072) | −0.085 | 3,367 / 40.5 |
+| priced 3e-4, 5% | 0.639 | +0.002 (−0.012, +0.015) | −0.130 | 1,892 / 17.8 |
+| priced 3e-4, 2% | 0.616 | −0.021 (−0.034, −0.009) | −0.020 | 1,336 / 7.5 |
+| unpriced policy, 5% | 0.769 | +0.131 | — | 5,397 / 46.1 |
+| keep-last-0 + top 5 | 0.630–0.637 | — | | 1,218–1,333 / 4.8–5.0 |
+
+(The Δ against keep-last-0 + top 5 is taken against its 5% cell for 5% rows
+and its 2% cell for 2% rows. The memory tokens count labels, so they are the
+prompt less the fixed instructions.)
+
+- **The pre-set price (3e-5) does almost nothing.** It archives 0.7% of kept
+  items per step.
+- **Higher prices trade evidence for tokens.** At 3e-4 the rule lands on the
+  frontier rule's evidence, with 1.4 times its tokens. It never gets ahead.
+
+**Why.**
+- **Calibration** (`runs/exp14_calibration_f*.json`, test parts, about 340k
+  sampled items). The needed models are calibrated but rank weakly: AUC
+  0.62–0.74, base rate 1.1–1.4%. Almost no item is predicted above 3%, so at
+  the higher prices nearly every item falls below the keep threshold
+  P* = price × tokens / 0.44, and the rule archives by length alone. At 1e-4
+  the cutoff is roughly 90 tokens.
+- **Pricing tokens is the wrong target.** A per-token price archives long
+  turns and keeps the short ones: at 1e-4, tokens fall 38% but lines only 12%.
+  The reader's cost in Experiment 13 tracked lines (and the labels and
+  distractors that come with them).
+
+**What it settles.** The needed models' AUC (0.62–0.74 on about 340k
+held-out item-steps, base rate 1.1–1.4%, nothing predicted above 0.045)
+measures how well a turn's later need can be predicted *before the question
+arrives*, from what the controller sees. Hindsight has that information, and
+nothing in the stream carries it.
+- On these benchmarks, query-blind eviction cannot beat "archive everything,
+  retrieve at the question", whatever the price or teacher.
+- This is the causal ceiling of the synthetic task (D1), now measured on real
+  text. It matches KV Policy's finding that query-aware heuristics close most
+  of the gap to learned query-blind policies.
+- With a free, searchable archive, eviction to the archive is nearly free. The
+  only decisions that carry value are made at the question: what to retrieve,
+  how much to show, and so how large the prompt is.
+
+**Scope for the thesis.** The original target was long-running tasks where
+questions interleave with the stream and no free archive exists. That is where
+eviction carries information, and where the synthetic results stand. LoCoMo
+and LongMemEval ask their questions after the stream, with a searchable
+archive, so they test retrieval and prompt size, and the eviction arm has
+nothing to decide. The composed-episode environment (questions asked
+mid-stream) is the closest real-text approximation of interleaving. The
+archive still makes eviction free there.
+
+**Next (re-ranked by the review).** First, a query-aware head that chooses
+which 5 of the 16 shortlisted items fill the floor (N2). It keeps the same
+lines in the prompt and has measured headroom: all-found recall@16 minus @5
+is 0.16 on LongMemEval. A variant also chooses k (3, 5 or 8) per question.
+The per-line price with a stop head is demoted, since it can only approach
+keep-last-0 + top k. A better needed signal is dropped for QA after the
+stream and kept for interleaved tasks. The two candidates considered before
+the review:
+1. A per-line price with a learned stop head: a policy that ends removal
+   below the budget, trained against a priced teacher.
+2. A better needed signal before any price is applied. The needed model
+   sees only the policy's item features; an AUC of about 0.65 cannot
+   separate the 1% of items that matter.
+
+No paid cells were proposed.
+
+## 15. A query-aware floor head (N2; 2026-10-07, pre-registered, free stage)
+
+The only decision with information on these benchmarks is made at the
+question (§14a), so this learns it. Memory keeps nothing but the current turn
+(`keep_none`). At each question a head picks 5 of the 16 BM25 candidates
+(`floor_head`, a top-k by its logit), so the prompt has the same 5 retrieved
+lines as keep-last-0 + top 5. The only difference is *which* 5.
+
+- **Training.** Imitation on composed 4-question episodes from each fold's
+  train part, labels counted (`configs/rl/lme_n2/head_<arm>_f*.yaml`). The
+  shortlist is 16 BM25 candidates, with no follow-the-clue items. **Three
+  arms, declared before any gate result was read:**
+  - `listwise`: minus the log of the softmax mass on the gold set. This is
+    the chance that the top item is some gold item.
+  - `listsum`: each gold item's cross-entropy against all 16, summed. It
+    pushes every gold item up, as the all-found gate needs.
+  - `residual`: `listsum` with logit + α × BM25 score on the retrieve column.
+    α is learned from 20, which reproduces the BM25 order at the start.
+
+  The first run was stopped before any gate ran, when the review pointed out
+  that `listwise` does not match an all-found gate.
+- **Headroom.** §12: all-found recall@16 minus @5 is about 0.16 on
+  LongMemEval.
+
+**Pre-registered gate (written before it ran).** No reader, the five test folds
+(`configs/sweeps/exp15/`), 500 questions. The head goes to the reader only if
+its *all-found* evidence (`evidence_complete_rate`: every needed item in view)
+minus keep-last-0 + top 5's, paired over questions, has a 95% interval
+entirely above 0. Lines in the prompt are equal by construction (5 retrieved);
+mean memory tokens at the question are reported beside it. Analysis:
+`python -m memctl.analysis.gate runs/exp15_gate_f* --frontier keep_last0_top5
+--candidates head_top5 --measure evidence_complete_rate`; the token condition
+of that tool (≤ 1.1×) also applies. The rule is the same for each of the
+three arms; whichever passes, passes.
+
+The same gate is also run on each fold's *train* part
+(`exp15_gate_f*_train`), to show overfitting: about 27k parameters against
+about 1,000 training lists. The adaptive k (3, 5 or 8) waits for the next
+round.
+
+### 15a. Result: all three arms pass the free gate (2026-10-07)
+
+All runs are at 07b2166, not dirty; `runs/exp15_gate_table.md`. The baseline
+is keep-last-0 + top 5 (BM25). 500 test questions, paired. The head and the
+rule both retrieve exactly 5 turns per question.
+
+| arm | all-found evidence | Δ vs rule (95% CI) | share found | Δ | memory tokens at question |
+|---|---|---|---|---|---|
+| keep-last-0 + top 5 | 0.506 | — | 0.637 | — | 1,333 |
+| head, `listwise` | 0.592 | **+0.086 (+0.054, +0.120)** | 0.715 | +0.077 | 666 |
+| head, `listsum` | 0.590 | **+0.084 (+0.052, +0.118)** | 0.716 | +0.078 | 561 |
+| head, `residual` | 0.586 | **+0.080 (+0.048, +0.114)** | 0.708 | +0.070 | 613 |
+
+- **All three pass the pre-registered rule.** Each keeps all of a question's
+  evidence in view about 8 points more often, at under half the memory
+  tokens: the head picks shorter turns. The three arms do not differ from one
+  another.
+- **No sign of overfitting.** On the train parts the gains are similar
+  (+0.060 to +0.070 all-found).
+
+**All-found evidence by question type:**
+
+| arm | knowledge-update | multi-session | single-session-assistant | preference | single-session-user | temporal | abstention |
+|---|---|---|---|---|---|---|---|
+| keep-last-0 + top 5 | 0.625 | 0.182 | 0.875 | 0.300 | 0.828 | 0.472 | 0.500 |
+| head, `listsum` | 0.722 | 0.314 | 0.768 | 0.333 | 0.875 | 0.622 | 0.567 |
+| head, `listwise` | 0.736 | 0.314 | 0.786 | 0.267 | 0.891 | 0.614 | 0.600 |
+
+The gains come where evidence is spread or dated: multi-session (+0.13),
+temporal (+0.15) and knowledge-update (+0.10). The head loses on
+single-session-assistant (−0.09 to −0.11), where the evidence sits in the
+assistant's own, usually long, turns. The `listsum` loss did not separate from
+`listwise` on multi-session.
+
+**Controls (review; free; `exp15_control_f*`).** Two rules on the same 16
+BM25 candidates test whether the head only learned "evidence turns are short
+user turns".
+
+| rule | all-found | head (`listsum`) minus rule | memory tokens |
+|---|---|---|---|
+| shortest 5 of 16 | 0.382 | +0.208 (+0.166, +0.250) | 357 |
+| user turns only, top 5 of 16 | 0.530 | +0.060 (+0.028, +0.094) | 566 |
+
+- **Neither rule comes within the head's interval**, so the head learned
+  something beyond length and speaker.
+- **The user-only rule matches the head's tokens.** The token saving comes
+  largely from preferring user turns; the evidence gain does not.
+- **Lengths of the chosen turns** (tokens, labels counted):
+
+  | | median | interquartile range |
+  |---|---|---|
+  | gold evidence | 79 | 67–93 |
+  | head's 5 | 78 | 60–101 |
+  | BM25's top 5 | 148 | 76–435 |
+
+In one sentence: the user-only rule explains the head's token saving, but not
+its evidence gain.
+
+**Paid reader test (approved by the user on 2026-10-07, about $0.30–0.40).**
+`configs/sweeps/exp15/exp15_paid_f*.yaml`: the three arms and
+keep-last-0 + top 5 on all 500 questions, with the reader frozen at 7b5fc30 and
+the official judge. Criteria, as in §13:
+1. paired accuracy against keep-last-0 + top 5, 95% interval above 0, with
+   Holm over the three arms reported;
+2. place on the accuracy-against-tokens frontier;
+3. the §13a decomposition (P(all in view), P(correct | in view), the unknown
+   rate, prompt tokens), to separate the gain from more evidence and the gain
+   from fewer tokens.
+
+**Caveat.** The gate measures the same evidence labels the head was trained to
+find: `has_answer` turns, plus any turn of an unmarked answer session. Whether
+more labelled evidence, at half the tokens, turns into more correct answers is
+the reader's test, which is a paid step.
+
+### 15b. Reader test: the learned floor head beats the rule (2026-10-07)
+
+Pod gci9yw2757b6oa ran 18:12–18:22 UTC, about 0.16 h, about $0.08; the
+estimate was $0.30–0.40. Sweeps `exp15_paid_f*` at 3d7689b, reader frozen as
+in §13. The analysis is `runs/_pipelines/exp15_report.py`; its output is
+`runs/exp15_paid_report.md`. 470 non-abstention questions, paired by question.
+
+| row | accuracy | Δ vs keep-last-0 + top 5 (95% CI) | P(all in view) | P(correct \| in view) | P(correct \| not) | "unknown" | prompt tokens |
+|---|---|---|---|---|---|---|---|
+| keep-last-0 + top 5 | 0.466 | — | 0.506 | 0.706 | 0.220 | 0.283 | 1,554 |
+| head, `listsum` | **0.513** | **+0.047 (+0.009, +0.087)** | 0.591 | 0.698 | 0.245 | 0.211 | 745 |
+| head, `listwise` | **0.506** | **+0.040 (+0.002, +0.079)** | 0.591 | 0.712 | 0.208 | 0.211 | 846 |
+| head, `residual` | 0.491 | +0.026 (−0.013, +0.064) | 0.585 | 0.691 | 0.210 | 0.236 | 794 |
+
+**Verdict under the pre-registered criteria.**
+
+- **Criterion 1 (paired accuracy).** Two of three arms win: `listsum` and
+  `listwise`. The `residual` arm does not.
+- **Holm correction (computed afterwards, so it does not change the
+  verdict).** Over the three arms the adjusted p-values are 0.058 (`listsum`),
+  0.089 (`listwise`) and 0.19 (`residual`), so no arm survives at 0.05.
+- **Criterion 2 (frontier).** The winning arms are ahead of the rule on both
+  axes: higher accuracy at under half the prompt tokens (0.513 at 745 against
+  0.466 at 1,554). They are the first learned rows on real conversations to
+  lie beyond the rule frontier. They remain far below the hindsight oracle
+  (0.672 at 394).
+
+**Where the gain comes from.** In one sentence: of the +0.047, about +0.041
+comes from having the evidence in view more often and about +0.006 from the
+conditional accuracies. P(correct | in view) is unchanged at half the tokens
+because both 745 and 1,554 tokens are below the context-rot onset. So the gain
+is selection, and there is unused room below the onset. That is the case for
+an adaptive k: show 8 turns instead of 5 when the head is unsure.
+
+In detail, accuracy is the mixture
+P(in view) × P(correct | in view) + (1 − P(in view)) × P(correct | not).
+
+- Keeping the rule's conditional accuracies and using `listsum`'s P(all in
+  view) gives 0.507. So about +0.041 of `listsum`'s +0.047 comes from having
+  all the evidence in view more often, and about +0.006 from the conditional
+  accuracies.
+- The shorter prompt did not raise P(correct | in view): 0.698 against 0.706.
+  It did lower the unknown rate (0.211 against 0.283), mostly on questions
+  whose evidence is now in view.
+- At these prompt sizes (under 1.6k tokens), below the ~3k onset of context
+  rot, fewer tokens buy little. More evidence is what pays.
+
+**By type (accuracy, rule → `listsum`):**
+
+| type | rule | `listsum` |
+|---|---|---|
+| multi-session | 0.256 | 0.322 |
+| temporal | 0.323 | 0.370 |
+| single-session-user | 0.734 | 0.844 |
+| knowledge-update | 0.694 | 0.722 |
+| preference (n = 30) | 0.067 | 0.167 |
+| single-session-assistant | 0.857 | 0.786 |
+
+The rows are descriptive. The one loss, single-session-assistant, matches the
+evidence loss in §15a.
+
+**LoCoMo transfer (free gate; `runs/exp15_gate_locomo_table.md`).** The fold-0
+LongMemEval heads rank the shared fusion search's top 16 on LoCoMo categories
+1–4, against fusion's own top 5, with keep-none and no reader.
+
+- All-found evidence rises from 0.206 to 0.33–0.34: +0.13, interval about
+  +0.11 to +0.15 over 10 conversations. Share-found rises by +0.11 to +0.12.
+- But the head's five turns take 144–146 memory tokens against the rule's 94.
+  That breaks the pre-registered 1.1× token condition, so the result is
+  *no-go* by the rule, though the evidence gain transfers.
+- The absolute difference is small (about 50 tokens; LoCoMo turns are short).
+  No LoCoMo reader cell is proposed under this rule.
+
+### 15c. Robustness: the gain replicates across training seeds and on a second host (2026-10-07)
+
+Pod ji4gpj6dpi4tm0: an A40 on a CUDA 13.0 host, because A40s on 12.8 hosts
+were out of stock. The user approved this check. All cells ran on this one host
+with a fresh cache (`exp15_host_f*`, c6a9752): keep-last-0 + top 5 and the
+`listsum` head from training seeds 0, 1 and 2.
+
+**Host check, measured before the run.**
+- The judge's verdict was identical in every comparison (50/50).
+- 50 cached prompts from the first host, regenerated here with no cache, gave
+  the same parsed answer 44/50 times.
+- The same 50 prompts generated twice on this host gave the same answer
+  49/50 times.
+- So about 1 answer in 50 changes from vLLM's batch nondeterminism alone, and
+  about 5 in 50 when the host changes. The wording moves; correctness barely
+  does. This is also why accuracy is reported here with a bootstrap interval,
+  not as a bare three-decimal number.
+
+| row (host 2) | accuracy | Δ vs keep-last-0 + top 5 (95% CI) |
+|---|---|---|
+| keep-last-0 + top 5 | 0.457 | — |
+| head `listsum`, seed 0 | 0.504 | +0.047 (+0.009, +0.087) |
+| head `listsum`, seed 1 | 0.500 | +0.043 (+0.004, +0.081) |
+| head `listsum`, seed 2 | 0.500 | +0.043 (+0.004, +0.083) |
+| mean over the three seeds | | **+0.044 (+0.008, +0.082)**, seed SD 0.002 |
+
+**The gain replicates.** Every training seed beats the rule on its own, on a
+second host, by the same amount. The seed-averaged paired interval excludes 0.
+"Borderline after Holm" in §15b was a statement about three loss arms
+tested once. `listsum` was chosen for this replication *after* it scored best
+among them. It was one of three declared arms, not a single arm specified in
+advance, so the replication does not remove that selection step. What it
+shows is that the selected arm's gain is not seed or host luck: three
+independent training seeds, each excluding 0, on a second host. If a fully confirmatory test is wanted, the route is a pre-registered
+test of `listsum` alone on LongMemEval-M. It has the same 500 questions with
+far longer histories, so it is a harder setting, not new data. The partial cells of the first attempt on this
+host, made before the host check, are in `runs/_aborted/` and are not reported.
+
+**For the thesis.** On real conversations with a searchable archive, the
+learned decision that pays is query-aware: which retrieved turns fill the few
+lines the reader sees. A small head (about 27k parameters) trained by
+imitation on gold evidence turns a gain in evidence into a gain in accuracy at
+half the prompt. This is RQ4's positive answer, with the caveats above: one
+benchmark, one reader, and a result that sits at the edge after a correction
+for three arms. LoCoMo would be a cross-benchmark transfer test. The adaptive
+number of turns (3, 5 or 8) is the declared next arm.
+
+## 16. Plan (not built): set-valued GRPO on the selection head, with the reader's verdict as reward
+
+Pre-registered plan, written 2026-10-07 and revised after review, before any
+code. It is the RQ3 experiment on real conversations: one question, one
+decision, one judged answer, so credit assignment is exact. Every choice below
+is declared once and not swept.
+
+- **Policy.** The Experiment 15 selection head (5 of 16 BM25 candidates, at
+  the question, keep-none), started from each fold's `listsum` checkpoint.
+  One RL seed per fold; the two extra `listsum` seeds already trained are the
+  variance reference.
+- **Action and probability.**
+  - The action is an unordered 5-subset.
+  - G = 8 subsets are sampled per question without replacement by
+    Gumbel-top-k.
+  - Their log-probability is the unordered-set probability of Kool et al.
+    2020 (https://arxiv.org/abs/2002.06043), computed exactly over the 5!
+    orders.
+- **Reward.** The frozen reader and official judge of Experiment 13 (7b5fc30)
+  give 1 or 0. To this is added a dense auxiliary term so that near-ties still
+  carry signal: 0.2 × token F1 between the answer and the gold.
+- **Advantage.** Group-mean baseline (reward minus the mean of its 8), with no
+  division by the group's standard deviation. A binary reward makes that
+  division explode on near-ties; Experiment 10 found the forms equivalent in
+  effect.
+- **Ties.**
+  - Before training, one reader call per train question with empty memory;
+    questions it answers correctly without memory are dropped (MemAgent's
+    filter).
+  - The share of groups with all-equal rewards is logged and reported every
+    iteration.
+- **Loss.** PPO-clipped policy gradient on the set log-probability, plus an
+  imitation anchor of λ = 0.1 × the `listsum` loss. It is small on purpose:
+  it keeps the head off degenerate subsets without tying it to the evidence
+  labels, which RL is meant to go beyond (the reader may prefer a short
+  unlabelled turn to a long labelled one). Learning rate 3e-4, 4 epochs per
+  batch.
+- **Cost (an upper bound).** Per fold:
+  - at most 1,000 train questions × 8 subsets × 2 calls (answer and judge):
+    about 16k;
+  - the empty-memory filter: about 400 calls;
+  - gate evaluations on the held-out 20% (about 200 questions × 2 calls × 5
+    evaluations): about 2,000.
+
+  That is about 18k calls per fold and about 90k for all five. The generation
+  cache makes a repeated (subset, question) pair free, and repeats grow as the
+  policy sharpens. Training runs fewer requests in parallel than Experiment
+  15's sweep, so allow 30–40 min per fold: about 3 h of A40 with startup,
+  **about $1.50, at most $2.50**.
+- **Gate (paid, needs the reader).** On a held-out 20% of each fold's train
+  part: the greedy top-5 accuracy of the GRPO head minus its `listsum`
+  start's, paired, pooled over folds, with a 95% interval above 0.
+- **Test (only if the gate passes).** The §15b protocol on the test parts.
+  - GRPO head against its `listsum` start: paired; the RQ3 question.
+  - GRPO head against keep-last-0 + top 5: paired; the RQ4 question.
+  - Holm over the comparisons that reach the test, the §13a decomposition,
+    and per-type rows.
+- **Notes added at code review (before any paid call).**
+  - The anchor contributes nothing for a shortlist with no gold item: an
+    empty sum.
+  - Abstention questions drop out at the empty-memory filter: empty memory
+    gives "unknown", which is graded correct for them.
+  - The held-out slice is evaluated at the start and after iterations 2, 4
+    and 6, to give a learning curve.
+  - The gate's power: about 80 held-out questions per fold, 400 pooled, so
+    the paired interval is about ±0.04. A null means "no effect above about
+    0.04", not "no effect".
+  - The reward has a noise floor: on one host, about 1 answer in 50 changes
+    between identical repeated calls (vLLM batch nondeterminism, §15b).
+  - It runs on the robustness check's host and cache, so its starting
+    accuracy is comparable with that check.
+- **Standing rule from §16 on (added after two failed launches, 2026-10-07).**
+  Before any paid launch, run one full-size iteration with a stub backend under
+  the memory guard and record its peak RSS. Both failures would have been
+  caught this way at no cost:
+  - a cache-write race between threads, fixed in b2088bf;
+  - an autograd graph that ran out of memory, fixed in 2eacf0d with a
+    vectorised set log-probability that a test checks against the
+    order-by-order loop in value and gradient.
+
+  The full-size stub iteration peaks at 0.44 GB.
+- **What a result means, stated in advance.**
+  - A pass on RQ3 means RL on the reader's own correctness beats imitation of
+    evidence labels. The per-type rows that move then show what the labels
+    were missing; single-session-assistant, where the head loses, is the
+    obvious candidate.
+  - A fail means the evidence labels were already a sufficient target for a
+    head this small.
+
+### 16a. Result: the GRPO gate fails (2026-10-07)
+
+Pod ji4gpj6dpi4tm0 (A40, CUDA 13.0 host) ran 18:45–19:30 UTC, about 0.74 h,
+about $0.36, for the §15c robustness check and this run; the user approved
+about $1.70, at most $2.70. The run is at 2eacf0d, not dirty. Peak RSS was
+663 MB per fold. `runs/lme_grpo_f*`.
+- **Cache integrity** after the cache-write race (b2088bf): 4,058 entries,
+  0 written under the wrong key, 1 in flight and read as a miss.
+- **Two failed launches** are in `runs/_aborted/` and are not reported.
+
+**Held-out gate** (80 questions per fold, 400 pooled; greedy top 5 of the
+GRPO head minus its `listsum` start, paired): **+0.0125, 95% interval
+−0.0050 to +0.0325. The interval includes 0, so the gate fails and no
+test-fold run follows**, as pre-registered.
+
+| fold | start | after GRPO | held-out curve (iterations 0 / 2 / 4 / 6) | groups with all rewards equal | kept after filter |
+|---|---|---|---|---|---|
+| 0 | 0.550 | 0.538 | 0.550 / 0.537 / 0.550 / 0.537 | 45–52% | 303 |
+| 1 | 0.625 | 0.613 | 0.625 / 0.625 / 0.637 / 0.613 | 44–49% | 303 |
+| 2 | 0.588 | 0.600 | 0.588 / 0.588 / 0.588 / 0.600 | 49–55% | 302 |
+| 3 | 0.538 | 0.538 | flat | 51–56% | 302 |
+| 4 | 0.463 | 0.538 | 0.463 / 0.487 / 0.500 / 0.537 | 52–61% | 301 |
+
+Spend on Experiments 15–16: about $0.44 ($0.08 for the Experiment 15 reader
+test and $0.36 for this pod), against the $1.70 the user approved.
+
+**What it means, as stated in advance.**
+- The result is consistent with a gain of about one point and inconsistent
+  with a gain above about three. It is not evidence of no effect. With this
+  budget (6 iterations × 128 questions × 8 subsets), RL on the reader's own
+  verdict did not improve the selection beyond imitation of the evidence
+  labels by more than about 0.03, the gate's resolution. One fold
+  (4) moved by +0.075; the other four did not move.
+- Per the pre-registration, the evidence labels were already a sufficient
+  target for a head this small.
+
+**Why little moved.**
+- About half of the groups had all 8 rewards equal and carried no signal.
+- The reward's noise floor (1 answer in 50 from batch nondeterminism) is
+  comparable with the per-subset differences being learned.
+- The training-set reward rose by 8–10 points in some folds (correct rate
+  from 0.44 to 0.52–0.54 by iteration 3 or 4) while the held-out slice did
+  not move. With about 27k parameters and about 300 training questions per
+  fold, the likely reading is that the head fitted the training questions
+  through their features rather than learning a transferable preference.
+  This is also why a longer run is not expected to help.
+
+**For RQ3.** GRPO's credit assignment was exact here (one question, one
+decision), so this is not a credit-assignment failure. On this task the
+binding constraint is the reward's information per sample, not the optimiser.
+This matches Experiment 10's finding on the synthetic task, where GRPO added
+about one point over imitation. A longer run is not proposed: the curve is
+flat in four folds of five, and the pre-registered gate decides.
+
+**RQ3 across both tasks.** Credit assignment across time was never the
+binding constraint:
+- on the synthetic task, the needed fact was out of reach of the shortlist;
+- on real conversations, the reward carries too little information per sample
+  (44–61% of groups tied, a noise floor of about 1 answer in 50).
+
+The one credit-assignment question still open is *within* the chosen set:
+which of the five turns earned the reward.
+
+**A possible §17 (declared, not planned; the user decides).** A leave-one-out
+set reward would give each of the five turns its own advantage:
+- the reader answers once with each 4-of-5 subset, plus the full set;
+- each turn's advantage is the drop in reward when it is left out, a
+  Shapley-style estimate.
+
+This makes the per-item signal dense. It costs about 5 times the reader calls
+of §16, roughly $2–3 for all folds. It is the only GRPO variant still judged
+promising for this problem, and it would be a methodological contribution if
+it worked. The alternative is to close RQ3 on the evidence above.
+
+**Decision (the user, 2026-10-07): RQ3 is closed on the evidence above.**
+§17 is not run. The thesis answers RQ3 as follows. With exact credit, GRPO
+adds at most about one point over imitation of hindsight labels, on the
+synthetic task and on real conversations. The limit is the information each
+sample carries, not credit assignment across time.
 
 ## 5. The sequential task
 

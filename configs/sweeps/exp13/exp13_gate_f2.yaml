@@ -1,0 +1,146 @@
+# Evidence gate, LongMemEval fold 2: agent null, free.
+name: exp13_gate_f2
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env:
+    name: longmemeval
+    path: data/longmemeval/longmemeval_s_cleaned.json
+    folds:
+      k: 5
+      fold: 2
+      part: test
+  agent:
+    name: 'null'
+  memory:
+    allowed_operations:
+    - KEEP
+    - MOVE_TO_ARCHIVE
+    - RETRIEVE_FROM_ARCHIVE
+    - NO_OP
+    embedder: hashing
+  logging:
+    detail_episodes: 0
+grid:
+  controller:
+  - name: fifo
+    label: fifo_top5
+    removal:
+    - MOVE_TO_ARCHIVE
+    retrieve:
+      top_k: 5
+      fit: true
+      method: lexical
+  - name: rl
+    label: learned_floor5
+    checkpoint: runs/lme_floor_f2_s0/checkpoints/policy_best.pt
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    retrieval_method: lexical
+  - name: rl
+    label: compose_floor5
+    checkpoint: runs/lme_compose4_f2_s0/checkpoints/policy_best.pt
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    retrieval_method: lexical
+  - name: rl
+    label: synthetic_floor5
+    checkpoint: runs/rl_bc_archive_regret_s0/checkpoints/policy.pt
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    retrieval_method: lexical
+  - name: fifo
+    label: fifo_top5_t2000
+    removal:
+    - MOVE_TO_ARCHIVE
+    retrieve:
+      top_k: 5
+      fit: true
+      method: lexical
+    target_tokens: 2000
+  - name: rl
+    label: learned_floor5_t2000
+    checkpoint: runs/lme_floor_f2_s0/checkpoints/policy_best.pt
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    retrieval_method: lexical
+    target_tokens: 2000
+  - name: rl
+    label: compose_floor5_t2000
+    checkpoint: runs/lme_compose4_f2_s0/checkpoints/policy_best.pt
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    retrieval_method: lexical
+    target_tokens: 2000
+  - name: rl
+    label: synthetic_floor5_t2000
+    checkpoint: runs/rl_bc_archive_regret_s0/checkpoints/policy.pt
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    retrieval_method: lexical
+    target_tokens: 2000
+  - name: fifo
+    label: fifo_top5_t3000
+    removal:
+    - MOVE_TO_ARCHIVE
+    retrieve:
+      top_k: 5
+      fit: true
+      method: lexical
+    target_tokens: 3000
+  - name: rl
+    label: learned_floor5_t3000
+    checkpoint: runs/lme_floor_f2_s0/checkpoints/policy_best.pt
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    retrieval_method: lexical
+    target_tokens: 3000
+  - name: rl
+    label: compose_floor5_t3000
+    checkpoint: runs/lme_compose4_f2_s0/checkpoints/policy_best.pt
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    retrieval_method: lexical
+    target_tokens: 3000
+  - name: rl
+    label: synthetic_floor5_t3000
+    checkpoint: runs/rl_bc_archive_regret_s0/checkpoints/policy.pt
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    retrieval_method: lexical
+    target_tokens: 3000
+  - name: fifo
+    label: fifo_top5_t4000
+    removal:
+    - MOVE_TO_ARCHIVE
+    retrieve:
+      top_k: 5
+      fit: true
+      method: lexical
+    target_tokens: 4000
+  - name: rl
+    label: learned_floor5_t4000
+    checkpoint: runs/lme_floor_f2_s0/checkpoints/policy_best.pt
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    retrieval_method: lexical
+    target_tokens: 4000
+  - name: rl
+    label: compose_floor5_t4000
+    checkpoint: runs/lme_compose4_f2_s0/checkpoints/policy_best.pt
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    retrieval_method: lexical
+    target_tokens: 4000
+  - name: rl
+    label: synthetic_floor5_t4000
+    checkpoint: runs/rl_bc_archive_regret_s0/checkpoints/policy.pt
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    retrieval_method: lexical
+    target_tokens: 4000
+  memory.budget.fraction:
+  - 0.01
+  - 0.02
+  - 0.05

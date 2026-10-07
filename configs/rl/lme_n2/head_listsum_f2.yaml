@@ -1,0 +1,50 @@
+# N2 (Experiment 15), arm listsum: query-aware floor head (5 of 16 BM25 candidates, no bridge items), keep_none,
+# imitation with retrieval_loss listsum; composed 4-question episodes from the train part of fold 2.
+schema_version: 1
+name: lme_head_listsum_f2
+seed: 0
+env:
+  name: longmemeval
+  path: data/longmemeval/longmemeval_s_cleaned.json
+  folds:
+    k: 5
+    fold: 2
+    part: train
+  compose: 4
+agent:
+  name: 'null'
+controller:
+  name: rl
+  hidden: 64
+  architecture: deepsets
+  retrieval_method: lexical
+  retrieve_floor: 5
+  retrieve_candidates: 16
+  floor_head: true
+  keep_none: true
+memory:
+  allowed_operations:
+  - KEEP
+  - MOVE_TO_ARCHIVE
+  - RETRIEVE_FROM_ARCHIVE
+  - NO_OP
+  embedder: hashing
+  count_labels: true
+training:
+  budget_fractions:
+  - 0.0125
+  expert:
+    kind: regret
+    retrieval_risk: 0.36
+  phases:
+  - algorithm: bc
+    iterations: 10
+    episodes: 25
+    epochs: 4
+    lr: 0.003
+    dagger: true
+    retrieval_loss: listsum
+  eval:
+    every: 2
+    episodes: 5
+    metric: evidence

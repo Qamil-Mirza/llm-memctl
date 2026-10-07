@@ -13,9 +13,11 @@ from memctl.features import GLOBAL_DIM, ITEM_DIM, ITEM_FEATURES, Featurizer
 from memctl.harness.runner import Experiment, run_experiment, run_one
 from memctl.rl.algorithms import ALGORITHMS, imitation_loss
 from memctl.rl.expert import ARCHIVE, EVICT, make_expert
-from memctl.rl.policy import N_COLUMNS, ItemPolicy
+from memctl.rl.policy import N_COLUMNS, RETRIEVE_COLUMN, ItemPolicy
 from memctl.rl.train import fill_returns, train
 from memctl.runlog import read_jsonl
+from memctl.memory.actions import Operation
+from memctl.memory.items import SourceType
 from tests.helpers import DELETE_ONLY, episode_info, make_state, task_for
 
 ARCHIVE_OPS = ["KEEP", "EVICT", "MOVE_TO_ARCHIVE", "RETRIEVE_FROM_ARCHIVE", "NO_OP"]
@@ -213,7 +215,8 @@ def test_training_writes_a_checkpoint_that_an_ordinary_run_can_evaluate(tmp_path
     assert checkpoint.exists() and (folder / "checkpoints" / "policy_phase0_bc.pt").exists()
     summary = json.loads((folder / "summary.json").read_text())
     assert (folder / "checkpoints" / "policy_best.pt").exists()
-    assert summary["best_eval"]["validation"] >= sum(summary["final_eval"].values()) / len(summary["final_eval"])
+    successes = [v for k, v in summary["final_eval"].items() if k.startswith("success")]
+    assert summary["best_eval"]["metric"] == "success" and summary["best_eval"]["validation"] >= sum(successes) / len(successes)
     assert settings["training"]["eval"].get("seed_offset", 50_000) != 0  # validation never uses the test seeds
 
     evaluation = resolve({**config(horizon=80), "episodes": 2, "controller": {"name": "rl", "checkpoint": str(checkpoint)}})
@@ -406,3 +409,272 @@ def test_grpo_can_keep_the_expert_in_its_loss(tmp_path):
     folder = train(settings, tmp_path / "train")
     row = read_jsonl(folder / "train_log.jsonl")[0]
     assert "imitation_loss" in row and len(read_jsonl(folder / "groups.jsonl")) == 2
+
+
+def test_a_deletion_price_makes_the_regret_expert_archive_what_is_never_needed():
+    experiment = Experiment(config(fraction=0.05, operations=ARCHIVE_OPS))
+    controller = experiment.controller
+    hindsight = experiment.hindsight(0)
+    controller.record, controller.follow_expert = True, True
+    controller.expert = make_expert(hindsight, kind="regret", delete_cost=0.5)
+    episode = experiment.run_episode(seed=0, detail=False).episode
+    never = 0
+    for decision in controller.recorded:
+        for i in range(decision.n_active):
+            assert 0 <= decision.expert_rank[i, ARCHIVE] < decision.expert_rank[i, EVICT]
+            never += min(hindsight.next_need(root, decision.step) for root in decision.roots[i]) > 10**8
+    assert never > 0 and episode["task_success"] == 1.0
+    assert "EVICT" not in episode["action_counts"]["controller"]
+
+
+def test_a_retrieval_floor_retrieves_the_top_results_at_every_question_outside_the_policy():
+    def run(floor):
+        torch.manual_seed(0)  # the same untrained policy in both runs
+        experiment = Experiment(config(fraction=0.05, operations=ARCHIVE_OPS, retrieve_floor=floor))
+        controller = experiment.controller
+        controller.record, emitted, decide = True, [], controller.decide
+
+        def spy(memory, task):
+            actions = decide(memory, task)
+            emitted.append((task.observation.requires_response and bool(memory.archived), actions))
+            return actions
+
+        controller.decide = spy
+        episode = experiment.run_episode(seed=0, detail=False).episode
+        return episode, controller.recorded, emitted
+
+    plain, plain_decisions, _ = run(0)
+    floored, floored_decisions, emitted = run(3)
+    assert plain["invalid_actions"] == 0 and floored["invalid_actions"] == 0
+    # As with the heuristics' retrieval, a floor item that does not fit is put back in the archive, never deleted.
+    assert "EVICT" not in floored["action_counts"]["harness"]
+    questions = [actions for searching, actions in emitted if searching]
+    assert questions and all(
+        any(a.parameters.get("method", "").startswith("floor+") and len(a.target_ids) <= 3 for a in actions)
+        for actions in questions
+    )
+    # The floor items are not policy decisions: the policy's shortlist is three shorter.
+    assert max(len(d.retrieve_tokens) for d in plain_decisions) == 8
+    assert max(len(d.retrieve_tokens) for d in floored_decisions) == 8 - 3
+
+
+def test_a_token_target_keeps_active_memory_well_below_the_budget():
+    def mean_active(target):
+        experiment = Experiment(config(fraction=0.25, operations=ARCHIVE_OPS, retrieve_floor=2, target_tokens=target))
+        episode = experiment.run_episode(seed=0, detail=False).episode
+        assert episode["invalid_actions"] == 0
+        return episode["active_tokens_mean"], episode["budget"]
+
+    full, budget = mean_active(None)
+    targeted, _ = mean_active(60)
+    assert full > 0.5 * budget and targeted < 0.1 * budget
+
+
+def test_with_a_token_target_the_fill_features_measure_against_the_target():
+    experiment = Experiment(config(fraction=0.25, operations=ARCHIVE_OPS, target_tokens=60))
+    experiment.controller.record = True
+    experiment.run_episode(seed=0, detail=False)
+    under_budget = [d for d in experiment.controller.recorded if d.excess > 0 and d.global_features[0] < 3.0]
+    assert under_budget and all(d.global_features[1] > 0 for d in under_budget)
+
+
+def test_a_floor_the_expert_makes_room_for_is_never_returned_by_the_harness():
+    for fraction in (0.02, 0.05):
+        experiment = Experiment(config(fraction=fraction, operations=ARCHIVE_OPS, retrieve_floor=5))
+        controller = experiment.controller
+        controller.follow_expert = True
+        controller.expert = make_expert(experiment.hindsight(0), kind="regret")
+        floors, decide = [], controller.decide
+
+        def spy(memory, task, decide=decide, floors=floors):
+            actions = decide(memory, task)
+            floors.append((controller.decision_info().get("floor_tokens", 0), memory.budget))
+            return actions
+
+        controller.decide = spy
+        episode = experiment.run_episode(seed=0, detail=False).episode
+        assert episode["invalid_actions"] == 0
+        assert any(tokens for tokens, _ in floors) and all(tokens <= budget for tokens, budget in floors)
+        if fraction == 0.05:  # at 2% the expert's own retrievals can overflow, with or without a floor
+            assert not episode["action_counts"]["harness"]
+
+
+def test_without_a_task_model_validation_selects_on_evidence_in_context(tmp_path):
+    settings = config(horizon=80, operations=ARCHIVE_OPS)
+    settings["agent"] = {"name": "null"}
+    settings["name"] = "tiny_null"
+    settings["training"] = {
+        "phases": [{"algorithm": "bc", "iterations": 2, "episodes": 2, "epochs": 1}],
+        "eval": {"every": 1, "episodes": 2}, "budget_fractions": [0.1],
+    }
+    folder = train(settings, tmp_path / "train")
+    log = read_jsonl(folder / "train_log.jsonl")
+    assert all(row["success@0.1"] == 0 and 0 <= row["evidence@0.1"] <= 1 for row in log)
+    assert all(row["validation"] == row["evidence@0.1"] for row in log)
+    assert json.loads((folder / "summary.json").read_text())["best_eval"]["metric"] == "evidence"
+
+
+def test_headroom_ranks_a_requirement_by_its_best_item():
+    from memctl.rl.headroom import ranks
+
+    assert ranks(["a", "b", "c"], [("c", "a"), ("b",), ("z",)]) == [1, 2, 10**9]
+
+
+def test_labelled_lexical_search_finds_an_item_by_its_speaker_and_date():
+    from memctl.retrieval import LexicalRetriever, build_retriever, labelled_text
+
+    state = make_state([])
+    for number, (speaker, text) in enumerate([("Caroline", "I went hiking."), ("Melanie", "I painted a lake.")]):
+        state.ingest(f"t{number}", text, SourceType.USER, metadata={"speaker": speaker, "date": "8 May 2023"})
+    items = state.active()
+    assert labelled_text(items[0]) == "Caroline (8 May 2023): I went hiking."
+    assert LexicalRetriever().search("What did Melanie do?", items, 1) == []
+    [(item, _)] = LexicalRetriever(labels=True).search("What did Melanie do?", items, 1)
+    assert item.id == "t1" and build_retriever("lexical_label").name == "lexical_label"
+    with pytest.raises(KeyError):
+        build_retriever("psychic")
+
+
+def test_fusion_ranks_by_reciprocal_rank_over_both_searches(monkeypatch):
+    from memctl.retrieval import FusionRetriever
+
+    state = make_state(["alpha beta", "gamma delta", "epsilon zeta"])
+    items = state.active()
+    fusion = FusionRetriever()
+    monkeypatch.setattr(fusion.lexical, "search", lambda q, xs, k: [(items[0], 3.0), (items[1], 1.0)])
+    monkeypatch.setattr(fusion.dense, "search", lambda q, xs, k: [(items[1], 0.9), (items[2], 0.8)])
+    ranked = [item.id for item, _ in fusion.search("q", items, 3)]
+    assert ranked == ["o1", "o0", "o2"]  # o1 is in both lists
+
+
+def test_a_resumed_run_keeps_the_git_state_of_every_session(tmp_path):
+    from memctl.runlog import RunLogger as RunLog
+
+    settings = config(horizon=40)
+    RunLog(tmp_path / "cell", settings)
+    (tmp_path / "cell" / "episodes.jsonl").write_text("")
+    meta = json.loads((tmp_path / "cell" / "metadata.json").read_text())
+    meta["git"] = {"short": "old0000"}
+    meta["git_history"] = [{"short": "old0000"}]
+    (tmp_path / "cell" / "metadata.json").write_text(json.dumps(meta))
+    log = RunLog(tmp_path / "cell", settings)
+    assert log.resumed and [g["short"] for g in log.metadata["git_history"]][0] == "old0000"
+    assert len(log.metadata["git_history"]) == 2
+
+
+def test_a_token_price_archives_kept_items_worth_less_than_their_tokens(tmp_path):
+    from memctl.features import GLOBAL_DIM, ITEM_DIM
+    from memctl.rl.policy import NeededModel
+
+    model = NeededModel(ITEM_DIM + GLOBAL_DIM)
+    for parameter in model.parameters():
+        torch.nn.init.zeros_(parameter)  # P(needed) = 0.5 for every item
+    torch.save({"state_dict": model.state_dict(), "config": model.config}, tmp_path / "needed.pt")
+
+    def run(price):
+        torch.manual_seed(0)
+        experiment = Experiment(config(fraction=0.5, operations=ARCHIVE_OPS, needed_model=str(tmp_path / "needed.pt"),
+                                       need_value=1.0, token_price=price))
+        episode = experiment.run_episode(seed=0, detail=False).episode
+        assert episode["invalid_actions"] == 0
+        return episode
+
+    free, priced = run(0.0), run(1.0)  # 0.5 x 1 < 1.0 x tokens for any item: everything but the newest goes
+    assert priced["active_tokens_mean"] < 0.5 * free["active_tokens_mean"]
+    assert run(1e-6)["active_tokens_mean"] == free["active_tokens_mean"]  # a negligible price changes nothing
+
+
+def test_auc_counts_a_random_positive_above_a_random_negative():
+    from memctl.rl.calibration import auc
+
+    assert auc(np.array([0.9, 0.8, 0.1, 0.2]), np.array([1, 1, 0, 0])) == 1.0
+    assert auc(np.array([0.1, 0.9]), np.array([1, 0])) == 0.0
+    assert auc(np.array([0.5, 0.5]), np.array([1, 0])) == 0.5
+
+
+def test_keep_none_with_a_floor_head_retrieves_exactly_k_chosen_by_the_head(tmp_path):
+    torch.manual_seed(0)
+    experiment = Experiment(config(fraction=0.25, operations=ARCHIVE_OPS, keep_none=True, floor_head=True,
+                                   retrieve_floor=3, retrieve_candidates=8))
+    controller = experiment.controller
+    controller.record = True
+    emitted, decide = [], controller.decide
+
+    def spy(memory, task):
+        actions = decide(memory, task)
+        emitted.append((task.observation.requires_response, memory, actions))
+        return actions
+
+    controller.decide = spy
+    episode = experiment.run_episode(seed=0, detail=False).episode
+    assert episode["invalid_actions"] == 0
+    for asked, memory, actions in emitted:
+        kept = [i.id for i in memory.active if not i.pinned]
+        archived = {i for a in actions if a.operation is Operation.MOVE_TO_ARCHIVE for i in a.target_ids}
+        assert set(kept) - archived <= {memory.active[-1].id}  # everything but the newest goes to the archive
+    shortlists = [d for d in controller.recorded if d.retrieve_tokens]
+    assert shortlists and all(sum(d.retrieved) == min(3, len(d.retrieve_tokens)) for d in shortlists)
+
+    settings = config(horizon=80, operations=ARCHIVE_OPS, keep_none=True, floor_head=True, retrieve_floor=3, retrieve_candidates=8)
+    settings["name"] = "tiny_listwise"
+    settings["training"] = {"phases": [{"algorithm": "bc", "iterations": 2, "episodes": 3, "epochs": 2,
+                                        "retrieval_loss": "listwise"}], "eval": {"every": 1, "episodes": 2},
+                            "budget_fractions": [0.25]}
+    log = read_jsonl(train(settings, tmp_path / "train") / "train_log.jsonl")
+    assert all(row["expert_agreement"] is not None and 0 <= row["expert_agreement"] <= 1 for row in log)
+
+
+def test_a_residual_head_starts_in_the_search_order_and_both_listwise_losses_train():
+    torch.manual_seed(0)
+    index = ITEM_FEATURES.index("retrieval_score")
+    policy = ItemPolicy(ITEM_DIM, GLOBAL_DIM, 16, "deepsets", residual=50.0, residual_index=index)
+    items = torch.rand(16, ITEM_DIM)
+    items[:, index] = torch.linspace(1.0, 0.0, 16)  # the search's own order
+    logits, _ = policy(items, torch.zeros(GLOBAL_DIM))
+    assert torch.topk(logits[:, RETRIEVE_COLUMN], 5).indices.sort().values.tolist() == [0, 1, 2, 3, 4]
+    restored = ItemPolicy(**policy.config)
+    restored.load_state_dict(policy.state_dict())
+    assert torch.allclose(restored(items, torch.zeros(GLOBAL_DIM))[0], logits)
+
+
+def test_set_probabilities_sum_to_one_and_gumbel_top_k_samples_them():
+    import itertools as it
+
+    from memctl.rl.select_grpo import gumbel_top_k, set_log_prob
+
+    logits = torch.tensor([1.0, 0.3, -0.5, 2.0, 0.0])
+    total = sum(float(torch.exp(set_log_prob(logits, list(s)))) for s in it.combinations(range(5), 2))
+    assert abs(total - 1.0) < 1e-5
+    generator = torch.Generator().manual_seed(0)
+    counts = {}
+    for _ in range(4000):
+        key = tuple(sorted(gumbel_top_k(logits, 2, generator)))
+        counts[key] = counts.get(key, 0) + 1
+    for subset, count in counts.items():  # sampled frequency matches the exact set probability
+        assert abs(count / 4000 - float(torch.exp(set_log_prob(logits, list(subset))))) < 0.03
+
+
+def test_the_vectorised_set_log_prob_matches_the_order_by_order_loop_in_value_and_gradient():
+    import itertools as it
+
+    from memctl.rl.select_grpo import set_log_prob
+
+    def loop(logits, subset):  # the first implementation: one Plackett-Luce product per order
+        terms = []
+        for order in it.permutations(subset):
+            remaining = torch.ones_like(logits, dtype=torch.bool)
+            total = logits.new_zeros(())
+            for index in order:
+                total = total + logits[index] - torch.logsumexp(logits[remaining], 0)
+                remaining = remaining.clone()
+                remaining[index] = False
+            terms.append(total)
+        return torch.logsumexp(torch.stack(terms), 0)
+
+    generator = torch.Generator().manual_seed(1)
+    for subset in ([0, 3], [1, 4, 7], [2, 5, 6, 9, 11]):
+        base = torch.randn(16, generator=generator) * 2
+        a, b = base.clone().requires_grad_(), base.clone().requires_grad_()
+        fast, slow = set_log_prob(a, subset), loop(b, subset)
+        fast.backward(), slow.backward()
+        assert abs(float(fast) - float(slow)) < 1e-5 and torch.allclose(a.grad, b.grad, atol=1e-5)

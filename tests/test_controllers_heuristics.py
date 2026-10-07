@@ -166,3 +166,45 @@ def test_consolidation_can_also_shorten_the_merged_item():
     MemoryEngine().apply(state, actions)
     merged = state.active()[-1]
     assert "K93Q" in merged.content and merged.token_count <= 20
+
+
+def test_a_token_target_makes_a_rule_evict_below_the_budget():
+    actions = decide(build_controller({"name": "fifo", "target_tokens": 6}), make_state(FOUR, budget=12), DELETE_ONLY)
+    assert removed(actions) == ["o0", "o1"]
+
+
+def test_a_fitted_retrieval_takes_only_what_fits_in_the_room():
+    state = make_state([FACT, "As of step 2, the access code of vault-318 is X11Y.", FILLER], budget=25)
+    controller = build_controller(
+        {"name": "fifo", "removal": ["MOVE_TO_ARCHIVE"], "retrieve": {"top_k": 2, "fit": True}})
+    controller.reset(episode_info(state))
+    for item_id in ("o0", "o1"):
+        state.move(item_id, Tier.ARCHIVE, "MOVE_TO_ARCHIVE", "controller")
+    state.step = 4
+    state.ingest("q", "access code vault-317?", SourceType.USER)
+    actions = controller.decide(state.view(), task_for(state, "q", query=True))
+    assert removed(actions, Operation.RETRIEVE_FROM_ARCHIVE) == ["o0"]  # the second hit would not fit beside it
+    MemoryEngine().apply(state, actions)
+    assert state.active_tokens <= state.budget
+
+
+def test_retrieval_controls_can_rerank_by_length_and_keep_one_speaker():
+    state = make_state([])
+    for number, (speaker, text) in enumerate([
+        ("assistant", "the vault code K93Q is in the long assistant answer about vault codes " * 3),
+        ("user", "my vault code is K93Q"),
+        ("user", "vault code K93Q noted for the vault"),
+    ]):
+        state.ingest(f"t{number}", text, SourceType.USER, metadata={"speaker": speaker})
+        state.move(f"t{number}", Tier.ARCHIVE, "MOVE_TO_ARCHIVE", "controller")
+    state.step = 9
+    state.ingest("q", "what is my vault code?", SourceType.USER)
+    for retrieve, expected in (({"top_k": 1, "candidates": 3, "rerank": "shortest"}, ["t1"]),
+                               ({"top_k": 2, "candidates": 3, "speaker": "user"}, None)):
+        controller = build_controller({"name": "archive_everything", "keep_last": 0, "retrieve": retrieve})
+        controller.reset(episode_info(state))
+        got = removed(controller.decide(state.view(), task_for(state, "q", query=True)), Operation.RETRIEVE_FROM_ARCHIVE)
+        if expected:
+            assert got == expected
+        else:
+            assert set(got) <= {"t1", "t2"} and got

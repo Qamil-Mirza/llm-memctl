@@ -10,7 +10,9 @@ compression-only and retrieval variants of the same rule are built.
     controller:
       name: lru
       removal: [COMPACT, MOVE_TO_ARCHIVE]   # tried in this order; default [EVICT]
-      retrieve: {top_k: 3, method: lexical} # omit for no retrieval
+      retrieve: {top_k: 3, method: lexical} # omit for no retrieval; method: lexical | lexical_label |
+                                            # dense | fusion (model: ...); fit: true caps it to the room
+      target_tokens: 3000                   # optional: evict down to this, below the budget
       consolidate: {ratio: 0.4}             # omit for no consolidation; ratio also shortens the merged item
 """
 
@@ -69,6 +71,9 @@ class PriorityController(MemoryController):
         self.min_compact_tokens = int(config.get("min_compact_tokens", 30))
         self.compact_ratio = float(config.get("compact_ratio", 0.5))
         self.retriever = None
+        # Target fill: remove down to this many active tokens even when the budget allows more, as the
+        # RL controller's target_tokens does (a matched control for it). None fills up to the budget.
+        self.target_tokens = int(config["target_tokens"]) if config.get("target_tokens") else None
         self._info: dict = {}
 
     def reset(self, episode: EpisodeInfo) -> None:
@@ -76,7 +81,8 @@ class PriorityController(MemoryController):
         needed = list(self.removal)
         if self.retrieve_config is not None:
             needed.append(Operation.RETRIEVE_FROM_ARCHIVE)
-            self.retriever = build_retriever(self.retrieve_config.get("method", "lexical"), episode.embedder)
+            self.retriever = build_retriever(self.retrieve_config.get("method", "lexical"), episode.embedder,
+                                             self.retrieve_config.get("model"))
         if self.consolidate_config is not None:
             needed.append(Operation.CONSOLIDATE)
         missing = [op.value for op in needed if op not in episode.allowed_operations]
@@ -115,14 +121,15 @@ class PriorityController(MemoryController):
                 protected.update(action.target_ids)
 
         self._info = {}
-        if projected > memory.budget:  # priorities are only needed, and only logged, under pressure
+        limit = min(memory.budget, self.target_tokens) if self.target_tokens else memory.budget
+        if projected > limit:  # priorities are only needed, and only logged, under pressure
             scores = {item.id: self.priority(item, memory, task) for item in memory.active}
             self._info = {"scores": {item_id: round(score, 4) for item_id, score in scores.items()}}
             candidates = sorted(
                 (item for item in memory.active if not item.pinned and item.id not in protected),
                 key=lambda item: (scores[item.id], origin(item), item.created_at),
             )
-            actions.extend(self._relieve(candidates, projected - memory.budget))
+            actions.extend(self._relieve(candidates, projected - limit))
         return actions
 
     def proactive(self, memory: MemoryView, task: TaskState, protected: set[str]) -> list[MemoryAction]:
@@ -156,8 +163,28 @@ class PriorityController(MemoryController):
             return None
         config = self.retrieve_config
         query = task.observation.content
-        hits = self.retriever.search(query, memory.archived, int(config.get("top_k", 3)))
+        top_k = int(config.get("top_k", 3))
+        # Controls for a learned re-ranker (Experiment 15): search `candidates` deep, optionally keep only one
+        # speaker's turns, then take `top_k` by search order or, with rerank: shortest, by length.
+        pool = self.retriever.search(query, memory.archived, int(config.get("candidates", top_k)))
+        if config.get("speaker"):
+            pool = [(item, score) for item, score in pool if item.metadata.get("speaker") == config["speaker"]]
+        if config.get("rerank") == "shortest":
+            pool = sorted(pool, key=lambda pair: (pair[0].token_count, -pair[1]))
+        hits = pool[:top_k]
         hits = [(item, score) for item, score in hits if score >= float(config.get("min_score", 0.0))]
+        if config.get("fit"):
+            # As the RL controller's retrieval floor: top results in rank order while they fit in the
+            # limit beside pinned items, so the harness never has to put one back.
+            limit = min(memory.budget, self.target_tokens) if self.target_tokens else memory.budget
+            room = limit - sum(item.token_count for item in memory.active if item.pinned)
+            kept, used = [], 0
+            for item, score in hits:
+                if used + item.token_count > room:
+                    break
+                kept.append((item, score))
+                used += item.token_count
+            hits = kept
         if not hits:
             return None
         return MemoryAction(
