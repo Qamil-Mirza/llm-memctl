@@ -2481,7 +2481,11 @@ are paired; reader frozen at 7b5fc30; official judge):
 **Expectation, written before launch:** positive on both primaries, size unknown.
 
 **Safeguards.**
-- A full-size stub run under `guard.sh`, with peak RSS recorded, precedes the launch.
+- A full-size stub run under `guard.sh`, with peak RSS recorded, precedes the launch. Done at 316c35e: all 60
+  cells ran with no failures. Peak RSS per worker is 0.27 GB on LongMemEval and 0.84 GB on LoCoMo (the bge model).
+  Workers: LoCoMo 10 (≈ 8.4 GB) beside LongMemEval 4 (≈ 1.1 GB), under the review's 10 GB line.
+- The §15 head and FIFO + floor rows are new generations on the new host. They are reported beside §15b/§18a as a
+  same-host replicate and do not overwrite the earlier figures.
 - Hard stop at 1 hour of pod time (about $0.49). Estimate from the measured §18a and §15b throughput: about
   $0.30.
 - The pod is verified terminated with list-pods afterwards.
