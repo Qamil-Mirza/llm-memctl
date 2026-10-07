@@ -1392,6 +1392,43 @@ and FIFO + floor at 1% (0.440 at 1,148). A win on (1) alone means learning
 beats recency at the same fill; a win on both means the learned controller is
 worth having.
 
+**Gate result (LoCoMo; agent null, categories 1–4, the shared fusion floor,
+fill only; `runs/exp13_gate_locomo_table.md`).** The LongMemEval-trained
+policies (fold-0 checkpoints) are a cross-benchmark transfer test. The gate
+pairs per episode, and a LoCoMo episode is a conversation, so n = 10 and the
+interval resamples conversations; with 10 clusters it undercovers. The rule
+was not changed. Both go intervals sit far from 0 (lower bounds +0.074 and
++0.054), so undercoverage is unlikely to flip them.
+
+| candidate | 5% | 10% | 25% |
+|---|---|---|---|
+| composed-episode trained (transfer) | −0.029 | −0.014 | **+0.096 (+0.074, +0.119) go** |
+| single-question trained (transfer) | −0.080 | −0.097 | −0.060 |
+| synthetic-trained | −0.027 | −0.032 | **+0.082 (+0.054, +0.107) go** |
+
+(Evidence in view, candidate − FIFO; FIFO itself 0.318 / 0.399 / 0.510.)
+
+*Hypothesis (both benchmarks): nothing at tight budgets, gains at the
+loosest.* At tight budgets the floor and the question fill the budget and
+nothing is left to choose; at loose budgets the policy has a real choice over
+what else to keep. The LongMemEval target rows (3k, 4k) test this: if the
+learned gain tracks the room left after the floor, the reading holds.
+
+*Hypothesis (transfer): turn length.* Single-question LongMemEval training
+transfers negatively to LoCoMo at every budget, composed training transfers
+at 25%, and the synthetic policy passes on LoCoMo at 25% though it failed
+everywhere on LongMemEval. LoCoMo turns are short (mean 26 words, median 22),
+like the synthetic facts (about 11 words), while LongMemEval turns are long
+(mean 161, median 75; every tenth instance sampled). A policy's size and
+recency features may mean different things at these lengths. Not tested.
+
+**Two comparisons for the paid LoCoMo learned rows (stated before they
+landed):** paired accuracy against `fifo_top5_fusion` at 25%, and position on
+the accuracy-against-prompt-tokens frontier against the best LoCoMo rule at
+equal or fewer tokens (from the keep grid). Full context is a further
+reference on LoCoMo, where conversations fit in context: 0.462 on categories
+1–4 (§11e), with the earlier short-phrase reader, so not directly comparable.
+
 **FIFO with the same floor, LongMemEval, all five folds (the learned rows'
 partners).** Evidence in view stays at 0.62–0.63 while accuracy falls as the
 prompt grows: 0.438 at 3,157 tokens (5%, 3k target), 0.423 at 4,197 (4k),
