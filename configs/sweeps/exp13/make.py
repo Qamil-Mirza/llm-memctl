@@ -27,6 +27,9 @@ AGENT = {"name": "llm", "reasoning": True, "labels": "compact", "max_new_tokens"
 MEMORY = {"allowed_operations": ["KEEP", "MOVE_TO_ARCHIVE", "RETRIEVE_FROM_ARCHIVE", "NO_OP"], "embedder": "hashing"}
 LME = "data/longmemeval/longmemeval_s_cleaned.json"
 LME_SEARCH = {"method": "lexical"}  # Experiment 12: labels lower BM25 recall on LongMemEval
+# The synthetic-trained regret imitation policy (Experiment 10, seed 0): with the floor and EVICT masked out it
+# is a learned eviction policy whose features were never fitted to real text (peer review D3).
+SYNTHETIC = "runs/rl_bc_archive_regret_s0/checkpoints/policy.pt"
 LOCOMO_SEARCH = {"method": "fusion", "model": "BAAI/bge-small-en-v1.5"}  # labelled BM25 + bge-small RRF
 
 
@@ -84,7 +87,8 @@ def main() -> None:
         write(f"exp13_lme_f{fold}", f"LongMemEval fold {fold} (test part), fill to budget.", {
             "base": base(lme_env(fold), 100),
             "grid": {"controller": [{"name": "oracle", "method": "approx"}, fifo(LME_SEARCH, "fifo_top5"),
-                                    learned(checkpoint, LME_SEARCH, "learned_floor5")],
+                                    learned(checkpoint, LME_SEARCH, "learned_floor5"),
+                                    learned(SYNTHETIC, LME_SEARCH, "synthetic_floor5")],
                      "memory.budget.fraction": [0.01, 0.02, 0.05]},
         })
         write(f"exp13_lme_f{fold}_target", f"LongMemEval fold {fold}: matched token targets (2% and 5% only).", {
@@ -106,7 +110,8 @@ def main() -> None:
         "grid": {"controller": [{"name": "oracle", "method": "approx"}, fifo(LOCOMO_SEARCH, "fifo_top5_fusion"),
                                 fifo({"method": "lexical"}, "fifo_top5_bm25"),
                                 {**fifo(LOCOMO_SEARCH, "salience_top5_fusion"), "name": "salience"},
-                                learned(transfer, LOCOMO_SEARCH, "learned_floor5_lme_f0")],
+                                learned(transfer, LOCOMO_SEARCH, "learned_floor5_lme_f0"),
+                                learned(SYNTHETIC, LOCOMO_SEARCH, "synthetic_floor5")],
                  "memory.budget.fraction": [0.05, 0.1, 0.25]},
     })
     write("exp13_locomo_keep", "LoCoMo keep-last-n with the fusion top 5 (budget-free).", {
