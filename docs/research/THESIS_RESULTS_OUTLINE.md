@@ -27,6 +27,10 @@ few retrieved turns the reader sees.
   at **745 against 1,554** prompt tokens (Experiment 15b).
 - The arm was **selected as the best of three declared losses, then replicated across seeds and a host**:
   +0.044, seed SD 0.002 (15c).
+- **Showing 8 of 32 instead of 5 of 16 adds +0.045 more** (§19c, pre-registered): 0.545 against 0.500 at 1,049
+  tokens, and +0.113 over FIFO + floor at a third of its tokens.
+- **Context rot on a controlled pair** (§19c, exploratory): the same head showing 16 turns has more evidence in view
+  but answers worse, −0.057 against 8 turns. P(correct | in view) falls from 0.676 to 0.575 at 2,569 tokens.
 
 **Headline figure:** accuracy against prompt tokens on both benchmarks (`docs/research/figures/exp13_frontier.png`).
 Before the chapter is final, the Experiment 15 head row should be added to it.
@@ -88,6 +92,9 @@ Before the chapter is final, the Experiment 15 head row should be added to it.
     multi-question episodes transfers on evidence at 25% (§13 LoCoMo gate). This motivates the composed episodes.
 - **Exploratory transfer of the head to LoCoMo** (§18a, post hoc): 0.242 against 0.155 for keep-last-0 +
   top 5, at 365 against 306 tokens. It improves in every category, and stays below FIFO at 10%.
+- **More turns on LoCoMo** (§19c, exploratory): the head showing 16 turns reaches 0.344 at 734 tokens, above
+  FIFO + floor at 10% (0.295 at 3,087), +0.049 (+0.034, +0.062). It is the first LoCoMo row above the FIFO frontier.
+  The pre-registered pick (5 turns) did not pass.
 - **Tables:** §12 headroom; §13b; §15b LoCoMo transfer; §18a.
 
 ## Protocol section (methods)
@@ -117,8 +124,9 @@ Before the chapter is final, the Experiment 15 head row should be added to it.
   | 15: the floor head with the reader | 0.16 h | $0.08 |
   | 15c + 16: robustness check and GRPO | 0.74 h | $0.36 |
   | 18: second judge and LoCoMo exploratory | 0.32 h | $0.16 |
-  | **benchmark programme (13–18)** | 7.86 h | **$3.85** |
-  | **all experiments** | 16.69 h | **$8.17** |
+  | 19c: reader test of the adaptive-k picks | 0.74 h | $0.36 |
+  | **benchmark programme (13–19)** | 8.60 h | **$4.21** |
+  | **all experiments** | 17.43 h | **$8.53** |
 - **Provenance.**
   - Every run records its commit and a dirty flag.
   - The sharded LongMemEval loader has a test showing it plays the same episodes as the full file.
@@ -137,21 +145,27 @@ Before the chapter is final, the Experiment 15 head row should be added to it.
   LoCoMo is a search problem.
 - **A selection step precedes the replication.** The `listsum` arm was the best of three declared arms.
 - **LoCoMo intervals resample only 10 conversations**, so they undercover.
+- **On LoCoMo the head's ranking depends on its own past picks.** Its item features include retrieval history, so
+  within a conversation of about 154 questions the arms are not exactly nested (§19a).
 
 ## Proposal next-steps (to update)
 
 - **Done:** the retrieval floor and context rot (§13), the floor head (§15).
 - **Closed:** RQ3.
-- **Next:** adaptive k, then writing.
+- **Done:** adaptive k (§19): stopped at its time box. More turns pay up to the onset; choosing k per question
+  could halve the tokens (the ceiling) but two choosers did not reach it.
+- **Next:** writing.
 
-## Next build: adaptive k (motivation)
+## Adaptive k (§19, done)
 
-- **The case, from the §18a LoCoMo row.** The head beats the five-turn rule by +0.087 at 365 prompt tokens, in
-  every category. Both stay far below FIFO at 10% (0.299 at 2,917 tokens). On LoCoMo, five short turns are too
-  few, and at 365 tokens the reader is nowhere near the ~3k onset of context rot.
-- **The proposal.** A head that chooses k from {5, 8, 16} per question, from a wider fusion shortlist, could
-  approach FIFO at 10% at a fraction of its tokens.
-- **Where k matters.** Most on LoCoMo, where the evidence is spread over several short turns. Least on
-  LongMemEval, where k = 5 is already well under the onset.
-- **Gate.** No reader, as before: all-found evidence and prompt tokens against FIFO + floor and the five-turn
-  head, pre-registered before it runs.
+- **Motivation (§18a).** On LoCoMo, five short turns are too few.
+- **Free gate (§19a).**
+  - More turns raise all-found evidence on both benchmarks.
+  - A hindsight `oracle-k` keeps 16 turns' evidence at 49% of the tokens on LongMemEval. On LoCoMo it saves only
+    18%, a declared no-go.
+  - The 21-feature chooser was overconfident; a one-feature Platt chooser (§19b) was calibrated but still fell
+    0.026 short of the 0.02 bound.
+  - Adaptivity stopped at its time box. The ceiling is the finding.
+- **Reader (§19c).** `fixed8` wins on LongMemEval; `fixed16` loses to it (context rot on a controlled pair). On
+  LoCoMo, `fixed16` (exploratory) beats FIFO at a quarter of the tokens.
+- **Figures:** `exp19_frontier.png` (evidence) and `exp19c_frontier.png` (accuracy).
