@@ -23,11 +23,15 @@ DEFAULT_INSTRUCTIONS = (
 # count across sessions or do date arithmetic, and falls back to "unknown" or "yesterday" even with
 # the evidence in view (Experiment 11e); a short note before the answer is LongMemEval's Chain-of-Note.
 REASONING_INSTRUCTIONS = (
-    "Each memory line shows who said it and when. First write a brief note: list the memory lines that "
-    "bear on the question, then do any counting, adding or date arithmetic. Give dates as absolute dates "
-    "(for example 7 May 2023), never relative ones such as 'yesterday' or 'last year'. Reply unknown only "
-    "if the memory has nothing at all on the topic. End with one line of the form 'Answer: <short phrase>'."
+    "Each memory line shows who said it and when. First write a brief note of at most 80 words: name the "
+    "facts that bear on the question in a few words each (do not copy whole lines), then do any counting, "
+    "adding or date arithmetic. Give dates as absolute dates (for example 7 May 2023), never relative ones "
+    "such as 'yesterday' or 'last year'. If the question asks for advice or a suggestion, answer with a "
+    "brief suggestion that uses what the memory says about the user. Reply unknown only if the memory has "
+    "nothing at all on the topic. End with one line of the form 'Answer: <short phrase>'."
 )
+# Experiment 13's first check used an earlier wording (no 80-word limit, no advice sentence): 10.6% of
+# notes ran out of tokens before "Answer:" and every preference question was answered "unknown".
 
 
 def final_answer(output: str) -> str | None:

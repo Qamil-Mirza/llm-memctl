@@ -23,7 +23,7 @@ URL = "POD_URL"  # replaced with the pod's proxy URL at launch (runs/_pipelines/
 CACHE = "cache/generations_qwen7b_vllm_v2"  # new reader prompt, new cache: 11b-11e stay reproducible
 MODEL = {"backend": "openai", "name": "qwen2.5-7b-instruct", "base_url": f"{URL}/v1", "timeout_s": 300,
          "cache_dir": CACHE}
-AGENT = {"name": "llm", "reasoning": True, "labels": "compact", "max_new_tokens": 160, "model": MODEL}
+AGENT = {"name": "llm", "reasoning": True, "labels": "compact", "max_new_tokens": 256, "model": MODEL}
 MEMORY = {"allowed_operations": ["KEEP", "MOVE_TO_ARCHIVE", "RETRIEVE_FROM_ARCHIVE", "NO_OP"], "embedder": "hashing"}
 LME = "data/longmemeval/longmemeval_s_cleaned.json"
 LME_SEARCH = {"method": "lexical"}  # Experiment 12: labels lower BM25 recall on LongMemEval

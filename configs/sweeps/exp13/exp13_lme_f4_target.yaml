@@ -22,7 +22,7 @@ base:
     name: llm
     reasoning: true
     labels: compact
-    max_new_tokens: 160
+    max_new_tokens: 256
     model:
       backend: openai
       name: qwen2.5-7b-instruct
