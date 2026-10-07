@@ -16,6 +16,7 @@ from memctl.rl.expert import ARCHIVE, EVICT, make_expert
 from memctl.rl.policy import N_COLUMNS, ItemPolicy
 from memctl.rl.train import fill_returns, train
 from memctl.runlog import read_jsonl
+from memctl.memory.items import SourceType
 from tests.helpers import DELETE_ONLY, episode_info, make_state, task_for
 
 ARCHIVE_OPS = ["KEEP", "EVICT", "MOVE_TO_ARCHIVE", "RETRIEVE_FROM_ARCHIVE", "NO_OP"]
@@ -516,3 +517,30 @@ def test_headroom_ranks_a_requirement_by_its_best_item():
     from memctl.rl.headroom import ranks
 
     assert ranks(["a", "b", "c"], [("c", "a"), ("b",), ("z",)]) == [1, 2, 10**9]
+
+
+def test_labelled_lexical_search_finds_an_item_by_its_speaker_and_date():
+    from memctl.retrieval import LexicalRetriever, build_retriever, labelled_text
+
+    state = make_state([])
+    for number, (speaker, text) in enumerate([("Caroline", "I went hiking."), ("Melanie", "I painted a lake.")]):
+        state.ingest(f"t{number}", text, SourceType.USER, metadata={"speaker": speaker, "date": "8 May 2023"})
+    items = state.active()
+    assert labelled_text(items[0]) == "Caroline (8 May 2023): I went hiking."
+    assert LexicalRetriever().search("What did Melanie do?", items, 1) == []
+    [(item, _)] = LexicalRetriever(labels=True).search("What did Melanie do?", items, 1)
+    assert item.id == "t1" and build_retriever("lexical_label").name == "lexical_label"
+    with pytest.raises(KeyError):
+        build_retriever("psychic")
+
+
+def test_fusion_ranks_by_reciprocal_rank_over_both_searches(monkeypatch):
+    from memctl.retrieval import FusionRetriever
+
+    state = make_state(["alpha beta", "gamma delta", "epsilon zeta"])
+    items = state.active()
+    fusion = FusionRetriever()
+    monkeypatch.setattr(fusion.lexical, "search", lambda q, xs, k: [(items[0], 3.0), (items[1], 1.0)])
+    monkeypatch.setattr(fusion.dense, "search", lambda q, xs, k: [(items[1], 0.9), (items[2], 0.8)])
+    ranked = [item.id for item, _ in fusion.search("q", items, 3)]
+    assert ranked == ["o1", "o0", "o2"]  # o1 is in both lists

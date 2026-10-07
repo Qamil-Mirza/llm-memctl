@@ -164,7 +164,8 @@ class RLController(MemoryController):
         self.recorded, self.rewards, self._roots = [], [], {}
         key = (self.seed, episode.seed) if not self.sample_offset else (self.seed, episode.seed, self.sample_offset)
         self.generator.manual_seed(hash(key) % (2**31))
-        self.retriever = build_retriever(self.config.get("retrieval_method", "lexical"), episode.embedder)
+        self.retriever = build_retriever(self.config.get("retrieval_method", "lexical"), episode.embedder,
+                                         self.config.get("retrieval_model"))
 
     def update(self, feedback: Feedback) -> None:
         if self.record:

@@ -116,6 +116,8 @@ def cell_rows(cell: Path) -> list[dict]:
                     "tokens": prompt_tokens,
                     # share of this episode's answers cut off before "Answer:" (reasoning reader only)
                     "truncated": episode.get("agent_truncated", 0) / calls if calls else 0.0,
+                    # the controller's own job: share of needed items in view when asked (episode level)
+                    "evidence": episode.get("needed_hit_rate"),
                 })
     return rows
 
@@ -185,6 +187,7 @@ def summarise(rows: list[dict]) -> dict:
         "refusal_n": len(refusal), "refusal_accuracy": mean([r["correct"] for r in refusal]),
         "tokens": mean(tokens),
         "truncated": mean([r["truncated"] for r in rows]),
+        "evidence": mean([r["evidence"] for r in headline if r.get("evidence") is not None]),
         "tokens_median": sorted(tokens)[len(tokens) // 2] if tokens else None,
         "by_category": {c: mean([r["correct"] for r in headline if r["category"] == c]) for c in categories},
     }
@@ -208,14 +211,14 @@ def table(sweeps: list[Path], per_category: bool = False, exclude: tuple[str, ..
             summary["paired_q"] = paired_difference(*pair, unit="question") if pair else None
     categories = sorted({c for s in summaries.values() for c in s["by_category"]})
     fmt = lambda x: "-" if x is None else f"{x:.3f}"  # noqa: E731
-    head = ["controller", "budget", "n", "accuracy (95% CI)", "F1 (n)", "refusal-scored", "prompt tokens (mean / median)", "truncated"]
+    head = ["controller", "budget", "n", "accuracy (95% CI)", "evidence in view", "F1 (n)", "refusal-scored", "prompt tokens (mean / median)", "truncated"]
     if baseline:
         head += [f"Δ vs {baseline} (paired 95% CI, clusters)", "CI resampling questions"]
     if per_category:
         head += categories
     lines = ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
     for (group, fraction), s in sorted(summaries.items(), key=lambda kv: (kv[0][1], -(kv[1]["accuracy"] or 0))):
-        row = [group, f"{fraction:g}", str(s["n"]), f"{fmt(s['accuracy'])} ({fmt(s['ci'][0])}–{fmt(s['ci'][1])})",
+        row = [group, f"{fraction:g}", str(s["n"]), f"{fmt(s['accuracy'])} ({fmt(s['ci'][0])}–{fmt(s['ci'][1])})", fmt(s["evidence"]),
                f"{fmt(s['f1'])} ({s['f1_n']})", f"{fmt(s['refusal_accuracy'])} (n={s['refusal_n']})", "-" if s["tokens"] is None else f"{s['tokens']:.0f} / {s['tokens_median']:.0f}",
                f"{s['truncated']:.1%}"]
         if baseline:
