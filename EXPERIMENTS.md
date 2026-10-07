@@ -2153,6 +2153,10 @@ The user approved both, about $0.65–1.15 in all.
     - If it does, the controller ranking is judge-independent.
     - If the absolute numbers move but the ranking holds, that is the outcome the literature expects (Anatomy of
       Agentic Memory), and the thesis says so.
+  - **Amended before the Granite stage ran.** The Qwen-judge run showed that 74 questions per controller have too
+    little power for output 4's paired interval (head − rule +0.068, CI −0.027 to +0.162, under the original
+    judge). Output 4 is therefore computed on all 470 non-abstention questions: the head's and the rule's answers
+    are all re-judged by Granite (about 940 short calls). Outputs 1–3 stay on the 296-answer sample.
 
 **Exploratory LoCoMo reader test.** This is outside the pre-registered claims and labelled exploratory in every
 table.

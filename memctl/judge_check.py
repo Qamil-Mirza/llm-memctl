@@ -127,6 +127,24 @@ def main() -> None:
         "head_minus_rule": {"first_judge": paired("first_judge"), "second_judge": paired("second_answer")},
         "metadata": collect_metadata(),
     }
+    # Output 4 on every question: the head and the rule re-judged on all their common answers (the 74-question
+    # sample has too little power for a paired interval). Added before the second judge ran (EXPERIMENTS §18).
+    full = [per[c][qid] for c in ("head_listsum", "keep_last0_top5") for qid in common]
+    with ThreadPoolExecutor(32) as pool:
+        full_verdicts = list(pool.map(lambda r: judge.is_correct(r["question"], r["gold"], r["answer"], r["type"]), full))
+    head = {r["question_id"]: (r["first_judge"], v) for r, v in zip(full, full_verdicts) if r["controller"] == "head_listsum"}
+    rule = {r["question_id"]: (r["first_judge"], v) for r, v in zip(full, full_verdicts) if r["controller"] == "keep_last0_top5"}
+
+    def full_paired(position: int) -> dict:
+        d = [float(head[q][position]) - float(rule[q][position]) for q in sorted(head)]
+        draws = sorted(sum(random.Random(i).choices(d, k=len(d))) / len(d) for i in range(4000))
+        return {"n": len(d), "difference": sum(d) / len(d), "ci": [draws[100], draws[3899]],
+                "head_accuracy": sum(head[q][position] for q in head) / len(head),
+                "rule_accuracy": sum(rule[q][position] for q in rule) / len(rule)}
+
+    report["head_minus_rule_all_questions"] = {"first_judge": full_paired(0), "second_judge": full_paired(1),
+                                               "agreement": sum(a == b for a, b in list(head.values()) + list(rule.values()))
+                                               / (len(head) + len(rule))}
     args.out.write_text(json.dumps({**report, "rows": sample}, indent=2))
     print(json.dumps(report | {"metadata": None}, indent=2))
 
