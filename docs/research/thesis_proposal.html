@@ -16,6 +16,8 @@ h2 { font-size: 12pt; margin: 8pt 0 3pt; }
 h3 { font-size: 11pt; margin: 8pt 0 2pt; }
 p { margin: 0 0 5pt; }
 ol, ul { margin: 0 0 5pt; padding-left: 18pt; }
+.rq { list-style: none; padding-left: 8pt; }
+.rq li { padding-left: 2.6em; text-indent: -2.6em; }
 li { margin-bottom: 2pt; }
 .page { page-break-after: always; }
 .sub { font-weight: bold; margin-bottom: 6pt; }
@@ -40,33 +42,39 @@ th, td { border-bottom: 0.5pt solid var(--line); padding: 2pt 8pt 2pt 0; text-al
 <p class="sub">Thesis proposal (updated October 2026)</p>
 
 <h2>The problem</h2>
-<p>AI agents built on large language models can only read a limited amount of text at once. In a long task, like a support chat that runs for days, the history quickly grows past that limit. Something has to decide what the model keeps in front of it, what gets filed away for later, and what gets thrown out. Most systems use simple fixed rules, like "keep the most recent messages." These rules are cheap, but they often throw away the one fact that ends up mattering.</p>
+<p>AI agents built on large language models can only read a limited amount of text at once. In a long task, like a support chat that runs for days, the history soon grows past that limit, so something has to decide what the model keeps, what gets filed away, and what gets thrown out. Most systems use fixed rules like "keep the most recent messages," which are cheap but often throw away the one fact that ends up mattering.</p>
 
-<h2>My question</h2>
-<p>Can a very small, separate model learn to make these memory decisions better than fixed rules, without retraining the language model itself?</p>
+<h2>Research questions</h2>
+<p>Overall: can a very small, separate model learn these memory decisions better than fixed rules, without retraining the language model itself?</p>
+<ol class="rq">
+<li><strong>RQ1.</strong> Under a tight memory budget, can a small learned controller beat fixed memory rules?</li>
+<li><strong>RQ2.</strong> What is the right way to learn from hindsight, when the controller can't see the future that its teacher sees?</li>
+<li><strong>RQ3.</strong> Does reinforcement learning (GRPO) add anything beyond imitation, and does it matter how it assigns credit to each decision?</li>
+<li><strong>RQ4.</strong> Does it hold up with real language models and real long conversations, and when is it worth it over a simple rule?</li>
+</ol>
 
 <h2>My approach</h2>
-<p>I built a test framework where a frozen language model answers questions while a separate "memory controller" decides what to keep, archive, delete or retrieve. The controller is tiny (about 27,000 parameters), so it trains on a laptop. Because my tasks are simulated, I know afterwards which facts were actually needed. I use that hindsight to build a teacher for the controller to copy, and then try reinforcement learning (GRPO) on top.</p>
+<p>I built a test framework where a frozen language model answers questions while a separate "memory controller" decides what to keep, archive, delete or retrieve. The controller is tiny (about 27,000 parameters) and trains on a laptop. Because my tasks are simulated, I know afterwards which facts were needed, and I use that hindsight to build a teacher for the controller to copy, then try reinforcement learning (GRPO) on top.</p>
 
 <div class="novel">
 <h2>What is new in this work</h2>
 <ol>
-<li><strong>A tiny controller kept separate from a frozen language model.</strong> Most recent work trains the language model itself to manage its memory. Here only the small controller learns, so it can sit in front of any model. With Qwen2.5-7B reading, it does as well as showing the model everything while using only 40% of the text.</li>
-<li><strong>A "regret" teacher for copying hindsight.</strong> Copying a perfect, all-knowing teacher works badly (34% of questions right at a tight budget), because the student can't see what the teacher sees. Copying a teacher that accepts every choice that costs nothing gets 85% and beats every fixed rule I tested.</li>
-<li><strong>Finding that search, not learning, was the bottleneck, and fixing it.</strong> Most remaining mistakes were two-step questions where the second fact never showed up as an option. A simple "follow the clue" search raised accuracy from 85% to 92%, closing more than half the gap to a perfect controller.</li>
-<li><strong>Free per-question credit for GRPO.</strong> Because the simulator replays exactly, every practice run meets the same question at the same moment, so each decision can be credited without extra cost. In practice, GRPO adds about one point, and how it is credited made no difference.</li>
+<li><strong>A tiny controller kept separate from a frozen language model (RQ1, RQ4).</strong> Most recent work retrains the language model itself; here only the small controller learns, so it can sit in front of any model. With Qwen2.5-7B reading, it matches showing the model everything while using 40% of the text.</li>
+<li><strong>A "regret" teacher for copying hindsight (RQ2).</strong> Copying an all-knowing teacher works badly (34% right at a tight budget), because the student can't see what it sees. Copying a teacher that accepts every choice that costs nothing gets 85%, beating every fixed rule I tested.</li>
+<li><strong>Finding that search, not learning, was the bottleneck, and fixing it (RQ1, RQ3).</strong> Most remaining mistakes were two-step questions whose second fact never showed up as an option. A simple "follow the clue" search raised accuracy from 85% to 92%, closing over half the gap to a perfect controller.</li>
+<li><strong>Free per-question credit for GRPO (RQ3).</strong> The simulator replays exactly, so each decision can be credited for its own question at no extra cost. In practice GRPO adds about one point, and the credit method made no difference.</li>
 </ol>
 </div>
 
 <h2>What I will do next</h2>
 <ol>
-<li>Test on two public benchmarks of long conversations, LoCoMo and LongMemEval. Early results show that controllers trained only on my simulated task don't transfer to real conversations, so I am now training them on benchmark data and testing on held-out questions.</li>
-<li>Study memory that costs something to store, where filing everything away is no longer free.</li>
-<li>Work out when a small learned controller is worth it, and when a simple rule is enough.</li>
+<li>(RQ4) Test on two public benchmarks of long conversations, LoCoMo and LongMemEval. Controllers trained only on my simulated task don't transfer yet, so I am training them on benchmark data and testing on held-out questions.</li>
+<li>(RQ2) Study memory that costs something to store, where filing everything away is no longer free.</li>
+<li>(RQ4) Work out when a small learned controller is worth it, and when a simple rule is enough.</li>
 </ol>
 
 <h2>Why it matters</h2>
-<p>If a small, cheap model can manage memory well, any agent could use it without retraining a large model. If it can't, knowing why is still useful for anyone building agents that need to remember things.</p>
+<p>If a small, cheap model can manage memory well, any agent could use it without retraining a large model. If it can't, knowing why still helps anyone building agents that need to remember.</p>
 </div>
 
 <h1>Addendum: formulations and diagrams</h1>
