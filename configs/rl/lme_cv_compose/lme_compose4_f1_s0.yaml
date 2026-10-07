@@ -1,0 +1,21 @@
+# As lme_floor_f1_s0, but each training episode composes 4 instances (4 questions; peer review T4). Same
+# number of instances seen (10 x 10 x 4 = 400); validation episodes are composed too (5 x 4 = 20 questions).
+# Floor 5 (BM25), head on ranks 6-16, no EVICT, selection on evidence. Budgets are fractions of the composed history.
+schema_version: 1
+name: lme_compose4_f1_s0
+seed: 0
+env: {name: longmemeval, path: data/longmemeval/longmemeval_s_cleaned.json, folds: {k: 5, fold: 1, part: train}, compose: 4}
+agent: {name: "null"}
+controller: {name: rl, hidden: 64, architecture: deepsets, retrieval_method: lexical, retrieve_floor: 5,
+             retrieve_candidates: 16}
+memory:
+  allowed_operations: [KEEP, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, NO_OP]
+  embedder: hashing
+training:
+  budget_fractions: [0.01, 0.02, 0.05]
+  # retrieval_risk = 1 - BM25 share-found@5 on LongMemEval (0.644, Experiment 12): the chance the floor does not
+  # bring an archived needed item back. Without it every archive ties at regret 0 and the loss is 0.
+  expert: {kind: regret, retrieval_risk: 0.36}
+  phases:
+    - {algorithm: bc, iterations: 10, episodes: 10, epochs: 3, lr: 0.003, dagger: true}
+  eval: {every: 2, episodes: 5, metric: evidence}
