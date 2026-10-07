@@ -68,9 +68,8 @@ th, td { border-bottom: 0.5pt solid var(--line); padding: 2pt 8pt 2pt 0; text-al
 
 <h2>What I will do next</h2>
 <ol>
-<li>(RQ4) On LoCoMo and LongMemEval, always fetching the top results fixed retrieval and my controller keeps more evidence, but answers rarely improve because of &ldquo;context rot&rdquo;: the 7B model gets worse past about 3,000 prompt tokens.</li>
-<li>(RQ2) Next, the teacher will charge for every prompt token kept, so it learns to keep the prompt small and right.</li>
-<li>(RQ4) Work out when a small learned controller is worth it, and when a simple rule is enough.</li>
+<li>(RQ4) Done: on real conversations the 7B model suffers &ldquo;context rot&rdquo; past about 3,000 prompt tokens, so keeping more memory does not help. A small learned picker that chooses which 5 search results to show beats the best simple rule (51% vs 47%) with half the prompt, across three training runs.</li>
+<li>(RQ2, RQ3) Done: charging for kept tokens and reinforcement learning on the model&rsquo;s answers both add little, because what will be needed is unpredictable before the question. Next: let the picker choose how many results to show, then write up.</li>
 </ol>
 
 <h2>Why it matters</h2>
