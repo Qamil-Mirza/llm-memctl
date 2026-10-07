@@ -59,7 +59,7 @@ commands given).
 | 11 | Follow-the-clue with a 7B reader; LoCoMo and LongMemEval QA | The 7B gain holds (0.832 → 0.889 at 2%). On real conversations the learned policies lose to simple rules: they barely retrieve. PASSED (negative on benchmarks) |
 | 12 | Retrieval headroom: how much evidence search reaches (no reader) | Top 16 holds 0.12–0.16 more evidence than top 5; labels and BM25+bge fusion help LoCoMo, not LongMemEval. Gates for the pick-k head and better units passed. |
 | 13 | LongMemEval (all 500, 5 folds) and LoCoMo under the reviewed protocol: retrieval floor, no EVICT, reasoning reader, pre-registered gates | The floor fixes retrieval. Learned controllers keep more evidence at 5% but convert little: one paired win, one loss, none after Holm, none on the frontier. This reader refuses more as prompts grow (peak near 3k tokens). NEGATIVE, with a mechanism |
-| 14 | A token price for kept memory: labels counted in the budget, plug-in Bayes archiving at a pre-set price | (running: free gate first) |
+| 14 | A token price for kept memory: labels counted in the budget, plug-in Bayes archiving at a pre-set price | No-go at the free gate: the priced rule never beats keep-last-0 + top 5 on evidence at equal memory; needed model AUC 0.62–0.74; a per-token price archives long turns, not lines. NEGATIVE (free) |
 
 ---
 
@@ -1630,6 +1630,64 @@ of Experiment 13:
 
 Analysis: `python -m memctl.analysis.gate runs/exp14_gate_f* --frontier
 keep_last0_top5`. Paid cells, if any, go to the user with a cost first.
+
+### 14a. Result: no-go (2026-10-07)
+
+The arm is a **priced archive (plug-in)**: a learned needed model plus a fixed
+decision rule. It is not a learned eviction policy, so it supports no RQ1
+claim about learned eviction.
+- **Order at each decision:** floor retrieval, then the composed-episode
+  policy's own retrieval and its removals for any overflow, then the price
+  rule over the items the policy kept.
+- **Pricing makes a decision every step**, so the rule can keep memory below
+  the budget.
+- **Budgets are not comparable to §13 at the same fraction.** With labels
+  counted, the history is about 7.5% longer. Mean budgets here are 2,192
+  tokens at 2% and 5,481 at 5%.
+
+**Gate** (`runs/exp14_gate_table.md`; 500 questions, no reader). Against
+keep-last-0 + top 5 (evidence 0.630–0.637 at 1,218–1,333 tokens), no cell
+passes the pre-registered rule. The cells that keep more evidence do so only
+with 2.5–4 times the tokens:
+
+| row | evidence | Δ vs keep-last-0 + top 5 (95% CI) | Δ vs unpriced policy, same budget | memory tokens / lines at the question |
+|---|---|---|---|---|
+| priced 3e-5, 5% | 0.767 | +0.130 (+0.099, +0.161) | −0.001 | 5,282 / 51.1 |
+| priced 1e-4, 5% | 0.683 | +0.046 (+0.020, +0.072) | −0.085 | 3,367 / 40.5 |
+| priced 3e-4, 5% | 0.639 | +0.002 (−0.012, +0.015) | −0.130 | 1,892 / 17.8 |
+| priced 3e-4, 2% | 0.616 | −0.021 (−0.034, −0.009) | −0.020 | 1,336 / 7.5 |
+| unpriced policy, 5% | 0.769 | +0.131 | — | 5,397 / 46.1 |
+| keep-last-0 + top 5 | 0.630–0.637 | — | | 1,218–1,333 / 4.8–5.0 |
+
+(The Δ against keep-last-0 + top 5 is taken against its 5% cell for 5% rows
+and its 2% cell for 2% rows. The memory tokens count labels, so they are the
+prompt less the fixed instructions.)
+
+- **The pre-set price (3e-5) does almost nothing.** It archives 0.7% of kept
+  items per step.
+- **Higher prices trade evidence for tokens.** At 3e-4 the rule lands on the
+  frontier rule's evidence, with 1.4 times its tokens. It never gets ahead.
+
+**Why.**
+- **Calibration** (`runs/exp14_calibration_f*.json`, test parts, about 340k
+  sampled items). The needed models are calibrated but rank weakly: AUC
+  0.62–0.74, base rate 1.1–1.4%. Almost no item is predicted above 3%, so at
+  the higher prices nearly every item falls below the keep threshold
+  P* = price × tokens / 0.44, and the rule archives by length alone. At 1e-4
+  the cutoff is roughly 90 tokens.
+- **Pricing tokens is the wrong target.** A per-token price archives long
+  turns and keeps the short ones: at 1e-4, tokens fall 38% but lines only 12%.
+  The reader's cost in Experiment 13 tracked lines (and the labels and
+  distractors that come with them).
+
+**Next (declared; free).** Two candidates, neither started:
+1. A per-line price with a learned stop head: a policy that ends removal
+   below the budget, trained against a priced teacher.
+2. A better needed signal before any price is applied. The needed model
+   sees only the policy's item features; an AUC of about 0.65 cannot
+   separate the 1% of items that matter.
+
+No paid cells were proposed.
 
 ## 5. The sequential task
 
