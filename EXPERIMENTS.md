@@ -1940,7 +1940,9 @@ tested once. `listsum` was chosen for this replication *after* it scored best
 among them. It was one of three declared arms, not a single arm specified in
 advance, so the replication does not remove that selection step. What it
 shows is that the selected arm's gain is not seed or host luck: three
-independent training seeds, each excluding 0, on a second host. The partial cells of the first attempt on this
+independent training seeds, each excluding 0, on a second host. If a fully confirmatory test is wanted, the route is a pre-registered
+test of `listsum` alone on LongMemEval-M. It has the same 500 questions with
+far longer histories, so it is a harder setting, not new data. The partial cells of the first attempt on this
 host, made before the host check, are in `runs/_aborted/` and are not reported.
 
 **For the thesis.** On real conversations with a searchable archive, the
