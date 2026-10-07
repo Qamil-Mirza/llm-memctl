@@ -9,7 +9,7 @@ runs/<name>` (writes `runs/<name>/report.md` and `runs/<name>/plots/`; the
 commands given).
 
 **Contents** (sections are not in numeric order): 1, 1b, 1c, 1d, 2, 3, 4,
-4b, D1, GRPO, D2 (D2b), D5 (D5b, D5c), 8, 9, 10, 5, 5b, 6, 6c, 7 (7a, 7b).
+4b, D1, GRPO, D2 (D2b), D5 (D5b, D5c), 8, 9, 10, 11, 5, 5b, 6, 6c, 7 (7a, 7b).
 
 **How to read the numbers**
 
@@ -56,6 +56,7 @@ commands given).
 | 8 | A real language model (qwen2.5:3b) as the task model | A small, well-chosen memory beats full context; the D1 ranking holds. PASSED (1 seed, 30 episodes) |
 | 9 | …with Qwen2.5-7B as the task model, 100 episodes | Every D-series result holds; oracle-approx beats full context by +0.04–0.06; the remaining gap is archived-but-not-retrieved. PASSED |
 | 10 | Diagnostics; a follow-the-clue search for two-hop questions | GRPO's signal was real but the needed fact was out of reach; the search lifts imitation from 0.851 to 0.917 at 2% (oracle 0.966). PASSED (scripted reader) |
+| 11 | Follow-the-clue with a 7B reader; LoCoMo and LongMemEval QA | The 7B gain holds (0.832 → 0.889 at 2%). On real conversations the learned policies lose to simple rules: they barely retrieve. PASSED (negative on benchmarks) |
 
 ---
 
@@ -1030,6 +1031,97 @@ an imitation term) make no measurable difference at this scale.
   one-hop. Facts ranked beyond 8 by the question search account for only
   ~27 of them, so the hindsight reranker of the next-directions plan has a
   ceiling of about 0.014 and is deferred.
+
+## 11. The follow-the-clue policy with a 7B reader, and LoCoMo and LongMemEval question answering (2026-10-06)
+
+```bash
+# vLLM v0.8.5, Qwen2.5-7B-Instruct bf16 served as qwen2.5-7b-instruct, max len 32,768, RunPod A40
+python -m memctl.sweep --config configs/sweeps/exp11a_qwen7b_bridge_recall.yaml --workers 8
+python -m memctl.sweep --config configs/sweeps/exp11b_locomo_qa.yaml --workers 11
+python -m memctl.sweep --config configs/sweeps/exp11c_longmemeval_qa.yaml --workers 5
+python -m memctl.rl.train --config configs/rl/lme/lme_bc_regret_s0.yaml        # and the other five
+python -m memctl.sweep --config configs/sweeps/exp11d_longmemeval_trained.yaml --workers 6
+# same server restarted with --max-model-len 65536 and YaRN (factor 2), separate cache
+python -m memctl.sweep --config configs/sweeps/exp11b_locomo_full_context.yaml --workers 1
+```
+
+One A40 for 6.07 hours at $0.49/hour, about $2.97. **Provenance: 11a–11c at
+`2d8fbf4` (which makes the generation cache's writes atomic; a first launch
+at `4549fdc` failed on half-written cache entries and was discarded),
+LongMemEval training at `a5f90b4`, 11d and the LoCoMo full-context run at
+later commits that change only documents; every cell `dirty: false`.** QA
+answers are judged by the same Qwen2.5-7B (LongMemEval's official metric is
+an LLM judge); a model judging its own answers may be lenient, so token F1
+is reported too. LoCoMo's adversarial category is counted (the right answer
+is a refusal).
+
+**11a: the follow-the-clue gain holds with a 7B reader.** Recall task,
+Experiment 9's seeds and prompt; cells shared with Experiment 9 reproduce it
+from the cache. Mean of 3 training seeds; paired difference from regret
+imitation in brackets.
+
+| controller | 2% | 5% | 10% | 25% |
+|---|---|---|---|---|
+| fifo_archive_retrieve | 0.741 | 0.761 | 0.787 | 0.857 |
+| regret imitation (D1) | 0.832 | 0.861 | 0.884 | 0.908 |
+| **+ follow-the-clue search** | **0.889** (+0.057 [+0.045, +0.069]) | **0.913** (+0.051) | **0.917** (+0.033) | 0.910 (+0.002) |
+| oracle_approx | 0.938 | 0.955 | 0.949 | 0.948 |
+| full context (Experiment 9) | 0.898 | | | |
+
+The gap to the oracle at 2% falls from 0.106 to 0.049, as with the scripted
+reader (0.115 to 0.048).
+
+**11b–11d: on real conversations the learned policies lose to simple
+rules.** Judge accuracy / token F1, query-weighted. LoCoMo: all 10
+conversations (1,986 questions). LongMemEval-S: questions 0–99, about 115k
+history tokens each.
+
+| controller | LoCoMo 10% | LoCoMo 25% | LongMemEval 5% | LongMemEval 10% |
+|---|---|---|---|---|
+| full context (64k YaRN server) | 0.510 / 0.312 | | not run (too long) | |
+| fifo_archive_retrieve (top 5) | 0.382 / 0.397 | 0.400 / 0.382 | 0.470 / 0.550 | 0.420 / 0.410 |
+| salience_archive_retrieve (top 5) | 0.375 / 0.388 | 0.410 / 0.395 | 0.360 / 0.398 | 0.290 / 0.294 |
+| keep last 4 + retrieve top 5 | 0.339 / 0.343 | 0.339 / 0.343 | 0.530 / 0.595 | 0.530 / 0.595 |
+| regret imitation, synthetic-trained (3 seeds) | 0.285 / 0.294 | 0.331 / 0.336 | 0.240 / 0.255 | 0.240 / 0.259 |
+| + follow-the-clue, synthetic-trained (3 seeds) | 0.289 / 0.301 | 0.326 / 0.328 | 0.300 / 0.336 | 0.273 / 0.297 |
+| regret imitation, trained on LongMemEval 100–499 (3 seeds) | | | 0.183 / 0.204 | 0.173 / 0.191 |
+| + follow-the-clue, trained on LongMemEval 100–499 (3 seeds) | | | 0.227 / 0.247 | 0.270 / 0.269 |
+| oracle_approx | 0.505 / 0.520 | 0.501 / 0.512 | 0.650 / 0.654 | 0.650 / 0.654 |
+
+**Why** (retrieval statistics, 10% budget). The heuristics retrieve their
+top 5 at every question (LongMemEval recall of needed items 0.65–0.66,
+LoCoMo 0.35). The synthetic-trained policies retrieve almost nothing on real
+text: 0–1 items per LongMemEval question and 2–70 per LoCoMo conversation of
+~199 questions, recall 0.00–0.03; their failures are mostly
+`archived_not_retrieved`. Their retrieval head learned when to fire on
+templated facts, and conversational turns score differently. The
+LongMemEval-trained policies never retrieve (0 per question): an episode has
+one question at its end, so almost every retrieval label is 0, and the head
+learns to say no. Two of their three seeds also fail mostly by `evicted`:
+with a single question, nearly every turn is never needed, the regret
+teacher accepts deleting it, and the policy deletes evidence too.
+
+**What it shows**
+
+- The follow-the-clue result (Experiment 10) holds with a 7B reader.
+- On LoCoMo and LongMemEval, memory management matters: the hindsight
+  oracle beats the best simple rule by 0.10–0.12. The learned controller
+  does not capture it. Trained on synthetic recall it does not transfer;
+  trained on LongMemEval as set up here it learns not to retrieve.
+- On LoCoMo, full context (0.510) matches the oracle (0.505) by the judge,
+  but its F1 is far lower (0.312 against 0.520): with the whole
+  conversation in view the model answers at length, which the judge
+  accepts and F1 does not.
+
+**What it does not show**
+
+- Whether a learned controller can help on these benchmarks. The obvious
+  next tests: let a fixed top-k retrieval run beside the learned removal
+  policy; reweight the retrieval labels (or train on LoCoMo-style episodes
+  with many questions); price deletion of an unseen-future item instead of
+  treating it as free when only one question follows.
+- Full context on LongMemEval-S (about 115k tokens per question) was not
+  run; published results report it.
 
 ## 5. The sequential task
 
