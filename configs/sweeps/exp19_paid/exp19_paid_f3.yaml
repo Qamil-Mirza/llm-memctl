@@ -1,0 +1,72 @@
+# Experiment 19 reader test, LongMemEval fold 3 (approved by the user on 2026-10-07, about $0.25-0.50 with LoCoMo):
+# fixed8 (pre-registered by §19/§19b), the §15 head and FIFO + floor at 5% with the 3k target, all on one host
+# with a fresh cache, so every row is paired. Reader frozen at 7b5fc30, official judge.
+name: exp19_paid_f3
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env:
+    name: longmemeval
+    path: data/longmemeval/longmemeval_s_cleaned.json
+    folds:
+      k: 5
+      fold: 3
+      part: test
+    judge:
+      backend: openai
+      name: qwen2.5-7b-instruct
+      base_url: POD_URL/v1
+      timeout_s: 300
+      cache_dir: cache/generations_qwen7b_vllm_v2_exp19
+      style: longmemeval
+  agent:
+    name: llm
+    reasoning: true
+    labels: compact
+    max_new_tokens: 256
+    model:
+      backend: openai
+      name: qwen2.5-7b-instruct
+      base_url: POD_URL/v1
+      timeout_s: 300
+      cache_dir: cache/generations_qwen7b_vllm_v2_exp19
+  memory:
+    allowed_operations:
+    - KEEP
+    - MOVE_TO_ARCHIVE
+    - RETRIEVE_FROM_ARCHIVE
+    - NO_OP
+    embedder: hashing
+    count_labels: true
+  logging:
+    detail_episodes: 100000
+grid:
+  controller:
+  - name: rl
+    label: heada_fixed8
+    checkpoint: /home/qamil-mirza/Code/llm-memctl/runs/lme_n4_head_f3_a/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: head15
+    checkpoint: /home/qamil-mirza/Code/llm-memctl/runs/lme_head_listsum_f3/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    floor_head: true
+    keep_none: true
+  - name: fifo
+    label: fifo_top5_t3000
+    removal:
+    - MOVE_TO_ARCHIVE
+    retrieve:
+      top_k: 5
+      fit: true
+      method: lexical
+    target_tokens: 3000
+  memory.budget.fraction:
+  - 0.05

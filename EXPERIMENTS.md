@@ -2453,6 +2453,36 @@ All runs are at ac3bd67, not dirty; the heads are §19's. Report: `runs/exp19b_g
 - **Against `fixed8`, descriptively.** `adaptive` is +0.018 all-found at +387 tokens. It is not sent to the
   reader, since it did not pass its gate.
 
+**Note for the write-up (review).** Head B's `adaptive` (0.720 at 1,703 tokens) sits on the frontier between
+`fixed8` (0.700 at 1,050) and `fixed16` (0.744 at 2,566). The chooser works in the right direction; the gap to the
+ceiling is discrimination, not calibration. The LoCoMo non-nesting (§19a) also goes into the thesis limitations:
+within a conversation, the head's ranking depends on the controller's own past picks.
+
+## 19c. Reader test of the §19 picks (2026-10-07; approved by the user, about $0.25–0.50; criteria written before launch)
+
+**Cells** (`configs/sweeps/exp19_paid/`; one pod session; every row on one host with a fresh cache, so all rows
+are paired; reader frozen at 7b5fc30; official judge):
+- **LongMemEval**, 500 questions (470 non-abstention scored, as §15b): `fixed8` (head A, 32 candidates), the §15
+  head, and FIFO + floor at 5% with the 3k target.
+- **LoCoMo**, categories 1–4, fold-0 heads, fusion search: `fixed5` (head A), `fixed16` (head A, EXPLORATORY), the
+  §15 head, and FIFO + floor at 10%.
+
+**Criteria (pre-registered).**
+1. **LongMemEval, primary:** `fixed8` minus the §15 head, accuracy, paired by question, 95% interval above 0.
+2. **LoCoMo, primary:** `fixed5` minus the §15 head, accuracy, clustered by conversation, 95% interval above 0.
+3. **LoCoMo, exploratory:** `fixed16` gets no pass or fail verdict, only a point on the accuracy-against-tokens
+   frontier beside FIFO + floor at 10%.
+4. **For every arm:** the §13a decomposition (P(all in view), P(correct | in view), P(correct | not), the unknown
+   rate), with prompt tokens beside every accuracy.
+
+**Expectation, written before launch:** positive on both primaries, size unknown.
+
+**Safeguards.**
+- A full-size stub run under `guard.sh`, with peak RSS recorded, precedes the launch.
+- Hard stop at 1 hour of pod time (about $0.49). Estimate from the measured §18a and §15b throughput: about
+  $0.30.
+- The pod is verified terminated with list-pods afterwards.
+
 ## 5. The sequential task
 
 ```bash

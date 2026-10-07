@@ -1,0 +1,89 @@
+# Experiment 19 reader test, LoCoMo categories 1-4 (approved by the user on 2026-10-07): fixed5 (pre-registered by
+# §19's rule), fixed16 (EXPLORATORY, labelled; §19a), the §15 head and FIFO + floor at 10%, fold-0 heads, fusion search.
+# One cell per conversation so conversations run in parallel.
+name: exp19_paid_locomo
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 1
+  env:
+    name: locomo
+    include_adversarial: false
+    judge:
+      backend: openai
+      name: qwen2.5-7b-instruct
+      base_url: POD_URL/v1
+      timeout_s: 300
+      cache_dir: cache/generations_qwen7b_vllm_v2_exp19
+  agent:
+    name: llm
+    reasoning: true
+    labels: compact
+    max_new_tokens: 256
+    model:
+      backend: openai
+      name: qwen2.5-7b-instruct
+      base_url: POD_URL/v1
+      timeout_s: 300
+      cache_dir: cache/generations_qwen7b_vllm_v2_exp19
+  memory:
+    allowed_operations:
+    - KEEP
+    - MOVE_TO_ARCHIVE
+    - RETRIEVE_FROM_ARCHIVE
+    - NO_OP
+    embedder: hashing
+    count_labels: true
+  logging:
+    detail_episodes: 100000
+grid:
+  controller:
+  - name: rl
+    label: heada_fixed5
+    checkpoint: /home/qamil-mirza/Code/llm-memctl/runs/lme_n4_head_f0_a/checkpoints/policy_best.pt
+    retrieval_method: fusion
+    retrieval_model: BAAI/bge-small-en-v1.5
+    retrieve_floor: 5
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: heada_fixed16_exploratory
+    checkpoint: /home/qamil-mirza/Code/llm-memctl/runs/lme_n4_head_f0_a/checkpoints/policy_best.pt
+    retrieval_method: fusion
+    retrieval_model: BAAI/bge-small-en-v1.5
+    retrieve_floor: 16
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: head15
+    checkpoint: /home/qamil-mirza/Code/llm-memctl/runs/lme_head_listsum_f0/checkpoints/policy_best.pt
+    retrieval_method: fusion
+    retrieval_model: BAAI/bge-small-en-v1.5
+    retrieve_floor: 5
+    retrieve_candidates: 16
+    floor_head: true
+    keep_none: true
+  - name: fifo
+    label: fifo_top5_fusion
+    removal:
+    - MOVE_TO_ARCHIVE
+    retrieve:
+      top_k: 5
+      fit: true
+      method: fusion
+      model: BAAI/bge-small-en-v1.5
+  seed:
+  - 0
+  - 1
+  - 2
+  - 3
+  - 4
+  - 5
+  - 6
+  - 7
+  - 8
+  - 9
+  memory.budget.fraction:
+  - 0.1
