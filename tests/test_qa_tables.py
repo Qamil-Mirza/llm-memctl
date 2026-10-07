@@ -47,3 +47,23 @@ def test_tables_separate_abstention_and_pair_by_question(tmp_path):
     assert abs(difference["mean"] - 2 / 3) < 1e-9 and difference["ci"][0] >= 0
     text = table([sweep], per_category=True, baseline="bad")
     assert "good" in text and "+0.667" in text
+
+
+def test_the_evidence_gate_pairs_with_fifo_and_names_paid_cells(tmp_path):
+    from memctl.analysis.gate import gate, main  # noqa: F401
+    from memctl.analysis.gate import split_label
+
+    for fold in range(2):
+        sweep = tmp_path / f"exp13_gate_f{fold}"
+        for label, value in (("fifo_top5__fraction0.02", 0.5), ("compose_floor5__fraction0.02", 0.9),
+                             ("learned_floor5__fraction0.02", 0.5), ("fifo_top5_t2000__fraction0.01", 0.4),
+                             ("compose_floor5_t2000__fraction0.01", 0.8)):
+            cell = sweep / label
+            cell.mkdir(parents=True)
+            with open(cell / "episodes.jsonl", "w") as handle:
+                for seed in range(20):
+                    handle.write(json.dumps({"seed": seed, "needed_hit_rate": value + (0.05 if seed % 2 else 0)}) + "\n")
+    rows = {(r["controller"], r["target"]): r for r in gate(sorted(tmp_path.iterdir()))}
+    assert rows[("compose_floor5", "fill")]["go"] and not rows[("learned_floor5", "fill")]["go"]
+    assert rows[("compose_floor5", "fill")]["n"] == 40 and abs(rows[("compose_floor5", "fill")]["difference"] - 0.4) < 1e-9
+    assert split_label("compose_floor5_t2000__fraction0.01") == ("compose_floor5", "t2000", "0.01")

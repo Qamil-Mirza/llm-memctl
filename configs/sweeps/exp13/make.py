@@ -97,6 +97,16 @@ def main() -> None:
                 fifo(LME_SEARCH, f"fifo_top5_t{t}", t), learned(checkpoint, LME_SEARCH, f"learned_floor5_t{t}", t))],
                 "memory.budget.fraction": [0.02, 0.05]},
         })
+    # Learned rows not in the fold sweeps above (composed-episode policy; synthetic policy with targets). They
+    # run only if the evidence gate passes them; the gate file names the cells.
+    for fold in folds:
+        composed = f"runs/lme_compose4_f{fold}_s0/checkpoints/policy_best.pt"
+        extra = [learned(composed, LME_SEARCH, "compose_floor5")]
+        extra += [learned(composed, LME_SEARCH, f"compose_floor5_t{t}", t) for t in (2000, 3000, 4000)]
+        extra += [learned(SYNTHETIC, LME_SEARCH, f"synthetic_floor5_t{t}", t) for t in (2000, 3000, 4000)]
+        write(f"exp13_lme_f{fold}_extra", f"LongMemEval fold {fold}: further learned rows, run only where the gate passes.", {
+            "base": base(lme_env(fold), 100), "grid": {"controller": extra, "memory.budget.fraction": [0.01, 0.02, 0.05]},
+        })
     # The pre-registered evidence gate (peer review D2): no reader, no judge; evidence in view at the question
     # (needed_hit_rate), paired over the test-fold questions. Learned rows go to the GPU only if they keep
     # more evidence than FIFO at the same budget or target (EXPERIMENTS 13).
