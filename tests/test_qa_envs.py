@@ -133,3 +133,32 @@ def test_a_longmemeval_subset_keeps_training_off_the_evaluation_questions():
     trained = {train.load_episode(seed).id for seed in range(100_000, 100_400)}
     assert len(trained) == 400 and not evaluated & trained
     assert train.load_episode(0).id == whole.load_episode(100).id
+
+
+def test_stratified_folds_cover_every_question_once_and_balance_question_types():
+    from collections import Counter
+
+    from memctl.envs.longmemeval import fold_indices
+
+    types = ["a"] * 50 + ["b"] * 30 + ["c"] * 20
+    instances = [{"question_type": t, "question_id": f"q{i}" + ("_abs" if i % 10 == 0 else "")} for i, t in enumerate(types)]
+    abstentions = {i for i in range(100) if i % 10 == 0}
+    tests = [fold_indices(instances, 5, fold) for fold in range(5)]
+    assert sorted(i for fold in tests for i in fold) == list(range(100))
+    for fold, test in enumerate(tests):
+        assert len(test) == 20 and Counter(types[i] for i in test) == {"a": 10, "b": 6, "c": 4}
+        assert sorted(test + fold_indices(instances, 5, fold, "train")) == list(range(100))
+        assert 1 <= len(abstentions & set(test)) <= 3
+    with pytest.raises(ValueError):
+        fold_indices(instances, 5, 5)
+
+
+@needs_longmemeval
+def test_a_longmemeval_fold_spans_all_question_types():
+    test = build_env({"name": "longmemeval", "folds": {"k": 5, "fold": 0}})
+    train = build_env({"name": "longmemeval", "folds": {"k": 5, "fold": 0, "part": "train"}})
+    tested = {test.load_episode(seed).id for seed in range(100)}
+    trained = {train.load_episode(seed).id for seed in range(400)}
+    assert len(tested) == 100 and len(trained) == 400 and not tested & trained
+    categories = {test.load_episode(seed).questions[0].category for seed in range(100)}
+    assert len(categories) == 6
