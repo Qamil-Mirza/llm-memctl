@@ -2145,6 +2145,15 @@ The user approved both, about $0.65–1.15 in all.
   4. Whether the controller ranking holds: the four controllers' accuracies under Granite in the same order as
      under Qwen, with the paired difference of `head_listsum` minus keep-last-0 + top 5 and its interval.
 
+- **Added before the judge stage ran.**
+  - The false-accept and false-reject tests also run on the Qwen judge, over the same items (the sampling is
+    seeded). Both judges are reported side by side: agreement alone cannot say which judge is wrong.
+  - **Pre-registered reading.** The result that matters is output 4: does the head − rule paired difference keep
+    its sign, with its interval excluding 0, under Granite?
+    - If it does, the controller ranking is judge-independent.
+    - If the absolute numbers move but the ranking holds, that is the outcome the literature expects (Anatomy of
+      Agentic Memory), and the thesis says so.
+
 **Exploratory LoCoMo reader test.** This is outside the pre-registered claims and labelled exploratory in every
 table.
 - **What runs.** The fold-0 LongMemEval `listsum` head ranks the shared fusion search's top 16 on LoCoMo
