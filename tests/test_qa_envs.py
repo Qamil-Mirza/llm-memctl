@@ -162,3 +162,25 @@ def test_a_longmemeval_fold_spans_all_question_types():
     assert len(tested) == 100 and len(trained) == 400 and not tested & trained
     categories = {test.load_episode(seed).questions[0].category for seed in range(100)}
     assert len(categories) == 6
+
+
+@needs_longmemeval
+def test_answer_sessions_without_marked_turns_still_count_as_evidence():
+    from memctl.envs.longmemeval import _load
+
+    env = build_env({"name": "longmemeval"})
+    instances = _load(env.path)
+
+    def marked_sessions(instance):
+        return {sid for sid, turns in zip(instance["haystack_session_ids"], instance["haystack_sessions"])
+                if any(turn.get("has_answer") for turn in turns)}
+
+    partial = next(n for n, inst in enumerate(instances)
+                   if marked_sessions(inst) and marked_sessions(inst) < set(inst["answer_session_ids"]))
+    env.reset(partial)
+    while not env.is_done():
+        env.step("unknown" if env.get_observation() and env.get_observation().requires_response else None)
+    [dependency] = env.get_ground_truth_dependencies()
+    unmarked = set(instances[partial]["answer_session_ids"]) - marked_sessions(instances[partial])
+    whole_sessions = [r for r in dependency.requirements if len(r.item_ids) > 1]
+    assert len(whole_sessions) == len(unmarked) and any(len(r.item_ids) == 1 for r in dependency.requirements)

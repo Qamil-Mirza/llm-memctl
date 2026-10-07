@@ -13,7 +13,7 @@ def _cell(root, name, data_path, wrong, seeds=(0, 1, 2, 3)):
     (cell / "config.yaml").write_text(yaml.safe_dump({"env": {"name": "longmemeval", "path": str(data_path)}}))
     with open(cell / "episodes.jsonl", "w") as handle:
         for seed in seeds:
-            handle.write(json.dumps({"seed": seed, "queries": 1, "active_tokens_mean": 100 + seed}) + "\n")
+            handle.write(json.dumps({"seed": seed, "queries": 1, "tokens_processed": 100 + seed, "task_model_calls": 1}) + "\n")
     with open(cell / "failures.jsonl", "w") as handle:
         for seed in wrong:
             handle.write(json.dumps({"seed": seed, "query_id": "q0000"}) + "\n")
@@ -38,7 +38,7 @@ def test_tables_separate_abstention_and_pair_by_question(tmp_path):
 
     rows = cell_rows(good)
     assert [r["category"] for r in rows] == ["temporal-reasoning", "temporal-reasoning", "knowledge-update", "abstention"]
-    assert rows[0]["f1"] == 1.0 and rows[0]["tokens"] == 7 and rows[1]["f1"] is None and rows[1]["tokens"] == 101
+    assert rows[0]["f1"] == 1.0 and rows[0]["tokens"] == 100 and rows[1]["f1"] is None and rows[1]["tokens"] == 101
     summary = summarise(rows)
     assert summary["n"] == 3 and abs(summary["accuracy"] - 2 / 3) < 1e-9 and summary["refusal_n"] == 1
     assert summary["by_category"] == {"knowledge-update": 0.0, "temporal-reasoning": 1.0}

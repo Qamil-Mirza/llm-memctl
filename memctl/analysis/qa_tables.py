@@ -9,7 +9,8 @@ For each controller group (seeds `_s0`, `_s1`, ... pooled) and budget fraction i
 - token F1 on the same questions, as a check on a reader that also judges (only where answers
   were logged: the episodes logged in detail);
 - accuracy per category, and on the refusal-scored questions separately;
-- the mean memory size, in active tokens (at read time where logged, else the episode mean).
+- the reader's prompt size in tokens (mean and median over episodes of each episode's mean prompt),
+  from tokens_processed / task_model_calls, so it is available for every episode.
 
     python -m memctl.analysis.qa_tables runs/exp11b_locomo_qa [more sweeps...] [--per-category]
 """
@@ -97,6 +98,11 @@ def cell_rows(cell: Path) -> list[dict]:
         for line in handle:
             episode = json.loads(line)
             seed = episode["seed"]
+            # The reader's mean prompt size in this episode: every prompt is counted in tokens_processed,
+            # which also holds the controller's own model input when the controller is a language model.
+            calls = episode.get("task_model_calls") or 0
+            prompt_tokens = (episode["tokens_processed"] / calls
+                             if calls and not episode.get("controller_model_calls") else None)
             for number in range(episode["queries"]):
                 query_id = f"q{number:04d}"
                 cluster, category, gold = lookup(seed, number)
@@ -104,9 +110,10 @@ def cell_rows(cell: Path) -> list[dict]:
                 if step is not None and bool(step["correct"]) == ((seed, query_id) in failed):
                     raise ValueError(f"{cell}: steps and failures disagree on {seed}/{query_id}")
                 rows.append({
-                    "cluster": cluster, "category": category, "correct": float((seed, query_id) not in failed),
+                    "cluster": cluster, "question": f"{cluster}:{number}", "category": category,
+                    "correct": float((seed, query_id) not in failed),
                     "f1": token_f1(step.get("agent_action") or "", gold) if step else None,
-                    "tokens": step["active_tokens_at_read"] if step else episode["active_tokens_mean"],
+                    "tokens": prompt_tokens,
                 })
     return rows
 
@@ -132,15 +139,16 @@ def bootstrap_interval(rows: list[dict], samples: int = 2000, seed: int = 0) -> 
     return means[int(0.025 * samples)], means[int(0.975 * samples) - 1]
 
 
-def paired_difference(rows: list[dict], baseline: list[dict], samples: int = 2000, seed: int = 0) -> dict:
+def paired_difference(rows: list[dict], baseline: list[dict], samples: int = 2000, seed: int = 0,
+                      unit: str = "cluster") -> dict:
     """Accuracy difference to a baseline on the same questions, with a 95% interval from resampling
     clusters. Each side is averaged over its seeds within a cluster first, so groups with different
     numbers of seeds compare fairly; clusters are weighted by their number of questions."""
     def per_cluster(data):
         sums = defaultdict(lambda: [0.0, 0])
         for row in data:
-            sums[row["cluster"]][0] += row["correct"]
-            sums[row["cluster"]][1] += 1
+            sums[row[unit]][0] += row["correct"]
+            sums[row[unit]][1] += 1
         return sums
 
     a, b = per_cluster(rows), per_cluster(baseline)
@@ -162,6 +170,7 @@ def paired_difference(rows: list[dict], baseline: list[dict], samples: int = 200
 
 
 def summarise(rows: list[dict]) -> dict:
+    tokens = [r["tokens"] for r in rows if r["tokens"] is not None]
     headline = [r for r in rows if r["category"] not in REFUSAL_SCORED]
     refusal = [r for r in rows if r["category"] in REFUSAL_SCORED]
     mean = lambda values: sum(values) / len(values) if values else None  # noqa: E731
@@ -172,8 +181,8 @@ def summarise(rows: list[dict]) -> dict:
         "f1": mean([r["f1"] for r in headline if r["f1"] is not None]),
         "f1_n": sum(r["f1"] is not None for r in headline),
         "refusal_n": len(refusal), "refusal_accuracy": mean([r["correct"] for r in refusal]),
-        "tokens": mean([r["tokens"] for r in rows]),
-        "tokens_median": sorted(r["tokens"] for r in rows)[len(rows) // 2] if rows else None,
+        "tokens": mean(tokens),
+        "tokens_median": sorted(tokens)[len(tokens) // 2] if tokens else None,
         "by_category": {c: mean([r["correct"] for r in headline if r["category"] == c]) for c in categories},
     }
 
@@ -191,22 +200,25 @@ def table(sweeps: list[Path], per_category: bool = False, exclude: tuple[str, ..
         for (group, fraction), summary in summaries.items():
             reference = cells.get((baseline, fraction))
             headline = lambda data: [r for r in data if r["category"] not in REFUSAL_SCORED]  # noqa: E731
-            summary["paired"] = paired_difference(headline(cells[(group, fraction)]), headline(reference)) \
-                if reference and group != baseline else None
+            pair = (headline(cells[(group, fraction)]), headline(reference)) if reference and group != baseline else None
+            summary["paired"] = paired_difference(*pair) if pair else None
+            summary["paired_q"] = paired_difference(*pair, unit="question") if pair else None
     categories = sorted({c for s in summaries.values() for c in s["by_category"]})
     fmt = lambda x: "-" if x is None else f"{x:.3f}"  # noqa: E731
-    head = ["controller", "budget", "n", "accuracy (95% CI)", "F1 (n)", "refusal-scored", "memory tokens (mean / median)"]
+    head = ["controller", "budget", "n", "accuracy (95% CI)", "F1 (n)", "refusal-scored", "prompt tokens (mean / median)"]
     if baseline:
-        head.append(f"Δ vs {baseline} (paired 95% CI)")
+        head += [f"Δ vs {baseline} (paired 95% CI, clusters)", "CI resampling questions"]
     if per_category:
         head += categories
     lines = ["| " + " | ".join(head) + " |", "|" + "---|" * len(head)]
     for (group, fraction), s in sorted(summaries.items(), key=lambda kv: (kv[0][1], -(kv[1]["accuracy"] or 0))):
         row = [group, f"{fraction:g}", str(s["n"]), f"{fmt(s['accuracy'])} ({fmt(s['ci'][0])}–{fmt(s['ci'][1])})",
-               f"{fmt(s['f1'])} ({s['f1_n']})", f"{fmt(s['refusal_accuracy'])} (n={s['refusal_n']})", f"{s['tokens']:.0f} / {s['tokens_median']:.0f}"]
+               f"{fmt(s['f1'])} ({s['f1_n']})", f"{fmt(s['refusal_accuracy'])} (n={s['refusal_n']})", "-" if s["tokens"] is None else f"{s['tokens']:.0f} / {s['tokens_median']:.0f}"]
         if baseline:
             d = s.get("paired")
+            q = s.get("paired_q")
             row.append("-" if not d or d["mean"] is None else f"{d['mean']:+.3f} ({d['ci'][0]:+.3f}–{d['ci'][1]:+.3f})")
+            row.append("-" if not q or q["mean"] is None else f"({q['ci'][0]:+.3f}–{q['ci'][1]:+.3f})")
         if per_category:
             row += [fmt(s["by_category"].get(c)) for c in categories]
         lines.append("| " + " | ".join(row) + " |")

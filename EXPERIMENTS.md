@@ -1155,9 +1155,16 @@ that keeps less and refuses more gains on them. For example, in conversation
 (conversations for LoCoMo, questions for LongMemEval); the Δ column is
 paired with FIFO on the same questions, seeds averaged within a cluster.
 F1 is only available for the episode logged in detail (conversation 0 /
-question 0), so it is not a headline here. Memory tokens are at read time for
-that episode and the episode-mean active tokens elsewhere; future sweeps
-should log every episode in detail.
+question 0), so it is not a headline here; future sweeps should log every
+episode in detail. With only 10 LoCoMo conversations the cluster bootstrap
+undercovers; the tool also prints a question-level paired interval, which
+ignores within-conversation dependence. Here both exclude 0 wherever one
+does. Prompt tokens (reader prompt per question, `tokens_processed /
+task_model_calls`, every episode) count the speaker, date and id label on
+each memory line, about 1.9 times the memory's own tokens on LoCoMo. At 10%:
+oracle 2,196, FIFO 3,388, learned about 3,050, keep-last-4 272, full context
+32,506. On LongMemEval at 5%: oracle 236, keep-last-4 2,326, FIFO 5,305.
+Keep-last-4 beats FIFO there with less than half the prompt.
 
 LoCoMo, categories 1–4 (1,540 questions):
 
@@ -1204,9 +1211,29 @@ oracle included; single-session-user carries all the differences.
 - The conclusions of 11b–11d stand, with intervals: on both benchmarks the
   learned controllers trail FIFO by 0.10–0.30, and the paired intervals
   exclude 0.
-- On LoCoMo the oracle now trails full context (0.384 against 0.462): with
-  categories 1–4 alone, keeping only annotated evidence misses context the
-  reader uses.
+- On LoCoMo the oracle now trails full context (0.384 against 0.462). Three
+  explanations, not yet separated: keeping only annotated evidence misses
+  context the reader uses; the evidence annotations are incomplete (an audit
+  found 6.4% of LoCoMo answers wrong, and evidence lists were not audited);
+  and at 10% the oracle cannot hold all evidence, which is 31% of tokens.
+- The reader prompt caps two LongMemEval types for every controller. 28 of
+  the oracle's 30 multi-session failures at 5% are `task_model_reasoning`
+  (evidence in view, answer wrong), mostly "unknown" where the gold is a
+  count or a duration. Temporal questions get relative answers
+  ("yesterday"). A short-phrase prompt with 32 output tokens leaves no room
+  to count or do date arithmetic. `agent.reasoning: true` (a brief note,
+  then `Answer: ...`, memory in arrival order) is the fix to verify on the
+  oracle cell before controllers are re-run; it uses a fresh cache, so the
+  rows above stay reproducible.
+- LongMemEval evidence labels: 41 of 500 instances mark `has_answer` turns
+  in only some of their answer sessions, and 21 mark none. The environment
+  now adds one requirement per unmarked answer session (any of its turns),
+  where before it fell back to the answer sessions only when nothing was
+  marked. The 11c/11d numbers were scored under the old rule.
+- The judge is strict, which brings false rejects as well as false accepts.
+  In one oracle failure the gold is "I have worked on or bought five model
+  kits..." and the answer "5" was judged wrong. The planned second-judge
+  check should measure both directions.
 
 **Next (evaluation protocol).** `env.folds` (stratified 5-fold over all 500
 LongMemEval questions, by question type with abstention apart) replaces the

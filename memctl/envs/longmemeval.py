@@ -32,10 +32,16 @@ def _load(path: str) -> list[dict]:
     return json.loads(Path(path).read_text())
 
 
-def parse_instance(instance: dict, max_turn_tokens: int | None = None) -> tuple[QAEpisode, tuple[str, ...]]:
-    """(episode, ids of the fallback evidence) for one LongMemEval instance."""
+def parse_instance(instance: dict, max_turn_tokens: int | None = None) -> tuple[QAEpisode, tuple[tuple[str, ...], ...]]:
+    """(episode, fallback evidence) for one LongMemEval instance.
+
+    The fallback has one entry per answer session with no turn marked `has_answer`: that session's
+    turn ids, any one of which counts. 41 of the 500 instances mark turns in only some of their
+    answer sessions, and 21 mark none."""
     order = sorted(range(len(instance["haystack_sessions"])), key=lambda n: instance["haystack_dates"][n])
-    turns, text_of, marked, in_answer_sessions = [], {}, [], []
+    turns, text_of, marked = [], {}, []
+    session_turns: dict[str, list[str]] = {}
+    marked_sessions: set[str] = set()
     answer_sessions = set(instance.get("answer_session_ids", []))
     for position in order:
         session_id = instance["haystack_session_ids"][position]
@@ -55,15 +61,17 @@ def parse_instance(instance: dict, max_turn_tokens: int | None = None) -> tuple[
             text_of[item_id] = text
             if turn.get("has_answer"):
                 marked.append(item_id)
+                marked_sessions.add(session_id)
             if session_id in answer_sessions:
-                in_answer_sessions.append(item_id)
+                session_turns.setdefault(session_id, []).append(item_id)
     unanswerable = str(instance["question_id"]).endswith("_abs")
     question = QAItem(
         str(instance["question_id"]),
         f"(asked on {instance.get('question_date', '')}) {instance['question']}",
         str(instance["answer"]), instance["question_type"], tuple(marked), unanswerable,
     )
-    return QAEpisode(str(instance["question_id"]), turns, [question], text_of), tuple(in_answer_sessions)
+    fallback = tuple(tuple(ids) for session, ids in session_turns.items() if session not in marked_sessions)
+    return QAEpisode(str(instance["question_id"]), turns, [question], text_of), fallback
 
 
 class LongMemEvalEnv(QAEnvironment):
@@ -81,7 +89,7 @@ class LongMemEvalEnv(QAEnvironment):
         self.folds = dict(config["folds"]) if config.get("folds") else None
         if self.folds and self.subset:
             raise ValueError("set env.subset or env.folds, not both")
-        self._fallback: tuple[str, ...] = ()
+        self._fallback: tuple[tuple[str, ...], ...] = ()
         self._chosen: list[int] | None = None
         if not Path(self.path).exists():
             raise FileNotFoundError(f"LongMemEval not found at {self.path}. Download a split from {SOURCE}")
@@ -102,10 +110,11 @@ class LongMemEvalEnv(QAEnvironment):
     def get_ground_truth_dependencies(self) -> list[Dependency]:
         dependencies = super().get_ground_truth_dependencies()
         for number, dependency in enumerate(dependencies):
-            if not dependency.requirements and self._fallback:
-                # No turn is marked: any turn of the answer sessions is accepted as evidence.
-                requirement = EvidenceRequirement(self._fallback, "")
+            if self._fallback:
+                # An answer session with no marked turn: any one of its turns is accepted as evidence.
+                extra = tuple(EvidenceRequirement(ids, "") for ids in self._fallback)
                 dependencies[number] = Dependency(
-                    dependency.query_id, dependency.step, (requirement,), dependency.gold, dependency.category
+                    dependency.query_id, dependency.step, dependency.requirements + extra, dependency.gold,
+                    dependency.category,
                 )
         return dependencies
