@@ -18,11 +18,16 @@ Two experts, chosen with `training.expert.kind`:
   Ties within a regret level are ordered by next need, furthest first, as the
   oracle orders them.
 
-      regret(i, EVICT)   = 1 if i is needed again, else 0
+      regret(i, EVICT)   = delete_cost + (1 if i is needed again, else 0)
       regret(i, ARCHIVE) = archive_cost + retrieval_risk * (1 if i is needed again, else 0)
 
   `archive_cost` prices the archive; `retrieval_risk` is the chance the item,
   once archived, is not retrieved when needed (0 with the oracle playing on).
+  `delete_cost` prices deletion itself. Hindsight says a never-needed item is
+  free to delete, but on a benchmark with one question per episode almost every
+  item is never needed, so the learner, which cannot tell the two apart, learns
+  to delete evidence as well (Experiment 11d). A positive `delete_cost` above
+  `archive_cost` makes archiving the only least-regret removal.
 
   The regret expert also returns the cost of every pair, for cost-sensitive
   imitation (`algorithm: cost`): regret plus `order_weight` times the item's
@@ -49,7 +54,7 @@ KINDS = ("oracle", "regret")
 
 def make_expert(
     hindsight: Hindsight, kind: str = "oracle", archive_cost: float = 0.0, retrieval_risk: float = 0.0,
-    order_weight: float = 0.05,
+    order_weight: float = 0.05, delete_cost: float = 0.0,
 ):
     if kind not in KINDS:
         raise ValueError(f"unknown expert kind {kind!r}; expected one of {KINDS}")
@@ -83,7 +88,7 @@ def make_expert(
         cost = np.full(decision.mask.shape, np.nan, dtype=np.float32)
         for i in range(decision.n_active):
             needed = next_need[i] != NEVER
-            for column, value in ((EVICT, float(needed)), (ARCHIVE, archive_cost + retrieval_risk * needed)):
+            for column, value in ((EVICT, delete_cost + float(needed)), (ARCHIVE, archive_cost + retrieval_risk * needed)):
                 if decision.mask[i, column]:
                     keys[(i, column)] = (round(value, 9), -next_need[i])
                     cost[i, column] = value + order_weight * place.get(next_need[i], 0.0)

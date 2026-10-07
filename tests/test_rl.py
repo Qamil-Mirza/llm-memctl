@@ -406,3 +406,62 @@ def test_grpo_can_keep_the_expert_in_its_loss(tmp_path):
     folder = train(settings, tmp_path / "train")
     row = read_jsonl(folder / "train_log.jsonl")[0]
     assert "imitation_loss" in row and len(read_jsonl(folder / "groups.jsonl")) == 2
+
+
+def test_a_deletion_price_makes_the_regret_expert_archive_what_is_never_needed():
+    experiment = Experiment(config(fraction=0.05, operations=ARCHIVE_OPS))
+    controller = experiment.controller
+    hindsight = experiment.hindsight(0)
+    controller.record, controller.follow_expert = True, True
+    controller.expert = make_expert(hindsight, kind="regret", delete_cost=0.5)
+    episode = experiment.run_episode(seed=0, detail=False).episode
+    never = 0
+    for decision in controller.recorded:
+        for i in range(decision.n_active):
+            assert 0 <= decision.expert_rank[i, ARCHIVE] < decision.expert_rank[i, EVICT]
+            never += min(hindsight.next_need(root, decision.step) for root in decision.roots[i]) > 10**8
+    assert never > 0 and episode["task_success"] == 1.0
+    assert "EVICT" not in episode["action_counts"]["controller"]
+
+
+def test_a_retrieval_floor_retrieves_the_top_results_at_every_question_outside_the_policy():
+    def run(floor):
+        torch.manual_seed(0)  # the same untrained policy in both runs
+        experiment = Experiment(config(fraction=0.05, operations=ARCHIVE_OPS, retrieve_floor=floor))
+        controller = experiment.controller
+        controller.record, emitted, decide = True, [], controller.decide
+
+        def spy(memory, task):
+            actions = decide(memory, task)
+            emitted.append((task.observation.requires_response and bool(memory.archived), actions))
+            return actions
+
+        controller.decide = spy
+        episode = experiment.run_episode(seed=0, detail=False).episode
+        return episode, controller.recorded, emitted
+
+    plain, plain_decisions, _ = run(0)
+    floored, floored_decisions, emitted = run(3)
+    assert plain["invalid_actions"] == 0 and floored["invalid_actions"] == 0
+    # As with the heuristics' retrieval, a floor item that does not fit is put back in the archive, never deleted.
+    assert "EVICT" not in floored["action_counts"]["harness"]
+    questions = [actions for searching, actions in emitted if searching]
+    assert questions and all(
+        any(a.parameters.get("method", "").startswith("floor+") and len(a.target_ids) <= 3 for a in actions)
+        for actions in questions
+    )
+    # The floor items are not policy decisions: the policy's shortlist is three shorter.
+    assert max(len(d.retrieve_tokens) for d in plain_decisions) == 8
+    assert max(len(d.retrieve_tokens) for d in floored_decisions) == 8 - 3
+
+
+def test_a_token_target_keeps_active_memory_well_below_the_budget():
+    def mean_active(target):
+        experiment = Experiment(config(fraction=0.25, operations=ARCHIVE_OPS, retrieve_floor=2, target_tokens=target))
+        episode = experiment.run_episode(seed=0, detail=False).episode
+        assert episode["invalid_actions"] == 0
+        return episode["active_tokens_mean"], episode["budget"]
+
+    full, budget = mean_active(None)
+    targeted, _ = mean_active(60)
+    assert full > 0.5 * budget and targeted < 0.1 * budget

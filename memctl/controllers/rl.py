@@ -119,6 +119,13 @@ class RLController(MemoryController):
         self.bridge_search = bool(config.get("bridge_search", False))
         self.bridge_candidates = int(config.get("bridge_candidates", 4))
         self.bridge_seeds = int(config.get("bridge_seeds", 2))
+        # Retrieval floor: the top `retrieve_floor` search results are retrieved at every question, outside
+        # the policy (no decision, no label). The policy still sees and decides on the rest of the shortlist,
+        # and makes room for the floor items by eviction. 0 (default) leaves every retrieval to the policy.
+        self.retrieve_floor = int(config.get("retrieve_floor", 0))
+        # Target fill: remove until active memory is at most this many tokens, even when the budget allows
+        # more (a small reader can do worse with more context). None (default) fills up to the budget.
+        self.target_tokens = int(config["target_tokens"]) if config.get("target_tokens") else None
         self.featurizer = Featurizer(bool(config.get("use_embeddings", False)), int(config.get("embedding_dim", 0)),
                                      version=2 if self.bridge_search else 1)
         self.policy = ItemPolicy(
@@ -200,13 +207,24 @@ class RLController(MemoryController):
             bridge = {item.id: score / top_bridge for item, score in found}
             listed = {item.id for item, _ in shortlist}
             shortlist = shortlist + [(item, 0.0) for item, _ in found if item.id not in listed]
-        if not memory.over_budget and not shortlist:
-            return []
-
-        active = [item for item in memory.active if not item.pinned] if memory.over_budget or shortlist else []
-        candidates = active + [item for item, _ in shortlist]
         top = max((score for _, score in shortlist), default=1.0) or 1.0
         scores = {item.id: score / top for item, score in shortlist}
+        floor = [item for item, _ in shortlist[: self.retrieve_floor]]
+        shortlist = shortlist[self.retrieve_floor:]
+        floor_tokens = sum(item.token_count for item in floor)
+        floor_action = [
+            MemoryAction(
+                Operation.RETRIEVE_FROM_ARCHIVE, tuple(item.id for item in floor),
+                parameters={"query": task.observation.content, "method": f"floor+{self.retriever.name}"},
+            )
+        ] if floor else []
+        limit = min(memory.budget, self.target_tokens) if self.target_tokens else memory.budget
+        over_budget = memory.active_tokens + floor_tokens > limit
+        if not over_budget and not shortlist:
+            return floor_action
+
+        active = [item for item in memory.active if not item.pinned]
+        candidates = active + [item for item, _ in shortlist]
         savings = np.array([[self._saving(item, op) for op in REMOVAL_OPERATIONS] for item in active], dtype=np.int64)
         savings = savings.reshape(len(active), N_REMOVALS)
         decision = Decision(
@@ -218,7 +236,7 @@ class RLController(MemoryController):
             n_active=len(active),
             savings=savings,
             mask=savings > 0,
-            excess=memory.active_tokens - memory.budget,
+            excess=memory.active_tokens + floor_tokens - limit,
             retrieve_tokens=[item.token_count for item, _ in shortlist],
         )
         if self.expert is not None:
@@ -229,7 +247,7 @@ class RLController(MemoryController):
         if self.record:
             self.recorded.append(decision)
 
-        actions = []
+        actions = list(floor_action)
         retrieved = [candidates[decision.n_active + j].id for j, flag in enumerate(decision.retrieved) if flag]
         if retrieved:
             actions.append(
