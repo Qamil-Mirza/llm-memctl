@@ -510,3 +510,9 @@ def test_without_a_task_model_validation_selects_on_evidence_in_context(tmp_path
     assert all(row["success@0.1"] == 0 and 0 <= row["evidence@0.1"] <= 1 for row in log)
     assert all(row["validation"] == row["evidence@0.1"] for row in log)
     assert json.loads((folder / "summary.json").read_text())["best_eval"]["metric"] == "evidence"
+
+
+def test_headroom_ranks_a_requirement_by_its_best_item():
+    from memctl.rl.headroom import ranks
+
+    assert ranks(["a", "b", "c"], [("c", "a"), ("b",), ("z",)]) == [1, 2, 10**9]
