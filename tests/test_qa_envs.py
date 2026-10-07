@@ -220,3 +220,12 @@ def test_a_composed_longmemeval_episode_asks_each_question_after_its_own_history
     for query_id, position in answered:
         before = order[position - 2]
         assert before.id == env._questions[query_id].after or before.requires_response
+
+
+@needs_longmemeval
+def test_composed_groupings_differ_across_seeds():
+    env = build_env({"name": "longmemeval", "folds": {"k": 5, "fold": 0, "part": "train"}, "compose": 4})
+    groups = {env.load_episode(seed).id for seed in range(20)}
+    members = [set(g.split("+")) for g in groups]
+    assert len(groups) == 20 and all(len(m) == 4 for m in members)
+    assert len(set.union(*members)) > 30  # not 5 fixed quadruples cycling

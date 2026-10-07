@@ -16,6 +16,7 @@ locally by token F1, which under-credits correct answers phrased differently.
 from __future__ import annotations
 
 import json
+import random
 from functools import lru_cache
 from pathlib import Path
 
@@ -115,8 +116,9 @@ class LongMemEvalEnv(QAEnvironment):
             episode, fallback = parse_instance(instances[pool[seed % len(pool)]], self.max_turn_tokens)
             self._fallback = {episode.questions[0].id: fallback}
             return episode
-        parts = [parse_instance(instances[pool[(seed * self.compose + j) % len(pool)]], self.max_turn_tokens, f"i{j}/")
-                 for j in range(self.compose)]
+        # A seed-derived sample, so groupings differ across seeds and DAgger iterations (not fixed quadruples).
+        chosen = random.Random(seed).sample(pool, self.compose)
+        parts = [parse_instance(instances[index], self.max_turn_tokens, f"i{j}/") for j, index in enumerate(chosen)]
         turns = sorted(((t.metadata.get("date", ""), j, n, t) for j, (e, _) in enumerate(parts) for n, t in enumerate(e.turns)),
                        key=lambda row: row[:3])
         self._fallback = {e.questions[0].id: fallback for e, fallback in parts}
