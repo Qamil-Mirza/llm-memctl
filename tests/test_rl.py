@@ -465,3 +465,32 @@ def test_a_token_target_keeps_active_memory_well_below_the_budget():
     full, budget = mean_active(None)
     targeted, _ = mean_active(60)
     assert full > 0.5 * budget and targeted < 0.1 * budget
+
+
+def test_with_a_token_target_the_fill_features_measure_against_the_target():
+    experiment = Experiment(config(fraction=0.25, operations=ARCHIVE_OPS, target_tokens=60))
+    experiment.controller.record = True
+    experiment.run_episode(seed=0, detail=False)
+    under_budget = [d for d in experiment.controller.recorded if d.excess > 0 and d.global_features[0] < 3.0]
+    assert under_budget and all(d.global_features[1] > 0 for d in under_budget)
+
+
+def test_a_floor_the_expert_makes_room_for_is_never_returned_by_the_harness():
+    for fraction in (0.02, 0.05):
+        experiment = Experiment(config(fraction=fraction, operations=ARCHIVE_OPS, retrieve_floor=5))
+        controller = experiment.controller
+        controller.follow_expert = True
+        controller.expert = make_expert(experiment.hindsight(0), kind="regret")
+        floors, decide = [], controller.decide
+
+        def spy(memory, task, decide=decide, floors=floors):
+            actions = decide(memory, task)
+            floors.append((controller.decision_info().get("floor_tokens", 0), memory.budget))
+            return actions
+
+        controller.decide = spy
+        episode = experiment.run_episode(seed=0, detail=False).episode
+        assert episode["invalid_actions"] == 0
+        assert any(tokens for tokens, _ in floors) and all(tokens <= budget for tokens, budget in floors)
+        if fraction == 0.05:  # at 2% the expert's own retrievals can overflow, with or without a floor
+            assert not episode["action_counts"]["harness"]

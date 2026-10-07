@@ -123,6 +123,7 @@ class RLController(MemoryController):
         # the policy (no decision, no label). The policy still sees and decides on the rest of the shortlist,
         # and makes room for the floor items by eviction. 0 (default) leaves every retrieval to the policy.
         self.retrieve_floor = int(config.get("retrieve_floor", 0))
+        self.retrieve_floor_tokens = int(config.get("retrieve_floor_tokens", 0))
         # Target fill: remove until active memory is at most this many tokens, even when the budget allows
         # more (a small reader can do worse with more context). None (default) fills up to the budget.
         self.target_tokens = int(config["target_tokens"]) if config.get("target_tokens") else None
@@ -209,18 +210,31 @@ class RLController(MemoryController):
             shortlist = shortlist + [(item, 0.0) for item, _ in found if item.id not in listed]
         top = max((score for _, score in shortlist), default=1.0) or 1.0
         scores = {item.id: score / top for item, score in shortlist}
-        floor = [item for item, _ in shortlist[: self.retrieve_floor]]
-        shortlist = shortlist[self.retrieve_floor:]
-        floor_tokens = sum(item.token_count for item in floor)
+        # With a floor of k the head decides on ranks k+1..retrieve_candidates (plus bridge items), so set
+        # retrieve_candidates above the floor. When the shortlist is no longer than the floor (a small
+        # archive early in an episode) the head has nothing to decide on that question, by design.
+        # The floor takes the top results in rank order while they fit in the limit beside pinned items (and
+        # under retrieve_floor_tokens, if set), so the harness never has to return a floor item.
+        limit = min(memory.budget, self.target_tokens) if self.target_tokens else memory.budget
+        room = limit - sum(item.token_count for item in memory.active if item.pinned)
+        if self.retrieve_floor_tokens:
+            room = min(room, self.retrieve_floor_tokens)
+        floor, floor_tokens = [], 0
+        for item, _ in shortlist[: self.retrieve_floor]:
+            if floor_tokens + item.token_count > room:
+                break
+            floor.append(item)
+            floor_tokens += item.token_count
+        shortlist = shortlist[len(floor):]
         floor_action = [
             MemoryAction(
                 Operation.RETRIEVE_FROM_ARCHIVE, tuple(item.id for item in floor),
                 parameters={"query": task.observation.content, "method": f"floor+{self.retriever.name}"},
             )
         ] if floor else []
-        limit = min(memory.budget, self.target_tokens) if self.target_tokens else memory.budget
         over_budget = memory.active_tokens + floor_tokens > limit
         if not over_budget and not shortlist:
+            self._info = {"floor_ids": [item.id for item in floor], "floor_tokens": floor_tokens} if floor else {}
             return floor_action
 
         active = [item for item in memory.active if not item.pinned]
@@ -230,7 +244,7 @@ class RLController(MemoryController):
         decision = Decision(
             step=memory.step,
             items=self.featurizer.items(candidates, memory, task, scores, bridge),
-            global_features=self.featurizer.globals(memory, task),
+            global_features=self.featurizer.globals(memory, task, limit, floor_tokens),
             item_ids=[item.id for item in candidates],
             roots=[self._root_ids(item) for item in candidates],
             n_active=len(active),
@@ -262,6 +276,8 @@ class RLController(MemoryController):
             actions.append(MemoryAction(operation, (item.id,), parameters=parameters))
         self._info = {
             "candidates": len(candidates),
+            "floor_ids": [item.id for item in floor],
+            "floor_tokens": floor_tokens,
             "picks": [(decision.item_ids[p // N_REMOVALS], REMOVAL_OPERATIONS[p % N_REMOVALS].value) for p in decision.picks],
             "log_prob": decision.log_prob,
             "value": decision.value,
