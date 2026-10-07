@@ -63,6 +63,7 @@ commands given).
 | 15 | A query-aware floor head: which 5 of 16 to retrieve, learned listwise | Free gate: +0.08 all-found evidence at half the tokens. Reader: +0.047 accuracy (0.513 vs 0.466) at 745 vs 1,554 tokens; two of three arms win; Holm-adjusted p 0.058. First learned row beyond the rule frontier; replicates over 3 training seeds on a second host (+0.044, seed SD 0.002). POSITIVE |
 | 16 | Set-valued GRPO on the selection head with the reader's verdict as reward | Gate fails: +0.0125 (−0.005, +0.033) held-out over the imitation start; flat in 4 of 5 folds. Labels already a sufficient target for this head. NEGATIVE (pre-registered) |
 | 18 | Second-family judge check; exploratory LoCoMo reader test | Granite agrees with Qwen on 97% (κ 0.95), similar error rates; ranking and the head's gain hold (+0.040, CI excludes 0). Exploratory: head transfers to LoCoMo, +0.087 (post hoc). CONFIRMS |
+| 19 | Adaptive k (5, 8 or 16 of 32) | Pre-registered, free gate not yet run |
 
 ---
 
@@ -2219,6 +2220,62 @@ head ranks the fusion top 16 on LoCoMo categories 1–4, against keep-last-0 + f
 - Both rows stay far below FIFO + floor at 10% (0.299 at 2,917 tokens). On LoCoMo, five turns are too few: it is a
   search problem (§13b). That is why the head's row is not a frontier win there.
 - **The pre-registered gate's verdict (no-go, §15b) stands.** This row is evidence for transfer, not a claim.
+
+## 19. Adaptive k: the head chooses how many turns to show (N4; 2026-10-07, pre-registered, free stage)
+
+**Question.** The §15 head always shows 5 turns. On LoCoMo that is too few (§18a: 0.242 at 365 prompt tokens,
+against FIFO + floor at 10%, 0.299 at 2,917), and on both benchmarks 5 turns sit far below the ~3k onset of
+context rot. Does a head that chooses k from {5, 8, 16} per question keep more of the evidence in view than the
+five-turn head, at a fraction of FIFO's tokens?
+
+**Build (declared before any training run).**
+- **Wider shortlist.** 32 candidates instead of 16: plain BM25 on LongMemEval, the shared fusion search on
+  LoCoMo, as before. Before training, the free headroom check of §12 is extended to @32 and reported (all-found
+  @16 against @32).
+- **The head.** Retrained as in §15 (`listsum`, composed 4-question episodes, each fold's train part, seed 0),
+  with `retrieve_candidates: 32`. Nothing else changes.
+- **The k-chooser.** A small network (one hidden layer of 32) on the frozen head's view of the shortlist: the
+  top 16 sorted logits, the gaps at ranks 5/6, 8/9 and 16/17, the softmax entropy, and the question's length. It
+  has three outputs, P(every gold item is in the head's top k) for k = 5, 8 and 16, trained by binary
+  cross-entropy on the train part's lists.
+- **The decision rule, fixed now.** Show the smallest k whose predicted all-found probability is within
+  δ = 0.05 of the prediction at k = 16. δ is not tuned on test data. A sweep over δ ∈ {0.02, 0.05, 0.10} is
+  reported on the train parts only, as description.
+
+**Arms.** All from the same retrained head.
+- `adaptive`: k chosen per question as above.
+- `fixed5`, `fixed8`, `fixed16`: the same head with k fixed. They test whether adaptivity, rather than more
+  turns, earns the gain.
+- References: the §15 five-of-16 head (the comparison for the gate), keep-last-0 + top 5, and FIFO + floor
+  (10% on LoCoMo, 5% on LongMemEval), all keep-none except FIFO.
+
+**Measures.** All-found evidence (`evidence_complete_rate`), mean memory tokens at the question, mean k and its
+distribution by question type. No reader.
+
+**Where.** LongMemEval, the five test folds, 500 questions, paired by question: the primary test. LoCoMo
+categories 1–4 with the fold-0 heads: transfer, intervals clustered by conversation (10 conversations, so they
+undercover; the limitation is already stated). The same gate is also run on the train parts to show overfitting.
+
+**Pre-registered gate (per benchmark; an arm goes to the reader only if all three hold).**
+1. **More evidence.** `adaptive` minus the §15 five-turn head, all-found, paired 95% interval entirely above 0.
+2. **Few tokens.** `adaptive`'s mean memory tokens at the question are at most half of FIFO + floor's at the
+   comparison budget, measured by the same tool. On LongMemEval they must also be at most keep-last-0 + top 5's,
+   so the prompt stays below the onset.
+3. **Simplest arm wins.** If a fixed arm also passes 1 and 2 with all-found at least `adaptive`'s, the smallest
+   such fixed k goes to the reader instead, and the thesis reports that adaptivity was not needed.
+
+**Expectations, written before the run.** LoCoMo has the room: fusion all-found is 0.481 @5 and 0.646 @16
+(§12). On LongMemEval the five-turn head already reaches 0.590 against 0.706 for BM25 @16, so less room; a no-go
+there is a plausible outcome and will be reported as such.
+
+**Caveat (as in §15).** The gate measures the same evidence labels the head is trained to find. Whether more
+labelled evidence, at more tokens, turns into more correct answers is the reader's test.
+
+**Paid step (not approved; it needs the user's approval before it runs).** If an arm passes, a reader cell like
+§15b/§18 on the passing benchmark(s): the arm, the §15 head, and FIFO + floor, with the reader frozen at 7b5fc30
+and the official judge. Criteria: paired accuracy against the five-turn head, interval above 0; place on the
+accuracy-against-tokens frontier against FIFO + floor; the §13a decomposition. A full-size stub run under
+`guard.sh` precedes any launch. Rough cost, from §15b and §18: about $0.10–0.30.
 
 ## 5. The sequential task
 
