@@ -1,5 +1,6 @@
 # Experiment 19 reader test, LongMemEval fold 4 (approved by the user on 2026-10-07, about $0.25-0.50 with LoCoMo):
-# fixed8 (pre-registered by §19/§19b), the §15 head and FIFO + floor at 5% with the 3k target, all on one host
+# fixed8 (pre-registered by §19/§19b), fixed16 (EXPLORATORY, a direct context-rot test; added with the user's approval),
+# the §15 head and FIFO + floor at 5% with the 3k target, all on one host
 # with a fresh cache, so every row is paired. Reader frozen at 7b5fc30, official judge.
 name: exp19_paid_f4
 base:
@@ -48,6 +49,14 @@ grid:
     checkpoint: /home/qamil-mirza/Code/llm-memctl/runs/lme_n4_head_f4_a/checkpoints/policy_best.pt
     retrieval_method: lexical
     retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: heada_fixed16_exploratory
+    checkpoint: /home/qamil-mirza/Code/llm-memctl/runs/lme_n4_head_f4_a/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 16
     retrieve_candidates: 32
     floor_head: true
     keep_none: true

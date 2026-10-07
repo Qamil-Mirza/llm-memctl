@@ -2463,7 +2463,10 @@ within a conversation, the head's ranking depends on the controller's own past p
 **Cells** (`configs/sweeps/exp19_paid/`; one pod session; every row on one host with a fresh cache, so all rows
 are paired; reader frozen at 7b5fc30; official judge):
 - **LongMemEval**, 500 questions (470 non-abstention scored, as §15b): `fixed8` (head A, 32 candidates), the §15
-  head, and FIFO + floor at 5% with the 3k target.
+  head, FIFO + floor at 5% with the 3k target, and `fixed16` (EXPLORATORY; the user approved it as an extra arm,
+  about $0.05). `fixed16` against `fixed8` (+0.044 evidence at 2.4× the tokens, near the onset) is a direct test of
+  context rot. Like LoCoMo's `fixed16`, it gets no pass or fail verdict, only its paired difference against
+  `fixed8` and a frontier point.
 - **LoCoMo**, categories 1–4, fold-0 heads, fusion search: `fixed5` (head A), `fixed16` (head A, EXPLORATORY), the
   §15 head, and FIFO + floor at 10%.
 
