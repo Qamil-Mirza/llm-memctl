@@ -2067,10 +2067,15 @@ test-fold run follows**, as pre-registered.
 | 3 | 0.538 | 0.538 | flat | 51–56% | 302 |
 | 4 | 0.463 | 0.538 | 0.463 / 0.487 / 0.500 / 0.537 | 52–61% | 301 |
 
+Spend on Experiments 15–16: about $0.44 ($0.08 for the Experiment 15 reader
+test and $0.36 for this pod), against the $1.70 the user approved.
+
 **What it means, as stated in advance.**
-- With this budget (6 iterations × 128 questions × 8 subsets), RL on the
-  reader's own verdict did not improve the selection beyond imitation of the
-  evidence labels by more than about 0.03, the gate's resolution. One fold
+- The result is consistent with a gain of about one point and inconsistent
+  with a gain above about three. It is not evidence of no effect. With this
+  budget (6 iterations × 128 questions × 8 subsets), RL on the reader's own
+  verdict did not improve the selection beyond imitation of the evidence
+  labels by more than about 0.03, the gate's resolution. One fold
   (4) moved by +0.075; the other four did not move.
 - Per the pre-registration, the evidence labels were already a sufficient
   target for a head this small.
@@ -2079,9 +2084,12 @@ test-fold run follows**, as pre-registered.
 - About half of the groups had all 8 rewards equal and carried no signal.
 - The reward's noise floor (1 answer in 50 from batch nondeterminism) is
   comparable with the per-subset differences being learned.
-- The training-set reward rose in some folds (correct rate from 0.44 to
-  0.52–0.54 by iteration 3 or 4), but the gain did not reach the held-out
-  slice.
+- The training-set reward rose by 8–10 points in some folds (correct rate
+  from 0.44 to 0.52–0.54 by iteration 3 or 4) while the held-out slice did
+  not move. With about 27k parameters and about 300 training questions per
+  fold, the likely reading is that the head fitted the training questions
+  through their features rather than learning a transferable preference.
+  This is also why a longer run is not expected to help.
 
 **For RQ3.** GRPO's credit assignment was exact here (one question, one
 decision), so this is not a credit-assignment failure. On this task the
@@ -2089,6 +2097,26 @@ binding constraint is the reward's information per sample, not the optimiser.
 This matches Experiment 10's finding on the synthetic task, where GRPO added
 about one point over imitation. A longer run is not proposed: the curve is
 flat in four folds of five, and the pre-registered gate decides.
+
+**RQ3 across both tasks.** Credit assignment across time was never the
+binding constraint:
+- on the synthetic task, the needed fact was out of reach of the shortlist;
+- on real conversations, the reward carries too little information per sample
+  (44–61% of groups tied, a noise floor of about 1 answer in 50).
+
+The one credit-assignment question still open is *within* the chosen set:
+which of the five turns earned the reward.
+
+**A possible §17 (declared, not planned; the user decides).** A leave-one-out
+set reward would give each of the five turns its own advantage:
+- the reader answers once with each 4-of-5 subset, plus the full set;
+- each turn's advantage is the drop in reward when it is left out, a
+  Shapley-style estimate.
+
+This makes the per-item signal dense. It costs about 5 times the reader calls
+of §16, roughly $2–3 for all folds. It is the only GRPO variant still judged
+promising for this problem, and it would be a methodological contribution if
+it worked. The alternative is to close RQ3 on the evidence above.
 
 ## 5. The sequential task
 
