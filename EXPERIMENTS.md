@@ -1935,8 +1935,12 @@ with a fresh cache (`exp15_host_f*`, c6a9752): keep-last-0 + top 5 and the
 
 **The gain replicates.** Every training seed beats the rule on its own, on a
 second host, by the same amount. The seed-averaged paired interval excludes 0.
-"Borderline after Holm" in §15b was a statement about three loss arms, not
-about the result's stability. The partial cells of the first attempt on this
+"Borderline after Holm" in §15b was a statement about three loss arms
+tested once. `listsum` was chosen for this replication *after* it scored best
+among them. It was one of three declared arms, not a single arm specified in
+advance, so the replication does not remove that selection step. What it
+shows is that the selected arm's gain is not seed or host luck: three
+independent training seeds, each excluding 0, on a second host. The partial cells of the first attempt on this
 host, made before the host check, are in `runs/_aborted/` and are not reported.
 
 **For the thesis.** On real conversations with a searchable archive, the
