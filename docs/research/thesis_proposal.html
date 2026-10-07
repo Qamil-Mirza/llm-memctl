@@ -61,7 +61,7 @@ th, td { border-bottom: 0.5pt solid var(--line); padding: 2pt 8pt 2pt 0; text-al
 <ol>
 <li><strong>A tiny controller kept separate from a frozen language model (RQ1, RQ4).</strong> Most recent work retrains the language model itself; here only the small controller learns, so it can sit in front of any model. With Qwen2.5-7B reading, it matches showing the model everything while using 40% of the text.</li>
 <li><strong>A "regret" teacher for copying hindsight (RQ2).</strong> Copying an all-knowing teacher works badly (34% right at a tight budget), because the student can't see what it sees. Copying a teacher that accepts every choice that costs nothing gets 85%, beating every fixed rule I tested.</li>
-<li><strong>Finding that search, not learning, was the bottleneck, and fixing it (RQ1, RQ3).</strong> Most remaining mistakes were two-step questions whose second fact never showed up as an option. A simple "follow the clue" search raised accuracy from 85% to 92%, closing over half the gap to a perfect controller.</li>
+<li><strong>Finding that search, not learning, was the bottleneck, and fixing it (RQ1, RQ3).</strong> Most remaining mistakes were two-step questions whose second fact never showed up as an option. A simple "follow the clue" search raised accuracy from 85% to 92% (83% to 89% with Qwen2.5-7B), closing about half the gap to a perfect controller.</li>
 <li><strong>Free per-question credit for GRPO (RQ3).</strong> The simulator replays exactly, so each decision can be credited for its own question at no extra cost. In practice GRPO adds about one point, and the credit method made no difference.</li>
 </ol>
 </div>
@@ -218,6 +218,15 @@ th, td { border-bottom: 0.5pt solid var(--line); padding: 2pt 8pt 2pt 0; text-al
 <tr><td>&nbsp;&nbsp;+ per-question credit</td><td>0.932</td><td>+0.014 [+0.009, +0.020]</td></tr>
 <tr><td>&nbsp;&nbsp;+ expert kept in the loss</td><td>0.929</td><td>+0.012 [+0.007, +0.016]</td></tr>
 <tr><td>Hindsight oracle (upper reference)</td><td>0.966</td><td></td></tr>
+</table>
+<p class="keep">With Qwen2.5-7B as the reader (Experiment 11a, 100 episodes, same seeds):</p>
+<table>
+<tr><th>Controller (Qwen2.5-7B)</th><th>2%</th><th>10%</th><th>Paired difference at 2% (95% CI)</th></tr>
+<tr><td>FIFO with archive</td><td>0.741</td><td>0.787</td><td></td></tr>
+<tr><td>Regret imitation</td><td>0.832</td><td>0.884</td><td></td></tr>
+<tr><td>+ follow-the-clue search</td><td>0.889</td><td>0.917</td><td>+0.057 [+0.045, +0.069]</td></tr>
+<tr><td>Hindsight oracle</td><td>0.938</td><td>0.949</td><td></td></tr>
+<tr><td>Full context (no budget)</td><td colspan="2">0.898</td><td></td></tr>
 </table>
 <p class="small">All GRPO variants were run at matched experience (1,440 episodes). None differs from plain GRPO at 2% (largest +0.003 [−0.001, +0.008]). Before the search fix, GRPO and best-of-8 imitation each added under one point (0.859 and 0.861 against 0.851).</p>
 
