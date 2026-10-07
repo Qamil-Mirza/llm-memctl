@@ -62,6 +62,7 @@ commands given).
 | 14 | A token price for kept memory: labels counted in the budget, plug-in Bayes archiving at a pre-set price | No-go at the free gate: the priced rule never beats keep-last-0 + top 5 on evidence at equal memory; needed model AUC 0.62–0.74; a per-token price archives long turns, not lines. NEGATIVE (free) |
 | 15 | A query-aware floor head: which 5 of 16 to retrieve, learned listwise | Free gate: +0.08 all-found evidence at half the tokens. Reader: +0.047 accuracy (0.513 vs 0.466) at 745 vs 1,554 tokens; two of three arms win; Holm-adjusted p 0.058. First learned row beyond the rule frontier; replicates over 3 training seeds on a second host (+0.044, seed SD 0.002). POSITIVE |
 | 16 | Set-valued GRPO on the selection head with the reader's verdict as reward | Gate fails: +0.0125 (−0.005, +0.033) held-out over the imitation start; flat in 4 of 5 folds. Labels already a sufficient target for this head. NEGATIVE (pre-registered) |
+| 18 | Second-family judge check; exploratory LoCoMo reader test | Granite agrees with Qwen on 97% (κ 0.95), similar error rates; ranking and the head's gain hold (+0.040, CI excludes 0). Exploratory: head transfers to LoCoMo, +0.087 (post hoc). CONFIRMS |
 
 ---
 
@@ -2169,6 +2170,55 @@ table.
   categories 1–4 (keep-none, 5 shown), against keep-last-0 + fusion top 5, both under the frozen reader.
 - **Why.** Its evidence gain (+0.13 all-found, §15b) failed only the token rule, by 50 tokens.
 - **What is reported.** The paired accuracy difference, conversation-clustered, with the evidence decomposition.
+
+### 18a. Results (2026-10-07)
+
+Pod l46lez5jcbqt4x ran 19:41–20:00 UTC, about 0.32 h, about $0.16; the user approved about $0.65–1.15. It served
+Qwen for LoCoMo, then Granite-3.1-8B, loaded by changing the vLLM arguments. Run from 9a5c34e (judge stage) and
+e9b6568 (LoCoMo). Files: `runs/exp18_judge_{qwen,granite}.json` and `runs/exp18_locomo`.
+
+**Judge check (pre-registered outputs).**
+
+| output | Qwen2.5-7B (original judge) | Granite-3.1-8B (second family) |
+|---|---|---|
+| 1. agreement with the Qwen verdicts (296 answers) | 1.000 (cache, sanity) | **0.973, κ = 0.946** |
+| 2. false-accept rate (planted wrong answer) | 1.7% | 3.0% |
+| 3. false-reject rate (the gold as the answer) | 2.7% | 4.1% |
+| 4. head − rule, all 470 questions | +0.047 (+0.009, +0.085) | **+0.040 (+0.002, +0.079)** |
+
+- **Accuracy on the 296-answer sample** (Qwen → Granite):
+
+  | controller | Qwen | Granite |
+  |---|---|---|
+  | oracle at 2% | 0.689 | 0.730 |
+  | `head_listsum` | 0.527 | 0.541 |
+  | keep-last-0 + top 5 | 0.459 | 0.486 |
+  | FIFO + floor at 5% | 0.338 | 0.365 |
+
+  The order is the same under both judges.
+- **Reading, as pre-registered.**
+  - Granite's error rates are comparable to Qwen's (a percentage point or so higher), and the two agree on 97% of
+    verdicts (97.8% over the 940 head and rule answers). So the second judge confirms the verdicts.
+  - Granite is about 2–4 points more lenient across the board, which moves the absolute numbers and not the
+    ranking.
+  - Output 4 keeps its sign and its interval still excludes 0, so **the controller ranking and the head's gain are
+    judge-independent**.
+
+**Exploratory LoCoMo reader test (post hoc, outside the pre-registered claims).** The fold-0 LongMemEval `listsum`
+head ranks the fusion top 16 on LoCoMo categories 1–4, against keep-last-0 + fusion top 5, with keep-none for both.
+
+| row (exploratory) | accuracy | all-found evidence | prompt tokens |
+|---|---|---|---|
+| keep-last-0 + fusion top 5 | 0.155 | 0.181 | 306 |
+| LongMemEval-trained head | **0.242** | 0.298 | 365 |
+
+- The difference is +0.087, with a conversation-clustered interval of (+0.063, +0.110) and a question-level
+  interval of (+0.068, +0.108). It holds in every category: multi-hop 0.057 → 0.121, single-hop 0.203 → 0.325,
+  temporal 0.146 → 0.181, open-domain 0.042 → 0.073.
+- The evidence gain transfers to LoCoMo and turns into answers.
+- Both rows stay far below FIFO + floor at 10% (0.299 at 2,917 tokens). On LoCoMo, five turns are too few: it is a
+  search problem (§13b). That is why the head's row is not a frontier win there.
+- **The pre-registered gate's verdict (no-go, §15b) stands.** This row is evidence for transfer, not a claim.
 
 ## 5. The sequential task
 
