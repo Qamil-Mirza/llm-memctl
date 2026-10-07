@@ -77,17 +77,17 @@ def gumbel_top_k(logits: torch.Tensor, k: int, generator: torch.Generator) -> li
 
 
 def set_log_prob(logits: torch.Tensor, subset: list[int]) -> torch.Tensor:
-    """log P(the unordered set) under Plackett-Luce: log of the sum over its k! orders (Kool et al. 2020)."""
-    terms = []
-    for order in itertools.permutations(subset):
-        remaining = torch.ones_like(logits, dtype=torch.bool)
-        total = logits.new_zeros(())
-        for index in order:
-            total = total + logits[index] - torch.logsumexp(logits[remaining], 0)
-            remaining = remaining.clone()
-            remaining[index] = False
-        terms.append(total)
-    return torch.logsumexp(torch.stack(terms), 0)
+    """log P(the unordered set) under Plackett-Luce: log of the sum over its k! orders (Kool et al. 2020).
+
+    Vectorised over the orders: with w = exp(logits - max) and W = sum(w), an order's probability is
+    prod_i w[o_i] / (W - sum_{j<i} w[o_j])."""
+    orders = torch.tensor(list(itertools.permutations(subset)), dtype=torch.long)  # [k!, k]
+    shifted = logits - logits.max()
+    weights = torch.exp(shifted)
+    chosen = weights[orders]  # [k!, k]
+    before = torch.cumsum(chosen, dim=1) - chosen  # weight already taken before each pick
+    log_orders = (shifted[orders] - torch.log(weights.sum() - before)).sum(dim=1)
+    return torch.logsumexp(log_orders, 0)
 
 
 class Reader:
@@ -212,19 +212,26 @@ def train(config: dict) -> Path:
             ties += int(max(chunk) - min(chunk) < 1e-9)
             advantages += [r - mean for r in chunk]
         for _ in range(int(settings["epochs"])):
-            losses = []
-            for (case, subset, old), advantage in zip(samples, advantages):
+            # One optimiser step per epoch over all samples, with gradients accumulated in chunks of one
+            # question's group so the autograd graph stays small (the whole batch at once ran out of memory).
+            optimizer.zero_grad()
+            total = 0.0
+            for start in range(0, len(samples), group):
+                case = samples[start][0]
                 logits = policy(torch.from_numpy(case.decision.items), torch.from_numpy(case.decision.global_features))[0]
                 column = logits[case.decision.n_active:, RETRIEVE_COLUMN]
-                ratio = torch.exp(set_log_prob(column, subset) - old)
-                clipped = torch.clamp(ratio, 1 - float(settings["clip"]), 1 + float(settings["clip"]))
-                losses.append(-torch.min(ratio * advantage, clipped * advantage))
-            anchor = [imitation_loss(policy, case.decision, "listsum")[0] for case in batch]
-            loss = torch.stack(losses).mean() + float(settings["anchor"]) * torch.stack(anchor).mean()
-            optimizer.zero_grad()
-            loss.backward()
+                terms = []
+                for (_, subset, old), advantage in zip(samples[start:start + group], advantages[start:start + group]):
+                    ratio = torch.exp(set_log_prob(column, subset) - old)
+                    clipped = torch.clamp(ratio, 1 - float(settings["clip"]), 1 + float(settings["clip"]))
+                    terms.append(-torch.min(ratio * advantage, clipped * advantage))
+                chunk = torch.stack(terms).sum() / len(samples)
+                anchor = imitation_loss(policy, case.decision, "listsum")[0] * float(settings["anchor"]) / len(batch)
+                (chunk + anchor).backward()
+                total += float(chunk.detach()) + float(anchor.detach())
             torch.nn.utils.clip_grad_norm_(policy.parameters(), 1.0)
             optimizer.step()
+            loss = torch.tensor(total)
         row = {"iteration": iteration, "questions": len(batch), "mean_reward": float(np.mean(rewards)),
                "correct_rate": float(np.mean([o[0] for o in outcomes])), "tie_groups": ties,
                "groups": len(batch), "loss": float(loss.detach()), "seconds": round(time.time() - started)}
