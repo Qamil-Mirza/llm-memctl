@@ -1,7 +1,9 @@
 """Retrieval headroom: how much of a question's evidence a search over the whole history finds in its top k.
 
 No controller and no reader: every turn of the conversation is a candidate, the question is the query,
-and a requirement counts as found when any of its items is in the top k. This bounds what a retrieval
+and a requirement counts as found when any of its items is in the top k. Two rules per question: the share of its requirements found (`recall@k`), and
+whether all of them are (`complete@k`, the one that bounds a controller on multi-evidence questions).
+This bounds what a retrieval
 floor of k (or a pick-k-of-N head over a shortlist of N) can reach, per question type, before any LLM
 evaluation (peer review T2).
 
@@ -101,18 +103,21 @@ def measure(dataset: str, path: str, dense_model: str | None = None) -> dict:
             orders["fusion"] = sorted(fused, key=lambda i: -fused[i])[:depth]
         for name, order in orders.items():
             if isinstance(order, dict):  # one list per k (bm25 top k plus the bridge items)
-                found[name][category].append(
-                    [sum(r < 10**9 for r in ranks(order[k], requirements)) / len(requirements) for k in KS])
+                hits = [[r < 10**9 for r in ranks(order[k], requirements)] for k in KS]
             else:
                 rs = ranks(order, requirements)
-                found[name][category].append([sum(r <= k for r in rs) / len(rs) for k in KS])
+                hits = [[r <= k for r in rs] for k in KS]
+            # any: share of the question's requirements found; all: 1 if every requirement is found
+            found[name][category].append([sum(h) / len(h) for h in hits] + [float(all(h)) for h in hits])
     table = {}
     for name, by_category in found.items():
         table[name] = {}
         pooled = [row for rows in by_category.values() for row in rows]
         for category, rows in sorted(by_category.items()) + [("all", pooled)]:
             table[name][category] = {
-                "n": len(rows), **{f"recall@{k}": round(float(np.mean([r[j] for r in rows])), 4) for j, k in enumerate(KS)}
+                "n": len(rows),
+                **{f"recall@{k}": round(float(np.mean([r[j] for r in rows])), 4) for j, k in enumerate(KS)},
+                **{f"complete@{k}": round(float(np.mean([r[len(KS) + j] for r in rows])), 4) for j, k in enumerate(KS)},
             }
     return table
 
@@ -134,7 +139,8 @@ def main() -> None:
     for name, by_category in table.items():
         print(f"\n{name}")
         for category, row in by_category.items():
-            print(f"  {category:28s} n={row['n']:4d} " + " ".join(f"@{k}={row[f'recall@{k}']:.3f}" for k in KS))
+            print(f"  {category:28s} n={row['n']:4d} share " + " ".join(f"@{k}={row[f'recall@{k}']:.3f}" for k in KS)
+                  + "  | all " + " ".join(f"@{k}={row[f'complete@{k}']:.3f}" for k in KS))
 
 
 if __name__ == "__main__":
