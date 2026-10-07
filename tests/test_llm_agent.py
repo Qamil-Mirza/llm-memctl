@@ -179,3 +179,12 @@ def test_with_counted_labels_an_items_tokens_are_the_line_the_reader_sees():
         item = state.ingest("t", "I went hiking.", SourceType.USER, metadata={"speaker": "Caroline", "date": "8 May 2023"})
         expected = count_tokens(compact_line(item)) if counted else count_tokens("I went hiking.")
         assert item.token_count == expected and state.active_tokens == expected
+
+
+def test_threads_writing_the_same_cache_key_do_not_collide(tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+
+    llm = TrackedLLM(ScriptedLLM(lambda prompt: "same answer"), str(tmp_path), {"name": "x"})
+    with ThreadPoolExecutor(16) as pool:
+        answers = list(pool.map(lambda _: llm.generate("one prompt", 8), range(64)))
+    assert set(answers) == {"same answer"}
