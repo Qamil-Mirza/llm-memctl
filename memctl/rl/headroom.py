@@ -32,7 +32,7 @@ from memctl.envs.locomo import parse_conversation
 from memctl.envs.longmemeval import _load as load_longmemeval
 from memctl.envs.longmemeval import parse_instance
 from memctl.memory.items import MemoryItem, count_tokens
-from memctl.retrieval import LexicalRetriever, bridge_search
+from memctl.retrieval import DenseRetriever, FusionRetriever, LexicalRetriever, bridge_search
 from memctl.runlog import collect_metadata
 
 KS = (5, 8, 12, 16, 20, 32)
@@ -70,11 +70,10 @@ def ranks(order: list[str], requirements: list[tuple[str, ...]]) -> list[int]:
 
 def measure(dataset: str, path: str, dense_model: str | None = None) -> dict:
     retriever = LexicalRetriever()
-    encoder = None
-    if dense_model:
-        from sentence_transformers import SentenceTransformer
-
-        encoder = SentenceTransformer(dense_model, device="cpu")
+    # Dense and fusion are the shared retrievers a controller uses (memctl/retrieval.py), not a copy: before
+    # Experiment 19 this file re-implemented RRF with BM25 cut at max(KS), so its fusion rows (§12) moved with KS.
+    dense_search = DenseRetriever(dense_model) if dense_model else None
+    fusion_search = FusionRetriever(dense_model) if dense_model else None
     depth = max(KS)
     found: dict[str, dict[str, list[list[int]]]] = defaultdict(lambda: defaultdict(list))
     cache: dict[int, tuple] = {}
@@ -82,25 +81,20 @@ def measure(dataset: str, path: str, dense_model: str | None = None) -> dict:
         if key not in cache:
             plain = [MemoryItem(t.id, t.content, count_tokens(t.content), n) for n, t in enumerate(turns)]
             labelled = [MemoryItem(t.id, label(t), count_tokens(t.content), n) for n, t in enumerate(turns)]
-            vectors = encoder.encode([label(t) for t in turns], normalize_embeddings=True, batch_size=64) if encoder else None
-            cache = {key: (plain, labelled, vectors)}  # one conversation at a time
-        plain, labelled, vectors = cache[key]
+            tagged = [MemoryItem(t.id, t.content, count_tokens(t.content), n,
+                                 metadata={"speaker": t.metadata.get("speaker", ""), "date": t.metadata.get("date", "")})
+                      for n, t in enumerate(turns)]
+            cache = {key: (plain, labelled, tagged)}  # one conversation at a time
+        plain, labelled, tagged = cache[key]
         orders = {
             "bm25": [item.id for item, _ in retriever.search(text, plain, depth)],
             "bm25_label": [item.id for item, _ in retriever.search(text, labelled, depth)],
         }
         bridged = [item.id for item, _ in bridge_search(retriever, text, [], plain, 4)]
         orders["bm25_bridge"] = {k: orders["bm25"][:k] + [i for i in bridged if i not in orders["bm25"][:k]] for k in KS}
-        if encoder is not None:
-            query = encoder.encode([text], normalize_embeddings=True)[0]
-            scores = np.asarray(vectors) @ query
-            dense = [plain[n].id for n in np.argsort(-scores)[:depth * 3]]
-            orders["dense"] = dense[:depth]
-            fused = defaultdict(float)
-            for order in (orders["bm25_label"], dense):
-                for rank, item_id in enumerate(order, 1):
-                    fused[item_id] += 1.0 / (60 + rank)
-            orders["fusion"] = sorted(fused, key=lambda i: -fused[i])[:depth]
+        if dense_search is not None:
+            orders["dense"] = [item.id for item, _ in dense_search.search(text, tagged, depth)]
+            orders["fusion"] = [item.id for item, _ in fusion_search.search(text, tagged, depth)]
         for name, order in orders.items():
             if isinstance(order, dict):  # one list per k (bm25 top k plus the bridge items)
                 hits = [[r < 10**9 for r in ranks(order[k], requirements)] for k in KS]

@@ -547,6 +547,22 @@ def test_fusion_ranks_by_reciprocal_rank_over_both_searches(monkeypatch):
     assert ranked == ["o1", "o0", "o2"]  # o1 is in both lists
 
 
+def test_a_fused_top_k_does_not_depend_on_k(monkeypatch):
+    """Both lists are ranked to the same depth whatever k is asked for, so a top 5 is the head of a top 32
+    (§12's headroom fused BM25 cut at the largest k tabulated, and its fusion rows moved with that k)."""
+    from memctl.retrieval import FusionRetriever
+
+    rng = random.Random(0)
+    state = make_state([f"turn {n} word{n % 7} other{n % 5}" for n in range(80)])
+    items = state.active()
+    lexical, dense = rng.sample(items, len(items)), rng.sample(items, len(items))
+    fusion = FusionRetriever()
+    monkeypatch.setattr(fusion.lexical, "search", lambda q, xs, k: [(x, 1.0) for x in lexical[:k]])
+    monkeypatch.setattr(fusion.dense, "search", lambda q, xs, k: [(x, 1.0) for x in dense[:k]])
+    top = {k: [item.id for item, _ in fusion.search("q", items, k)] for k in (5, 16, 32, 50)}
+    assert all(top[k] == top[50][:k] for k in (5, 16, 32))  # up to the depth, 50
+
+
 def test_a_resumed_run_keeps_the_git_state_of_every_session(tmp_path):
     from memctl.runlog import RunLogger as RunLog
 
