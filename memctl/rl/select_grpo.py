@@ -227,7 +227,7 @@ def train(config: dict) -> Path:
             optimizer.step()
         row = {"iteration": iteration, "questions": len(batch), "mean_reward": float(np.mean(rewards)),
                "correct_rate": float(np.mean([o[0] for o in outcomes])), "tie_groups": ties,
-               "groups": len(batch), "loss": float(loss), "seconds": round(time.time() - started)}
+               "groups": len(batch), "loss": float(loss.detach()), "seconds": round(time.time() - started)}
         tie_rates.append(ties / max(1, len(batch)))
         if (iteration + 1) % 2 == 0 and iteration + 1 < int(settings["iterations"]):  # learning curve on the held-out slice
             row["held_accuracy"] = float(np.mean(evaluate(policy, held_cases, reader, k, int(settings["workers"]))))
