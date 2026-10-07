@@ -68,8 +68,8 @@ th, td { border-bottom: 0.5pt solid var(--line); padding: 2pt 8pt 2pt 0; text-al
 
 <h2>What I will do next</h2>
 <ol>
-<li>(RQ4) On LoCoMo and LongMemEval, always fetching the top results fixed retrieval, and the learned controller now keeps more needed evidence than simple rules. But it rarely gives better answers: the 7B model gets worse past about 3,000 prompt tokens, and the controller keeps many short lines.</li>
-<li>(RQ2) Next, the teacher will charge for every prompt token kept, so the controller learns to keep less, not just the right things.</li>
+<li>(RQ4) On LoCoMo and LongMemEval, always fetching the top results fixed retrieval and my controller keeps more evidence, but answers rarely improve because of &ldquo;context rot&rdquo;: the 7B model gets worse past about 3,000 prompt tokens.</li>
+<li>(RQ2) Next, the teacher will charge for every prompt token kept, so it learns to keep the prompt small and right.</li>
 <li>(RQ4) Work out when a small learned controller is worth it, and when a simple rule is enough.</li>
 </ol>
 

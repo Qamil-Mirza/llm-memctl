@@ -1490,6 +1490,21 @@ less often than FIFO in every row** (0.597 against 0.677 at 3k). They keep 1.6
 to 2 times as many memory lines, made of shorter turns, and each line carries
 a "speaker, date" label of about 18–25 tokens that the budget does not count.
 
+**Context rot.** The reader gets worse as the prompt grows, even when the
+evidence is present ("context rot"). Here the symptom is refusal: with all
+the evidence in view, "unknown" rises from 0.079 at 399 prompt tokens (the
+oracle) to 0.296 at 6,223 (the evidence-only ceiling). The onset is about 3k
+prompt tokens for this reader and prompt. The effect is known:
+- Liu et al. 2023, "Lost in the Middle" (https://arxiv.org/abs/2307.03172).
+- Chroma's 2025 report on context rot (https://research.trychroma.com/context-rot).
+- LongMemEval's own finding that an 8B reader drops past about 3k retrieved
+  tokens (https://arxiv.org/abs/2410.10813).
+
+The controller's job is therefore to keep the prompt small and right, not to
+fill the budget. The 3k onset is measured for one reader and one prompt;
+checking another reader is the next paid step (N4 in
+docs/research/SUGGESTED_NEXT_STEPS.html).
+
 **Mechanism and limitation.**
 
 - *Limitation.* Matching on content tokens does not match prompt size, and the
@@ -1537,8 +1552,8 @@ FIFO at 25%, and both lie below FIFO at 10% (0.299 at 2,917 tokens), the
 best rule at equal or fewer tokens. The composed-episode policy is a
 cross-benchmark transfer test; it was not trained on LoCoMo.
 
-- **The same turning point on both benchmarks.** FIFO peaks near 3k prompt
-  tokens: on LoCoMo 0.299 at 2.9k, then 0.273 at 7.4k; on LongMemEval 0.438 at
+- **The same turning point on both benchmarks (context rot, §13a).** FIFO
+  peaks near 3k prompt tokens: on LoCoMo 0.299 at 2.9k, then 0.273 at 7.4k; on LongMemEval 0.438 at
   3.2k, then 0.372 at 5.4k. The LoCoMo oracle also falls as its prompt grows:
   0.468 at 1.0k to 0.421 at 3.4k. With about 154 questions per conversation,
   more items stay needed at larger budgets. See
