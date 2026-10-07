@@ -20,6 +20,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from memctl.envs.qa import QAEnvironment, QAEpisode, QAItem
+from memctl.splits import fold_indices  # noqa: F401  (re-exported)
 from memctl.memory.items import SourceType
 from memctl.task import Dependency, EvidenceRequirement, Observation
 
@@ -65,23 +66,6 @@ def parse_instance(instance: dict, max_turn_tokens: int | None = None) -> tuple[
     return QAEpisode(str(instance["question_id"]), turns, [question], text_of), tuple(in_answer_sessions)
 
 
-def fold_indices(instances: list[dict], k: int, fold: int, part: str = "test") -> list[int]:
-    """Indices of one fold of a k-fold split stratified by question type (abstention questions apart).
-
-    The file is sorted by question type, so a contiguous range is not a fair sample. Questions are
-    listed stratum by stratum (file order within each) and dealt to folds in turn, so every fold gets
-    each stratum to within one question and the folds differ in size by at most one. `part` "test"
-    is fold `fold`; "train" is every other fold. Returned in file order.
-    """
-    if not 0 <= fold < k or part not in ("test", "train"):
-        raise ValueError(f"bad fold {fold} of {k} or part {part!r}")
-    strata: dict[tuple[str, bool], list[int]] = {}
-    for index, instance in enumerate(instances):
-        strata.setdefault((instance["question_type"], str(instance["question_id"]).endswith("_abs")), []).append(index)
-    dealt = [index for members in strata.values() for index in members]
-    return sorted(index for place, index in enumerate(dealt) if (place % k == fold) == (part == "test"))
-
-
 class LongMemEvalEnv(QAEnvironment):
     name = "longmemeval"
 
@@ -98,15 +82,17 @@ class LongMemEvalEnv(QAEnvironment):
         if self.folds and self.subset:
             raise ValueError("set env.subset or env.folds, not both")
         self._fallback: tuple[str, ...] = ()
+        self._chosen: list[int] | None = None
         if not Path(self.path).exists():
             raise FileNotFoundError(f"LongMemEval not found at {self.path}. Download a split from {SOURCE}")
 
     def load_episode(self, seed: int) -> QAEpisode:
         instances = _load(self.path)
         if self.folds:
-            chosen = fold_indices(instances, int(self.folds.get("k", 5)), int(self.folds["fold"]),
-                                  self.folds.get("part", "test"))
-            index = chosen[seed % len(chosen)]
+            if self._chosen is None:
+                self._chosen = fold_indices(instances, int(self.folds.get("k", 5)), int(self.folds["fold"]),
+                                            self.folds.get("part", "test"))
+            index = self._chosen[seed % len(self._chosen)]
         else:
             start, end = self.subset or (0, len(instances))
             index = start + seed % (end - start)
