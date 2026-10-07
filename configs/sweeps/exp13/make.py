@@ -97,6 +97,25 @@ def main() -> None:
                 fifo(LME_SEARCH, f"fifo_top5_t{t}", t), learned(checkpoint, LME_SEARCH, f"learned_floor5_t{t}", t))],
                 "memory.budget.fraction": [0.02, 0.05]},
         })
+    # The pre-registered evidence gate (peer review D2): no reader, no judge; evidence in view at the question
+    # (needed_hit_rate), paired over the test-fold questions. Learned rows go to the GPU only if they keep
+    # more evidence than FIFO at the same budget or target (EXPERIMENTS 13).
+    for fold in folds:
+        single = f"runs/lme_floor_f{fold}_s0/checkpoints/policy_best.pt"
+        composed = f"runs/lme_compose4_f{fold}_s0/checkpoints/policy_best.pt"
+        gate = {**base(lme_env(fold), 100), "agent": {"name": "null"}}
+        gate["env"] = {k: v for k, v in gate["env"].items() if k != "judge"}
+        gate["logging"] = {"detail_episodes": 0}
+        controllers = []
+        for target in (None, 2000, 3000, 4000):
+            tag = f"_t{target}" if target else ""
+            controllers += [fifo(LME_SEARCH, f"fifo_top5{tag}", target),
+                            learned(single, LME_SEARCH, f"learned_floor5{tag}", target),
+                            learned(composed, LME_SEARCH, f"compose_floor5{tag}", target),
+                            learned(SYNTHETIC, LME_SEARCH, f"synthetic_floor5{tag}", target)]
+        write(f"exp13_gate_f{fold}", f"Evidence gate, LongMemEval fold {fold}: agent null, free.", {
+            "base": gate, "grid": {"controller": controllers, "memory.budget.fraction": [0.01, 0.02, 0.05]},
+        })
     write("exp13_lme_keep", "LongMemEval keep-last-n x top-k (budget-free), every fold.", {
         "base": base(lme_env(0), 100),
         "grid": {"env.folds.fold": folds,
