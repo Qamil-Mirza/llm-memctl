@@ -1680,7 +1680,37 @@ prompt less the fixed instructions.)
   The reader's cost in Experiment 13 tracked lines (and the labels and
   distractors that come with them).
 
-**Next (declared; free).** Two candidates, neither started:
+**What it settles.** The needed models' AUC (0.62–0.74 on about 340k
+held-out item-steps, base rate 1.1–1.4%, nothing predicted above 0.045)
+measures how well a turn's later need can be predicted *before the question
+arrives*, from what the controller sees. Hindsight has that information, and
+nothing in the stream carries it.
+- On these benchmarks, query-blind eviction cannot beat "archive everything,
+  retrieve at the question", whatever the price or teacher.
+- This is the causal ceiling of the synthetic task (D1), now measured on real
+  text. It matches KV Policy's finding that query-aware heuristics close most
+  of the gap to learned query-blind policies.
+- With a free, searchable archive, eviction to the archive is nearly free. The
+  only decisions that carry value are made at the question: what to retrieve,
+  how much to show, and so how large the prompt is.
+
+**Scope for the thesis.** The original target was long-running tasks where
+questions interleave with the stream and no free archive exists. That is where
+eviction carries information, and where the synthetic results stand. LoCoMo
+and LongMemEval ask their questions after the stream, with a searchable
+archive, so they test retrieval and prompt size, and the eviction arm has
+nothing to decide. The composed-episode environment (questions asked
+mid-stream) is the closest real-text approximation of interleaving. The
+archive still makes eviction free there.
+
+**Next (re-ranked by the review).** First, a query-aware head that chooses
+which 5 of the 16 shortlisted items fill the floor (N2). It keeps the same
+lines in the prompt and has measured headroom: all-found recall@16 minus @5
+is 0.16 on LongMemEval. A variant also chooses k (3, 5 or 8) per question.
+The per-line price with a stop head is demoted, since it can only approach
+keep-last-0 + top k. A better needed signal is dropped for QA after the
+stream and kept for interleaved tasks. The two candidates considered before
+the review:
 1. A per-line price with a learned stop head: a policy that ends removal
    below the budget, trained against a priced teacher.
 2. A better needed signal before any price is applied. The needed model
