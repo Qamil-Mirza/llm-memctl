@@ -30,7 +30,7 @@ import numpy as np
 import torch
 
 from memctl.controllers.base import EpisodeInfo, Feedback, MemoryController
-from memctl.features import GLOBAL_DIM, VERSION_FEATURES, Featurizer
+from memctl.features import ITEM_FEATURES, GLOBAL_DIM, VERSION_FEATURES, Featurizer
 from memctl.memory.actions import MemoryAction, Operation
 from memctl.memory.items import Fidelity, MemoryItem
 from memctl.memory.state import MemoryView
@@ -136,8 +136,10 @@ class RLController(MemoryController):
         self.target_tokens = int(config["target_tokens"]) if config.get("target_tokens") else None
         self.featurizer = Featurizer(bool(config.get("use_embeddings", False)), int(config.get("embedding_dim", 0)),
                                      version=2 if self.bridge_search else 1)
+        residual = config.get("residual")  # Experiment 15: logit + alpha x retrieval score on the retrieve column
         self.policy = ItemPolicy(
-            self.featurizer.item_dim, GLOBAL_DIM, int(config.get("hidden", 64)), config.get("architecture", "deepsets")
+            self.featurizer.item_dim, GLOBAL_DIM, int(config.get("hidden", 64)), config.get("architecture", "deepsets"),
+            residual, ITEM_FEATURES.index("retrieval_score") if residual is not None else None,
         )
         self.model_id = f"item-policy-{self.policy.architecture}-h{self.policy.config['hidden']}"
         self.generator = torch.Generator().manual_seed(seed)
@@ -407,6 +409,7 @@ class RLController(MemoryController):
                              "disagree: version 2 policies are trained with bridge_search: true")
         self.featurizer = Featurizer(checkpoint["use_embeddings"], checkpoint["embedding_dim"], version=version)
         settings = checkpoint["policy"]
-        self.policy = ItemPolicy(settings["item_dim"], settings["global_dim"], settings["hidden"], settings["architecture"])
+        self.policy = ItemPolicy(settings["item_dim"], settings["global_dim"], settings["hidden"], settings["architecture"],
+                                 settings.get("residual"), settings.get("residual_index"))
         self.policy.load_state_dict(checkpoint["state_dict"])
         self.model_id = f"item-policy-{settings['architecture']}-h{settings['hidden']}"

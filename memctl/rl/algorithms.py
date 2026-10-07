@@ -40,7 +40,15 @@ def imitation_loss(policy: ItemPolicy, decision: Decision, retrieval_loss: str =
     if decision.expert_retrieved:
         target = torch.tensor(decision.expert_retrieved, dtype=torch.float32)
         retrieve_logits = logits[n:, RETRIEVE_COLUMN]
-        if retrieval_loss == "listwise":
+        if retrieval_loss == "listsum":
+            # Every gold item against the full shortlist, summed: pushes each needed item up, as the all-found
+            # gate requires (multi-session questions have 3-4 evidence turns).
+            if target.sum() > 0:
+                gold = retrieve_logits[target > 0]
+                loss = loss + (torch.logsumexp(retrieve_logits, 0) - gold).sum()
+                matched += int(bool(target[int(torch.argmax(retrieve_logits))] > 0))
+                total += 1
+        elif retrieval_loss == "listwise":
             # A ranking over the shortlist: minus the log of the softmax mass on the needed items. Unaffected by
             # how rare positives are; a shortlist with no needed item carries no ranking signal and is skipped.
             if target.sum() > 0:

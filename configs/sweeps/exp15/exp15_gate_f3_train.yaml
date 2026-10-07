@@ -1,5 +1,5 @@
-# Experiment 15 gate, LongMemEval fold 4, test part: no reader; three declared head arms against BM25's top 5.
-name: exp15_gate_f4
+# Experiment 15 gate, LongMemEval fold 3, train part: no reader; three declared head arms against BM25's top 5.
+name: exp15_gate_f3_train
 base:
   schema_version: 1
   seed: 0
@@ -19,8 +19,8 @@ base:
     path: data/longmemeval/longmemeval_s_cleaned.json
     folds:
       k: 5
-      fold: 4
-      part: test
+      fold: 3
+      part: train
   logging:
     detail_episodes: 100000
 grid:
@@ -33,7 +33,7 @@ grid:
       method: lexical
   - name: rl
     label: head_listwise
-    checkpoint: runs/lme_head_listwise_f4/checkpoints/policy_best.pt
+    checkpoint: runs/lme_head_listwise_f3/checkpoints/policy_best.pt
     retrieval_method: lexical
     retrieve_floor: 5
     retrieve_candidates: 16
@@ -41,7 +41,7 @@ grid:
     keep_none: true
   - name: rl
     label: head_listsum
-    checkpoint: runs/lme_head_listsum_f4/checkpoints/policy_best.pt
+    checkpoint: runs/lme_head_listsum_f3/checkpoints/policy_best.pt
     retrieval_method: lexical
     retrieve_floor: 5
     retrieve_candidates: 16
@@ -49,7 +49,7 @@ grid:
     keep_none: true
   - name: rl
     label: head_residual
-    checkpoint: runs/lme_head_residual_f4/checkpoints/policy_best.pt
+    checkpoint: runs/lme_head_residual_f3/checkpoints/policy_best.pt
     retrieval_method: lexical
     retrieve_floor: 5
     retrieve_candidates: 16

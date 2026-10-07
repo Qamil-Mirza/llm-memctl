@@ -1,5 +1,5 @@
-# Experiment 15 gate, LongMemEval fold 4, test part: no reader; three declared head arms against BM25's top 5.
-name: exp15_gate_f4
+# Experiment 15 gate, LongMemEval fold 4, train part: no reader; three declared head arms against BM25's top 5.
+name: exp15_gate_f4_train
 base:
   schema_version: 1
   seed: 0
@@ -20,7 +20,7 @@ base:
     folds:
       k: 5
       fold: 4
-      part: test
+      part: train
   logging:
     detail_episodes: 100000
 grid:

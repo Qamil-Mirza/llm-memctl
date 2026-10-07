@@ -30,11 +30,20 @@ N_COLUMNS = RETRIEVE_COLUMN + 1
 
 
 class ItemPolicy(nn.Module):
-    def __init__(self, item_dim: int, global_dim: int, hidden: int = 64, architecture: str = "deepsets") -> None:
+    def __init__(self, item_dim: int, global_dim: int, hidden: int = 64, architecture: str = "deepsets",
+                 residual: float | None = None, residual_index: int | None = None) -> None:
         super().__init__()
         if architecture not in ("mlp", "deepsets"):
             raise ValueError(f"unknown architecture '{architecture}' (known: mlp, deepsets)")
         self.config = {"item_dim": item_dim, "global_dim": global_dim, "hidden": hidden, "architecture": architecture}
+        # Optional residual on the retrieve column: logit + alpha x the item's retrieval score (feature
+        # `residual_index`), alpha learned from `residual`. A large start keeps the search's own order until
+        # training moves away from it (Experiment 15).
+        self.residual = None
+        if residual is not None:
+            self.config.update(residual=float(residual), residual_index=int(residual_index))
+            self.residual = nn.Parameter(torch.tensor(float(residual)))
+            self.residual_index = int(residual_index)
         self.architecture = architecture
         self.encode = nn.Sequential(nn.Linear(item_dim, hidden), nn.ReLU(), nn.Linear(hidden, hidden), nn.ReLU())
         context = global_dim + (2 * hidden if architecture == "deepsets" else 0)
@@ -48,6 +57,10 @@ class ItemPolicy(nn.Module):
         state = torch.cat([pooled, global_features])
         context = state if self.architecture == "deepsets" else global_features
         logits = self.score(torch.cat([encoded, context.expand(encoded.shape[0], -1)], dim=1))
+        if self.residual is not None:
+            bonus = torch.zeros_like(logits)
+            bonus[:, RETRIEVE_COLUMN] = self.residual * items[:, self.residual_index]
+            logits = logits + bonus
         return logits, self.value(state).squeeze(-1)
 
 

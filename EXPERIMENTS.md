@@ -1728,10 +1728,19 @@ question (§14a), so this learns it. Memory keeps nothing but the current turn
 (`floor_head`, a top-k by its logit), so the prompt has the same 5 retrieved
 lines as keep-last-0 + top 5. The only difference is *which* 5.
 
-- **Training.** Imitation with a listwise loss: minus the log of the softmax
-  mass on the gold evidence among the 16 candidates. It runs on composed
-  4-question episodes from each fold's train part, labels counted
-  (`configs/rl/lme_n2/head_f*.yaml`, commit below).
+- **Training.** Imitation on composed 4-question episodes from each fold's
+  train part, labels counted (`configs/rl/lme_n2/head_<arm>_f*.yaml`). The
+  shortlist is 16 BM25 candidates, with no follow-the-clue items. **Three
+  arms, declared before any gate result was read:**
+  - `listwise`: minus the log of the softmax mass on the gold set. This is
+    the chance that the top item is some gold item.
+  - `listsum`: each gold item's cross-entropy against all 16, summed. It
+    pushes every gold item up, as the all-found gate needs.
+  - `residual`: `listsum` with logit + α × BM25 score on the retrieve column.
+    α is learned from 20, which reproduces the BM25 order at the start.
+
+  The first run was stopped before any gate ran, when the review pointed out
+  that `listwise` does not match an all-found gate.
 - **Headroom.** §12: all-found recall@16 minus @5 is about 0.16 on
   LongMemEval.
 
@@ -1743,8 +1752,13 @@ entirely above 0. Lines in the prompt are equal by construction (5 retrieved);
 mean memory tokens at the question are reported beside it. Analysis:
 `python -m memctl.analysis.gate runs/exp15_gate_f* --frontier keep_last0_top5
 --candidates head_top5 --measure evidence_complete_rate`; the token condition
-of that tool (≤ 1.1×) also applies. Declared but not built: an adaptive k
-(3, 5 or 8) chosen by the same head.
+of that tool (≤ 1.1×) also applies. The rule is the same for each of the
+three arms; whichever passes, passes.
+
+The same gate is also run on each fold's *train* part
+(`exp15_gate_f*_train`), to show overfitting: about 27k parameters against
+about 1,000 training lists. The adaptive k (3, 5 or 8) waits for the next
+round.
 
 ## 5. The sequential task
 

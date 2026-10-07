@@ -13,7 +13,7 @@ from memctl.features import GLOBAL_DIM, ITEM_DIM, ITEM_FEATURES, Featurizer
 from memctl.harness.runner import Experiment, run_experiment, run_one
 from memctl.rl.algorithms import ALGORITHMS, imitation_loss
 from memctl.rl.expert import ARCHIVE, EVICT, make_expert
-from memctl.rl.policy import N_COLUMNS, ItemPolicy
+from memctl.rl.policy import N_COLUMNS, RETRIEVE_COLUMN, ItemPolicy
 from memctl.rl.train import fill_returns, train
 from memctl.runlog import read_jsonl
 from memctl.memory.actions import Operation
@@ -622,3 +622,16 @@ def test_keep_none_with_a_floor_head_retrieves_exactly_k_chosen_by_the_head(tmp_
                             "budget_fractions": [0.25]}
     log = read_jsonl(train(settings, tmp_path / "train") / "train_log.jsonl")
     assert all(row["expert_agreement"] is not None and 0 <= row["expert_agreement"] <= 1 for row in log)
+
+
+def test_a_residual_head_starts_in_the_search_order_and_both_listwise_losses_train():
+    torch.manual_seed(0)
+    index = ITEM_FEATURES.index("retrieval_score")
+    policy = ItemPolicy(ITEM_DIM, GLOBAL_DIM, 16, "deepsets", residual=50.0, residual_index=index)
+    items = torch.rand(16, ITEM_DIM)
+    items[:, index] = torch.linspace(1.0, 0.0, 16)  # the search's own order
+    logits, _ = policy(items, torch.zeros(GLOBAL_DIM))
+    assert torch.topk(logits[:, RETRIEVE_COLUMN], 5).indices.sort().values.tolist() == [0, 1, 2, 3, 4]
+    restored = ItemPolicy(**policy.config)
+    restored.load_state_dict(policy.state_dict())
+    assert torch.allclose(restored(items, torch.zeros(GLOBAL_DIM))[0], logits)
