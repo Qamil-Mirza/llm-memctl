@@ -1073,10 +1073,16 @@ reader (0.115 to 0.048).
 
 **11b–11d: on real conversations the learned policies lose to simple
 rules.** Judge accuracy / token F1, query-weighted. LoCoMo: all 10
-conversations (1,986 questions). LongMemEval-S: questions 0–99, about 115k
-history tokens each.
+conversations (1,986 questions, *including* the 446 adversarial ones; see
+11e for the conventional scoring). LongMemEval-S: questions 0–99, about 115k
+history tokens each. **These are single-session-user and multi-session
+questions only** (70 + 30, 6 abstention): the file is sorted by question
+type, so questions 0–99 hold none of the temporal-reasoning,
+knowledge-update, single-session-assistant or preference questions. The
+LongMemEval columns below describe the easiest fifth of the benchmark, not
+LongMemEval as a whole; 11e gives the split that fixes this.
 
-| controller | LoCoMo 10% | LoCoMo 25% | LongMemEval 5% | LongMemEval 10% |
+| controller | LoCoMo 10% | LoCoMo 25% | LongMemEval q0–99 5% | LongMemEval q0–99 10% |
 |---|---|---|---|---|
 | full context (64k YaRN server) | 0.510 / 0.312 | | not run (too long) | |
 | fifo_archive_retrieve (top 5) | 0.382 / 0.397 | 0.400 / 0.382 | 0.470 / 0.550 | 0.420 / 0.410 |
@@ -1095,11 +1101,18 @@ text: 0–1 items per LongMemEval question and 2–70 per LoCoMo conversation of
 ~199 questions, recall 0.00–0.03; their failures are mostly
 `archived_not_retrieved`. Their retrieval head learned when to fire on
 templated facts, and conversational turns score differently. The
-LongMemEval-trained policies never retrieve (0 per question): an episode has
-one question at its end, so almost every retrieval label is 0, and the head
-learns to say no. Two of their three seeds also fail mostly by `evicted`:
-with a single question, nearly every turn is never needed, the regret
-teacher accepts deleting it, and the policy deletes evidence too.
+LongMemEval-trained policies never retrieve (0 per question). The cause is
+label *starvation*, not imbalance: the shortlist is built only at a question
+step, so a LongMemEval episode has exactly one retrieval decision (at most 8
+labels) against about 210 removal decisions (8,438 decisions in 40 episodes
+of `lme_bc_regret_s0`). The head barely trains, and at evaluation the rule
+is deterministic (retrieve iff logit > 0), so a head whose logits sit below
+0 never fires. The removal labels carry no signal either: with one question
+nearly every turn is never needed, and the regret teacher gives EVICT and
+ARCHIVE the same regret (0) for those, so expert agreement is 0.99999 and
+the loss 7e-5 from the first iteration while the EVICT/ARCHIVE choice is a
+coin flip. Two of the three seeds land on deleting, and fail mostly by
+`evicted`. (Found by the peer review of 2026-10-06.)
 
 **What it shows**
 
@@ -1122,6 +1135,82 @@ teacher accepts deleting it, and the policy deletes evidence too.
   treating it as free when only one question follows.
 - Full context on LongMemEval-S (about 115k tokens per question) was not
   run; published results report it.
+
+### 11e. Re-scoring Experiment 11 by the field's conventions (2026-10-06)
+
+```bash
+python -m memctl.analysis.qa_tables runs/exp11b_locomo_qa runs/exp11b_locomo_full_context \
+  --exclude full_context__fraction0.1 full_context__fraction0.25 --baseline fifo_archive_retrieve --per-category
+python -m memctl.analysis.qa_tables runs/exp11c_longmemeval_qa runs/exp11d_longmemeval_trained \
+  --baseline fifo_archive_retrieve --per-category
+```
+
+No new runs: verdicts are rebuilt per question from `failures.jsonl`
+(every episode). Headline accuracy leaves out the refusal-scored questions
+(LoCoMo category 5, adversarial; LongMemEval `_abs`), which Mem0, Zep and
+Memory-R1 also leave out: they are scored by `is_refusal`, so a controller
+that keeps less and refuses more gains on them. For example, in conversation
+0 the learned `bc_bridge_s0` scores 0.957 on adversarial questions and
+0.00–0.10 on every other category. Intervals resample clusters
+(conversations for LoCoMo, questions for LongMemEval); the Δ column is
+paired with FIFO on the same questions, seeds averaged within a cluster.
+F1 is only available for the episode logged in detail (conversation 0 /
+question 0), so it is not a headline here. Memory tokens are at read time for
+that episode and the episode-mean active tokens elsewhere; future sweeps
+should log every episode in detail.
+
+LoCoMo, categories 1–4 (1,540 questions):
+
+| controller | 10% | Δ vs FIFO | 25% | Δ vs FIFO | category 5 (refusal-scored), 10% |
+|---|---|---|---|---|---|
+| full context (64k YaRN) | 0.462 (0.425–0.495) | | | | 0.675 |
+| oracle_approx | 0.384 (0.346–0.414) | +0.160 (+0.132, +0.182) | 0.378 | +0.121 | 0.922 |
+| fifo_archive_retrieve | 0.224 (0.198–0.251) | – | 0.257 | – | 0.926 |
+| salience_archive_retrieve | 0.218 | −0.006 (−0.025, +0.009) | 0.281 | +0.023 (+0.001, +0.045) | 0.917 |
+| keep last 4 + retrieve top 5 | 0.151 | −0.073 | 0.151 | −0.106 | 0.989 |
+| regret imitation (3 seeds) | 0.086 | −0.138 (−0.165, −0.111) | 0.161 | −0.096 | 0.972 |
+| + follow-the-clue (3 seeds) | 0.094 | −0.130 (−0.157, −0.105) | 0.163 | −0.095 | 0.962 |
+
+Per category at 10% (multi-hop / open-domain / single-hop / temporal):
+full context 0.305 / 0.062 / 0.674 / 0.162; oracle 0.280 / 0.052 / 0.572 /
+0.081; FIFO 0.078 / 0.021 / 0.360 / 0.056; learned 0.07–0.08 / 0.02 /
+0.12–0.13 / 0.03. Temporal accuracy is low for every controller, full context
+included, although each memory line carries its session date: the reader
+answers in relative terms ("yesterday") where the gold answer is a date. That
+is a reader-prompt issue, not a memory one.
+
+LongMemEval-S questions 0–99 without abstention (94 questions; two types
+only, see above):
+
+| controller | 5% | Δ vs FIFO | 10% | Δ vs FIFO |
+|---|---|---|---|---|
+| oracle_approx | 0.628 (0.521–0.723) | +0.191 (+0.106, +0.277) | 0.628 | +0.245 |
+| keep last 4 + retrieve top 5 | 0.500 | +0.064 (+0.021, +0.117) | 0.500 | +0.117 |
+| fifo_archive_retrieve | 0.436 (0.340–0.532) | – | 0.383 | – |
+| salience_archive_retrieve | 0.319 | −0.117 | 0.245 | −0.138 |
+| + follow-the-clue, synthetic (3 seeds) | 0.255 | −0.181 (−0.270, −0.096) | 0.227 | −0.156 |
+| regret imitation, synthetic (3 seeds) | 0.191 | −0.245 | 0.191 | −0.191 |
+| + follow-the-clue, LongMemEval 100–499 (3 seeds) | 0.177 | −0.259 | 0.223 | −0.160 |
+| regret imitation, LongMemEval 100–499 (3 seeds) | 0.131 | −0.305 | 0.121 | −0.262 |
+
+Multi-session questions are near 0 for every controller (0.00–0.07), the
+oracle included; single-session-user carries all the differences.
+
+**What it shows**
+
+- The conventional scoring makes every LoCoMo number lower and the gaps
+  larger. Counting category 5 had flattered the controllers that keep the
+  least: the learned ones and keep-last-4 score 0.96–0.99 there.
+- The conclusions of 11b–11d stand, with intervals: on both benchmarks the
+  learned controllers trail FIFO by 0.10–0.30, and the paired intervals
+  exclude 0.
+- On LoCoMo the oracle now trails full context (0.384 against 0.462): with
+  categories 1–4 alone, keeping only annotated evidence misses context the
+  reader uses.
+
+**Next (evaluation protocol).** `env.folds` (stratified 5-fold over all 500
+LongMemEval questions, by question type with abstention apart) replaces the
+contiguous `subset`; all LongMemEval numbers above should be re-run on it.
 
 ## 5. The sequential task
 
