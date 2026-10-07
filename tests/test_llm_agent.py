@@ -133,3 +133,16 @@ def test_the_generation_cache_ignores_a_half_written_entry(tmp_path):
     assert again.generate("## Memory\\nthe code is K93Q\\n## Current input\\nwhat is the code?", 8) == first
     assert again.cache_hits == 0 and not list(tmp_path.rglob("*.tmp"))
     assert isinstance(again, TrackedLLM)
+
+
+def test_a_reasoning_reader_writes_a_note_and_its_final_answer_is_parsed_out():
+    state = make_state([FACT, "As of step 2, the serial of node-12 is B77Z.", "Question: what is the access code of vault-317?"])
+    prompts = []
+    output = "The line [o0] gives the code of vault-317.\nAnswer: K93Q"
+    agent = LLMAgent({"reasoning": True}, llm=ScriptedLLM(lambda prompt: prompts.append(prompt) or output))
+    question = Observation("o2", state.get("o2").content, SourceType.USER, requires_response=True)
+    step = agent.act(state.view(), question, TaskState(3, "Answer with the value.", question))
+    assert step.action == "K93Q" and step.used_item_ids == ("o0",)
+    assert "absolute dates" in prompts[0] and prompts[0].rstrip().endswith("Note:")
+    silent = LLMAgent({"reasoning": True}, llm=ScriptedLLM(lambda prompt: "Answer:"))
+    assert silent.act(state.view(), question, TaskState(3, "", question)).action == "unknown"
