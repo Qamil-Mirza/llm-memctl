@@ -1246,9 +1246,14 @@ python -m memctl.rl.headroom --dataset locomo --dense --out runs/t2_headroom/loc
 python -m memctl.rl.headroom --dataset longmemeval --out runs/t2_headroom/longmemeval.json    # ~3 min CPU
 ```
 
-No controller and no reader. Every turn of the history is a candidate, the
-question is the query, and a requirement counts as found when any of its
-items is in the top k. The share found bounds what a retrieval floor of k, or
+Clean run at commit 1d8a93e (`runs/t2_headroom/*.json`). No controller and
+no reader. Every turn of the history is a candidate, the question is the
+query, and a requirement (one evidence turn, or for an unmarked LongMemEval
+answer session any of its turns) counts as found when one of its items is in
+the top k. Two rules per question: the *share* of its requirements found,
+and whether *all* of them are found. The all-found rule bounds a controller
+on questions that need several pieces of evidence (LoCoMo multi-hop,
+LongMemEval multi-session). The share found bounds what a retrieval floor of k, or
 a pick-k-of-N head over a shortlist of N, can reach. Questions with evidence
 labels only, refusal-scored ones left out: LoCoMo 1,535, LongMemEval-S 470.
 `bm25_label` prefixes "speaker (date):" to each turn; `bm25_bridge` adds the
@@ -1266,7 +1271,16 @@ Requirements found in the top k, all questions:
 | dense (bge-small) | 0.448 | 0.518 | 0.576 | 0.613 | 0.640 | | | | | |
 | **fusion** | **0.530** | **0.610** | **0.674** | **0.707** | **0.739** | | | | | |
 
-By type, BM25 @5 → @16: LoCoMo multi-hop 0.142 → 0.289 (fusion 0.253 →
+All requirements found (BM25 / fusion on LoCoMo, BM25 on LongMemEval):
+
+| | LoCoMo @5 | @16 | LongMemEval @5 | @16 |
+|---|---|---|---|---|
+| all questions | 0.432 / 0.481 | 0.533 / 0.646 | 0.517 | 0.706 |
+| LoCoMo multi-hop | 0.036 / 0.085 | 0.114 / 0.209 | | |
+| LongMemEval multi-session | | | 0.182 | 0.446 |
+| LongMemEval temporal-reasoning | | | 0.496 | 0.709 |
+
+Share found by type, BM25 @5 → @16: LoCoMo multi-hop 0.142 → 0.289 (fusion 0.253 →
 0.428), open-domain 0.224 → 0.276, single-hop 0.562 → 0.679, temporal 0.578
 → 0.682. LongMemEval knowledge-update 0.787 → 0.926, multi-session 0.435 →
 0.659, single-session-assistant 0.875 → 0.929, preference 0.339 → 0.561,
@@ -1288,6 +1302,13 @@ single-session-user 0.836 → 0.945, temporal 0.635 → 0.810.
   was built for templated identifiers.
 - Multi-hop (LoCoMo) and multi-session and preference (LongMemEval) are the
   hard cases for search itself: under half their evidence is in the top 5.
+  By the all-found rule it is worse: a LoCoMo multi-hop question has all its
+  evidence in the BM25 top 16 4% → 11% of the time, and a LongMemEval
+  multi-session question 18% (top 5) → 45% (top 16).
+- On LongMemEval, speaker and date labels slightly *lower* BM25 recall
+  (0.806 → 0.788 at @16), so the shared LongMemEval search stays plain BM25;
+  on LoCoMo it is labelled BM25 fused with bge-small. Dense search was not
+  measured on LongMemEval (about 250k turn embeddings on CPU).
 
 ## 5. The sequential task
 
