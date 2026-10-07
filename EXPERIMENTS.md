@@ -2157,6 +2157,11 @@ The user approved both, about $0.65–1.15 in all.
     little power for output 4's paired interval (head − rule +0.068, CI −0.027 to +0.162, under the original
     judge). Output 4 is therefore computed on all 470 non-abstention questions: the head's and the rule's answers
     are all re-judged by Granite (about 940 short calls). Outputs 1–3 stay on the 296-answer sample.
+  - **How the Granite rates are read (written before they landed).** Qwen's own rates on the same 296 items are
+    the reference: 1.7% false-accept and 2.7% false-reject, with agreement 1.000 against its stored verdicts
+    (cache hits, a sanity check).
+    - A second judge with comparable error rates that agrees with Qwen confirms the verdicts.
+    - One with much higher error rates that disagrees indicts itself, not Qwen.
 
 **Exploratory LoCoMo reader test.** This is outside the pre-registered claims and labelled exploratory in every
 table.
