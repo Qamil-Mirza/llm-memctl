@@ -652,3 +652,29 @@ def test_set_probabilities_sum_to_one_and_gumbel_top_k_samples_them():
         counts[key] = counts.get(key, 0) + 1
     for subset, count in counts.items():  # sampled frequency matches the exact set probability
         assert abs(count / 4000 - float(torch.exp(set_log_prob(logits, list(subset))))) < 0.03
+
+
+def test_the_vectorised_set_log_prob_matches_the_order_by_order_loop_in_value_and_gradient():
+    import itertools as it
+
+    from memctl.rl.select_grpo import set_log_prob
+
+    def loop(logits, subset):  # the first implementation: one Plackett-Luce product per order
+        terms = []
+        for order in it.permutations(subset):
+            remaining = torch.ones_like(logits, dtype=torch.bool)
+            total = logits.new_zeros(())
+            for index in order:
+                total = total + logits[index] - torch.logsumexp(logits[remaining], 0)
+                remaining = remaining.clone()
+                remaining[index] = False
+            terms.append(total)
+        return torch.logsumexp(torch.stack(terms), 0)
+
+    generator = torch.Generator().manual_seed(1)
+    for subset in ([0, 3], [1, 4, 7], [2, 5, 6, 9, 11]):
+        base = torch.randn(16, generator=generator) * 2
+        a, b = base.clone().requires_grad_(), base.clone().requires_grad_()
+        fast, slow = set_log_prob(a, subset), loop(b, subset)
+        fast.backward(), slow.backward()
+        assert abs(float(fast) - float(slow)) < 1e-5 and torch.allclose(a.grad, b.grad, atol=1e-5)

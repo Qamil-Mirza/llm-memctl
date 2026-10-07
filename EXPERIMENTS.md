@@ -2025,6 +2025,16 @@ is declared once and not swept.
     between identical repeated calls (vLLM batch nondeterminism, §15b).
   - It runs on the robustness check's host and cache, so its starting
     accuracy is comparable with that check.
+- **Standing rule from §16 on (added after two failed launches, 2026-10-07).**
+  Before any paid launch, run one full-size iteration with a stub backend under
+  the memory guard and record its peak RSS. Both failures would have been
+  caught this way at no cost:
+  - a cache-write race between threads, fixed in b2088bf;
+  - an autograd graph that ran out of memory, fixed in 2eacf0d with a
+    vectorised set log-probability that a test checks against the
+    order-by-order loop in value and gradient.
+
+  The full-size stub iteration peaks at 0.44 GB.
 - **What a result means, stated in advance.**
   - A pass on RQ3 means RL on the reader's own correctness beats imitation of
     evidence labels. The per-type rows that move then show what the labels
