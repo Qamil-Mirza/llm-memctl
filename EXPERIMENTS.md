@@ -63,7 +63,7 @@ commands given).
 | 15 | A query-aware floor head: which 5 of 16 to retrieve, learned listwise | Free gate: +0.08 all-found evidence at half the tokens. Reader: +0.047 accuracy (0.513 vs 0.466) at 745 vs 1,554 tokens; two of three arms win; Holm-adjusted p 0.058. First learned row beyond the rule frontier; replicates over 3 training seeds on a second host (+0.044, seed SD 0.002). POSITIVE |
 | 16 | Set-valued GRPO on the selection head with the reader's verdict as reward | Gate fails: +0.0125 (−0.005, +0.033) held-out over the imitation start; flat in 4 of 5 folds. Labels already a sufficient target for this head. NEGATIVE (pre-registered) |
 | 18 | Second-family judge check; exploratory LoCoMo reader test | Granite agrees with Qwen on 97% (κ 0.95), similar error rates; ranking and the head's gain hold (+0.040, CI excludes 0). Exploratory: head transfers to LoCoMo, +0.087 (post hoc). CONFIRMS |
-| 19 | Adaptive k (5, 8 or 16 of 32); reader test §19c | Adaptivity stopped at its time box (the ceiling is the finding). Reader: LME `fixed8` 0.545 vs §15 head 0.500 (+0.045, CI +0.011..+0.079) at 1,049 tokens, PASS; LoCoMo `fixed5` +0.023 (CI −0.001..+0.048), no pass. Exploratory: LME `fixed16` −0.057 vs `fixed8` (context rot on a controlled pair); LoCoMo `fixed16` 0.344 at 734 tokens beats FIFO 10% (0.295 at 3,087). $0.36 |
+| 19 | Adaptive k (5, 8 or 16 of 32); reader test §19c | Adaptivity stopped at its time box (the ceiling is the finding). Reader: LME `fixed8` 0.545 vs §15 head 0.500 (+0.045, CI +0.011..+0.079) at 1,049 tokens, PASS; LoCoMo `fixed5` +0.023 (CI −0.001..+0.048), no pass. Exploratory: LME `fixed16` −0.057 vs `fixed8` (context rot on a controlled pair); LoCoMo `fixed16` 0.344 at 734 tokens beats FIFO 10% (0.295 at 3,087). $0.36. §19d confirmation (head B, second host): −0.026 (CI −0.066..+0.015), NOT CONFIRMED; the decomposition repeats (P(correct \| in view) −0.088); $0.10 |
 
 ---
 
@@ -2575,6 +2575,29 @@ interval may touch 0.
 
 **Safeguards.** A full-size stub run under `guard.sh` first, with its peak RSS recorded. Hard stop at 45 minutes of
 pod time (about $0.37). The pod is verified terminated with list-pods.
+
+### 19d-a. Result: not confirmed; the mechanism points the same way (2026-10-07)
+
+Pod kzblkszpawlunn: A40 at $0.49/h, CA-MTL-1, CUDA 12.8. §19c's pod was CUDA 13.0 in the same data centre, so per
+the review's rule this is a "second host". Created 23:22:42 UTC, reader ready 23:26:55, all 10 cells done
+23:33:51, terminated about 23:34, verified with list-pods. About 0.2 h, about $0.10. Sweeps `exp19d_f*` at 0ecceb0;
+report `runs/_pipelines/exp19d_report.py` → `runs/exp19d_report.md`.
+
+| arm (head B) | accuracy | P(all in view) | P(correct \| in view) | P(correct \| not) | unknown | prompt tokens |
+|---|---|---|---|---|---|---|
+| `fixed8` | 0.551 | 0.685 | 0.708 | 0.209 | 0.145 | 983 |
+| `fixed16` | 0.526 | 0.745 | 0.620 | 0.250 | 0.196 | 2,617 |
+
+- **Pre-registered criterion: NOT CONFIRMED.** `fixed16` minus `fixed8` is −0.026 (−0.066, +0.015) over 470
+  questions; the interval includes 0.
+- **The mechanism points the same way as §19c.**
+  - More evidence in view: +0.060 here, +0.045 in §19c.
+  - Lower accuracy when the evidence is in view: 0.708 → 0.620 (−0.088), against 0.676 → 0.575 (−0.101) in §19c.
+  - The net accuracy effect is smaller, consistent with regression to the mean, as the expectation said.
+- **Reading for the thesis.** The §19c pair stays exploratory, reported with this result beside it. Two heads on two
+  hosts agree in sign on accuracy (−0.057 and −0.026), and in both the decomposition shows P(correct | in view)
+  falling by about 9–10 points at about 2.6k tokens. Only §19c's own interval excludes 0. A pooled estimate was not
+  pre-registered and is not claimed.
 
 ## 5. The sequential task
 

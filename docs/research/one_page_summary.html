@@ -29,7 +29,7 @@
 </head>
 <body>
 <h1>Learned memory control for long conversations: what we set out to do, and what we found</h1>
-<div class="sub">One-page summary · 7 October 2026 · Details and every number: EXPERIMENTS.md §1–§19c and docs/research/THESIS_RESULTS_OUTLINE.md</div>
+<div class="sub">One-page summary · 7 October 2026 · Details and every number: EXPERIMENTS.md §1–§19d and docs/research/THESIS_RESULTS_OUTLINE.md</div>
 
 <h2>Aim</h2>
 <p>A language model answering questions about a long history (weeks of chat) cannot read all of it at once. A <b>memory
@@ -84,7 +84,9 @@ pre-registered: its success rule was written down and passed a free check before
     learner, not how credit is split over time.</li>
   <li><span class="rq">RQ4: Yes, with a real 7B reader and two judges</span>; it is worth it when the prompt stays
     small. With the same selector, 16 turns put more evidence in view than 8 but scored −0.057
-    (CI −0.096, −0.019): with the evidence present, accuracy fell from 0.68 to 0.58 at 2.6k tokens. LongMemEval is a
+    (CI −0.096, −0.019): with the evidence present, accuracy fell from 0.68 to 0.58 at 2.6k tokens. A pre-registered
+    repeat (second head, second host) gave −0.026 (CI −0.066, +0.015), not significant, but the same fall with the
+    evidence present (0.71 to 0.62). LongMemEval is a
     <i>selection</i> problem; LoCoMo is a <i>search</i> problem (evidence spread over many short turns).</li>
 </ul>
 
@@ -94,13 +96,14 @@ pre-registered: its success rule was written down and passed a free check before
   <li>The positive reader result is pre-registered on LongMemEval only. The LoCoMo pick (5 turns) missed
     (+0.023, CI −0.001, +0.048). The LoCoMo win of 16 turns over FIFO (0.344 vs 0.295 at a quarter of the tokens)
     is exploratory.</li>
-  <li>The context-rot pair is one run on one host. Both judges are 8B-class.</li>
+  <li>The context-rot accuracy loss was significant in one of two runs; its confirmation missed. Both judges are
+    8B-class.</li>
   <li>LoCoMo intervals rest on only 10 conversations. The §15 arm was the best of three before it was replicated.</li>
 </ul>
 
 <h2>Future work</h2>
 <ul>
-  <li>Confirm the context-rot pair with a second trained head on a second host (about $0.15, pre-registered first).</li>
+  <li>A larger, pre-registered test of the context-rot pair (more questions or seeds), since one confirmation missed.</li>
   <li>A second reader of another family or size, to see whether the onset moves.</li>
   <li>A chooser that reaches the per-question ceiling (half the tokens at equal evidence).</li>
   <li>LoCoMo as a search problem: better retrieval units (fact keys, session-level search) and heads trained on LoCoMo.</li>
@@ -108,6 +111,6 @@ pre-registered: its success rule was written down and passed a free check before
 </ul>
 </div>
 </div>
-<div class="foot">Total GPU spend for all experiments: about $8.53 (RunPod A40, every launch approved in advance). Accuracy is the share of questions the judge marks correct; intervals are paired 95% bootstrap intervals.</div>
+<div class="foot">Total GPU spend for all experiments: about $8.63 (RunPod A40, every launch approved in advance). Accuracy is the share of questions the judge marks correct; intervals are paired 95% bootstrap intervals.</div>
 </body>
 </html>

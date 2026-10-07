@@ -33,9 +33,10 @@ five-turn selector, and beats FIFO at a third of FIFO's tokens. Showing sixteen 
 - **Context rot on a controlled pair** (§19c): the same head showing 16 turns has more evidence in view (+0.045)
   but answers worse, −0.057 (−0.096, −0.019) against 8 turns. P(correct | in view) falls from 0.676 to 0.575 at
   2,569 tokens.
-  - Status: exploratory, with its purpose declared before the run; one run on one host.
-  - Confirmatory step, named but not run: the same pair with head B on a second host, about $0.15, if an examiner
-    asks.
+  - Status: exploratory, with its purpose declared before the run.
+  - The pre-registered confirmation (§19d: head B, second host) was **not confirmed**: −0.026 (−0.066, +0.015).
+  - Its decomposition repeats the mechanism: more evidence in view (+0.060), lower P(correct | in view) (0.708 →
+    0.620). State the effect as the same sign on two heads and two hosts, significant in one.
 
 **Headline figure:** accuracy against prompt tokens on both benchmarks (`docs/research/figures/exp13_frontier.png`).
 Before the chapter is final, the Experiment 15 head row should be added to it.
@@ -133,8 +134,9 @@ Before the chapter is final, the Experiment 15 head row should be added to it.
   | 15c + 16: robustness check and GRPO | 0.74 h | $0.36 |
   | 18: second judge and LoCoMo exploratory | 0.32 h | $0.16 |
   | 19c: reader test of the adaptive-k picks | 0.74 h | $0.36 |
-  | **benchmark programme (13–19)** | 8.60 h | **$4.21** |
-  | **all experiments** | 17.43 h | **$8.53** |
+  | 19d: confirmation of the context-rot pair | 0.20 h | $0.10 |
+  | **benchmark programme (13–19)** | 8.80 h | **$4.31** |
+  | **all experiments** | 17.63 h | **$8.63** |
 - **Provenance.**
   - Every run records its commit and a dirty flag.
   - The sharded LongMemEval loader has a test showing it plays the same episodes as the full file.
