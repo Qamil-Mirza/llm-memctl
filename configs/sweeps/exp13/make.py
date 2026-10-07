@@ -126,6 +126,18 @@ def main() -> None:
         write(f"exp13_gate_f{fold}", f"Evidence gate, LongMemEval fold {fold}: agent null, free.", {
             "base": gate, "grid": {"controller": controllers, "memory.budget.fraction": [0.01, 0.02, 0.05]},
         })
+    # The same evidence gate on LoCoMo (free). The LongMemEval-trained policies here are a cross-benchmark
+    # transfer test (fold-0 checkpoints); labels match the gate's FIFO partner convention.
+    locomo_gate = {**base({"name": "locomo", "include_adversarial": False}, 10), "agent": {"name": "null"}}
+    locomo_gate["logging"] = {"detail_episodes": 0}
+    write("exp13_gate_locomo", "Evidence gate, LoCoMo categories 1-4: agent null, free; LongMemEval-trained = transfer.", {
+        "base": locomo_gate,
+        "grid": {"controller": [fifo(LOCOMO_SEARCH, "fifo_top5"),
+                                learned("runs/lme_floor_f0_s0/checkpoints/policy_best.pt", LOCOMO_SEARCH, "learned_floor5"),
+                                learned("runs/lme_compose4_f0_s0/checkpoints/policy_best.pt", LOCOMO_SEARCH, "compose_floor5"),
+                                learned(SYNTHETIC, LOCOMO_SEARCH, "synthetic_floor5")],
+                 "memory.budget.fraction": [0.05, 0.1, 0.25]},
+    })
     write("exp13_lme_keep", "LongMemEval keep-last-n x top-k (budget-free), every fold.", {
         "base": base(lme_env(0), 100),
         "grid": {"env.folds.fold": folds,
