@@ -2551,6 +2551,31 @@ Figure: `docs/research/figures/exp19c_frontier.png`.
 The differences are within the run-to-run variation of §15c. (The FIFO prompt tokens differ a little because §13
 counted all questions, including refusal-scored ones.)
 
+## 19d. Confirming the context-rot pair (2026-10-07; approved by the user, about $0.15; written before launch)
+
+**Question.** §19c found, as an exploratory row, that the same head showing 16 turns instead of 8 puts more
+evidence in view but answers worse: −0.057 (−0.096, −0.019), with P(correct | in view) falling from 0.676 to
+0.575. That was one head (A), one run, one host. Does the effect hold with the other cross-fitted head (B) on
+another pod?
+
+**Cells** (`configs/sweeps/exp19d/`): LongMemEval, the five test folds, head B (`lme_n4_head_f*_b`, 32 BM25
+candidates), `fixed8` and `fixed16`. Both run in one new pod session with a fresh cache
+(`cache/generations_qwen7b_vllm_v2_exp19d`), so every answer is a new generation. Reader frozen at 7b5fc30; official
+judge. The pod's id, data center and CUDA version are recorded.
+
+**Criterion (pre-registered).** On 470 non-abstention questions, paired by question:
+- **Confirmed** if head B's `fixed16` minus `fixed8` accuracy has a 95% bootstrap interval entirely below 0.
+- **Not confirmed** otherwise, and the §19c pair stays exploratory in the thesis, reported with this result
+  beside it.
+- Reported for both arms: the §13a decomposition (P(all in view), P(correct | in view), the unknown rate) and
+  prompt tokens. The mechanism reading needs P(all in view) higher for `fixed16`, and P(correct | in view) lower.
+
+**Expectation, written before launch.** Negative, smaller than §19c's −0.057 (regression to the mean), and the
+interval may touch 0.
+
+**Safeguards.** A full-size stub run under `guard.sh` first, with its peak RSS recorded. Hard stop at 45 minutes of
+pod time (about $0.37). The pod is verified terminated with list-pods.
+
 ## 5. The sequential task
 
 ```bash
