@@ -1345,6 +1345,42 @@ FIFO's at the same budget and target, paired over the same questions and
 pooled over the five folds, has a 95% bootstrap interval entirely above 0.
 Per-type differences are secondary and reported without a decision.
 
+**Gate result (LongMemEval, 2026-10-07; agent null, 500 questions pooled over
+the five test folds; gate code 8e1b1c5, checkpoints 2567c3e chosen by
+validation evidence).** Evidence in view at the question, candidate − FIFO
+with the same floor at the same budget or target, paired 95% interval.
+
+| candidate | budget, target | FIFO | candidate | difference | memory FIFO / candidate | |
+|---|---|---|---|---|---|---|
+| composed-episode trained | 5%, fill | 0.638 | 0.771 | +0.133 (+0.102, +0.163) | 4,784 / 4,863 | go |
+| composed-episode trained | 5%, 4k | 0.636 | 0.713 | +0.076 (+0.045, +0.106) | 3,699 / 3,798 | go |
+| composed-episode trained | 5%, 3k | 0.633 | 0.670 | +0.037 (+0.009, +0.064) | 2,733 / 2,850 | go |
+| single-question trained | 5%, fill | 0.638 | 0.732 | +0.094 (+0.064, +0.124) | 4,784 / 4,908 | go |
+| single-question trained | 5%, 4k | 0.636 | 0.690 | +0.054 (+0.024, +0.082) | 3,699 / 3,837 | go |
+| composed-episode trained | 1–2%, any | 0.59–0.63 | 0.59–0.63 | −0.003 to +0.005 | | no |
+| single-question trained | 1–2%, any; 5% 2k | 0.59–0.64 | 0.58–0.64 | −0.030 to +0.005 | | no |
+| synthetic-trained | any | 0.59–0.64 | 0.52–0.64 | −0.09 to +0.001 | | no |
+
+The full table (36 rows) is `runs/exp13_gate_table.md`. Targets at or above the
+budget equal the fill row. The one memory flag (>10% apart) is on every 1%
+row, where the learned floor holds about 975 tokens to FIFO's 809; all are
+no-go.
+
+- At 1–2% the retrieval floor does all the work: neither trained policy keeps
+  more evidence than FIFO with the same floor.
+- The synthetic-trained policy loses 0.05–0.09 evidence almost everywhere:
+  its eviction features do not transfer to real conversations even with the
+  floor (RQ4).
+- Training on composed four-question episodes beats single-question training
+  in every 5% row (+0.133 against +0.094 at fill): more questions per episode
+  give the imitation teacher signal it lacked (Experiment 11, T4).
+
+**Written before the paid learned cells ran.** The go rows sit at 2.7–4.9k
+prompt tokens, where this reader refuses more as the prompt grows (see the
+unknown-rate table). The evidence gain may therefore not turn into accuracy;
+the 3k row is where it most plausibly does. Whatever the accuracy criterion
+gives on these rows is the answer to RQ4; no rows are re-selected afterwards.
+
 ## 5. The sequential task
 
 ```bash
