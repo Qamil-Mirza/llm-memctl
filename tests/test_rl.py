@@ -581,3 +581,11 @@ def test_a_token_price_archives_kept_items_worth_less_than_their_tokens(tmp_path
     free, priced = run(0.0), run(1.0)  # 0.5 x 1 < 1.0 x tokens for any item: everything but the newest goes
     assert priced["active_tokens_mean"] < 0.5 * free["active_tokens_mean"]
     assert run(1e-6)["active_tokens_mean"] == free["active_tokens_mean"]  # a negligible price changes nothing
+
+
+def test_auc_counts_a_random_positive_above_a_random_negative():
+    from memctl.rl.calibration import auc
+
+    assert auc(np.array([0.9, 0.8, 0.1, 0.2]), np.array([1, 1, 0, 0])) == 1.0
+    assert auc(np.array([0.1, 0.9]), np.array([1, 0])) == 0.0
+    assert auc(np.array([0.5, 0.5]), np.array([1, 0])) == 0.5
