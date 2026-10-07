@@ -60,7 +60,7 @@ commands given).
 | 12 | Retrieval headroom: how much evidence search reaches (no reader) | Top 16 holds 0.12–0.16 more evidence than top 5; labels and BM25+bge fusion help LoCoMo, not LongMemEval. Gates for the pick-k head and better units passed. |
 | 13 | LongMemEval (all 500, 5 folds) and LoCoMo under the reviewed protocol: retrieval floor, no EVICT, reasoning reader, pre-registered gates | The floor fixes retrieval. Learned controllers keep more evidence at 5% but convert little: one paired win, one loss, none after Holm, none on the frontier. This reader refuses more as prompts grow (peak near 3k tokens). NEGATIVE, with a mechanism |
 | 14 | A token price for kept memory: labels counted in the budget, plug-in Bayes archiving at a pre-set price | No-go at the free gate: the priced rule never beats keep-last-0 + top 5 on evidence at equal memory; needed model AUC 0.62–0.74; a per-token price archives long turns, not lines. NEGATIVE (free) |
-| 15 | A query-aware floor head: which 5 of 16 to retrieve, learned listwise | Passes the free gate: +0.08 all-found evidence over keep-last-0 + top 5 at half the tokens, all three arms; biggest on multi-session and temporal. Reader test pending (needs spend) |
+| 15 | A query-aware floor head: which 5 of 16 to retrieve, learned listwise | Free gate: +0.08 all-found evidence at half the tokens. Reader: +0.047 accuracy (0.513 vs 0.466) at 745 vs 1,554 tokens; two of three arms win; Holm-adjusted p 0.058. First learned row beyond the rule frontier. POSITIVE (borderline after Holm) |
 
 ---
 
@@ -1833,6 +1833,69 @@ the official judge. Criteria, as in §13:
 find: `has_answer` turns, plus any turn of an unmarked answer session. Whether
 more labelled evidence, at half the tokens, turns into more correct answers is
 the reader's test, which is a paid step.
+
+### 15b. Reader test: the learned floor head beats the rule (2026-10-07)
+
+Pod gci9yw2757b6oa ran 18:12–18:22 UTC, about 0.16 h, about $0.08; the
+estimate was $0.30–0.40. Sweeps `exp15_paid_f*` at 3d7689b, reader frozen as
+in §13. The analysis is `runs/_pipelines/exp15_report.py`; its output is
+`runs/exp15_paid_report.md`. 470 non-abstention questions, paired by question.
+
+| row | accuracy | Δ vs keep-last-0 + top 5 (95% CI) | P(all in view) | P(correct \| in view) | P(correct \| not) | "unknown" | prompt tokens |
+|---|---|---|---|---|---|---|---|
+| keep-last-0 + top 5 | 0.466 | — | 0.506 | 0.706 | 0.220 | 0.283 | 1,554 |
+| head, `listsum` | **0.513** | **+0.047 (+0.009, +0.087)** | 0.591 | 0.698 | 0.245 | 0.211 | 745 |
+| head, `listwise` | **0.506** | **+0.040 (+0.002, +0.079)** | 0.591 | 0.712 | 0.208 | 0.211 | 846 |
+| head, `residual` | 0.491 | +0.026 (−0.013, +0.064) | 0.585 | 0.691 | 0.210 | 0.236 | 794 |
+
+**Verdict under the pre-registered criteria.**
+
+- **Criterion 1 (paired accuracy).** Two of three arms win: `listsum` and
+  `listwise`. The `residual` arm does not.
+- **Holm correction (computed afterwards, so it does not change the
+  verdict).** Over the three arms the adjusted p-values are 0.058 (`listsum`),
+  0.089 (`listwise`) and 0.19 (`residual`), so no arm survives at 0.05.
+- **Criterion 2 (frontier).** The winning arms are ahead of the rule on both
+  axes: higher accuracy at under half the prompt tokens (0.513 at 745 against
+  0.466 at 1,554). They are the first learned rows on real conversations to
+  lie beyond the rule frontier. They remain far below the hindsight oracle
+  (0.672 at 394).
+
+**Where the gain comes from.** Accuracy is the mixture
+P(in view) × P(correct | in view) + (1 − P(in view)) × P(correct | not).
+
+- Keeping the rule's conditional accuracies and using `listsum`'s P(all in
+  view) gives 0.507. So about +0.041 of `listsum`'s +0.047 comes from having
+  all the evidence in view more often, and about +0.006 from the conditional
+  accuracies.
+- The shorter prompt did not raise P(correct | in view): 0.698 against 0.706.
+  It did lower the unknown rate (0.211 against 0.283), mostly on questions
+  whose evidence is now in view.
+- At these prompt sizes (under 1.6k tokens), below the ~3k onset of context
+  rot, fewer tokens buy little. More evidence is what pays.
+
+**By type (accuracy, rule → `listsum`):**
+
+| type | rule | `listsum` |
+|---|---|---|
+| multi-session | 0.256 | 0.322 |
+| temporal | 0.323 | 0.370 |
+| single-session-user | 0.734 | 0.844 |
+| knowledge-update | 0.694 | 0.722 |
+| preference (n = 30) | 0.067 | 0.167 |
+| single-session-assistant | 0.857 | 0.786 |
+
+The rows are descriptive. The one loss, single-session-assistant, matches the
+evidence loss in §15a.
+
+**For the thesis.** On real conversations with a searchable archive, the
+learned decision that pays is query-aware: which retrieved turns fill the few
+lines the reader sees. A small head (about 27k parameters) trained by
+imitation on gold evidence turns a gain in evidence into a gain in accuracy at
+half the prompt. This is RQ4's positive answer, with the caveats above: one
+benchmark, one reader, and a result that sits at the edge after a correction
+for three arms. LoCoMo would be a cross-benchmark transfer test. The adaptive
+number of turns (3, 5 or 8) is the declared next arm.
 
 ## 5. The sequential task
 
