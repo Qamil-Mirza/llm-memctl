@@ -1381,6 +1381,24 @@ unknown-rate table). The evidence gain may therefore not turn into accuracy;
 the 3k row is where it most plausibly does. Whatever the accuracy criterion
 gives on these rows is the answer to RQ4; no rows are re-selected afterwards.
 
+**Two comparisons per learned row (stated before the learned rows landed).**
+(1) The pre-registered paired difference against FIFO with the same floor at
+the same budget and target answers *does learning beat recency at the same
+fill?* (RQ1). (2) The row's place on the accuracy-against-prompt-tokens
+frontier, against the best rule-based row at equal or fewer prompt tokens,
+answers *is a learned controller worth it over a simple rule?* (RQ4). On
+LongMemEval the rule frontier is keep-last-0 + top 5 (0.466 at 1,554 tokens)
+and FIFO + floor at 1% (0.440 at 1,148). A win on (1) alone means learning
+beats recency at the same fill; a win on both means the learned controller is
+worth having.
+
+**FIFO with the same floor, LongMemEval, all five folds (the learned rows'
+partners).** Evidence in view stays at 0.62–0.63 while accuracy falls as the
+prompt grows: 0.438 at 3,157 tokens (5%, 3k target), 0.423 at 4,197 (4k),
+0.372 at 5,415 (filled to 5%). This is the refusal effect inside a single
+controller. The oracle row (0.672, 394 tokens) is the same at 1, 2 and 5%:
+it drops everything never needed, so the budget never binds.
+
 ## 5. The sequential task
 
 ```bash
