@@ -1,0 +1,60 @@
+# Experiment 16 (pre-registered in EXPERIMENTS.md §16): set-valued GRPO on the selection head, fold 4 train part,
+# from the listsum checkpoint; frozen reader and judge of Experiment 13 (POD_URL filled in at launch).
+schema_version: 1
+seed: 0
+env:
+  name: longmemeval
+  path: data/longmemeval/longmemeval_s_cleaned.json
+  folds:
+    k: 5
+    fold: 4
+    part: train
+  judge:
+    backend: openai
+    name: qwen2.5-7b-instruct
+    base_url: POD_URL/v1
+    timeout_s: 300
+    cache_dir: cache/generations_qwen7b_vllm_v2
+    style: longmemeval
+agent:
+  name: llm
+  reasoning: true
+  labels: compact
+  max_new_tokens: 256
+  model:
+    backend: openai
+    name: qwen2.5-7b-instruct
+    base_url: POD_URL/v1
+    timeout_s: 300
+    cache_dir: cache/generations_qwen7b_vllm_v2
+memory:
+  allowed_operations:
+  - KEEP
+  - MOVE_TO_ARCHIVE
+  - RETRIEVE_FROM_ARCHIVE
+  - NO_OP
+  embedder: hashing
+  count_labels: true
+name: lme_grpo_f4
+controller:
+  name: rl
+  checkpoint: runs/lme_head_listsum_f4/checkpoints/policy_best.pt
+  retrieval_method: lexical
+  retrieve_floor: 5
+  retrieve_candidates: 16
+  floor_head: true
+  keep_none: true
+grpo:
+  questions: 400
+  held_out: 0.2
+  group: 8
+  k: 5
+  aux_weight: 0.2
+  anchor: 0.1
+  lr: 0.0003
+  epochs: 4
+  clip: 0.2
+  iterations: 6
+  questions_per_iteration: 128
+  workers: 32
+  seed: 0

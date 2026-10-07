@@ -635,3 +635,20 @@ def test_a_residual_head_starts_in_the_search_order_and_both_listwise_losses_tra
     restored = ItemPolicy(**policy.config)
     restored.load_state_dict(policy.state_dict())
     assert torch.allclose(restored(items, torch.zeros(GLOBAL_DIM))[0], logits)
+
+
+def test_set_probabilities_sum_to_one_and_gumbel_top_k_samples_them():
+    import itertools as it
+
+    from memctl.rl.select_grpo import gumbel_top_k, set_log_prob
+
+    logits = torch.tensor([1.0, 0.3, -0.5, 2.0, 0.0])
+    total = sum(float(torch.exp(set_log_prob(logits, list(s)))) for s in it.combinations(range(5), 2))
+    assert abs(total - 1.0) < 1e-5
+    generator = torch.Generator().manual_seed(0)
+    counts = {}
+    for _ in range(4000):
+        key = tuple(sorted(gumbel_top_k(logits, 2, generator)))
+        counts[key] = counts.get(key, 0) + 1
+    for subset, count in counts.items():  # sampled frequency matches the exact set probability
+        assert abs(count / 4000 - float(torch.exp(set_log_prob(logits, list(subset))))) < 0.03
