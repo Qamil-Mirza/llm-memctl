@@ -2809,6 +2809,64 @@ was approved by the user. Report: `runs/_pipelines/exp20_report.py` (written bef
 the pre-registered bar with the 7B writer. The stream-time session note is the better form. That fits the next
 step: the sequential task, where a controller learns *when* to write.
 
+## 21. A sequential task on real conversations: questions during the stream, and questions that depend on the model's own answers (N6; 2026-10-08, DRAFT pre-registration)
+
+**Status: draft, under review.** Nothing is built until the text is agreed. The first gate is free (scripted reader,
+no model).
+
+**Why.** Every real-text result so far (§13–§20) asks all questions after the history has ended. Then the only
+decision that matters is at the question, which is why query-blind control failed (§14a) and GRPO had nothing to
+assign credit over (§16a). The plan's next step is a task where an early memory decision changes a later outcome,
+on real text, following MEM1's recipe: questions asked during the stream, plus questions whose answer depends on
+the model's own earlier answer.
+
+**The task (LoCoMo, categories 1–4; built from existing parts: `Question.after` in `memctl/envs/qa.py` and
+`memory.store_agent_actions`).**
+1. **Questions during the stream.** Each question is asked right after the last turn of the session after its last
+   evidence session (a delay of one session). Questions whose evidence is in the final session are asked at the end.
+2. **Recall-of-own-answer questions (the dependence).** For every question A asked during the stream, a follow-up B
+   is asked d sessions later (d = 3, or at the end if fewer remain): "Earlier you were asked: '<A>'. What did you
+   answer?"
+   - B's evidence is A's answer item: the reader's answer, stored as a memory item by `store_agent_actions`.
+   - **B is correct iff A's answer item is in view at B *and* A was answered correctly.** A wrong A makes B wrong
+     even with perfect memory, so B's outcome depends on two earlier decisions: what was in view at A, and what
+     was kept until B.
+3. **The write action (from §20).** At the end of each session the controller may write one session note (≤ 100
+   tokens, the §20 prompt, question-blind). Here notes are first-class memory items: they can be kept, archived and
+   retrieved like turns. This removes §20's declared limitation that notes are never search candidates.
+4. **Budget:** the active-memory budget as a fraction of the history (5% and 10%), as in §13b.
+
+**Final outcome:** accuracy on the B questions (the chained outcome), with A accuracy reported beside it.
+
+**The free oracle gate (decides whether any training happens).**
+- **Reader:** scripted. A is correct iff all of A's evidence is in view (all-found); B is correct iff A was correct
+  and A's answer item is in view at B. There is no model and no cost.
+- **Rows:**
+  - the hindsight oracle (`oracle-approx`, which knows every future need, including answer items);
+  - archive-everything + retrieve top 5 (keep-last-0, fusion search);
+  - FIFO + floor;
+  - the §19 head (`fixed8`, LongMemEval-trained, as a transfer row).
+- **Gate, pre-registered:** credit assignment is worth training on this task only if the oracle's chained accuracy
+  (B) exceeds the best rule's by at least 0.10 at some budget, with a conversation-clustered 95% interval above 0.
+  - If the gap is smaller, credit assignment is dead on this task too, and §21 says so before any training.
+  - The gap in A accuracy is reported beside it, to separate "keeping A's evidence" from "keeping A's answer".
+- **Expectation, written before the run:** the B gap is large under FIFO, because answer items age out, and small
+  under archive-everything + retrieve, if search finds the answer item from B's quoted question. The interesting
+  case is the second: whether lexical search on "Earlier you were asked: '<A>'" retrieves A's answer item.
+
+**Open questions for the review.**
+1. Is "repeat your earlier answer" too easy for search, since B quotes A? An alternative B composes A's answer
+   with a new fact (for example "how many sessions after <A's event> did …"), which needs both and cannot be
+   searched by quoting. It is harder to build automatically.
+2. Should B be scored against A's gold (needs A correct) or against A's actual answer (pure retention)? The draft
+   scores against the gold, so B depends on A's correctness.
+3. d = 3 sessions, or several delays (1, 3, 6) as a dose-response?
+4. LongMemEval has a single question per instance; composed 4-question episodes (§13) could give a second
+   benchmark with d = 1–3 questions. Include it, or keep LoCoMo only for the gate?
+
+**Paid steps (not proposed yet).** A reader version of the gate (the real 7B answering A and B), and any training,
+come only after the free gate passes, each with its own pre-registration and cost.
+
 ## 5. The sequential task
 
 ```bash
