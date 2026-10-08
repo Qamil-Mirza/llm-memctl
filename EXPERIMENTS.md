@@ -2942,6 +2942,75 @@ fusion search, 10 conversations, 1,535 questions, 1,249 of them "old" (oldest ev
 it served. That is the per-write hindsight credit the review proposed. The reader stage (the real 7B answering, and
 the §20 abstractive writer as a comparison) is paid and comes with its own pre-registration.
 
+## 22. Credit assignment for the note-writer: uniform against per-write hindsight credit (N7; 2026-10-08, DRAFT pre-registration)
+
+**Status: draft, under review.** The whole stage runs in the §21 simulator, scripted and free on CPU. Only the final
+policies would ever meet the reader (item 6, paid, not proposed).
+
+**Question.** §21a left +0.140 between the best supervised note-writer (`learned-knapsack`) and the hindsight
+oracle on old-evidence questions. Each session's note decision has a delayed, unrepairable consequence there. Does
+crediting each write by the later questions it served (per-write hindsight credit) learn a better writer than
+GRPO's uniform episode-level credit, with the same rollouts, compute and initialisation?
+
+**1. Policy.**
+- A small extractive writer: a per-turn logit from the §21 `learned` features plus the turn's token count, through
+  one hidden layer of 32.
+- **Sampling:** a Plackett–Luce order over the session's turns; the note is filled in that order, skipping turns
+  that do not fit the 100 tokens. The log-probability is that of the sampled order, up to its last picked turn,
+  so a truncated prefix; a turn skipped for lack of room still counts in the order.
+- **Initialisation:** fitted by imitation of the cross-fitted supervised scores (the `learned` model), so every
+  variant starts from the same writer.
+
+**2. Reward.** The scripted outcome of §21: on each old-evidence question, all evidence in view among the top 8 by
+fusion search over the survivors. Training sees nothing but these outcomes; no evidence label enters the policy or
+its features. The outcome itself is computed from the labels, as in any simulator.
+
+**3. Variants** (pre-registered; the same rollouts, compute and initialisation; 3 seeds each; G = 8 rollouts per
+conversation per update):
+- **(i) Episode-level GRPO (uniform credit).** One reward per conversation rollout: its old-evidence accuracy. The
+  advantage is normalised over the G rollouts of the same conversation, and every write in the rollout gets the
+  same advantage.
+- **(ii) Per-write hindsight credit.**
+  - Session s's note is rewarded by the outcomes of exactly the questions asked w or more sessions later whose
+    evidence lies in s (correct or not).
+  - The advantage is normalised per session across the G rollouts. The stream is fixed, so every rollout visits
+    the same sessions: this is GiGPO's anchor grouping with exact anchors and no state matching.
+  - A question with evidence in several sessions credits each of them with its outcome.
+- **(iii) Counterfactual credit (upper reference).**
+  - A note's marginal contribution: the outcome with the note, minus the outcome re-simulated without it, on the
+    questions it could serve. It is normalised as in (ii).
+  - It needs one extra simulation per note. With a real reader that would mean extra reader calls, so it is an
+    upper reference, not a deployable method.
+  - It uses the evidence labels only through the outcome, like (i) and (ii).
+
+**4. Folds.** Cross-fitted over conversations: 5 folds of 2 held-out conversations (leave-two-out). Each variant is
+trained on 8 conversations and tested on the 2 held out. The supervised initialisation is also fitted without the
+held-out conversations. All 10 conversations are tested once per seed. Intervals are clustered by conversation, and
+seeds are averaged per question.
+
+**Training budget (fixed now).** 300 updates per fold and seed, G = 8, Adam with learning rate 1e-3, no KL term,
+entropy bonus 0.01. The same for every variant. The test policy is greedy (top-scoring order, filled by the same
+budget rule).
+
+**5. Gate (pre-registered; held-out old-evidence accuracy, conversation-clustered 95% intervals).**
+- **Per-write credit pays** if (ii) minus (i) has an interval entirely above 0 **and** (ii) minus `learned-knapsack`
+  has an interval entirely above 0.
+- If (ii) does not beat (i): "uniform credit suffices" is the finding.
+- If neither beats `learned-knapsack`: "RL adds nothing over the supervised writer here" is the finding, and
+  §21a's +0.140 is recorded as headroom that neither credit scheme reaches.
+- (iii) is reported as the reference for how much better credit could do.
+- Also reported: everything by evidence age, and the share of the oracle gap closed:
+  (variant − learned-knapsack) / (oracle − learned-knapsack).
+
+**Expectation, written before any run.** (ii) beats (i): per-write credit gives each session a direct signal, while
+uniform credit spreads one noisy number over about 20 writes. Both should beat `learned-knapsack` modestly, by a
+third of the gap or less. (iii) is at least as good as (ii).
+
+**6. Paid stage (NEEDS SPEND; not proposed until the gate is read).**
+- The final policies of (i), (ii), `learned-knapsack` and the oracle, run with the frozen reader on held-out
+  conversations, with the §20 abstractive notes compared against extractive notes.
+- One pod, an estimate from measured latency, and a stub run with a resume rehearsal first.
+
 ## 5. The sequential task
 
 ```bash
