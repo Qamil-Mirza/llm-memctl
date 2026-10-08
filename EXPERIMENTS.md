@@ -2962,8 +2962,9 @@ GRPO's uniform episode-level credit, with the same rollouts, compute and initial
   variant starts from the same writer.
 
 **2. Reward.** The scripted outcome of §21: on each old-evidence question, all evidence in view among the top 8 by
-fusion search over the survivors. Training sees nothing but these outcomes; no evidence label enters the policy or
-its features. The outcome itself is computed from the labels, as in any simulator.
+fusion search over the survivors. No evidence label enters the policy or its features. Whether a variant uses
+labels *at training time* is stated per variant below (corrected at review). The outcome itself is computed from
+the labels, as in any simulator.
 
 **3. Variants** (pre-registered; the same rollouts, compute and initialisation; 3 seeds each; G = 8 rollouts per
 conversation per update):
@@ -2976,25 +2977,49 @@ conversation per update):
   - The advantage is normalised per session across the G rollouts. The stream is fixed, so every rollout visits
     the same sessions: this is GiGPO's anchor grouping with exact anchors and no state matching.
   - A question with evidence in several sessions credits each of them with its outcome.
+  - **(ii) uses the evidence labels at training time** (to link questions to sessions), and none at test time.
 - **(iii) Counterfactual credit (upper reference).**
-  - A note's marginal contribution: the outcome with the note, minus the outcome re-simulated without it, on the
-    questions it could serve. It is normalised as in (ii).
+  - A note's marginal contribution: the outcome with the note, minus the outcome re-simulated without it, summed
+    over *all* questions asked w or more sessions after s. It is normalised as in (ii).
+  - It is label-free in the policy's sense: no question is linked to a session by its evidence.
   - It needs one extra simulation per note. With a real reader that would mean extra reader calls, so it is an
     upper reference, not a deployable method.
-  - It uses the evidence labels only through the outcome, like (i) and (ii).
+  - It uses the evidence labels only through the outcome.
+- **(iv) Time-forward credit (label-free control, added at review).**
+  - Session s's note is rewarded by the outcomes of *every* question asked w or more sessions after s, normalised
+    per session across the G rollouts exactly as (ii).
+  - **Reading, declared now:** (ii) minus (iv) is what the hindsight linking buys over mere per-session grouping.
+    If it is about 0, the deployable label-free variant (iv) is the result, which is better news, not worse.
+
+**Advantage and update (the same for every variant, declared before any run).**
+- Advantages are normalised by subtracting the group mean only (as in §16), with no division by the standard
+  deviation, which is unstable for per-session groups of 8 with sparse rewards.
+- The update is on-policy: one gradient step per batch of rollouts, with no importance ratio and no clipping.
+
+**Training simulator (declared before any run).** Training uses a fast surrogate of the §21 retrieval:
+- turn and question embeddings and per-turn BM25 scores are computed once per conversation;
+- a note is ranked by the best of its turns on each list;
+- the two lists are fused by reciprocal rank as in `FusionRetriever`.
+Every test number comes from the exact §21 simulator. The surrogate's agreement with the exact one is reported on
+the §21 policies before training.
 
 **4. Folds.** Cross-fitted over conversations: 5 folds of 2 held-out conversations (leave-two-out). Each variant is
 trained on 8 conversations and tested on the 2 held out. The supervised initialisation is also fitted without the
 held-out conversations. All 10 conversations are tested once per seed. Intervals are clustered by conversation, and
 seeds are averaged per question.
 
-**Training budget (fixed now).** 300 updates per fold and seed, G = 8, Adam with learning rate 1e-3, no KL term,
-entropy bonus 0.01. The same for every variant. The test policy is greedy (top-scoring order, filled by the same
+**Training budget.** Adam with learning rate 1e-3, no KL term, entropy bonus 0.01, G = 8, the same for every
+variant. **The number of updates is provisional (300)** until one surrogate rollout has been timed.
+- 300 updates × 8 conversations × G = 8, over 5 folds, 3 seeds and 4 variants, is about 1.15M conversation rollouts.
+- If the measured total exceeds about 12 hours on the laptop under `guard.sh`, updates or G are cut, and which one
+  is written here before training.
+- Training learning curves are reported, with no early stopping on test. The test policy is greedy as declared;
+  the stochastic policy's mean is descriptive. The test policy is greedy (top-scoring order, filled by the same
 budget rule).
 
 **5. Gate (pre-registered; held-out old-evidence accuracy, conversation-clustered 95% intervals).**
 - **Per-write credit pays** if (ii) minus (i) has an interval entirely above 0 **and** (ii) minus `learned-knapsack`
-  has an interval entirely above 0.
+  has an interval entirely above 0. The same comparisons are reported for (iv), the label-free version.
 - If (ii) does not beat (i): "uniform credit suffices" is the finding.
 - If neither beats `learned-knapsack`: "RL adds nothing over the supervised writer here" is the finding, and
   §21a's +0.140 is recorded as headroom that neither credit scheme reaches.
