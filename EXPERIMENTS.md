@@ -3085,12 +3085,19 @@ different, weaker row that I introduced at evaluation time.
   - (ii) minus (iv): **+0.012 (+0.002, +0.023)**.
   - (iv) minus (i): +0.003 (−0.005, +0.010).
   - (iv) minus `learned-knapsack`: −0.027 (−0.048, −0.007).
-  - By the reading declared in §22, the hindsight *linking* buys the gain. Per-session grouping without the evidence
-    links does no better than uniform credit. So the deployable label-free variant does not carry the effect here:
-    per-write credit works because it knows which questions each write served.
-  - Training-curve check: (ii) and (iii) average to the same rounded curve (0.282 → 0.350). The run files differ
-    (fold 0, seed 0: 0.365 against 0.367 at the end; the writers differ), so this is not a duplicated run. Both
-    credit a write by the questions it served.
+  - **Attribution.** Per-session grouping alone (iv) is about the same as uniform credit (i), and the whole
+    per-write gain comes from the hindsight linking: (ii) minus (iv) is +0.012 (+0.002, +0.023).
+  - **Consequence for deployment.** The gain needs evidence labels at training time, to link questions to the
+    sessions holding their evidence. The supervised writer uses the same labels, so neither method is label-free;
+    the label-free variant (iv) does not carry the effect.
+  - **Why (ii) and (iii) share a training curve** (0.282 → 0.350 on average). Under the lossy rule, a question whose
+    evidence lies wholly in session s can be answered past w only if s's note holds that evidence, so its outcome
+    without the note is 0. Its outcome, which is (ii)'s credit, then equals the note's marginal effect, which is
+    (iii)'s credit.
+    - The two differ only on multi-session questions, and through displacement: a note that wins a top-8 slot can
+      push another item out.
+    - So the signals nearly coincide by construction, not by accident. The run files differ (fold 0, seed 0: 0.365
+      against 0.367 at the end; the writers differ), so it is not a duplicated run.
 - **Compute slip.** Under the 12-job load a cheap run took about 30–40 min, not the measured 12–15 min. The
   laptop has 8 physical cores, and 15 slow (iii) jobs left a tail. The batch ran well past the 5–6 h estimate; the
   measured total is added when the batch ends.
