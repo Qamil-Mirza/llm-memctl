@@ -47,7 +47,9 @@ upper bound for a stream that asks many questions per session.
 **Setup assumed:** 500 test questions × 32 candidates, one Choice question per item, one batched request per
 question (memctl/controllers/jev.py).
 - **Price [assumption, from the code]:** **$0.042 per million input tokens, output free.** This is recorded in
-  `memctl/controllers/jev.py` from docs.typesafe.ai/models, read 2026-09-28, and **not re-checked today**.
+  `memctl/controllers/jev.py` from docs.typesafe.ai/models, read 2026-09-28, and **re-read on 2026-10-08:
+  unchanged** ("Price (per Btok / per Mtok) | $42 / $0.042", output tokens free; model listed as `jev-1.13.0`). The
+  range below therefore stands.
 - **Tokens per request [derived].** Each item sends its text (about 150 tokens; LongMemEval turns average about
   150 in our prompts), about 40 tokens of metadata fields, and about 70 tokens of question and criteria: about 260
   tokens per item. Over 32 items, with the state wrapper, that is **about 8.4k tokens per question**.
