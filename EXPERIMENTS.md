@@ -66,7 +66,7 @@ commands given).
 | 19 | Adaptive k (5, 8 or 16 of 32); reader test §19c | Adaptivity stopped at its time box (the ceiling is the finding). Reader: LME `fixed8` 0.545 vs §15 head 0.500 (+0.045, CI +0.011..+0.079) at 1,049 tokens, PASS; LoCoMo `fixed5` +0.023 (CI −0.001..+0.048), no pass. Exploratory: LME `fixed16` −0.057 vs `fixed8` (context rot on a controlled pair); LoCoMo `fixed16` 0.344 at 734 tokens beats FIFO 10% (0.295 at 3,087). $0.36. §19d confirmation (head B, second host): −0.026 (CI −0.066..+0.015), NOT CONFIRMED; the decomposition repeats (P(correct \| in view) −0.088); $0.10 |
 | 20 | Write action: notes beside the top 8 (§20) | Gate FAILED for both note arms (containment vs `fixed8`: +0.028 retrieval-time notes, +0.043 stored session notes, bar +0.05; both CIs above 0); no reader stage. Session notes are the most token-efficient evidence (+0.043 for about 300 tokens vs +0.060 for 1,520 raw). Gate spend about $0.81 (four pods) |
 | 21 | Sequential task, lossy memory (LoCoMo; free, scripted) | Oracle gate PASSES: oracle − best rule +0.177 (CI +0.126..+0.224) on old-evidence questions; cross-fitted learned notes reach +0.038 (AUC 0.74–0.84), leaving +0.139 for §22; unlimited-archive control gap +0.016. $0 |
-| 22 | Credit for the note-writer (simulator, free) | Per-write hindsight credit beats uniform GRPO (MLP +0.015; linear +0.036); time-forward (label-free) ≈ uniform; counterfactual best RL (0.141). No RL variant beats the supervised writer (0.146); from the supervised init (§22b) RL makes it worse (−0.027). $0 |
+| 22 | Credit for the note-writer (simulator, free) | Per-write hindsight credit beats uniform GRPO (MLP +0.015; linear +0.036); time-forward (label-free) ≈ uniform; counterfactual best RL (0.141). No RL variant beats the supervised writer (0.146); from the supervised init (§22b) RL makes it worse (−0.027). §22c (KL to init, update count chosen on an inner split): level with supervised, −0.001 (CI −0.012..+0.011), clause FAILS narrowly; RQ3 closed. $0 |
 | 23 | Reader size ladder (Qwen 3B/7B/14B, Granite 2B/8B) | Claim 2 NON-INFERIOR: fixed8 at 7B minus FIFO at 14B +0.034 (CI −0.013..+0.079), closes 150% of the size gap. Claim 1 NOT SHOWN: fixed8 at 3B minus FIFO at 7B −0.121, closes 56%. Granite secondary not shown. $0.83 |
 
 ---
@@ -3290,6 +3290,43 @@ conversations).**
 - Per run: about 40–80 min. 30 runs on 12 slots is 3 waves (12, 12, 6), about **2–4 h** wall-clock (about 3 h if
   the chosen counts sit near the middle), under `guard.sh`.
 - No more long jobs than slots.
+
+### 22c-a. Result: with a pull to the init, RL stays level with the supervised writer; the clause fails narrowly; RQ3 closed (2026-10-08)
+
+All 30 runs ((ii) and (i), 5 folds × 3 seeds), from ea95030 under the amended rule, ran 20:43–22:40 UTC (about
+2 h, within the 2–4 h estimate). The update counts were chosen on the inner pairs by the **surrogate** simulator.
+Each writer was evaluated **once**, on its fold's held-out conversations, by the exact simulator, with knapsack
+packing (`runs/_pipelines/exp22b_eval.py` → `runs/exp22c_eval.json`; table `runs/exp22c_report.md`). The init row
+is the logistic fit on all 8 training conversations (`learned-knapsack`).
+
+**Chosen update counts** (folds 0–4 × seeds 0–2, in order; descriptive):
+- (ii): 0, 0, 50, 50, 0, 0, 150, 200, 125, 25, 125, 50, 0, 150, 0. That is 0 (no RL at all) in 6 of 15 runs.
+- (i): 250, 225, 225, 150, 75, 225, 0, 225, 25, 250, 200, 25, 175, 175, 0.
+
+| policy | held-out old-evidence accuracy | age 2 | age 3–5 | age 6+ |
+|---|---|---|---|---|
+| oracle (§21) | 0.286 | 0.306 | 0.355 | 0.179 |
+| (i) episode GRPO + KL | 0.147 | 0.140 | 0.195 | 0.087 |
+| `learned-knapsack` (the init) | 0.145 | 0.145 | 0.192 | 0.080 |
+| (ii) per-write hindsight + KL | 0.144 | 0.141 | 0.189 | 0.083 |
+
+**Verdict under the pre-registered clause.**
+- (ii)+KL minus `learned-knapsack` is **−0.001 (−0.012, +0.011)**. The lower bound, −0.012, is below −0.01, so
+  the clause **FAILS, narrowly**.
+- Descriptive: (ii)+KL minus (i)+KL is −0.004 (−0.014, +0.008); (i)+KL minus `learned-knapsack` is +0.002
+  (−0.001, +0.006).
+
+**Reading.**
+- The pull did what it was for. Unlike §22b, neither variant degrades the supervised writer: both stay within
+  about a point of it.
+- Neither improves on it either. The inner selection often chose no RL at all for (ii) (0 updates in 6 of 15
+  runs), so the training conversations themselves showed no update count that helped.
+- The clause's failure is a width failure: the point estimate is −0.001, and the interval reaches just past the
+  −0.01 margin.
+- **RQ3, closed on this task.** Credit assignment matters (per-write over uniform in §22 and §22b, wherever RL
+  learns anything). But RL does not beat imitation for the note-writer, with or without regularisation.
+- Supervised learning on the same evidence labels is the stronger and cheaper learner here, consistent with §10
+  and §16a.
 
 ## 23. Does a memory controller lift a small reader to the next size class? (N8; 2026-10-08, pre-registered)
 

@@ -202,6 +202,9 @@ Granite-3.1 2B and 8B) on LongMemEval, with one prompt and one blind judge.
     data, and per-write credit overfits 8 conversations with no KL pull back to the init.
   - RQ3's answer stands on real conversations: credit assignment matters (per-write over uniform), but RL does not
     beat imitation here.
+  - **§22c closes RQ3.** With a KL pull to the supervised writer, and an update count chosen on an inner split of
+    the training conversations (no held-out information), per-write RL stays level with the supervised writer:
+    −0.001 (−0.012, +0.011). The no-harm clause fails narrowly, on width. The inner split often chose 0 updates.
 - **Next:** writing.
 
 ## Adaptive k (§19, done)
