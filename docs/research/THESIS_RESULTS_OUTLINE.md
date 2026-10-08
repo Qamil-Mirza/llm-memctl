@@ -106,6 +106,23 @@ Before the chapter is final, the Experiment 15 head row should be added to it.
     exploratory.
 - **Tables:** §12 headroom; §13b; §15b LoCoMo transfer; §18a.
 
+## Reader size ladder (§23): a drop-in controller across five readers
+
+The same §19 controller, trained without any reader, was put in front of five readers (Qwen2.5 3B, 7B and 14B;
+Granite-3.1 2B and 8B) on LongMemEval, with one prompt and one blind judge.
+- **Claim 2, non-inferior.** Qwen 7B with the controller, minus Qwen 14B with FIFO + floor: +0.034 (−0.013,
+  +0.079), with the lower bound inside the −0.03 margin. The share of the size gap closed has a point estimate
+  above one (1.50) and an interval that includes one (0.83, 2.85). Write "non-inferior", not "better".
+- **Claim 1, not shown.** Qwen 3B with the controller stays below the 7B baseline: −0.121 (−0.170, −0.070), closing
+  56% of the gap.
+  - The 3B's gain is refusal-driven: its "unknown" share falls from 0.709 to 0.372, while P(correct | answered)
+    falls from 0.555 to 0.502.
+  - At 14B the gain is precision-driven: P(correct | answered) rises from 0.691 to 0.742.
+- **Granite 2B is not helped** (−0.004), and Granite 8B gains +0.049.
+- **The cost of a longer prompt shrinks with Qwen size:** `fixed16` minus `fixed8` is −0.113 at 3B, −0.051 at 7B
+  and −0.026 at 14B.
+- **Figure:** `figures/exp23_ladder.png`. Cost: $0.83.
+
 ## Protocol section (methods)
 
 - **Folds and scoring.** Stratified 5-fold LongMemEval; LoCoMo categories 1–4, with refusal-scored questions
@@ -136,8 +153,10 @@ Before the chapter is final, the Experiment 15 head row should be added to it.
   | 19c: reader test of the adaptive-k picks | 0.74 h | $0.36 |
   | 19d: confirmation of the context-rot pair | 0.20 h | $0.10 |
   | 20: write-action gate stage (four pods; gate failed) | 1.67 h | $0.81 |
-  | **benchmark programme (13–20)** | 10.47 h | **$5.12** |
-  | **all experiments** | 19.30 h | **$9.44** |
+  | 21–22: sequential task and credit assignment (simulator, CPU) | — | $0 |
+  | 23: reader size ladder (five readers, one pod at $0.59/h) | 1.40 h | $0.83 |
+  | **benchmark programme (13–23)** | 11.87 h | **$5.95** |
+  | **all experiments** | 20.70 h | **$10.27** |
 - **Provenance.**
   - Every run records its commit and a dirty flag.
   - The sharded LongMemEval loader has a test showing it plays the same episodes as the full file.
