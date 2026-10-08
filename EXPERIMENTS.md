@@ -66,6 +66,7 @@ commands given).
 | 19 | Adaptive k (5, 8 or 16 of 32); reader test §19c | Adaptivity stopped at its time box (the ceiling is the finding). Reader: LME `fixed8` 0.545 vs §15 head 0.500 (+0.045, CI +0.011..+0.079) at 1,049 tokens, PASS; LoCoMo `fixed5` +0.023 (CI −0.001..+0.048), no pass. Exploratory: LME `fixed16` −0.057 vs `fixed8` (context rot on a controlled pair); LoCoMo `fixed16` 0.344 at 734 tokens beats FIFO 10% (0.295 at 3,087). $0.36. §19d confirmation (head B, second host): −0.026 (CI −0.066..+0.015), NOT CONFIRMED; the decomposition repeats (P(correct \| in view) −0.088); $0.10 |
 | 20 | Write action: notes beside the top 8 (§20) | Gate FAILED for both note arms (containment vs `fixed8`: +0.028 retrieval-time notes, +0.043 stored session notes, bar +0.05; both CIs above 0); no reader stage. Session notes are the most token-efficient evidence (+0.043 for about 300 tokens vs +0.060 for 1,520 raw). Gate spend about $0.81 (four pods) |
 | 21 | Sequential task, lossy memory (LoCoMo; free, scripted) | Oracle gate PASSES: oracle − best rule +0.177 (CI +0.126..+0.224) on old-evidence questions; cross-fitted learned notes reach +0.038 (AUC 0.74–0.84), leaving +0.139 for §22; unlimited-archive control gap +0.016. $0 |
+| 22 | Credit for the note-writer (simulator, free) | Per-write hindsight credit beats uniform GRPO (MLP +0.015; linear +0.036); time-forward (label-free) ≈ uniform; counterfactual best RL (0.141). No RL variant beats the supervised writer (0.146); from the supervised init (§22b) RL makes it worse (−0.027). $0 |
 | 23 | Reader size ladder (Qwen 3B/7B/14B, Granite 2B/8B) | Claim 2 NON-INFERIOR: fixed8 at 7B minus FIFO at 14B +0.034 (CI −0.013..+0.079), closes 150% of the size gap. Claim 1 NOT SHOWN: fixed8 at 3B minus FIFO at 7B −0.121, closes 56%. Granite secondary not shown. $0.83 |
 
 ---
@@ -3045,10 +3046,10 @@ third of the gap or less. (iii) is at least as good as (ii).
   conversations, with the §20 abstractive notes compared against extractive notes.
 - One pod, an estimate from measured latency, and a stub run with a resume rehearsal first.
 
-### 22a. Interim result: per-write credit beats uniform credit (clause 1 passes); RL does not beat the supervised writer (clause 2 fails) (2026-10-08)
+### 22a. Result: per-write credit beats uniform credit (clause 1 passes); RL does not beat the supervised writer (clause 2 fails) (2026-10-08)
 
-**Status.** This covers the 30 runs of (i) and (ii) (5 folds × 3 seeds each). (iv) time-forward and the last three
-(iii) runs are still training. §22a closes only when they are in, because (ii) minus (iv) is the label question.
+**Status: closed.** All 60 runs (4 variants × 5 folds × 3 seeds) finished by 20:19 UTC on 2026-10-08. The final
+table is `runs/exp22_report_final.md` (`runs/exp22_eval_final.json`).
 Everything is free, at c7316f0. The test is the exact §21 simulator on each fold's held-out conversations, greedy
 (`runs/_pipelines/exp22_eval.py` → `runs/exp22_eval_main.json`). Each question is averaged over seeds, and the
 intervals are clustered by conversation.
@@ -3099,6 +3100,14 @@ different, weaker row that I introduced at evaluation time.
       push another item out.
     - So the signals nearly coincide by construction, not by accident. The run files differ (fold 0, seed 0: 0.365
       against 0.367 at the end; the writers differ), so it is not a duplicated run.
+- **(iii) counterfactual credit (the upper reference; all 15 runs):** 0.141 held-out.
+  - (iii) minus (ii): +0.009 (+0.004, +0.015).
+  - (iii) minus (i): +0.025 (+0.015, +0.035).
+  - (iii) minus `learned-knapsack`: −0.005 (−0.025, +0.013).
+  - The strongest credit signal is the best RL variant, but it does not beat the supervised writer either.
+- **Measured total compute:** 03:11 to 20:19 UTC, about **17 h** wall-clock on 12 workers, against an estimate of
+  5–6 h. The last three (iii) runs alone ran about 6.5 h at the tail. The lessons (time jobs under the real
+  parallel load; never put more long jobs in the queue than there are slots) are in the pre-launch checklist.
 - **Compute slip.** Under the 12-job load a cheap run took about 30–40 min, not the measured 12–15 min. The
   laptop has 8 physical cores, and 15 slow (iii) jobs left a tail. The batch ran well past the 5–6 h estimate; the
   measured total is added when the batch ends.
@@ -3141,10 +3150,151 @@ with the longest jobs first, and the measured total is written here before train
 - 45 runs ((i), (ii) and (iv) × 5 folds × 3 seeds), 9 at a time: **about 2.5–3 h**.
 - (iii) is not run in this batch, as allowed by the text above.
 
-## 23. Does a memory controller lift a small reader to the next size class? (N8; 2026-10-08, DRAFT pre-registration)
+### 22b-a. Result: RL from the supervised writer makes it worse; per-write credit least (2026-10-08)
 
-**Status:** agreed with the review (rulings applied below). It needs spend: nothing runs on a pod until the user
-approves the figure.
+All 45 runs ((i), (ii) and (iv) × 5 folds × 3 seeds), from 1e78524, finished at 20:18 UTC (about 3.8 h; the
+estimate was 2.5–3 h).
+- **Compute incident.** §22b took 16:30–20:18 UTC, about 3.8 h against 2.5–3 h. §22a took about 17 h against 5–6 h.
+- **Causes, measured.**
+  - Per-update cost rose under load: §22b's 4.6 s per update was timed beside 3 jobs, but it ran beside 12 on 8
+    physical cores (16 threads).
+  - §22b adds a surrogate held-out evaluation every 50 updates.
+  - §22a queued 15 slow (iii) jobs into 12 slots, leaving a 6.5 h tail of three.
+- **Rule for the next simulator estimate:** use the per-update time measured under the real parallel load, and
+  never queue more long jobs than there are slots. Measured from §22b: 45 runs × 300 updates in about 3.8 h on 9
+  slots, so about 0.76 h per run, or **about 9 s per update under load**. Evaluation is the exact simulator on held-out conversations, with knapsack packing for every
+policy, as declared (`runs/_pipelines/exp22b_eval.py` → `runs/exp22b_eval.json`; table `runs/exp22b_report.md`).
+The init row is each run's own start, which is the cross-fitted logistic writer.
+
+| policy | held-out old-evidence accuracy | age 2 | age 3–5 | age 6+ |
+|---|---|---|---|---|
+| oracle (§21) | 0.286 | 0.306 | 0.355 | 0.179 |
+| `learned-knapsack` (the init) | **0.145** | 0.145 | 0.192 | 0.080 |
+| (ii) per-write hindsight | 0.117 | 0.129 | 0.143 | 0.075 |
+| (iv) time-forward | 0.096 | 0.105 | 0.124 | 0.053 |
+| (i) episode GRPO | 0.081 | 0.097 | 0.101 | 0.046 |
+
+**Verdict under the pre-registered gate.**
+- **Clause 1, PASS.** (ii) minus (i) is **+0.036 (+0.021, +0.054)**.
+- **Clause 2, FAIL**, and in the wrong direction: (ii) minus `learned-knapsack` is **−0.027 (−0.049, −0.003)**.
+- (ii) minus (iv) is +0.021 (+0.008, +0.037), and (iv) minus (i) is +0.015 (+0.007, +0.024). The hindsight linking
+  again carries most of the per-write advantage.
+
+**The held-out diagnostic** (surrogate, every 50 updates, mean over runs) shows the decline directly, not
+inferred. It was computed on held-out conversations during training and used for interpretation only, not for any
+choice in §22b. §22c nearly reused it to fix its stopping point, and that rule was withdrawn.
+
+| update | 0 | 50 | 100 | 150 | 200 | 250 | 300 |
+|---|---|---|---|---|---|---|---|
+| (ii) hindsight | 0.145 | 0.145 | 0.142 | 0.137 | 0.127 | 0.117 | 0.117 |
+| (iv) time-forward | 0.141 | 0.113 | 0.102 | 0.096 | 0.097 | 0.097 | 0.097 |
+| (i) episode | 0.144 | 0.107 | 0.096 | 0.087 | 0.085 | 0.086 | 0.081 |
+
+The training curves (surrogate, the first and last 20 updates) separate two failures:
+- **(i) and (iv) get worse even on their own training conversations** (0.143 → 0.090 and 0.145 → 0.116). With
+  uniform or time-forward credit, the gradient is mostly noise, and it moves a good init away from where it was.
+- **(ii) improves on training (0.153 → 0.220) while declining held out (0.145 → 0.117)**, which is overfitting.
+  The "linear" writer still has 392 inputs (384 of them embedding dimensions) and learns from 8 conversations. The
+  supervised fit was regularised (C = 0.1), but the RL stage has no pull back to the init: §22 declared no KL
+  term.
+
+**Interpretation (labelled as such; the verdict lines above stand).** Clause 1 must not be read as "hindsight
+credit generalises better". The curves show two different failures. Surrogate old-evidence accuracy on the
+training conversations, from the first update to the last (the means of the first and last 20 updates in
+brackets):
+- **(i) episode** goes from 0.146 to 0.091 (0.143 → 0.090), and **(iv) time-forward** from 0.146 to 0.116
+  (0.145 → 0.116). Both get *worse on their own training set* over 300 updates. At this group size (G = 8) and
+  learning rate, their gradient carries no usable signal, and they drift.
+- **(ii) hindsight** is the only variant that improves on training: 0.146 to 0.220 (0.153 → 0.220). It then
+  overfits 8 conversations with no KL pull to the init: held out it goes 0.145 → 0.117, flat for the first 100
+  updates.
+- So clause 1 says that **hindsight credit is the only variant with a usable training signal in this regime**.
+  Clause 2's failure is about regularisation and data, not the credit signal.
+
+**Reading.** The expectation written for this case ("the credit signal is real but the supervised writer already
+captures what the features can express") holds only in part:
+- The credit signal is real: per-write credit beats uniform credit in both §22 and §22b, and it is the only
+  variant that improves on its training data.
+- But RL from the supervised writer does not just fail to add; it subtracts.
+- Two declared choices are the likely causes: no KL term (or other pull back to the init), and the embedding
+  features (high-dimensional against 8 training conversations).
+- One more is possible: training samples notes by logit (a Plackett–Luce order), while the test packs by
+  probability per token.
+- A follow-up (a KL term to the init, or the 8 handcrafted features without the embedding, and training sampled as
+  tested) would be a new pre-registration. None is proposed here.
+
+## 22c. Per-write credit with a pull to the supervised writer: the close of RQ3 (N7c; DRAFT, not run; the user decides)
+
+**Status:** the design was amended at the user's objection to any use of held-out information (see the stopping
+rule). The re-estimated laptop time needs the user's go-ahead before relaunch. Whatever it shows, it closes RQ3 on
+this task.
+
+**Question.** §22b showed that hindsight credit is the only variant with a usable training signal, but that it
+overfits 8 conversations with nothing pulling it back to the supervised init. With such a pull, and stopping
+where the held-out diagnostic was still flat, does per-write credit at least not damage the supervised writer, and
+perhaps improve it?
+
+**Fixed now.**
+- **Policy and init:** the §22b linear writer, initialised at the cross-fitted logistic fit (`learned-knapsack`).
+- **Variants:** (ii) per-write hindsight credit, and (i) episode GRPO as the control. Both carry the same pull.
+- **The pull:** a KL penalty to the init, β × KL(π_θ ‖ π_init), on each session's first-pick distribution (the
+  softmax over that session's turns), summed over sessions, with **β = 0.1**. β is fixed now and not tuned.
+  - **Scope of the pull.** The KL is on the first-pick distribution, not on the full ordered-prefix Plackett–Luce
+    distribution, so later picks are pulled only through the shared weights.
+- **Stopping rule (amended at the user's objection; it sees training conversations only).** No design choice
+  uses held-out information.
+  - Within each fold, the 8 training conversations are split 6/2, with the split fixed by the seed (a permutation
+    with `numpy.random.default_rng(1000 + seed)`; the last 2 are the inner validation pair).
+  - A writer is trained on the 6 from an init fitted on those 6 only (the logistic writer, which is also the KL
+    anchor), with a checkpoint every 25 updates up to 300. Fitting the init on all 8 would leak the inner pair. The checkpoint with
+    the best surrogate accuracy (greedy, knapsack packing) on the inner 2 is chosen; ties go to fewer updates.
+  - A new writer is then trained on all 8, from the logistic fit on the 8 (the `learned-knapsack` row and the KL
+    anchor), for exactly that many updates, and evaluated **once**, on
+    the fold's held-out conversations, with the exact simulator.
+  - Nothing on the held-out side is computed or written before that update count is fixed. The same rule applies
+    to (i). The chosen update counts are reported as description.
+  - Inner validation pairs (fold: seed 0 / seed 1 / seed 2):
+
+    | fold | seed 0 | seed 1 | seed 2 |
+    |---|---|---|---|
+    | 0 | 7, 9 | 2, 7 | 3, 9 |
+    | 1 | 7, 9 | 0, 7 | 1, 9 |
+    | 2 | 7, 9 | 0, 7 | 1, 9 |
+    | 3 | 5, 9 | 0, 5 | 1, 9 |
+    | 4 | 5, 7 | 0, 5 | 1, 7 |
+- **The first rule, withdrawn.** It fixed 100 updates from §22b's held-out diagnostic. A launch under that rule
+  (20:39 UTC, 2026-10-08) was stopped at about 20:41 UTC at the user's objection, before any run finished. No
+  held-out accuracy from it was computed or read. Its partial folders are quarantined in
+  `runs/exp22c_peek_quarantine/`.
+- **Held fixed from §22b:** G = 8; mean-only advantages; on-policy, one step per batch; Adam with learning rate
+  1e-3; entropy bonus 0.01; the surrogate for training and the exact simulator for testing; knapsack packing at
+  test; 5 leave-two-out folds × 3 seeds. That is 15 runs per variant, 30 in all.
+- **No held-out diagnostic during training.** Test accuracy is computed once per run, at the end.
+
+**Single clause (pre-registered).** (ii)+KL minus `learned-knapsack`, on held-out old-evidence accuracy
+(conversation-clustered, seeds averaged), has a 95% lower bound above −0.01.
+- If it holds: per-write credit with a pull to the init does no material harm to the supervised writer. Any gain
+  is reported with its interval.
+- If not: RL does not help the supervised note-writer even when regularised.
+- Either way, **RQ3 is closed on this task**: credit assignment matters (per-write over uniform), and imitation
+  is the stronger learner here.
+- (ii)+KL minus (i)+KL is reported as description.
+
+**Expectation, written down.** The lower bound clears −0.01, with a gain near 0.
+
+**Laptop time, from measured throughput (§22b: about 9 s per update under a 12-job load, with 8 training
+conversations).**
+- Inner selection: 300 updates on 6 conversations, about 6.8 s each, about 34 min per run, plus 12 inner
+  evaluations (small).
+- Retrain on 8 conversations for the chosen count: up to 300 updates, about 9 s each, at most 45 min.
+- Per run: about 40–80 min. 30 runs on 12 slots is 3 waves (12, 12, 6), about **2–4 h** wall-clock (about 3 h if
+  the chosen counts sit near the middle), under `guard.sh`.
+- No more long jobs than slots.
+
+## 23. Does a memory controller lift a small reader to the next size class? (N8; 2026-10-08, pre-registered)
+
+**Status:** run 2026-10-08 on pod l29poll3lrjuat, about $0.83; the result is in §23a. The pre-registration text
+below is unchanged.
 
 **Why it is usable as a drop-in.** The §19 head is reader-free: it was trained on evidence labels, never on any
 reader's answers. So the same controller is used, unchanged, for all five readers.
