@@ -135,8 +135,9 @@ Before the chapter is final, the Experiment 15 head row should be added to it.
   | 18: second judge and LoCoMo exploratory | 0.32 h | $0.16 |
   | 19c: reader test of the adaptive-k picks | 0.74 h | $0.36 |
   | 19d: confirmation of the context-rot pair | 0.20 h | $0.10 |
-  | **benchmark programme (13–19)** | 8.80 h | **$4.31** |
-  | **all experiments** | 17.63 h | **$8.63** |
+  | 20: write-action gate stage (four pods; gate failed) | 1.67 h | $0.81 |
+  | **benchmark programme (13–20)** | 10.47 h | **$5.12** |
+  | **all experiments** | 19.30 h | **$9.44** |
 - **Provenance.**
   - Every run records its commit and a dirty flag.
   - The sharded LongMemEval loader has a test showing it plays the same episodes as the full file.
@@ -164,7 +165,10 @@ Before the chapter is final, the Experiment 15 head row should be added to it.
 - **Closed:** RQ3.
 - **Done:** adaptive k (§19): stopped at its time box. More turns pay up to the onset; choosing k per question
   could halve the tokens (the ceiling) but two choosers did not reach it.
-- **Next:** writing.
+- **Done:** a write action (§20): stored session notes gave 70% of the containment gain of eight more raw turns
+  for a fifth of the tokens, the most token-efficient evidence measured, but fell short of the pre-registered
+  bar (+0.043 against +0.05), so no reader test.
+- **Next:** the sequential task (§21), then a GRPO variant; writing.
 
 ## Adaptive k (§19, done)
 

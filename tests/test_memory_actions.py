@@ -245,3 +245,16 @@ def test_enforce_budget_returns_an_unaffordable_retrieval_to_the_archive_instead
     assert [(r.action.operation, r.action.target_ids) for r in forced] == [(Operation.MOVE_TO_ARCHIVE, ("o0",))]
     assert state.get("o0").tier is Tier.ARCHIVE and state.get("o1").tier is Tier.ACTIVE  # o1 is older than o0's retrieval, and kept
     assert all(r.source is ActionSource.HARNESS for r in forced)
+
+
+def test_a_written_note_leaves_its_sources_where_they_were():
+    state = make_state(contents=(FACT, "The badge of agent-52 is B-8841.", "four five six"))
+    state.move("o1", Tier.ARCHIVE, "MOVE_TO_ARCHIVE", "controller")
+    engine = MemoryEngine(consolidator=DedupConsolidator())
+    result = apply_one(engine, state, Operation.CONSOLIDATE, "o0", "o1", write_note=True, note="ranks 9-16")
+    assert result.status is ActionStatus.APPLIED
+    note = state.get(result.created_ids[0])
+    assert note.tier is Tier.ACTIVE and note.metadata["speaker"] == "note" and note.metadata["note"] == "ranks 9-16"
+    assert "K93Q" in note.content and "B-8841" in note.content and set(note.derived_from_ids) == {"o0", "o1"}
+    assert state.get("o0").tier is Tier.ACTIVE and state.get("o1").tier is Tier.ARCHIVE  # sources untouched
+    assert state.get("o0").superseded_by is None

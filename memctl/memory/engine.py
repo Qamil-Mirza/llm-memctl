@@ -274,6 +274,8 @@ def _compact_and_archive(engine, state, action, source):
 
 @handler(Operation.CONSOLIDATE)
 def _consolidate(engine, state, action, source):
+    if action.parameters.get("write_note"):
+        return _write_note(engine, state, action)
     items = _targets(state, action, Tier.ACTIVE)
     if len(items) < 2:
         raise ActionError("CONSOLIDATE needs at least two ACTIVE items")
@@ -297,4 +299,39 @@ def _consolidate(engine, state, action, source):
         if not archive_sources:
             changes["superseded_by"] = new_id
         state.update(item.id, **changes)
+    return (new_id,)
+
+
+def _write_note(engine, state, action):
+    """CONSOLIDATE with `write_note` (Experiment 20): the consolidator writes one note from the targets, active or
+    archived, and the note enters ACTIVE beside them. The sources are not moved or superseded, so the note is an
+    addition to memory, not a replacement. With `labelled`, each source is given as "speaker (date): content"."""
+    from memctl.retrieval import labelled_text  # memctl.retrieval imports the memory package
+
+    items = []
+    for item_id in action.target_ids:
+        item = state.get(item_id)
+        if item is None or item.tier is Tier.DELETED:
+            raise ActionError(f"item {item_id} does not exist")
+        items.append(item)
+    if not items:
+        raise ActionError("a note needs at least one source")
+    items.sort(key=lambda item: item.created_at)
+    texts, budget = [], int(action.parameters.get("max_input_tokens", 12000))
+    for item in items:  # the writer's input is cut at max_input_tokens (§20: 12k)
+        line = labelled_text(item) if action.parameters.get("labelled") else item.content
+        if count_tokens(line) > budget:
+            break
+        texts.append(line)
+        budget -= count_tokens(line)
+    text = engine.consolidator.consolidate(texts or [items[0].content[:2000]], action.parameters.get("max_tokens"))
+    if not text:
+        raise ActionError("the note is empty")
+    new_id = state.new_id("note")
+    state.ingest(
+        new_id, text, SourceType.CONSOLIDATED_MEMORY, fidelity=Fidelity.CONSOLIDATED,
+        derived_from_ids=tuple(item.id for item in items),
+        metadata={"speaker": "note", "consolidator": engine.consolidator.name, "note": action.parameters.get("note", "group"),
+                  "origin_created_at": _origin(items)},
+    )
     return (new_id,)

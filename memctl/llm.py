@@ -173,11 +173,18 @@ def _read_cached(path: Path) -> str | None:
         return None
 
 
+CACHE_MISS = "__CACHE_MISS__"
+
+
 class TrackedLLM:
     """Wraps a backend: counts usage and, with `cache_dir`, saves every generation to disk."""
 
-    def __init__(self, backend: LLM, cache_dir: str | None = None, settings: dict | None = None) -> None:
+    def __init__(self, backend: LLM, cache_dir: str | None = None, settings: dict | None = None,
+                 cache_only: bool = False) -> None:
         self.backend = backend
+        # cache_only (Experiment 20): a miss calls nothing; it records the request under cache_dir/_misses and
+        # returns CACHE_MISS, so a free pass can list exactly which generations a run still needs.
+        self.cache_only = cache_only
         self.name = backend.name
         self.settings = settings or {}
         self.cache_dir = Path(cache_dir) if cache_dir else None
@@ -196,6 +203,11 @@ class TrackedLLM:
                 self.cache_hits += 1
                 self.usage.add(prompt, cached, time.perf_counter() - started)
                 return cached
+            if self.cache_only:
+                missing = self.cache_dir / "_misses" / f"{key}.json"
+                missing.parent.mkdir(parents=True, exist_ok=True)
+                missing.write_text(json.dumps({"prompt": prompt, "max_new_tokens": max_new_tokens}))
+                return CACHE_MISS
         output = self.backend.generate(prompt, max_new_tokens)
         if path is not None:
             # Several processes share one cache and often send the same prompt: write to a private
@@ -250,4 +262,4 @@ def build_llm(config: dict) -> TrackedLLM:
         "backend": backend_name, "name": name, "revision": config.get("revision"),
         "load_in_4bit": bool(config.get("load_in_4bit", False)), "temperature": 0.0,
     }
-    return TrackedLLM(backend, config.get("cache_dir"), settings)
+    return TrackedLLM(backend, config.get("cache_dir"), settings, bool(config.get("cache_only", False)))

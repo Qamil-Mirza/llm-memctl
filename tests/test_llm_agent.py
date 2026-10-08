@@ -188,3 +188,16 @@ def test_threads_writing_the_same_cache_key_do_not_collide(tmp_path):
     with ThreadPoolExecutor(16) as pool:
         answers = list(pool.map(lambda _: llm.generate("one prompt", 8), range(64)))
     assert set(answers) == {"same answer"}
+
+
+def test_cache_only_records_a_miss_and_calls_nothing(tmp_path):
+    from memctl.llm import CACHE_MISS, build_llm
+
+    warm = build_llm({"backend": "stub", "cache_dir": str(tmp_path)})
+    first = warm.generate("Merge the notes below. - a fact", max_new_tokens=8)
+    cold = build_llm({"backend": "stub", "cache_dir": str(tmp_path), "cache_only": True})
+    cold.backend = None  # any call to the backend would fail
+    assert cold.generate("Merge the notes below. - a fact", max_new_tokens=8) == first  # a hit
+    assert cold.generate("Merge the notes below. - another fact", max_new_tokens=8) == CACHE_MISS
+    [miss] = list((tmp_path / "_misses").iterdir())
+    assert "another fact" in miss.read_text()

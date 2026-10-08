@@ -64,6 +64,7 @@ commands given).
 | 16 | Set-valued GRPO on the selection head with the reader's verdict as reward | Gate fails: +0.0125 (−0.005, +0.033) held-out over the imitation start; flat in 4 of 5 folds. Labels already a sufficient target for this head. NEGATIVE (pre-registered) |
 | 18 | Second-family judge check; exploratory LoCoMo reader test | Granite agrees with Qwen on 97% (κ 0.95), similar error rates; ranking and the head's gain hold (+0.040, CI excludes 0). Exploratory: head transfers to LoCoMo, +0.087 (post hoc). CONFIRMS |
 | 19 | Adaptive k (5, 8 or 16 of 32); reader test §19c | Adaptivity stopped at its time box (the ceiling is the finding). Reader: LME `fixed8` 0.545 vs §15 head 0.500 (+0.045, CI +0.011..+0.079) at 1,049 tokens, PASS; LoCoMo `fixed5` +0.023 (CI −0.001..+0.048), no pass. Exploratory: LME `fixed16` −0.057 vs `fixed8` (context rot on a controlled pair); LoCoMo `fixed16` 0.344 at 734 tokens beats FIFO 10% (0.295 at 3,087). $0.36. §19d confirmation (head B, second host): −0.026 (CI −0.066..+0.015), NOT CONFIRMED; the decomposition repeats (P(correct \| in view) −0.088); $0.10 |
+| 20 | Write action: notes beside the top 8 (§20) | Gate FAILED for both note arms (containment vs `fixed8`: +0.028 retrieval-time notes, +0.043 stored session notes, bar +0.05; both CIs above 0); no reader stage. Session notes are the most token-efficient evidence (+0.043 for about 300 tokens vs +0.060 for 1,520 raw). Gate spend about $0.81 (four pods) |
 
 ---
 
@@ -2598,6 +2599,215 @@ report `runs/_pipelines/exp19d_report.py` → `runs/exp19d_report.md`.
   hosts agree in sign on accuracy (−0.057 and −0.026), and in both the decomposition shows P(correct | in view)
   falling by about 9–10 points at about 2.6k tokens. Only §19c's own interval excludes 0. A pooled estimate was not
   pre-registered and is not claimed.
+
+## 20. A write action: the reader summarises the turns it cannot afford to show (N5; 2026-10-08, DRAFT pre-registration)
+
+**Status.** The text was agreed with the review at 1f1bdae. The user approved the gate stage (about $0.20–0.30)
+on 2026-10-08. The reader stage needs a separate approval.
+
+**Build and dry run.**
+- Code at fe7051c: CONSOLIDATE gains a `write_note` mode (the note is added and its sources are untouched), the
+  floor head gains rank-group and session notes, and the reader can log its prompt.
+- Full-size stub run (stub writer, stub reader): 90 of 90 cells ran, with no failures. Peak RSS per worker is 0.27
+  GB on LongMemEval and 0.86 GB on LoCoMo. Workers: LoCoMo 10 beside LongMemEval 4 (about 9.7 GB).
+- The report (`runs/_pipelines/exp20_report.py`, written before the real notes) ran end to end on the stub output.
+  - On the raw arms, which are real even in the stub run, strict containment and all-found agree only loosely:
+    P(contained | all-found) = 0.53, against 0.30 without. Raw `fixed16` minus `fixed8` is +0.060 (+0.038, +0.083),
+    so the +0.05 bar is about what eight more raw turns buy.
+  - The gate stays as pre-registered. That calibration figure is reported beside the verdict, and a near miss is
+    read with the content-word recall and the by-type table.
+- In the gate stage the reader does not answer. A stub builds and logs the prompt; only the note writer calls the
+  model. The host and the note cache (`cache/notes_qwen7b_exp20`, keyed by prompt) are recorded, so a later full
+  write of every session can be checked against a sample.
+
+**Question.** §19 showed that on LongMemEval eight turns is about the most the reader uses well. Showing 16
+added evidence but no accuracy (§19c, §19d). The head ranks 32 candidates, so 24 of them are never seen. Can a
+*written* memory item, a short summary of the turns the reader cannot afford, add the evidence without the cost
+of the raw turns?
+
+**The action (declared now).**
+- **Writer:** the frozen reader (Qwen2.5-7B-Instruct, served as in §19c, temperature 0), with the existing
+  `LLMConsolidator` prompt (`memctl/memory/compress.py`), unchanged: "Merge the notes below into one note of at
+  most {limit} words. State each fact once. Keep every name, number and identifier. Reply with the merged note
+  only."
+- **Input:** the chosen turns as labelled text ("speaker (date): content"), so dates survive.
+- **Chunking and length cap:** ranks 9–32 are summarised in three groups of 8 by rank (9–16, 17–24, 25–32), one
+  note of at most 100 tokens each (the limit in the prompt, with the output truncated to 100), so about 300 tokens in
+  all. One note for 24 turns (about 3,500 input tokens) would lose most facts to the cap and fail the gate for the
+  cap, not the idea. Note lengths are reported.
+- **Input limit:** writer inputs are cut at 12k tokens. One LongMemEval session in 19,195 is longer.
+- **Question-blind.** The writer does not see the question, so a summary is not a second reading of the
+  question. The *set* summarised in `fixed8+sum` does depend on the question, since it comes from the head's
+  ranking: that arm tests **compression at retrieval time**. Its notes are written at the question and never reused.
+  That is not yet a memory write in the Memory-R1 / MEM1 sense (written during the stream, independent of the
+  question, reused across questions). The `fixed8+sess` arm below is that write. A question-aware writer is a
+  possible later arm.
+- **Placement:** one item shown in place of the turns it summarises, marked as a note in the prompt.
+
+**Arms** (all on the §19 head A with 32 BM25 candidates; LongMemEval five test folds; tokens estimated from §19c):
+
+| arm | shown | expected prompt tokens |
+|---|---|---|
+| `fixed8` (reference, the current best) | raw ranks 1–8 | 1,049 (measured) |
+| `fixed8+sum` | raw ranks 1–8 + three notes (≤ 100 tokens each) for ranks 9–16, 17–24, 25–32 | ≤ about 1,370 |
+| `fixed8+sess` | raw ranks 1–8 + stored session notes (below) | ≤ about 1,370 |
+| `sum16` | two notes (≤ 100 tokens each) for ranks 1–8 and 9–16, no raw turns | ≤ about 390 |
+| `fixed16` (reference) | raw ranks 1–16 | 2,569 (measured) |
+| FIFO + floor, 5%, 3k target (reference) | — | 2,964 (measured) |
+
+**The stream-time write: `fixed8+sess`.**
+- Each session gets one note (≤ 100 tokens, the same writer prompt, question-blind), written once and stored.
+- At a question, the raw top 8 are shown with the stored notes of the sessions in which ranks 9–32 fall. At most 3
+  notes are shown, chosen by the head's best rank within each session.
+- A note depends only on its session (question-blind, temperature 0, cached by session id). So writing only the
+  notes some test question uses gives exactly the notes a full stream-time pass would write. On LongMemEval that
+  is at most 1,500 notes (3 per question) instead of all 19,195 sessions, which would cost about $0.50 or more. The
+  saving changes cost, not content. LoCoMo has 272 sessions in all, and every one is written.
+- Sessions average about 2,200 tokens on LongMemEval (95th percentile about 3,900), so its input is longer than a
+  group of 8 turns.
+- **A limitation of this first version.** Notes are evicted at the next step and never become search candidates. A
+  session note is "stored" and reused only through the head's mapping from rank to session (and the writer's cache),
+  not by being found through search.
+
+**Gate-stage spend and incidents (2026-10-08), recorded before any gate number is read.**
+
+| step | pod | time (UTC) | cost | what happened |
+|---|---|---|---|---|
+| approved | — | — | $0.20–0.30 | the estimate treated note writing like judge calls |
+| pod 1 | phuj1d8j8set0t, CUDA 13.2 | 00:13:53–00:56 | ≈ $0.34 | stopped at the local deadline about half done; note writing is sequential per question (2–3 notes of about 94 tokens), and a sweep runs cells, not episodes, in parallel |
+| pod 2 (+$0.20 approved) | 82brrqh9fmttid, CUDA 13.0 | 01:33:42–01:58:15 | ≈ $0.20 | cells started on pod 1 refused to resume, because the pod URL was part of the saved config identity; only folds 2–4 and new LoCoMo cells advanced |
+| pod 3 (≤ $0.20 approved) | f8t5ck7gw771e9, CUDA 13.0 | 02:03:16–02:25 | ≈ $0.18 | unfinished cells were quarantined (`runs/_aborted_exp20`) and rerun from scratch with cached notes; stopped at the local deadline |
+| **total** | | | **≈ $0.72** | gate budgeted at $0.30 |
+
+- **Coverage at stop.**
+  - LongMemEval `fixed8_sum`: 422 of 500 questions (fold 1 has 46 of 100; folds 2–4 have 92 each).
+  - `fixed8_sess`: 341 of 500.
+  - `sum16`: 456 of 500.
+  - All raw arms are complete (the raw cells of folds 2–4 and LoCoMo ran on CPU, for free).
+  - LoCoMo `sum16`: 7 of 10 conversations; every other LoCoMo arm is complete.
+- **Note-host agreement** (the review's condition). 50 notes written on pod 1 were rewritten on pod 2: 30 of 50
+  match exactly, and the mean word overlap (Jaccard) is 0.898 (`runs/exp20_note_agreement.json`). Pod 1 wrote 6,063
+  notes; the rest came from pods 2 and 3. Every arm of a question uses the same cached note, so this does not bias
+  arm comparisons.
+- **Fix.** `memctl/runlog.py` now leaves serving endpoints (`base_url`, `timeout_s`) out of the config identity used
+  for resuming, with a test: a cell resumes against a new URL but not against a new experiment. Both lessons
+  (estimate from the measured per-call latency of the call type; test a resume against a changed endpoint) are in
+  the pre-launch checklist.
+- **The gate is incomplete.** The pre-registered verdict needs all 470 questions. Whether to finish (a further
+  spend) or to stop is the user's decision. No gate number has been computed.
+
+**The free-gate measure (a reader-free proxy, declared now).** The gold evidence labels are turn ids, and a summary
+is not a turn, so all-found cannot score summary arms. The proxy is **gold-answer containment**: the normalised
+gold answer (`memctl.metrics.normalize_answer`, as in the F1 code) appears as a contiguous word sequence in the
+normalised prompt text.
+- It is reported beside all-found for the raw arms, so the two measures can be calibrated where both exist.
+- Abstention questions are excluded (470 questions).
+- It is conservative for summary arms: a paraphrase ("four hours" for "4 hours") is not counted.
+- Long or descriptive golds (for example preference questions) are rarely contained in any arm, so containment is
+  also reported by question type, with the preference and other descriptive types shown separately.
+- **Descriptive only:** content-word recall of the gold answer (normalised tokens minus stopwords; recall ≥ 0.8
+  counts). It shows how much paraphrase loss there is rather than guessing it. It is reported beside strict
+  containment and all-found on every arm, by type, and does not gate.
+
+**Gate (pre-registered, LongMemEval; the same rule for `fixed8+sum` and `fixed8+sess`, each against `fixed8`).**
+An arm goes to the reader only if both hold:
+1. Containment of `fixed8+sum` minus `fixed8`, paired by question, is at least +0.05, with a 95% interval
+   entirely above 0.
+2. Its mean prompt tokens are at most 1.5 × `fixed8`'s (about 1,574).
+
+If both pass, both go to the reader. No Holm correction is applied at the gate, because the reader stage is
+where the claim is made.
+
+`sum16` is reported against `fixed8` and `fixed16` as description; it does not gate.
+
+**LoCoMo** (categories 1–4, fold-0 heads, fusion search): the same arms, exploratory, as in §19c. Containment and
+tokens are reported without a verdict.
+
+**Reader stage (if the gate passes; criteria declared now).**
+- **Primary:** each passing arm minus `fixed8`, accuracy on LongMemEval, paired, 95% interval above 0. Holm is
+  applied over the arms that reach the reader.
+- Also reported: the §13a decomposition for the raw arms, the unknown rate, and prompt tokens for every arm.
+- LoCoMo stays exploratory.
+
+**Caveat.** Memory-R1's written facts came from GPT-4o-mini; here the writer is the 7B reader itself, so smaller
+gains are expected. **Expectation:** positive on containment, size unknown; accuracy is the reader's test.
+
+**Cost (NEEDS SPEND; estimated from §19c's measured throughput).**
+- **Retrieval-time notes** (`fixed8+sum` three per question, `sum16` two per question):
+  - LongMemEval: 500 × 5 = 2,500 calls, inputs about 1–1.5k tokens.
+  - LoCoMo: 1,540 × 5 = 7,700 calls, short inputs.
+- **Session notes:** at most 1,500 on LongMemEval (inputs about 2.2k tokens) and 272 on LoCoMo.
+- **Gate stage:** about 12,000 short generations (≤ 100 tokens) plus start-up, about 0.4–0.6 h, **about
+  $0.20–0.30**. The session arm adds about $0.03–0.05 of that, under the $0.30 line, so it runs on both benchmarks.
+- **Reader stage (if the gate passes):** summaries are cached, so it is answers and judging only, at about §19c's
+  size. **About $0.30–0.45.**
+- Before either: a full-size stub-backend run of the whole pipeline (stub summaries) under `guard.sh`, with peak
+  RSS recorded.
+
+### 20a. Result: both note arms fail the gate; stored session notes come closest (2026-10-08)
+
+All gate cells are at fe7051c. The notes were written by four pods, the last of which only filled the cache-only
+pass's 1,229 missing notes (`memctl/fill_cache.py`, pod sr6a8clhsm3b3f, 02:30:00–02:41 UTC, about $0.09).
+Unfinished cells were quarantined (`runs/_aborted_exp20`, `runs/_aborted_exp20_b`) and rerun from scratch from the
+cache on CPU. 14,292 note actions were all applied, and no prompt holds a placeholder. **Gate-stage spend: about
+$0.81** (pods 1–3, about $0.72, plus the fill, about $0.09), against $0.20–0.30 approved at first; every extension
+was approved by the user. Report: `runs/_pipelines/exp20_report.py` (written before the notes) →
+`runs/exp20_gate_report.md`.
+
+**LongMemEval** (470 questions; the gate):
+
+| arm | containment | Δ vs `fixed8` (95% CI) | content recall ≥ 0.8 | all-found | prompt tokens | note tokens (mean) |
+|---|---|---|---|---|---|---|
+| `fixed8` | 0.423 | — | 0.530 | 0.702 | 1,049 | — |
+| `fixed8+sum` | 0.451 | +0.028 (+0.015, +0.043) | 0.566 | n/a | 1,350 | 51 |
+| `fixed8+sess` | 0.466 | +0.043 (+0.026, +0.062) | 0.574 | n/a | 1,348 | 42 |
+| `sum16` | 0.185 | −0.238 (−0.281, −0.196) | 0.211 | n/a | 414 | 62 |
+| `fixed16` (reference) | 0.483 | +0.060 (+0.038, +0.083) | 0.626 | 0.747 | 2,569 | — |
+| FIFO + floor (reference) | 0.440 | +0.017 (−0.017, +0.051) | 0.577 | 0.498 | 2,964 | — |
+
+**Verdict under the pre-registered gate: both note arms FAIL.**
+- `fixed8+sum`: +0.028, below +0.05.
+- `fixed8+sess`: +0.043, below +0.05.
+- Both intervals sit above 0, and both arms are within the token limit (1,574).
+- No reader stage is run.
+
+**Reading** (with the calibration figure beside the verdict, as agreed). On the raw arms, P(contained | all-found)
+= 0.53 against 0.30 without, so containment is a loose proxy.
+- **The notes add evidence, but less than the bar.** The bar was set at about what 8 more raw turns buy (+0.060).
+- **Stored session notes come closest.** They are question-blind and written once per session. Per token they
+  are far more efficient than raw turns: +0.043 for about 300 extra tokens, against +0.060 for about 1,520.
+- **The gains are where evidence is spread.** Multi-session goes from 0.248 to 0.339 with session notes (raw
+  `fixed16`: 0.364), and temporal from 0.181 to 0.228. Single-session types barely move, and preference golds are
+  never contained in any arm.
+- **Notes cannot replace raw turns.** `sum16`, notes only, loses most of the evidence (−0.238).
+- **Content-word recall moves like containment**, so paraphrase is not hiding a larger gain.
+
+**LoCoMo (exploratory, no verdict):**
+- `fixed8+sum` +0.042 (+0.032, +0.053) at 753 tokens, and `fixed8+sess` +0.032 (+0.023, +0.041) at 656. Both are
+  above raw `fixed16` (+0.029 at 733).
+- FIFO + floor at 10% is +0.045 at 3,087 tokens.
+- On LoCoMo's short turns, notes match or beat 8 more raw turns at the same or fewer tokens.
+
+**Summary for the write-up.**
+- **Both halves.** The stream-time session note gave 70% of raw `fixed16`'s containment gain (+0.043 against
+  +0.060) for a fifth of its extra tokens (about 300 against 1,520). On LoCoMo, both note forms beat raw `fixed16`
+  at equal or fewer tokens. The write action is the most token-efficient evidence measured here, and it fell short
+  of a bar set at "what eight raw turns buy".
+- **Proxy caveat.** P(contained | all-found) is 0.53 on the raw arms, so containment under-reads evidence in view
+  for every arm, the note arms included.
+- **Declared limitation.** In this version notes never become search candidates.
+- **Process result.**
+  - Spend: $0.81 over four pods, for a $0.30 budget. There were three causes:
+    1. The estimate used judge-call throughput for sequential note writing.
+    2. Resumes were refused when the pod URL changed.
+    3. Cells run their questions in sequence, so the slowest cell sets the pace.
+  - Fixes: estimate from the measured latency of the call type; resumes ignore the serving endpoint (78b76f7);
+    and a cache-only pass lists the exact missing generations, which `fill_cache` then writes in parallel (22fdbc4).
+    The last pod took 11 minutes, about $0.09.
+
+**What this means for the plan.** A first, untrained write action helps in the right places but does not clear
+the pre-registered bar with the 7B writer. The stream-time session note is the better form. That fits the next
+step: the sequential task, where a controller learns *when* to write.
 
 ## 5. The sequential task
 
