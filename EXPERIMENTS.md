@@ -3142,16 +3142,25 @@ with the longest jobs first, and the measured total is written here before train
 
 ## 23. Does a memory controller lift a small reader to the next size class? (N8; 2026-10-08, DRAFT pre-registration)
 
-**Status: draft, under review. Nothing costs money until the draft is agreed and the user approves the figure.**
+**Status:** agreed with the review (rulings applied below). It needs spend: nothing runs on a pod until the user
+approves the figure.
+
+**Why it is usable as a drop-in.** The §19 head is reader-free: it was trained on evidence labels, never on any
+reader's answers. So the same controller is used, unchanged, for all five readers.
 
 **The user's hypothesis, as pre-registered claims** (LongMemEval, 470 non-abstention questions, paired by question
 across readers):
 1. **Claim 1.** The §19 head with 8 turns (`fixed8`), read by a 3B, is at least as accurate as FIFO + floor read by
    a 7B of the same family (Qwen2.5-Instruct).
 2. **Claim 2.** `fixed8` read by a 7B is at least as accurate as FIFO + floor read by a 14B.
-- **"At least as accurate" (non-inferiority; margin proposed, for the review to fix).** The paired difference
-  (small reader with `fixed8`, minus large reader with FIFO + floor) has a 95% interval whose lower bound is above
-  −0.03. "Better" is reported if the lower bound is above 0.
+- **"At least as accurate" (non-inferiority; margin fixed at review).** The paired difference (small reader with
+  `fixed8`, minus large reader with FIFO + floor) has a 95% interval whose lower bound is above −0.03. "Better" is
+  reported if the lower bound is above 0.
+- **The number the claim will be remembered by (descriptive): the share of the size gap closed.**
+  - share = (`fixed8` at the small reader − FIFO at the small reader) / (FIFO at the large reader − FIFO at the
+    small reader), with a bootstrap interval.
+  - It is reported for Qwen 3B→7B, Qwen 7B→14B and Granite 2B→8B.
+  - Above 1 means the controller more than bridged the size step.
 - **Secondary, same family.** Granite-3.1 2B with `fixed8`, against Granite-3.1 8B with FIFO + floor.
 - LoCoMo is exploratory, and only if the cost is small.
 
@@ -3173,8 +3182,8 @@ across readers):
 - **One judge for every reader:** Qwen2.5-7B with the official LongMemEval prompts, so all readers sit on one scale
   (§18 found the controller ranking judge-independent).
 - A vLLM server holds one model, so **answers are generated first** with a stub judge, then **all judged in one
-  separate pass** with the Qwen 7B judge (as `memctl.judge_check` re-judged in §18). The judge cache is keyed by
-  question and answer.
+  separate pass** with the Qwen 7B judge, with the same official prompts (the §18 `memctl.judge_check` route). The
+  judge cache is keyed by question and answer text, and **the judge never sees which reader wrote the answer.**
 
 **Measures.**
 - Accuracy and prompt tokens.
@@ -3198,7 +3207,7 @@ across readers):
   planned here), that is about 10–15 min per reader, and about 20–30 min for the 14B.
 - Then one judge pass of 7,500 short calls with Qwen 7B: about 10–15 min.
 - **One A40 session, models switched in turn:** about 2–2.5 h, so **about $1.00–1.25**, with a hard stop at 3 h
-  (about $1.50).
+  (about $1.50). This is the figure accepted at review, for the user's approval.
 - Before launch: a full-size stub run with a resume rehearsal against a changed endpoint, and peak RSS recorded.
 - LoCoMo (exploratory) would add about 6,000 calls per reader. It is not included unless the user wants it.
 
