@@ -2826,8 +2826,11 @@ read "dead". The amendment makes memory **lossy**, as a declared modelling choic
 agent (MEM1's constant-size state; MemoPilot's updated memory).
 
 **The task (LoCoMo categories 1–4 primary; LongMemEval composed 4-question episodes as corroboration).**
-1. **Questions during the stream.** Each question is asked right after the session that follows its last evidence
-   session. Questions whose evidence is in the final session are asked at the end.
+1. **Questions during the stream.** Each question is asked d sessions after its last evidence session, at most at
+   the end. **Amended after the smoke test (one conversation, before any gate run):** with d = 1 every
+   single-evidence question was asked inside the w = 2 window, so only 11 of 81 questions depended on notes. d is
+   now 1–6, fixed per question by a hash of its id. On conversation 1 that makes 64 of 81 questions old, with ages
+   1–2: 30, 3–5: 33, and 6+: 18.
 2. **The lossy rule.**
    - Raw turns older than w = 2 sessions leave memory. They are gone, not archived or searchable.
    - What survives past w is only what the controller wrote: **one note per session**, written when the session
@@ -2852,6 +2855,16 @@ agent (MEM1's constant-size state; MemoPilot's updated memory).
     questions served first, within budget (hindsight);
   - **rules:** salience (density of numbers and capitalised words), the first turns of the session, the shortest
     turns, and random (seeded). The best rule at each budget is the comparison.
+- **Learnable-headroom row (added at review, declared before the run): `learned`.**
+  - A cross-fitted logistic model, trained on the other nine conversations, scores each turn's chance of being
+    needed by a question asked w or more sessions later. Its features are question-blind: log length, salience,
+    digit and capitalised-word counts, position in the session, whether the turn asks a question, speaker, and the
+    turn's bge-small embedding. The session's top-scoring turns fill the note.
+  - Its AUC and the base rate (the share of turns that are evidence for a later question, per conversation) are
+    reported. §11's base rate was 1.2%; with about 150 questions per conversation this one should be far higher.
+  - **Reading, declared now.** The oracle gap is the headroom. The learned row shows how much of it a supervised
+    predictor already reaches. A GRPO stage (§22) is justified only by what lies between the learned row and the
+    oracle. If the learned row closes most of the gap, the right §22 is supervised, not RL.
 - **Primary measure:** accuracy on questions whose oldest evidence is older than w sessions at the time they are
   asked (only these depend on the notes). Also reported:
   - accuracy for all questions;
