@@ -66,6 +66,7 @@ commands given).
 | 19 | Adaptive k (5, 8 or 16 of 32); reader test §19c | Adaptivity stopped at its time box (the ceiling is the finding). Reader: LME `fixed8` 0.545 vs §15 head 0.500 (+0.045, CI +0.011..+0.079) at 1,049 tokens, PASS; LoCoMo `fixed5` +0.023 (CI −0.001..+0.048), no pass. Exploratory: LME `fixed16` −0.057 vs `fixed8` (context rot on a controlled pair); LoCoMo `fixed16` 0.344 at 734 tokens beats FIFO 10% (0.295 at 3,087). $0.36. §19d confirmation (head B, second host): −0.026 (CI −0.066..+0.015), NOT CONFIRMED; the decomposition repeats (P(correct \| in view) −0.088); $0.10 |
 | 20 | Write action: notes beside the top 8 (§20) | Gate FAILED for both note arms (containment vs `fixed8`: +0.028 retrieval-time notes, +0.043 stored session notes, bar +0.05; both CIs above 0); no reader stage. Session notes are the most token-efficient evidence (+0.043 for about 300 tokens vs +0.060 for 1,520 raw). Gate spend about $0.81 (four pods) |
 | 21 | Sequential task, lossy memory (LoCoMo; free, scripted) | Oracle gate PASSES: oracle − best rule +0.177 (CI +0.126..+0.224) on old-evidence questions; cross-fitted learned notes reach +0.038 (AUC 0.74–0.84), leaving +0.139 for §22; unlimited-archive control gap +0.016. $0 |
+| 23 | Reader size ladder (Qwen 3B/7B/14B, Granite 2B/8B) | Claim 2 NON-INFERIOR: fixed8 at 7B minus FIFO at 14B +0.034 (CI −0.013..+0.079), closes 150% of the size gap. Claim 1 NOT SHOWN: fixed8 at 3B minus FIFO at 7B −0.121, closes 56%. Granite secondary not shown. $0.83 |
 
 ---
 
@@ -3244,6 +3245,80 @@ across readers):
   - `fixed16` sits between the two: a longer prompt makes the small reader refuse more. That is a second
     observation of the §19c/§19d pattern, with no verdict.
 - LoCoMo (exploratory) would add about 6,000 calls per reader. It is not included unless the user wants it.
+
+### 23a. Result: the controller lifts a 7B to the 14B's baseline, but not a 3B to the 7B's (2026-10-08)
+
+Pod l29poll3lrjuat (A40, EU-SE-1, $0.59/h): 18:14:24 to about 19:38:40 UTC, about 1.40 h, **about $0.83** (the
+approval was about $1.00–1.25). Terminated, and list-pods was empty afterwards. RunPod's billing had $0.25 on record
+at termination (it lags), to be rechecked. Answers were generated at c9bd9e7; the one blind Qwen 7B judge pass
+judged 7,050 answers. Every cached verdict is a clean "yes" or "no", with no anomalies. Report:
+`runs/_pipelines/exp23_report.py` → `runs/exp23_report.md`; verdicts in `runs/exp23_verdicts.json`.
+
+**Accuracy on the 470 answerable LongMemEval questions** (95% interval by question; prompt tokens per arm:
+FIFO + floor 2,964, `fixed8` 1,049, `fixed16` 2,569; P(all in view) per arm: 0.498, 0.702, 0.747, the same for
+every reader):
+
+| reader | FIFO + floor | `fixed8` | `fixed16` | `fixed8` minus FIFO |
+|---|---|---|---|---|
+| Qwen 3B | 0.162 (0.130, 0.196) | **0.315** (0.274, 0.357) | 0.202 | +0.153 (+0.109, +0.200) |
+| Qwen 7B | 0.436 (0.391, 0.481) | **0.538** (0.494, 0.583) | 0.487 | +0.102 (+0.060, +0.145) |
+| Qwen 14B | 0.504 (0.460, 0.551) | **0.606** (0.564, 0.651) | 0.581 | +0.102 (+0.060, +0.145) |
+| Granite 2B | 0.368 (0.326, 0.413) | 0.364 (0.321, 0.409) | 0.353 | −0.004 (−0.047, +0.038) |
+| Granite 8B | 0.421 (0.377, 0.466) | 0.470 (0.426, 0.515) | 0.489 | +0.049 (+0.002, +0.096) |
+
+The Qwen 7B and 14B rows give the same difference by coincidence. Their answers differ on 227 of 470 questions,
+and their win/loss counts are 78/30 and 76/28: the same net of +48.
+
+**Pre-registered claims** (non-inferiority margin −0.03; "better" if the lower bound is above 0):
+- **Claim 1, NOT SHOWN.** `fixed8` at Qwen 3B minus FIFO + floor at Qwen 7B is **−0.121 (−0.170, −0.070)**. The
+  controller closes **56% (41–72%)** of the 3B-to-7B gap, but not all of it.
+- **Claim 2, NON-INFERIOR.** `fixed8` at Qwen 7B minus FIFO + floor at Qwen 14B is **+0.034 (−0.013, +0.079)**.
+  The lower bound, −0.013, is inside the −0.03 margin. The share of the size gap closed is **1.50 (0.83, 2.85)**:
+  the controller more than bridges the 7B-to-14B step, at about a third of the prompt.
+- **Secondary (Granite 2B → 8B), NOT SHOWN.** −0.057 (−0.102, −0.013). The controller adds nothing to Granite 2B
+  (−0.004).
+
+**Where the gain comes from** (the declared split; unknown share on answerable questions, and P(correct | answered),
+FIFO → `fixed8`):
+
+| reader | unknown | P(correct \| answered) | reading |
+|---|---|---|---|
+| Qwen 3B | 0.709 → 0.372 | 0.555 → 0.502 | **fewer refusals**; precision falls a little |
+| Qwen 7B | 0.328 → 0.151 | 0.649 → 0.634 | mostly fewer refusals |
+| Qwen 14B | 0.270 → 0.183 | 0.691 → **0.742** | **more correct among answered**, and fewer refusals |
+| Granite 2B | 0.081 → 0.181 | 0.400 → 0.444 | more refusals, more precise; no net gain |
+| Granite 8B | 0.262 → 0.160 | 0.571 → 0.559 | fewer refusals |
+
+- The controller helps small Qwen readers mainly by making them answer, and the 14B by making its answers right.
+  The write-up names the mechanism per size, as agreed.
+- **The reader-only number, P(correct | all in view) under `fixed8`,** rises with size: 0.397 at 3B, 0.667 at
+  7B, 0.773 at 14B. Granite: 0.452 at 2B, 0.573 at 8B.
+- **Cost: false answers on the 30 unanswerable questions** (correct abstentions shown as 30 minus this):
+
+  | reader | FIFO + floor | `fixed8` | `fixed16` |
+  |---|---|---|---|
+  | Qwen 3B | 1 | 7 | 2 |
+  | Qwen 7B | 6 | 7 | 6 |
+  | Qwen 14B | 5 | 3 | 2 |
+  | Granite 2B | 25 | 15 | 16 |
+  | Granite 8B | 9 | 14 | 12 |
+
+**Descriptive.**
+- **Refusal (not accuracy) by family.** Qwen: the share answering "unknown" under `fixed16` against `fixed8` goes
+  from more (3B, 0.570 against 0.372) to fewer (14B, 0.140 against 0.183). Long-prompt fragility shrinks with size
+  *in the Qwen family*. Granite does not follow one pattern, so this is a Qwen-family observation.
+- **Context-rot probe, `fixed16` minus `fixed8`:**
+  - Qwen 3B −0.113 (−0.160, −0.068); 7B −0.051 (−0.089, −0.015); 14B −0.026 (−0.062, +0.009);
+  - Granite 2B −0.011; 8B +0.019 (both intervals include 0).
+  - The cost of a longer prompt shrinks with Qwen size. The 7B row repeats §19c's sign on a third host (§19d's
+    failed to reach significance).
+- **7B pairing check against §19c, same questions:**
+  - `fixed8`: 0.538 here against 0.545, with per-question agreement 0.968;
+  - FIFO + floor: 0.436 against 0.432, agreement 0.979.
+  - The rerun reproduces.
+
+**Limitations.** One frozen prompt for all readers (the 3B's refusal rate is partly a prompt-format effect); one
+benchmark; one judge (Qwen 7B, whose ranking was judge-independent in §18).
 
 ## 5. The sequential task
 
