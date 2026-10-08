@@ -249,7 +249,21 @@ def held_out_accuracy(writer: Writer, held: list[Conversation]) -> float:
     return float(np.concatenate(results).mean())
 
 
-def train(variant: str, fold: int, seed: int, updates: int, group: int, out: Path, policy: str = "mlp") -> None:
+def first_pick_kl(writer: Writer, init: Writer, c: Conversation) -> torch.Tensor:
+    """§22c: sum over sessions of KL(pi_theta || pi_init) on the first-pick softmax over the session's turns."""
+    logits = writer(torch.from_numpy(c.x))
+    with torch.no_grad():
+        reference = init(torch.from_numpy(c.x))
+    total = logits.sum() * 0.0
+    for turns in c.sessions:
+        p = torch.log_softmax(logits[turns], 0)
+        q = torch.log_softmax(reference[turns], 0)
+        total = total + (p.exp() * (p - q)).sum()
+    return total
+
+
+def train(variant: str, fold: int, seed: int, updates: int, group: int, out: Path, policy: str = "mlp",
+          kl: float = 0.0, diag_every: int = 50) -> None:
     encoder = DenseRetriever()
     conversations = {n: prepare(n, encoder) for n in range(10)}
     held = set(FOLDS[fold])
@@ -257,6 +271,7 @@ def train(variant: str, fold: int, seed: int, updates: int, group: int, out: Pat
     held_set = [conversations[n] for n in sorted(held)]
     torch.manual_seed(seed)
     writer = supervised_init(train_set, seed) if policy == "mlp" else logistic_init(train_set)
+    init = logistic_init(train_set) if (kl and policy == "linear") else None
     out.mkdir(parents=True, exist_ok=True)
     torch.save(writer.state_dict(), out / "init.pt")
     rng = np.random.default_rng(seed)
@@ -273,11 +288,13 @@ def train(variant: str, fold: int, seed: int, updates: int, group: int, out: Pat
             for g, (_, logps, entropies) in enumerate(draws):
                 loss = loss - (advantage[g] * logps).sum() - 0.01 * entropies.sum()
             rewards_seen.append(outcomes(c, draws[0][0], np.flatnonzero(c.old)).mean())
+            if init is not None:  # §22c: the pull to the init, scaled so it is beta per conversation after averaging
+                loss = loss + kl * group * first_pick_kl(writer, init, c)
         optimizer.zero_grad()
         (loss / (len(train_set) * group)).backward()
         optimizer.step()
         point = {"update": update, "train_old_accuracy": float(np.mean(rewards_seen))}
-        if policy == "linear" and update % 50 == 0:
+        if policy == "linear" and update % diag_every == 0:
             point["held_out_old_accuracy"] = held_out_accuracy(writer, held_set)
         curve.append(point)
     torch.save(writer.state_dict(), out / "writer.pt")
@@ -286,7 +303,7 @@ def train(variant: str, fold: int, seed: int, updates: int, group: int, out: Pat
         curve.append({"update": updates, "held_out_old_accuracy": held_out_accuracy(writer, held_set)})
         (out / "curve.json").write_text(json.dumps(curve))
     (out / "metadata.json").write_text(json.dumps({"variant": variant, "fold": fold, "seed": seed, "updates": updates,
-                                                   "group": group, "policy": policy, **collect_metadata()}, default=str))
+                                                   "group": group, "policy": policy, "kl": kl, **collect_metadata()}, default=str))
 
 
 def time_and_agree() -> None:
@@ -312,12 +329,14 @@ def main() -> None:
     parser.add_argument("--group", type=int, default=8)
     parser.add_argument("--out", type=Path)
     parser.add_argument("--policy", choices=["mlp", "linear"], default="mlp")
+    parser.add_argument("--kl", type=float, default=0.0, help="§22c: beta of the first-pick KL to the init")
+    parser.add_argument("--diag-every", type=int, default=50)
     parser.add_argument("--time", action="store_true")
     args = parser.parse_args()
     if args.time:
         time_and_agree()
     else:
-        train(args.variant, args.fold, args.seed, args.updates, args.group, args.out, args.policy)
+        train(args.variant, args.fold, args.seed, args.updates, args.group, args.out, args.policy, args.kl, args.diag_every)
 
 
 if __name__ == "__main__":

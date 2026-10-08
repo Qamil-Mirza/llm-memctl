@@ -3224,8 +3224,8 @@ captures what the features can express") holds only in part:
 
 ## 22c. Per-write credit with a pull to the supervised writer: the close of RQ3 (N7c; DRAFT, not run; the user decides)
 
-**Status: draft only. It costs nothing in dollars but needs about an hour of laptop time; whether to run it is the
-user's decision.** Whatever it shows, it closes RQ3 on this task.
+**Status: approved by the user on 2026-10-08** (no dollar cost, about an hour of laptop time). Whatever it shows,
+it closes RQ3 on this task.
 
 **Question.** §22b showed that hindsight credit is the only variant with a usable training signal, but that it
 overfits 8 conversations with nothing pulling it back to the supervised init. With such a pull, and stopping
@@ -3237,8 +3237,13 @@ perhaps improve it?
 - **Variants:** (ii) per-write hindsight credit, and (i) episode GRPO as the control. Both carry the same pull.
 - **The pull:** a KL penalty to the init, β × KL(π_θ ‖ π_init), on each session's first-pick distribution (the
   softmax over that session's turns), summed over sessions, with **β = 0.1**. β is fixed now and not tuned.
+  - **Scope of the pull.** The KL is on the first-pick distribution, not on the full ordered-prefix Plackett–Luce
+    distribution, so later picks are pulled only through the shared weights.
 - **Updates:** **100**, where §22b's held-out diagnostic for (ii) was still flat (0.145 at 0, 50 and 100). This
   is fixed now; there is no early stopping.
+  - **Leakage, stated plainly.** The stop was chosen from §22b's held-out diagnostic on the same folds, so it uses
+    held-out information once. The clause is a no-harm test, so that leakage can only make it easier to pass: a
+    pass is weaker evidence than a fail.
 - **Held fixed from §22b:** G = 8; mean-only advantages; on-policy, one step per batch; Adam with learning rate
   1e-3; entropy bonus 0.01; the surrogate for training and the exact simulator for testing; knapsack packing at
   test; 5 leave-two-out folds × 3 seeds. That is 15 runs per variant, 30 in all.
@@ -3260,10 +3265,10 @@ perhaps improve it?
 - 30 runs on 12 slots is 3 waves (12, 12, 6), about **45–60 min** wall-clock, under `guard.sh`.
 - Longest jobs first; no more long jobs than slots.
 
-## 23. Does a memory controller lift a small reader to the next size class? (N8; 2026-10-08, DRAFT pre-registration)
+## 23. Does a memory controller lift a small reader to the next size class? (N8; 2026-10-08, pre-registered)
 
-**Status:** agreed with the review (rulings applied below). It needs spend: nothing runs on a pod until the user
-approves the figure.
+**Status:** run 2026-10-08 on pod l29poll3lrjuat, about $0.83; the result is in §23a. The pre-registration text
+below is unchanged.
 
 **Why it is usable as a drop-in.** The §19 head is reader-free: it was trained on evidence labels, never on any
 reader's answers. So the same controller is used, unchanged, for all five readers.
