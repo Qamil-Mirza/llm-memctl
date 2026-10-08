@@ -2931,6 +2931,10 @@ fusion search, 10 conversations, 1,535 questions, 1,249 of them "old" (oldest ev
 - **Added at review, after the gate (declared before it ran): `learned-knapsack`.** The same cross-fitted model,
   but the note is filled by predicted probability per token, as the oracle fills by questions served per token. If
   it closes much of the +0.139, the space claimed for §22 shrinks.
+  - **Result (`runs/exp21_gate_knapsack_report.md`; every other row reproduces exactly):** 0.146 on old-evidence
+    questions (`learned` 0.147). Minus first turns: +0.037 (−0.002, +0.076). Oracle minus it: +0.140 (+0.101, +0.177).
+  - By age it is 0.459 / 0.196 / 0.085, against `learned`'s 0.474 / 0.191 / 0.083.
+  - Packing by probability per token closes none of the gap, so the space above the supervised row is real.
 - **Not yet run:** the LongMemEval composed-episode corroboration row (free; to follow).
 
 **What this means for §22.** The pre-registered condition for an RL stage is met. The oracle-minus-learned gap is
