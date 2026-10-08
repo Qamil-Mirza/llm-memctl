@@ -168,7 +168,13 @@ Before the chapter is final, the Experiment 15 head row should be added to it.
 - **Done:** a write action (§20): stored session notes gave 70% of the containment gain of eight more raw turns
   for a fifth of the tokens, the most token-efficient evidence measured, but fell short of the pre-registered
   bar (+0.043 against +0.05), so no reader test.
-- **Next:** the sequential task (§21), then a GRPO variant; writing.
+- **Done:** the sequential task under lossy memory (§21), free and scripted.
+  - What goes into a session's note decides later answers: the hindsight oracle beats the best rule by +0.177 on
+    old-evidence questions.
+  - A supervised note-writer closes about a fifth of that gap, and packing by probability per token does not help.
+  - **With an unlimited archive the gap almost vanishes (+0.016).** That is the sentence tying §21 to §13–§20:
+    early memory decisions matter only when memory cannot be repaired at the question.
+- **Next:** §22, credit assignment for the note-writer (free in the simulator); then writing.
 
 ## Adaptive k (§19, done)
 

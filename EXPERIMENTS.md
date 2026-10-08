@@ -65,6 +65,7 @@ commands given).
 | 18 | Second-family judge check; exploratory LoCoMo reader test | Granite agrees with Qwen on 97% (κ 0.95), similar error rates; ranking and the head's gain hold (+0.040, CI excludes 0). Exploratory: head transfers to LoCoMo, +0.087 (post hoc). CONFIRMS |
 | 19 | Adaptive k (5, 8 or 16 of 32); reader test §19c | Adaptivity stopped at its time box (the ceiling is the finding). Reader: LME `fixed8` 0.545 vs §15 head 0.500 (+0.045, CI +0.011..+0.079) at 1,049 tokens, PASS; LoCoMo `fixed5` +0.023 (CI −0.001..+0.048), no pass. Exploratory: LME `fixed16` −0.057 vs `fixed8` (context rot on a controlled pair); LoCoMo `fixed16` 0.344 at 734 tokens beats FIFO 10% (0.295 at 3,087). $0.36. §19d confirmation (head B, second host): −0.026 (CI −0.066..+0.015), NOT CONFIRMED; the decomposition repeats (P(correct \| in view) −0.088); $0.10 |
 | 20 | Write action: notes beside the top 8 (§20) | Gate FAILED for both note arms (containment vs `fixed8`: +0.028 retrieval-time notes, +0.043 stored session notes, bar +0.05; both CIs above 0); no reader stage. Session notes are the most token-efficient evidence (+0.043 for about 300 tokens vs +0.060 for 1,520 raw). Gate spend about $0.81 (four pods) |
+| 21 | Sequential task, lossy memory (LoCoMo; free, scripted) | Oracle gate PASSES: oracle − best rule +0.177 (CI +0.126..+0.224) on old-evidence questions; cross-fitted learned notes reach +0.038 (AUC 0.74–0.84), leaving +0.139 for §22; unlimited-archive control gap +0.016. $0 |
 
 ---
 
@@ -2808,6 +2809,336 @@ was approved by the user. Report: `runs/_pipelines/exp20_report.py` (written bef
 **What this means for the plan.** A first, untrained write action helps in the right places but does not clear
 the pre-registered bar with the 7B writer. The stream-time session note is the better form. That fits the next
 step: the sequential task, where a controller learns *when* to write.
+
+## 21. A sequential task on real conversations: questions during the stream, and questions that depend on the model's own answers (N6; 2026-10-08, DRAFT pre-registration)
+
+**Status: draft, under review.** Nothing is built until the text is agreed. The first gate is free (scripted reader,
+no model).
+
+**Why.** Every real-text result so far (§13–§20) asks all questions after the history has ended. Then the only
+decision that matters is at the question, which is why query-blind control failed (§14a) and GRPO had nothing to
+assign credit over (§16a). The plan's next step is a task where an early memory decision changes a later outcome,
+on real text, following MEM1's recipe: questions asked during the stream, plus questions whose answer depends on
+the model's own earlier answer.
+
+**Amended after review (before any build).** As first drafted, with an unlimited searchable archive, every
+early decision except deletion could be repaired at the question, and B quoted A, so the gate would very likely
+read "dead". The amendment makes memory **lossy**, as a declared modelling choice: the setting of a bounded-memory
+agent (MEM1's constant-size state; MemoPilot's updated memory).
+
+**The task (LoCoMo categories 1–4 primary; LongMemEval composed 4-question episodes as corroboration).**
+1. **Questions during the stream.** Each question is asked d sessions after its last evidence session, at most at
+   the end. **Amended after the smoke test (one conversation, before any gate run):** with d = 1 every
+   single-evidence question was asked inside the w = 2 window, so only 11 of 81 questions depended on notes. d is
+   now 1–6, fixed per question by a hash of its id. On conversation 1 that makes 64 of 81 questions old, with ages
+   1–2: 30, 3–5: 33, and 6+: 18.
+2. **The lossy rule.**
+   - Raw turns older than w = 2 sessions leave memory. They are gone, not archived or searchable.
+   - What survives past w is only what the controller wrote: **one note per session**, written when the session
+     ends, within a note budget of 100 tokens. The stored answer items also survive.
+   - The controller's stream-time decision is therefore *which* of the session's content goes into its note. That
+     decision is question-blind, and its consequences fall only on questions asked w or more sessions later. So it
+     is an early decision with a delayed, unrepairable consequence by construction, and credit assignment is
+     defined on this task.
+3. **Notes are extractive for the free gate.** A note is a set of the session's turns, chosen within 100 tokens and
+   stored as one searchable item. The scripted reader can then score evidence exactly by turn id. Abstractive notes
+   (the §20 writer) need the model, so they belong to the paid stage.
+4. **At a question**, the reader sees the top 8 by fusion search over everything that survives: the raw turns of
+   the last w sessions, all notes and the answer items. A retrieved note brings all its turns into view.
+5. **Recall-of-own-answer questions (B), now secondary.** d = 3 sessions after each in-stream A: "Earlier you were
+   asked: '<A>'. What did you answer?" B is scored against A's *actual* answer (pure retention), with scoring
+   against A's gold reported as description.
+
+**The free oracle gate (decides whether any training happens).**
+- **Reader:** scripted. A question is correct iff all of its evidence is in view. No model, no cost.
+- **Note policies** (each picks turns question-blind within 100 tokens per session, except the oracle):
+  - **oracle:** the session's gold evidence turns of future questions whose evidence lies in that session, most
+    questions served first, within budget (hindsight);
+  - **rules:** salience (density of numbers and capitalised words), the first turns of the session, the shortest
+    turns, and random (seeded). The best rule at each budget is the comparison.
+- **Learnable-headroom row (added at review, declared before the run): `learned`.**
+  - A cross-fitted logistic model, trained on the other nine conversations, scores each turn's chance of being
+    needed by a question asked w or more sessions later. Its features are question-blind: log length, salience,
+    digit and capitalised-word counts, position in the session, whether the turn asks a question, speaker, and the
+    turn's bge-small embedding. The session's top-scoring turns fill the note.
+  - Its AUC and the base rate (the share of turns that are evidence for a later question, per conversation) are
+    reported. §11's base rate was 1.2%; with about 150 questions per conversation this one should be far higher.
+  - **Reading, declared now.** The oracle gap is the headroom. The learned row shows how much of it a supervised
+    predictor already reaches. A GRPO stage (§22) is justified only by what lies between the learned row and the
+    oracle. If the learned row closes most of the gap, the right §22 is supervised, not RL.
+- **Primary measure:** accuracy on questions whose oldest evidence is older than w sessions at the time they are
+  asked (only these depend on the notes). Also reported:
+  - accuracy for all questions;
+  - evidence survival (in memory at all, before search);
+  - everything by evidence age in sessions (1–2, 3–5, 6+), the central axis under the lossy rule.
+- **Control row:** the unlimited archive (no loss, every raw turn searchable). The oracle-minus-rule gap should
+  vanish there, consistent with §13–§20; that is a finding in itself.
+- **Gate, pre-registered:** on LoCoMo, oracle minus the best rule, on questions with evidence older than w, is at
+  least 0.10 with a conversation-clustered 95% interval above 0. Otherwise credit assignment is dead on this task
+  too, and §21 says so before any training. LongMemEval composed episodes are corroboration only.
+- **Expectation, written before the run:** a large gap, since 100 tokens holds about 3–5 of a session's ~20 turns,
+  so which ones matters, and rules cannot know which.
+- w = 2 is fixed. A second w is descriptive, only if free.
+
+**Looking ahead (§22, not part of this gate).** Hindsight credit is directly available here. A session's note is in
+view or not at every later question, so its write decision can be credited from the outcomes of exactly the
+questions it served. That per-write hindsight advantage is the natural GRPO variant, and cheap: the controller is
+small and the reader frozen.
+
+**Paid steps (not proposed yet).** A reader version of the gate (the real 7B answering A and B), and any training,
+come only after the free gate passes, each with its own pre-registration and cost.
+
+### 21a. Result: the oracle gate passes on LoCoMo; a supervised predictor closes about a fifth of the gap (2026-10-08)
+
+Free and scripted (no model). `memctl/analysis/lossy_gate.py` at 93f4fe6 → `runs/exp21_gate.json`; table
+`runs/_pipelines/exp21_report.py` → `runs/exp21_gate_report.md`. Settings: w = 2, notes of 100 tokens, top 8 by
+fusion search, 10 conversations, 1,535 questions, 1,249 of them "old" (oldest evidence at least w sessions back).
+
+| note policy | accuracy, old questions (lossy) | evidence survives (lossy) | accuracy (unlimited archive, control) |
+|---|---|---|---|
+| oracle (hindsight) | **0.286** | 0.348 | 0.552 |
+| learned (cross-fitted) | 0.147 | 0.167 | 0.542 |
+| first turns (best rule) | 0.109 | 0.131 | 0.536 |
+| random | 0.051 | 0.060 | 0.535 |
+| salience | 0.039 | 0.044 | 0.534 |
+| shortest | 0.015 | 0.016 | 0.536 |
+
+- **Gate: PASS.** Oracle minus the best rule (first turns) is **+0.177 (+0.126, +0.224)**, conversation-clustered,
+  against the pre-registered +0.10. Credit assignment is defined and has headroom on this task.
+- **Learnable headroom.** `learned` minus first turns is +0.038 (+0.010, +0.068); oracle minus `learned` is +0.139
+  (+0.098, +0.179).
+  - The supervised predictor reaches about a fifth of the gap, although it separates needed turns well (AUC
+    0.74–0.84 by conversation; §11 was about 0.65).
+  - The base rate is 16–31% of turns, against §11's 1.2%.
+  - By the reading declared before the run, **the space between the learned row and the oracle is what a GRPO
+    stage (§22) would have to earn**, and it is large.
+- **The control behaves as predicted.** With an unlimited archive, the gap almost vanishes: oracle minus first
+  turns is +0.016 (+0.005, +0.027). This agrees with §13–§20: when the archive is perfect, early decisions can be
+  repaired at the question.
+- **By evidence age** (lossy accuracy; oracle / learned / first turns):
+
+  | age | n | oracle | learned | first turns |
+  |---|---|---|---|---|
+  | 1–2 | 534 | 0.543 | 0.474 | 0.451 |
+  | 3–5 | 577 | 0.355 | 0.191 | 0.144 |
+  | 6+ | 424 | 0.179 | 0.083 | 0.050 |
+
+  The gap grows with age, as the lossy rule implies.
+- **Even the oracle loses most of the evidence:** only 0.348 survives. 100 tokens hold about 3–5 turns, and a
+  session often serves more questions than that. The note budget, not foresight, limits the oracle.
+- **B (retention of the stored answer, d = 3): 1.000.** Search finds the answer item from B's quoted question, as
+  the draft feared. B is uninformative here, as the review expected when it was made secondary.
+- **Added at review, after the gate (declared before it ran): `learned-knapsack`.** The same cross-fitted model,
+  but the note is filled by predicted probability per token, as the oracle fills by questions served per token. If
+  it closes much of the +0.139, the space claimed for §22 shrinks.
+  - **Result (`runs/exp21_gate_knapsack_report.md`; every other row reproduces exactly):** 0.146 on old-evidence
+    questions (`learned` 0.147). Minus first turns: +0.037 (−0.002, +0.076). Oracle minus it: +0.140 (+0.101, +0.177).
+  - By age it is 0.459 / 0.196 / 0.085, against `learned`'s 0.474 / 0.191 / 0.083.
+  - Packing by probability per token closes none of the gap, so the space above the supervised row is real.
+- **Not yet run:** the LongMemEval composed-episode corroboration row (free; to follow).
+
+**What this means for §22.** The pre-registered condition for an RL stage is met. The oracle-minus-learned gap is
++0.139 on old-evidence questions, where each session's write decision is credited by exactly the later questions
+it served. That is the per-write hindsight credit the review proposed. The reader stage (the real 7B answering, and
+the §20 abstractive writer as a comparison) is paid and comes with its own pre-registration.
+
+## 22. Credit assignment for the note-writer: uniform against per-write hindsight credit (N7; 2026-10-08, DRAFT pre-registration)
+
+**Status: draft, under review.** The whole stage runs in the §21 simulator, scripted and free on CPU. Only the final
+policies would ever meet the reader (item 6, paid, not proposed).
+
+**Question.** §21a left +0.140 between the best supervised note-writer (`learned-knapsack`) and the hindsight
+oracle on old-evidence questions. Each session's note decision has a delayed, unrepairable consequence there. Does
+crediting each write by the later questions it served (per-write hindsight credit) learn a better writer than
+GRPO's uniform episode-level credit, with the same rollouts, compute and initialisation?
+
+**1. Policy.**
+- A small extractive writer: a per-turn logit from the §21 `learned` features plus the turn's token count, through
+  one hidden layer of 32.
+- **Sampling:** a Plackett–Luce order over the session's turns; the note is filled in that order, skipping turns
+  that do not fit the 100 tokens. The log-probability is that of the sampled order, up to its last picked turn,
+  so a truncated prefix; a turn skipped for lack of room still counts in the order.
+- **Initialisation:** fitted by imitation of the cross-fitted supervised scores (the `learned` model), so every
+  variant starts from the same writer.
+
+**2. Reward.** The scripted outcome of §21: on each old-evidence question, all evidence in view among the top 8 by
+fusion search over the survivors. No evidence label enters the policy or its features. Whether a variant uses
+labels *at training time* is stated per variant below (corrected at review). The outcome itself is computed from
+the labels, as in any simulator.
+
+**3. Variants** (pre-registered; the same rollouts, compute and initialisation; 3 seeds each; G = 8 rollouts per
+conversation per update):
+- **(i) Episode-level GRPO (uniform credit).** One reward per conversation rollout: its old-evidence accuracy. The
+  advantage is normalised over the G rollouts of the same conversation, and every write in the rollout gets the
+  same advantage.
+- **(ii) Per-write hindsight credit.**
+  - Session s's note is rewarded by the outcomes of exactly the questions asked w or more sessions later whose
+    evidence lies in s (correct or not).
+  - The advantage is normalised per session across the G rollouts. The stream is fixed, so every rollout visits
+    the same sessions: this is GiGPO's anchor grouping with exact anchors and no state matching.
+  - A question with evidence in several sessions credits each of them with its outcome.
+  - **(ii) uses the evidence labels at training time** (to link questions to sessions), and none at test time.
+- **(iii) Counterfactual credit (upper reference).**
+  - A note's marginal contribution: the outcome with the note, minus the outcome re-simulated without it, summed
+    over *all* questions asked w or more sessions after s. It is normalised as in (ii).
+  - It is label-free in the policy's sense: no question is linked to a session by its evidence.
+  - It needs one extra simulation per note. With a real reader that would mean extra reader calls, so it is an
+    upper reference, not a deployable method.
+  - It uses the evidence labels only through the outcome.
+- **(iv) Time-forward credit (label-free control, added at review).**
+  - Session s's note is rewarded by the outcomes of *every* question asked w or more sessions after s, normalised
+    per session across the G rollouts exactly as (ii).
+  - **Reading, declared now:** (ii) minus (iv) is what the hindsight linking buys over mere per-session grouping.
+    If it is about 0, the deployable label-free variant (iv) is the result, which is better news, not worse.
+
+**Advantage and update (the same for every variant, declared before any run).**
+- Advantages are normalised by subtracting the group mean only (as in §16), with no division by the standard
+  deviation, which is unstable for per-session groups of 8 with sparse rewards.
+- The update is on-policy: one gradient step per batch of rollouts, with no importance ratio and no clipping.
+
+**Training simulator (declared before any run).** Training uses a fast surrogate of the §21 retrieval:
+- turn and question embeddings and per-turn BM25 scores are computed once per conversation;
+- a note is ranked by the best of its turns on each list;
+- the two lists are fused by reciprocal rank as in `FusionRetriever`.
+Every test number comes from the exact §21 simulator. The surrogate's agreement with the exact one is reported on
+the §21 policies before training.
+
+**4. Folds.** Cross-fitted over conversations: 5 folds of 2 held-out conversations (leave-two-out). Each variant is
+trained on 8 conversations and tested on the 2 held out. The supervised initialisation is also fitted without the
+held-out conversations. All 10 conversations are tested once per seed. Intervals are clustered by conversation, and
+seeds are averaged per question.
+
+**Training budget.** Adam with learning rate 1e-3, no KL term, entropy bonus 0.01, G = 8, the same for every
+variant. **The number of updates is provisional (300)** until one surrogate rollout has been timed.
+- 300 updates × 8 conversations × G = 8, over 5 folds, 3 seeds and 4 variants, is about 1.15M conversation rollouts.
+- If the measured total exceeds about 12 hours on the laptop under `guard.sh`, updates or G are cut, and which one
+  is written here before training.
+- **Measured before training (2026-10-08).**
+  - Surrogate against exact simulator, on the §21 policies for old-evidence questions: oracle 0.290 against 0.286,
+    first turns 0.108 against 0.109, salience 0.040 against 0.039, random 0.054 against 0.051.
+  - Timing, from 3 updates on fold 0 including about 6 s of start-up: about 2.3–2.9 s per update for (i), (ii)
+    and (iv), and about 42 s for (iii), which re-simulates once per note.
+  - 300 updates is about 12–15 min per run for (i), (ii) and (iv), and about 3.5 h for (iii). That is about 62
+    core-hours in all, about 5–6 h on 12 parallel workers, under the 12 h line. **The budget stays 300 updates,
+    G = 8.**
+- Training learning curves are reported, with no early stopping on test. The test policy is greedy as declared;
+  the stochastic policy's mean is descriptive. The test policy is greedy (top-scoring order, filled by the same
+budget rule).
+
+**5. Gate (pre-registered; held-out old-evidence accuracy, conversation-clustered 95% intervals).**
+- **Per-write credit pays** if (ii) minus (i) has an interval entirely above 0 **and** (ii) minus `learned-knapsack`
+  has an interval entirely above 0. The same comparisons are reported for (iv), the label-free version.
+- If (ii) does not beat (i): "uniform credit suffices" is the finding.
+- If neither beats `learned-knapsack`: "RL adds nothing over the supervised writer here" is the finding, and
+  §21a's +0.140 is recorded as headroom that neither credit scheme reaches.
+- (iii) is reported as the reference for how much better credit could do.
+- Also reported: everything by evidence age, and the share of the oracle gap closed:
+  (variant − learned-knapsack) / (oracle − learned-knapsack).
+
+**Expectation, written before any run.** (ii) beats (i): per-write credit gives each session a direct signal, while
+uniform credit spreads one noisy number over about 20 writes. Both should beat `learned-knapsack` modestly, by a
+third of the gap or less. (iii) is at least as good as (ii).
+
+**6. Paid stage (NEEDS SPEND; not proposed until the gate is read).**
+- The final policies of (i), (ii), `learned-knapsack` and the oracle, run with the frozen reader on held-out
+  conversations, with the §20 abstractive notes compared against extractive notes.
+- One pod, an estimate from measured latency, and a stub run with a resume rehearsal first.
+
+### 22a. Interim result: per-write credit beats uniform credit (clause 1 passes); RL does not beat the supervised writer (clause 2 fails) (2026-10-08)
+
+**Status.** This covers the 30 runs of (i) and (ii) (5 folds × 3 seeds each). (iv) time-forward and the last three
+(iii) runs are still training. §22a closes only when they are in, because (ii) minus (iv) is the label question.
+Everything is free, at c7316f0. The test is the exact §21 simulator on each fold's held-out conversations, greedy
+(`runs/_pipelines/exp22_eval.py` → `runs/exp22_eval_main.json`). Each question is averaged over seeds, and the
+intervals are clustered by conversation.
+
+**Held-out old-evidence accuracy (1,249 questions, 10 conversations):**
+
+| policy | accuracy | age 2 | age 3–5 | age 6+ |
+|---|---|---|---|---|
+| oracle (§21) | 0.286 | 0.306 | 0.355 | 0.179 |
+| `learned-knapsack`: the cross-fitted logistic writer, packed per token (the named gate row; refit per §22 fold) | **0.146** | | | |
+| (ii) per-write hindsight credit | 0.131 | 0.156 | 0.163 | 0.074 |
+| each run's MLP init, packed per token (descriptive) | 0.117 | 0.114 | 0.153 | 0.069 |
+| (i) episode GRPO (uniform credit) | 0.116 | 0.132 | 0.150 | 0.061 |
+| first turns (§21) | 0.109 | 0.129 | 0.144 | 0.050 |
+
+The first age column holds only old questions of age 2.
+
+**Verdict under the pre-registered gate** (the review's ruling, which corrects my first reading). The gate names
+`learned-knapsack`, the §21a row: the cross-fitted logistic writer packed per token. Each run's MLP init was a
+different, weaker row that I introduced at evaluation time.
+- **Clause 1, PASS.** (ii) minus (i) is **+0.015 (+0.007, +0.024)**. Per-write hindsight credit beats uniform
+  credit, and uniform credit learns nothing: (i) minus its init is −0.001 (−0.011, +0.009). That is a real
+  credit-assignment result.
+- **Clause 2, FAIL.** (ii) minus `learned-knapsack` is **−0.014 (−0.038, +0.008)**. Per the §22 text: "RL adds
+  nothing over the supervised writer here".
+- **Descriptive.** (ii) minus its own MLP init is +0.015 (+0.0003, +0.029).
+  - The logistic writer refit per fold (`runs/_pipelines/exp22_logistic_folds.py`) scores 0.146 packed per token
+    and 0.143 by top probability, matching §21a.
+- **Stated cause.** The MLP policy overfits its 8 training conversations: surrogate training accuracy rises from
+  0.282 to 0.350 for (ii) (0.247 to 0.289 for (i)), against 0.131 held out.
+  - The RL gain is smaller than the gap between the MLP init and the logistic writer, so the policy class, not the
+    credit signal, limits this result. §22b tests that with a policy that cannot overfit.
+- **(iv) time-forward credit (label-free; `runs/exp22_eval_fwd.json`, table `runs/exp22_report_iii_pending.md`):**
+  0.119.
+  - (ii) minus (iv): **+0.012 (+0.002, +0.023)**.
+  - (iv) minus (i): +0.003 (−0.005, +0.010).
+  - (iv) minus `learned-knapsack`: −0.027 (−0.048, −0.007).
+  - **Attribution.** Per-session grouping alone (iv) is about the same as uniform credit (i), and the whole
+    per-write gain comes from the hindsight linking: (ii) minus (iv) is +0.012 (+0.002, +0.023).
+  - **Consequence for deployment.** The gain needs evidence labels at training time, to link questions to the
+    sessions holding their evidence. The supervised writer uses the same labels, so neither method is label-free;
+    the label-free variant (iv) does not carry the effect.
+  - **Why (ii) and (iii) share a training curve** (0.282 → 0.350 on average). Under the lossy rule, a question whose
+    evidence lies wholly in session s can be answered past w only if s's note holds that evidence, so its outcome
+    without the note is 0. Its outcome, which is (ii)'s credit, then equals the note's marginal effect, which is
+    (iii)'s credit.
+    - The two differ only on multi-session questions, and through displacement: a note that wins a top-8 slot can
+      push another item out.
+    - So the signals nearly coincide by construction, not by accident. The run files differ (fold 0, seed 0: 0.365
+      against 0.367 at the end; the writers differ), so it is not a duplicated run.
+- **Compute slip.** Under the 12-job load a cheap run took about 30–40 min, not the measured 12–15 min. The
+  laptop has 8 physical cores, and 15 slow (iii) jobs left a tail. The batch ran well past the 5–6 h estimate; the
+  measured total is added when the batch ends.
+- **Init deviation.** §22 declared "imitation of the supervised scores"; the code fits the BCE labels directly.
+  That is the same supervised model, one step shorter.
+
+## 22b. The same experiment with a policy that cannot overfit (N7b; 2026-10-08, pre-registered before any run)
+
+**Why.** §22a's clause 2 failed because the MLP policy overfits 8 conversations, and its init (0.117) starts below
+the supervised writer (0.146). Here the policy is the logistic writer itself, so the init *is* `learned-knapsack`
+and the comparison is clean.
+
+**Policy.** Linear in the §21 features plus the token count: the `learned` model's form, with one logit per turn.
+It is initialised at the cross-fitted logistic fit for each fold (8 training conversations, C = 0.1, as in §21),
+so every variant starts at the gate row. The sampling and log-probability are §22's (a Plackett–Luce ordered
+prefix), and the test-time packing for all is the knapsack rule (probability per token, filled greedily).
+
+**Variants.** (i) episode GRPO, (ii) per-write hindsight credit and (iv) time-forward credit. (iii) runs only if
+time allows, as it is the slow one, and is reported as a reference if it does.
+
+**Held fixed from §22.** The budget (300 updates, G = 8), 3 seeds, the 5 leave-two-out folds, mean-only
+advantages, the on-policy single-step update with no ratio or clipping, the surrogate for training and the exact
+simulator for testing.
+
+**Gate (the same as §22's, against the same named row).**
+- (ii) minus (i): interval entirely above 0.
+- (ii) minus `learned-knapsack`: interval entirely above 0.
+
+**Expectation, written before any run.** (ii) beats (i) again. Whether (ii) beats `learned-knapsack` is open. If it
+does not, the finding is that the credit signal is real but the supervised writer already captures what these
+features can express: the limit is the features, not the credit.
+
+**Diagnostic (descriptive).** Held-out accuracy on the surrogate is recorded every 50 updates, so overfitting is
+seen rather than inferred. There is no early stopping on it.
+
+**Compute.** A linear policy is cheaper than the MLP. It is timed before launch, under the real parallel load and
+with the longest jobs first, and the measured total is written here before training.
+- **Measured (2026-10-08, 16:30 UTC, beside the last three §22 (iii) jobs):** about 4.6 s per update, including
+  the held-out diagnostic. That is about 23 min per run alone, and about 32 min under a 12-job load.
+- 45 runs ((i), (ii) and (iv) × 5 folds × 3 seeds), 9 at a time: **about 2.5–3 h**.
+- (iii) is not run in this batch, as allowed by the text above.
 
 ## 5. The sequential task
 
