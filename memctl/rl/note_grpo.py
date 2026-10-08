@@ -126,11 +126,14 @@ def outcomes(c: Conversation, notes: list[np.ndarray], questions: np.ndarray | N
 
 
 class Writer(nn.Module):
+    """hidden > 0: the §22 MLP. hidden = 0: the §22b linear writer (the logistic model's form)."""
+
     def __init__(self, features: int, hidden: int = 32) -> None:
         super().__init__()
         self.mean = nn.Parameter(torch.zeros(features), requires_grad=False)
         self.std = nn.Parameter(torch.ones(features), requires_grad=False)
-        self.net = nn.Sequential(nn.Linear(features, hidden), nn.ReLU(), nn.Linear(hidden, 1))
+        self.net = nn.Sequential(nn.Linear(features, hidden), nn.ReLU(), nn.Linear(hidden, 1)) if hidden \
+            else nn.Sequential(nn.Linear(features, 1))
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.net((x - self.mean) / self.std).squeeze(-1)
@@ -215,12 +218,45 @@ def supervised_init(train: list[Conversation], seed: int, steps: int = 400) -> W
     return writer
 
 
-def train(variant: str, fold: int, seed: int, updates: int, group: int, out: Path) -> None:
+def logistic_init(train: list[Conversation]) -> Writer:
+    """§22b: the linear writer set to the cross-fitted logistic fit (C = 0.1, standardised, as in §21)."""
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.preprocessing import StandardScaler
+
+    x = np.concatenate([c.x for c in train])
+    y = np.concatenate([c.label for c in train])
+    scaler = StandardScaler().fit(x)
+    model = LogisticRegression(C=0.1, max_iter=2000).fit(scaler.transform(x), y)
+    writer = Writer(x.shape[1], hidden=0)
+    writer.mean.data = torch.tensor(scaler.mean_, dtype=torch.float32)
+    writer.std.data = torch.tensor(np.where(scaler.scale_ > 0, scaler.scale_, 1.0), dtype=torch.float32)
+    writer.net[0].weight.data = torch.tensor(model.coef_, dtype=torch.float32)
+    writer.net[0].bias.data = torch.tensor(model.intercept_, dtype=torch.float32)
+    return writer
+
+
+def held_out_accuracy(writer: Writer, held: list[Conversation]) -> float:
+    """Surrogate accuracy on held-out old-evidence questions, greedy, packed per token (§22b diagnostic)."""
+    results = []
+    with torch.no_grad():
+        for c in held:
+            probability = torch.sigmoid(writer(torch.from_numpy(c.x))).numpy()
+            notes = []
+            for turns in c.sessions:
+                order = np.argsort(-(probability[turns] / c.cost[turns]), kind="stable")
+                notes.append(turns[fill(order, c.cost[turns])[0]])
+            results.append(outcomes(c, notes, np.flatnonzero(c.old)))
+    return float(np.concatenate(results).mean())
+
+
+def train(variant: str, fold: int, seed: int, updates: int, group: int, out: Path, policy: str = "mlp") -> None:
     encoder = DenseRetriever()
     conversations = {n: prepare(n, encoder) for n in range(10)}
     held = set(FOLDS[fold])
     train_set = [conversations[n] for n in conversations if n not in held]
-    writer = supervised_init(train_set, seed)
+    held_set = [conversations[n] for n in sorted(held)]
+    torch.manual_seed(seed)
+    writer = supervised_init(train_set, seed) if policy == "mlp" else logistic_init(train_set)
     out.mkdir(parents=True, exist_ok=True)
     torch.save(writer.state_dict(), out / "init.pt")
     rng = np.random.default_rng(seed)
@@ -240,11 +276,17 @@ def train(variant: str, fold: int, seed: int, updates: int, group: int, out: Pat
         optimizer.zero_grad()
         (loss / (len(train_set) * group)).backward()
         optimizer.step()
-        curve.append({"update": update, "train_old_accuracy": float(np.mean(rewards_seen))})
+        point = {"update": update, "train_old_accuracy": float(np.mean(rewards_seen))}
+        if policy == "linear" and update % 50 == 0:
+            point["held_out_old_accuracy"] = held_out_accuracy(writer, held_set)
+        curve.append(point)
     torch.save(writer.state_dict(), out / "writer.pt")
     (out / "curve.json").write_text(json.dumps(curve))
+    if policy == "linear":
+        curve.append({"update": updates, "held_out_old_accuracy": held_out_accuracy(writer, held_set)})
+        (out / "curve.json").write_text(json.dumps(curve))
     (out / "metadata.json").write_text(json.dumps({"variant": variant, "fold": fold, "seed": seed, "updates": updates,
-                                                   "group": group, **collect_metadata()}, default=str))
+                                                   "group": group, "policy": policy, **collect_metadata()}, default=str))
 
 
 def time_and_agree() -> None:
@@ -269,12 +311,13 @@ def main() -> None:
     parser.add_argument("--updates", type=int, default=300)
     parser.add_argument("--group", type=int, default=8)
     parser.add_argument("--out", type=Path)
+    parser.add_argument("--policy", choices=["mlp", "linear"], default="mlp")
     parser.add_argument("--time", action="store_true")
     args = parser.parse_args()
     if args.time:
         time_and_agree()
     else:
-        train(args.variant, args.fold, args.seed, args.updates, args.group, args.out)
+        train(args.variant, args.fold, args.seed, args.updates, args.group, args.out, args.policy)
 
 
 if __name__ == "__main__":
