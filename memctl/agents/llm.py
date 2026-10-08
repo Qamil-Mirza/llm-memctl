@@ -75,6 +75,7 @@ class LLMAgent(Agent):
         # labels: "full" "[id] (speaker, date) text" or "compact" "speaker, date: text" (ids are long on
         # LongMemEval and only the scripted reader uses them; the budget counts content tokens only).
         self.labels = config.get("labels", "full")
+        self.log_prompt = bool(config.get("log_prompt", False))
         if self.labels not in ("full", "compact"):
             raise ValueError(f"unknown agent labels {self.labels!r}")
 
@@ -112,6 +113,8 @@ class LLMAgent(Agent):
             "model_calls": 1,
             "latency_s": time.perf_counter() - started,
         }
+        if self.log_prompt:  # Experiment 20's containment measure reads the prompt the reader saw
+            info["prompt"] = prompt
         return AgentStep(answer, self._used(memory, observation, answer), info)
 
     @staticmethod

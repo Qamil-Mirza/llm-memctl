@@ -146,6 +146,13 @@ class RLController(MemoryController):
         chooser_class = MassChooser if self.k_chooser_kind == "mass" else KChooser
         self.k_chooser = chooser_class.load(config["k_chooser"]) if self.k_mode == "adaptive" else None
         self.uses_hindsight = self.k_mode == "oracle"
+        # N5 (Experiment 20): written notes beside the floor head's raw turns. {"mode": "groups", "ranks": [[9, 16],
+        # ...]} writes one note per group of the head's ranks (compression at retrieval time); {"mode": "sessions",
+        # "ranks": [9, 32], "max_notes": 3} writes one note per session of those ranks, from the whole session, best
+        # rank first (a question-blind note that depends only on its session). Notes are CONSOLIDATE actions with
+        # write_note (memctl/memory/engine.py), and are deleted, not archived, at the next step.
+        self.notes = dict(config["notes"]) if config.get("notes") else None
+        self._order: list[int] = []
         self.hindsight = None
         self._question_tokens = 0
         self._k_info: dict = {}
@@ -228,7 +235,7 @@ class RLController(MemoryController):
         return item.token_count
 
     def decide(self, memory: MemoryView, task: TaskState) -> list[MemoryAction]:
-        self._info, self._k_info = {}, {}
+        self._info, self._k_info, self._order = {}, {}, []
         self._question_tokens = count_tokens(task.observation.content)
         for item in memory.active:  # keep lineage up to date even on steps with no decision
             self._root_ids(item)
@@ -272,8 +279,12 @@ class RLController(MemoryController):
         pricing = self.token_price > 0 and self.needed_model is not None
         cleared = [item.id for item in memory.active if not item.pinned and item.id != task.observation.id] \
             if self.keep_none else []
+        old_notes = [i for i in cleared if memory.get(i) is not None and memory.get(i).metadata.get("note")]
+        cleared = [i for i in cleared if i not in old_notes]
         clear_action = [MemoryAction(Operation.MOVE_TO_ARCHIVE, tuple(cleared), parameters={"method": "keep_none"})] \
             if cleared else []
+        if old_notes:  # a note is not archived: it would become a search candidate for later questions
+            clear_action.append(MemoryAction(Operation.EVICT, tuple(old_notes), parameters={"method": "notes"}))
         if (not over_budget or self.keep_none) and not shortlist and not pricing:
             self._info = {"floor_ids": [item.id for item in floor], "floor_tokens": floor_tokens} if floor else {}
             return clear_action + floor_action
@@ -311,6 +322,8 @@ class RLController(MemoryController):
                     parameters={"query": task.observation.content, "method": f"rl+{self.retriever.name}"},
                 )
             )
+        if self.notes and self.floor_head and self._order:
+            actions += self._note_actions([item for item, _ in shortlist], memory)
         for pick in decision.picks:
             item, operation = active[pick // N_REMOVALS], REMOVAL_OPERATIONS[pick % N_REMOVALS]
             parameters = {"ratio": self.compact_ratio} if operation in (Operation.COMPACT, Operation.COMPACT_AND_ARCHIVE) else {}
@@ -363,6 +376,7 @@ class RLController(MemoryController):
             elif self.floor_head:  # the k best by the head's logit (a ranking, not k independent yes/no)
                 chosen = torch.zeros_like(retrieve_logits)
                 k = self._floor_k(retrieve_logits, decision)
+                self._order = torch.argsort(retrieve_logits, descending=True).tolist()
                 chosen[torch.topk(retrieve_logits, min(k, len(retrieve_logits))).indices] = 1.0
             elif self.greedy:
                 chosen = (retrieve_logits > 0).float()
@@ -400,6 +414,35 @@ class RLController(MemoryController):
             mask[pick // N_REMOVALS] = False
             excess -= int(savings[pick // N_REMOVALS, pick % N_REMOVALS])
         decision.log_prob = log_prob
+
+    def _note_actions(self, shortlist: list[MemoryItem], memory: MemoryView) -> list[MemoryAction]:
+        """Experiment 20: CONSOLIDATE actions that write notes from the head's ranking (1-based ranks)."""
+        ranked = [shortlist[j] for j in self._order]
+        cap = int(self.notes.get("max_tokens", 100))
+        common = {"write_note": True, "labelled": True, "max_tokens": cap,
+                  "max_input_tokens": int(self.notes.get("max_input_tokens", 12000))}
+        actions = []
+        if self.notes["mode"] == "groups":
+            for low, high in self.notes["ranks"]:
+                group = ranked[low - 1:high]
+                if group:
+                    actions.append(MemoryAction(Operation.CONSOLIDATE, tuple(item.id for item in group),
+                                                parameters={**common, "note": f"ranks {low}-{high}"}))
+        elif self.notes["mode"] == "sessions":
+            low, high = self.notes["ranks"]
+            sessions = list(dict.fromkeys(item.metadata.get("session") for item in ranked[low - 1:high]
+                                          if item.metadata.get("session") is not None))
+            everything = list(memory.archived) + list(memory.active)
+            for session in sessions[: int(self.notes.get("max_notes", 3))]:
+                turns = [item for item in everything
+                         if item.metadata.get("session") == session and not item.metadata.get("note")]
+                if turns:
+                    actions.append(MemoryAction(Operation.CONSOLIDATE, tuple(item.id for item in turns),
+                                                parameters={**common, "note": f"session {session}"}))
+        else:
+            raise ValueError(f"unknown notes mode {self.notes['mode']!r}")
+        self._k_info["notes"] = len(actions)
+        return actions
 
     def _floor_k(self, retrieve_logits: torch.Tensor, decision: Decision) -> int:
         """How many of the head's ranking to show (Experiment 19)."""

@@ -289,6 +289,7 @@ def run_episode(
                     "agent_action": agent_step.action if agent_step else None,
                     "agent_output": agent_step.info.get("output") if agent_step else None,
                     "agent_prompt_tokens": agent_step.info.get("prompt_tokens") if agent_step else None,
+                    **({"agent_prompt": agent_step.info["prompt"]} if agent_step and "prompt" in agent_step.info else {}),
                     "agent_used_item_ids": list(agent_step.used_item_ids) if agent_step else [],
                     "scored": scored,
                     "correct": correct,
