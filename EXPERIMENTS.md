@@ -2615,10 +2615,17 @@ of the raw turns?
   most {limit} words. State each fact once. Keep every name, number and identifier. Reply with the merged note
   only."
 - **Input:** the chosen turns as labelled text ("speaker (date): content"), so dates survive.
-- **Length cap:** 150 tokens (the limit in the prompt, with the output truncated to 150 tokens).
-- **Question-blind.** The writer does not see the question. The set to summarise depends on the question (it comes
-  from the head's ranking), but the summary text does not. This keeps it a memory write rather than a second
-  reading of the question; a question-aware writer is a possible later arm.
+- **Chunking and length cap:** ranks 9–32 are summarised in three groups of 8 by rank (9–16, 17–24, 25–32), one
+  note of at most 100 tokens each (the limit in the prompt, with the output truncated to 100), so about 300 tokens in
+  all. One note for 24 turns (about 3,500 input tokens) would lose most facts to the cap and fail the gate for the
+  cap, not the idea. Note lengths are reported.
+- **Input limit:** writer inputs are cut at 12k tokens. One LongMemEval session in 19,195 is longer.
+- **Question-blind.** The writer does not see the question, so a summary is not a second reading of the
+  question. The *set* summarised in `fixed8+sum` does depend on the question, since it comes from the head's
+  ranking: that arm tests **compression at retrieval time**. Its notes are written at the question and never reused.
+  That is not yet a memory write in the Memory-R1 / MEM1 sense (written during the stream, independent of the
+  question, reused across questions). The `fixed8+sess` arm below is that write. A question-aware writer is a
+  possible later arm.
 - **Placement:** one item shown in place of the turns it summarises, marked as a note in the prompt.
 
 **Arms** (all on the §19 head A with 32 BM25 candidates; LongMemEval five test folds; tokens estimated from §19c):
@@ -2626,10 +2633,22 @@ of the raw turns?
 | arm | shown | expected prompt tokens |
 |---|---|---|
 | `fixed8` (reference, the current best) | raw ranks 1–8 | 1,049 (measured) |
-| `fixed8+sum` | raw ranks 1–8 + summary of ranks 9–32 | ≤ about 1,220 |
-| `sum16` | summary of ranks 1–16 only | ≤ about 330 |
+| `fixed8+sum` | raw ranks 1–8 + three notes (≤ 100 tokens each) for ranks 9–16, 17–24, 25–32 | ≤ about 1,370 |
+| `fixed8+sess` | raw ranks 1–8 + stored session notes (below) | ≤ about 1,370 |
+| `sum16` | two notes (≤ 100 tokens each) for ranks 1–8 and 9–16, no raw turns | ≤ about 390 |
 | `fixed16` (reference) | raw ranks 1–16 | 2,569 (measured) |
 | FIFO + floor, 5%, 3k target (reference) | — | 2,964 (measured) |
+
+**The stream-time write: `fixed8+sess`.**
+- Each session gets one note (≤ 100 tokens, the same writer prompt, question-blind), written once and stored.
+- At a question, the raw top 8 are shown with the stored notes of the sessions in which ranks 9–32 fall. At most 3
+  notes are shown, chosen by the head's best rank within each session.
+- A note depends only on its session (question-blind, temperature 0, cached by session id). So writing only the
+  notes some test question uses gives exactly the notes a full stream-time pass would write. On LongMemEval that
+  is at most 1,500 notes (3 per question) instead of all 19,195 sessions, which would cost about $0.50 or more. The
+  saving changes cost, not content. LoCoMo has 272 sessions in all, and every one is written.
+- Sessions average about 2,200 tokens on LongMemEval (95th percentile about 3,900), so its input is longer than a
+  group of 8 turns.
 
 **The free-gate measure (a reader-free proxy, declared now).** The gold evidence labels are turn ids, and a summary
 is not a turn, so all-found cannot score summary arms. The proxy is **gold-answer containment**: the normalised
@@ -2639,12 +2658,19 @@ normalised prompt text.
 - Abstention questions are excluded (470 questions).
 - It is conservative for summary arms: a paraphrase ("four hours" for "4 hours") is not counted.
 - Long or descriptive golds (for example preference questions) are rarely contained in any arm, so containment is
-  also reported by question type.
+  also reported by question type, with the preference and other descriptive types shown separately.
+- **Descriptive only:** content-word recall of the gold answer (normalised tokens minus stopwords; recall ≥ 0.8
+  counts). It shows how much paraphrase loss there is rather than guessing it. It is reported beside strict
+  containment and all-found on every arm, by type, and does not gate.
 
-**Gate (pre-registered, LongMemEval).** `fixed8+sum` goes to the reader only if both hold:
+**Gate (pre-registered, LongMemEval; the same rule for `fixed8+sum` and `fixed8+sess`, each against `fixed8`).**
+An arm goes to the reader only if both hold:
 1. Containment of `fixed8+sum` minus `fixed8`, paired by question, is at least +0.05, with a 95% interval
    entirely above 0.
 2. Its mean prompt tokens are at most 1.5 × `fixed8`'s (about 1,574).
+
+If both pass, both go to the reader. No Holm correction is applied at the gate, because the reader stage is
+where the claim is made.
 
 `sum16` is reported against `fixed8` and `fixed16` as description; it does not gate.
 
@@ -2652,7 +2678,8 @@ normalised prompt text.
 tokens are reported without a verdict.
 
 **Reader stage (if the gate passes; criteria declared now).**
-- **Primary:** `fixed8+sum` minus `fixed8`, accuracy on LongMemEval, paired, 95% interval above 0.
+- **Primary:** each passing arm minus `fixed8`, accuracy on LongMemEval, paired, 95% interval above 0. Holm is
+  applied over the arms that reach the reader.
 - Also reported: the §13a decomposition for the raw arms, the unknown rate, and prompt tokens for every arm.
 - LoCoMo stays exploratory.
 
@@ -2660,9 +2687,12 @@ tokens are reported without a verdict.
 gains are expected. **Expectation:** positive on containment, size unknown; accuracy is the reader's test.
 
 **Cost (NEEDS SPEND; estimated from §19c's measured throughput).**
-- Summary calls: one per question per summary arm. LongMemEval needs 500 × 2 = 1,000, with inputs of about 4.5k
-  tokens (24 turns) and outputs of at most 150. LoCoMo needs 1,540 × 2 = 3,080, with short inputs.
-- **Gate stage:** about 4,100 summary calls plus start-up, about 0.3–0.5 h, **about $0.15–0.25**.
+- **Retrieval-time notes** (`fixed8+sum` three per question, `sum16` two per question):
+  - LongMemEval: 500 × 5 = 2,500 calls, inputs about 1–1.5k tokens.
+  - LoCoMo: 1,540 × 5 = 7,700 calls, short inputs.
+- **Session notes:** at most 1,500 on LongMemEval (inputs about 2.2k tokens) and 272 on LoCoMo.
+- **Gate stage:** about 12,000 short generations (≤ 100 tokens) plus start-up, about 0.4–0.6 h, **about
+  $0.20–0.30**. The session arm adds about $0.03–0.05 of that, under the $0.30 line, so it runs on both benchmarks.
 - **Reader stage (if the gate passes):** summaries are cached, so it is answers and judging only, at about §19c's
   size. **About $0.30–0.45.**
 - Before either: a full-size stub-backend run of the whole pipeline (stub summaries) under `guard.sh`, with peak
