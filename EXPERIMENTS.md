@@ -65,6 +65,7 @@ commands given).
 | 18 | Second-family judge check; exploratory LoCoMo reader test | Granite agrees with Qwen on 97% (κ 0.95), similar error rates; ranking and the head's gain hold (+0.040, CI excludes 0). Exploratory: head transfers to LoCoMo, +0.087 (post hoc). CONFIRMS |
 | 19 | Adaptive k (5, 8 or 16 of 32); reader test §19c | Adaptivity stopped at its time box (the ceiling is the finding). Reader: LME `fixed8` 0.545 vs §15 head 0.500 (+0.045, CI +0.011..+0.079) at 1,049 tokens, PASS; LoCoMo `fixed5` +0.023 (CI −0.001..+0.048), no pass. Exploratory: LME `fixed16` −0.057 vs `fixed8` (context rot on a controlled pair); LoCoMo `fixed16` 0.344 at 734 tokens beats FIFO 10% (0.295 at 3,087). $0.36. §19d confirmation (head B, second host): −0.026 (CI −0.066..+0.015), NOT CONFIRMED; the decomposition repeats (P(correct \| in view) −0.088); $0.10 |
 | 20 | Write action: notes beside the top 8 (§20) | Gate FAILED for both note arms (containment vs `fixed8`: +0.028 retrieval-time notes, +0.043 stored session notes, bar +0.05; both CIs above 0); no reader stage. Session notes are the most token-efficient evidence (+0.043 for about 300 tokens vs +0.060 for 1,520 raw). Gate spend about $0.81 (four pods) |
+| 21 | Sequential task, lossy memory (LoCoMo; free, scripted) | Oracle gate PASSES: oracle − best rule +0.177 (CI +0.126..+0.224) on old-evidence questions; cross-fitted learned notes reach +0.038 (AUC 0.74–0.84), leaving +0.139 for §22; unlimited-archive control gap +0.016. $0 |
 
 ---
 
@@ -2886,6 +2887,53 @@ small and the reader frozen.
 
 **Paid steps (not proposed yet).** A reader version of the gate (the real 7B answering A and B), and any training,
 come only after the free gate passes, each with its own pre-registration and cost.
+
+### 21a. Result: the oracle gate passes on LoCoMo; a supervised predictor closes about a fifth of the gap (2026-10-08)
+
+Free and scripted (no model). `memctl/analysis/lossy_gate.py` at 93f4fe6 → `runs/exp21_gate.json`; table
+`runs/_pipelines/exp21_report.py` → `runs/exp21_gate_report.md`. Settings: w = 2, notes of 100 tokens, top 8 by
+fusion search, 10 conversations, 1,535 questions, 1,249 of them "old" (oldest evidence at least w sessions back).
+
+| note policy | accuracy, old questions (lossy) | evidence survives (lossy) | accuracy (unlimited archive, control) |
+|---|---|---|---|
+| oracle (hindsight) | **0.286** | 0.348 | 0.552 |
+| learned (cross-fitted) | 0.147 | 0.167 | 0.542 |
+| first turns (best rule) | 0.109 | 0.131 | 0.536 |
+| random | 0.051 | 0.060 | 0.535 |
+| salience | 0.039 | 0.044 | 0.534 |
+| shortest | 0.015 | 0.016 | 0.536 |
+
+- **Gate: PASS.** Oracle minus the best rule (first turns) is **+0.177 (+0.126, +0.224)**, conversation-clustered,
+  against the pre-registered +0.10. Credit assignment is defined and has headroom on this task.
+- **Learnable headroom.** `learned` minus first turns is +0.038 (+0.010, +0.068); oracle minus `learned` is +0.139
+  (+0.098, +0.179).
+  - The supervised predictor reaches about a fifth of the gap, although it separates needed turns well (AUC
+    0.74–0.84 by conversation; §11 was about 0.65).
+  - The base rate is 16–31% of turns, against §11's 1.2%.
+  - By the reading declared before the run, **the space between the learned row and the oracle is what a GRPO
+    stage (§22) would have to earn**, and it is large.
+- **The control behaves as predicted.** With an unlimited archive, the gap almost vanishes: oracle minus first
+  turns is +0.016 (+0.005, +0.027). This agrees with §13–§20: when the archive is perfect, early decisions can be
+  repaired at the question.
+- **By evidence age** (lossy accuracy; oracle / learned / first turns):
+
+  | age | n | oracle | learned | first turns |
+  |---|---|---|---|---|
+  | 1–2 | 534 | 0.543 | 0.474 | 0.451 |
+  | 3–5 | 577 | 0.355 | 0.191 | 0.144 |
+  | 6+ | 424 | 0.179 | 0.083 | 0.050 |
+
+  The gap grows with age, as the lossy rule implies.
+- **Even the oracle loses most of the evidence:** only 0.348 survives. 100 tokens hold about 3–5 turns, and a
+  session often serves more questions than that. The note budget, not foresight, limits the oracle.
+- **B (retention of the stored answer, d = 3): 1.000.** Search finds the answer item from B's quoted question, as
+  the draft feared. B is uninformative here, as the review expected when it was made secondary.
+- **Not yet run:** the LongMemEval composed-episode corroboration row (free; to follow).
+
+**What this means for §22.** The pre-registered condition for an RL stage is met. The oracle-minus-learned gap is
++0.139 on old-evidence questions, where each session's write decision is credited by exactly the later questions
+it served. That is the per-write hindsight credit the review proposed. The reader stage (the real 7B answering, and
+the §20 abstractive writer as a comparison) is paid and comes with its own pre-registration.
 
 ## 5. The sequential task
 
