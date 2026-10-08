@@ -3221,6 +3221,28 @@ across readers):
     load).
   - **Triage rule, pre-declared:** if Qwen 14B has not finished by 19:30 UTC, the Granite pair (secondary) is
     dropped before anything else, so that the Qwen 7B rows the primary claim needs still run.
+- **Grading, declared before the judge pass** (after the Qwen 3B format check below).
+  - Every reader-and-arm cell reports accuracy on the answerable questions as three disjoint shares:
+    answered-correct, answered-wrong and unknown.
+  - The headline accuracy is answered-correct, as pre-registered, and the claim tests are unchanged.
+  - Beside them, one descriptive line per reader: how much of the `fixed8` minus FIFO gap is "fewer unknowns"
+    against "more correct among answered" (P(correct | answered) compared across arms). The controller can help
+    because evidence is in view, or because a small reader stops refusing. Both are legitimate but different
+    claims, and the write-up names which one holds at each size.
+  - A cost column, **"false answers on unanswerable"**, counts the abstention questions answered with something
+    other than "unknown". n = 30, so no interval is quoted.
+- **Qwen 3B format check** (descriptive; same host; before any judging; `runs/_pipelines/exp23_unknown.py`):
+
+  | arm | unknown on the 470 answerable questions | false answers on the 30 unanswerable |
+  |---|---|---|
+  | FIFO + floor | 0.709 | 1 of 30 |
+  | `fixed8` | 0.372 | 7 of 30 |
+  | `fixed16` | 0.570 | 2 of 30 |
+
+  - At 3B the controller roughly halves the reader's refusals, so it changes the reader's willingness to answer,
+    and it also answers more of the unanswerable questions.
+  - `fixed16` sits between the two: a longer prompt makes the small reader refuse more. That is a second
+    observation of the §19c/§19d pattern, with no verdict.
 - LoCoMo (exploratory) would add about 6,000 calls per reader. It is not included unless the user wants it.
 
 ## 5. The sequential task
