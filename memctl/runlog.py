@@ -125,8 +125,22 @@ class RunLogger:
         self._write_metadata()
 
 
+# Keys that say where a model is served, not what the experiment is. A cell resumed on a new pod (a new URL) is
+# the same experiment; before Experiment 20 such a resume was refused (EXPERIMENTS.md §20).
+ENDPOINT_KEYS = ("base_url", "timeout_s")
+
+
+def _without_endpoints(value):
+    if isinstance(value, dict):
+        return {k: _without_endpoints(v) for k, v in value.items() if k not in ENDPOINT_KEYS}
+    if isinstance(value, list):
+        return [_without_endpoints(v) for v in value]
+    return value
+
+
 def _without_logging(config: dict) -> dict:
-    return {key: value for key, value in (config or {}).items() if key not in ("logging", "episodes")}
+    """The config's identity for resuming: without logging, the episode count and serving endpoints."""
+    return _without_endpoints({key: value for key, value in (config or {}).items() if key not in ("logging", "episodes")})
 
 
 def peak_rss_mb() -> float:

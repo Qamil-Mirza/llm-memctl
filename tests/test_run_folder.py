@@ -118,3 +118,17 @@ def test_sweep_only_reruns_the_named_cells(tmp_path):
     assert sorted(path.name for path in root.iterdir() if path.is_dir()) == ["lru__fraction0.1"]
     with pytest.raises(ValueError):
         run_sweep(sweep, workers=1, output_dir=str(tmp_path), only=["nope"])
+
+
+def test_a_cell_resumes_against_a_new_endpoint_but_not_a_new_experiment(tmp_path):
+    from memctl.runlog import RunLogger
+
+    def config(url, model="qwen2.5-7b-instruct"):
+        return {"agent": {"name": "llm", "model": {"backend": "openai", "name": model, "base_url": url, "timeout_s": 300}},
+                "memory": {"compression_model": {"backend": "openai", "name": model, "base_url": url}}}
+
+    RunLogger(tmp_path / "cell", config("https://pod-one/v1"))
+    (tmp_path / "cell" / "episodes.jsonl").write_text("")
+    assert RunLogger(tmp_path / "cell", config("https://pod-two/v1")).resumed  # a new pod: the same experiment
+    with pytest.raises(ValueError):
+        RunLogger(tmp_path / "cell", config("https://pod-two/v1", model="another-model"))
