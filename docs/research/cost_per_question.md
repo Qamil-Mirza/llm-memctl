@@ -11,7 +11,7 @@ stated price not measured by us.
 | FIFO + floor (5%, 3k target) | 2,964 [measured, §23] | BM25 search: 102 ms CPU [measured] | 0.436 [measured, §23] | 0.091 [derived] | 0.59 [derived] |
 | `fixed8` (§19 head, 8 of 32) | 1,049 [measured, §23] | BM25 + one forward pass of a 27k-parameter head: 122 ms CPU [measured] | **0.538** [measured, §23] | **0.032** [derived] | **0.21** [derived] |
 | `fixed16` (§19 head, 16 of 32) | 2,569 [measured, §23] | as `fixed8`: 125 ms CPU [measured] | 0.487 [measured, §23] | 0.079 [derived] | 0.51 [derived] |
-| `fixed8` + stored session notes (§20) | 1,348 [measured, §20] | as `fixed8`, plus 3 writer calls of about 2.2k input and 42 output tokens each [measured: calls and output; input from the mean LongMemEval session, 2,159 tokens] | not measured: the §20 gate failed, so no reader run | reader 0.042 + writer about 0.28 if every note is written fresh [derived] | reader 0.27 + writer about 1.38 if fresh [derived] |
+| `fixed8` + stored session notes (§20) | 1,348 [measured, §20] | as `fixed8`, plus 3 writer calls of about 2.2k input and 42 output tokens each [measured: calls and output; input from the mean LongMemEval session, 2,159 tokens] | not measured: the §20 gate failed, so no reader run | reader 0.042 + writer about 0.27 if every note is written fresh [derived: 3 × 2.2k input tokens] | reader 0.27 + writer about 1.32 if fresh [derived: 3 × 2.2k input tokens] |
 | prompted LLM controller (§7b) | — | 9 calls per 40-step episode, 824 s CPU per episode (Llama-3.1-8B, synthetic recall task) [measured, §7b] | not measured on LongMemEval | — | — |
 
 **How the dollar columns were derived.**
