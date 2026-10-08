@@ -3140,6 +3140,68 @@ with the longest jobs first, and the measured total is written here before train
 - 45 runs ((i), (ii) and (iv) × 5 folds × 3 seeds), 9 at a time: **about 2.5–3 h**.
 - (iii) is not run in this batch, as allowed by the text above.
 
+## 23. Does a memory controller lift a small reader to the next size class? (N8; 2026-10-08, DRAFT pre-registration)
+
+**Status: draft, under review. Nothing costs money until the draft is agreed and the user approves the figure.**
+
+**The user's hypothesis, as pre-registered claims** (LongMemEval, 470 non-abstention questions, paired by question
+across readers):
+1. **Claim 1.** The §19 head with 8 turns (`fixed8`), read by a 3B, is at least as accurate as FIFO + floor read by
+   a 7B of the same family (Qwen2.5-Instruct).
+2. **Claim 2.** `fixed8` read by a 7B is at least as accurate as FIFO + floor read by a 14B.
+- **"At least as accurate" (non-inferiority; margin proposed, for the review to fix).** The paired difference
+  (small reader with `fixed8`, minus large reader with FIFO + floor) has a 95% interval whose lower bound is above
+  −0.03. "Better" is reported if the lower bound is above 0.
+- **Secondary, same family.** Granite-3.1 2B with `fixed8`, against Granite-3.1 8B with FIFO + floor.
+- LoCoMo is exploratory, and only if the cost is small.
+
+**Readers (five).**
+- Qwen2.5-Instruct 3B, 7B and 14B: the size ladder. The 14B runs in bf16 on the A40 with `--max-model-len 16384`;
+  if the KV cache does not fit, AWQ is used, declared at launch.
+- Granite-3.1 instruct 2B and 8B: a second family. It already served on our pod (§18); Llama is gated.
+
+**Arms per reader** (on the same 500 test questions, five folds, as §19c):
+- FIFO + floor at 5% with the 3k target: the baseline.
+- `fixed8`: the §19 head A, 32 BM25 candidates.
+- `fixed16`: the context-rot probe.
+- **The 7B rows are rerun in this session** for pairing. No §19c row is reused in the primary table.
+
+**Prompt and judge.**
+- **One prompt for every reader:** the frozen 7b5fc30 reader prompt, unchanged. There is no per-model prompt
+  tuning; that is a stated limitation. The "unknown" rate is reported beside every accuracy as the format-failure
+  check.
+- **One judge for every reader:** Qwen2.5-7B with the official LongMemEval prompts, so all readers sit on one scale
+  (§18 found the controller ranking judge-independent).
+- A vLLM server holds one model, so **answers are generated first** with a stub judge, then **all judged in one
+  separate pass** with the Qwen 7B judge (as `memctl.judge_check` re-judged in §18). The judge cache is keyed by
+  question and answer.
+
+**Measures.**
+- Accuracy and prompt tokens.
+- The §13a decomposition. P(all in view) is the same for every reader on the same arm (the controller does not
+  depend on the reader), so **P(correct | in view) is the reader-only number**, and its chart against reader size
+  is the main figure.
+- By question type.
+- Descriptive, per reader: the accuracy-against-tokens frontier and where `fixed16` falls below `fixed8` (the
+  degradation point).
+
+**Expectation, written before any run.**
+- Claim 1 is likely: §19c's `fixed8` at 7B beat FIFO + floor by +0.113, a margin a smaller reader may keep.
+- Claim 2 is uncertain: a 14B is less fragile with long prompts, so FIFO + floor gains more from it.
+- A 3B or 2B reader may show a high "unknown" rate under the frozen prompt. That would count against claim 1 and
+  is reported as a format failure, not hidden.
+
+**Cost (NEEDS SPEND; from measured throughput; a figure for the user before any launch).**
+- Per reader: download and load (§19c: reader ready about 5 min after create; Granite in §18 loaded by changing
+  the vLLM arguments), plus 3 arms × 500 questions = 1,500 reader calls.
+- At §19c's measured rate (2,000 LongMemEval questions with judging in about 29 min on 4 workers; about 16 workers
+  planned here), that is about 10–15 min per reader, and about 20–30 min for the 14B.
+- Then one judge pass of 7,500 short calls with Qwen 7B: about 10–15 min.
+- **One A40 session, models switched in turn:** about 2–2.5 h, so **about $1.00–1.25**, with a hard stop at 3 h
+  (about $1.50).
+- Before launch: a full-size stub run with a resume rehearsal against a changed endpoint, and peak RSS recorded.
+- LoCoMo (exploratory) would add about 6,000 calls per reader. It is not included unless the user wants it.
+
 ## 5. The sequential task
 
 ```bash
