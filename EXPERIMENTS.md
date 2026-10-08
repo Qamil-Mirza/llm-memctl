@@ -2610,6 +2610,11 @@ on 2026-10-08. The reader stage needs a separate approval.
 - Full-size stub run (stub writer, stub reader): 90 of 90 cells ran, with no failures. Peak RSS per worker is 0.27
   GB on LongMemEval and 0.86 GB on LoCoMo. Workers: LoCoMo 10 beside LongMemEval 4 (about 9.7 GB).
 - The report (`runs/_pipelines/exp20_report.py`, written before the real notes) ran end to end on the stub output.
+  - On the raw arms, which are real even in the stub run, strict containment and all-found agree only loosely:
+    P(contained | all-found) = 0.53, against 0.30 without. Raw `fixed16` minus `fixed8` is +0.060 (+0.038, +0.083),
+    so the +0.05 bar is about what eight more raw turns buy.
+  - The gate stays as pre-registered. That calibration figure is reported beside the verdict, and a near miss is
+    read with the content-word recall and the by-type table.
 - In the gate stage the reader does not answer. A stub builds and logs the prompt; only the note writer calls the
   model. The host and the note cache (`cache/notes_qwen7b_exp20`, keyed by prompt) are recorded, so a later full
   write of every session can be checked against a sample.
@@ -2659,6 +2664,9 @@ of the raw turns?
   saving changes cost, not content. LoCoMo has 272 sessions in all, and every one is written.
 - Sessions average about 2,200 tokens on LongMemEval (95th percentile about 3,900), so its input is longer than a
   group of 8 turns.
+- **A limitation of this first version.** Notes are evicted at the next step and never become search candidates. A
+  session note is "stored" and reused only through the head's mapping from rank to session (and the writer's cache),
+  not by being found through search.
 
 **The free-gate measure (a reader-free proxy, declared now).** The gold evidence labels are turn ids, and a summary
 is not a turn, so all-found cannot score summary arms. The proxy is **gold-answer containment**: the normalised
