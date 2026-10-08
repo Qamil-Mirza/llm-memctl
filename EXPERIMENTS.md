@@ -3266,6 +3266,11 @@ every reader):
 | Granite 2B | 0.368 (0.326, 0.413) | 0.364 (0.321, 0.409) | 0.353 | −0.004 (−0.047, +0.038) |
 | Granite 8B | 0.421 (0.377, 0.466) | 0.470 (0.426, 0.515) | 0.489 | +0.049 (+0.002, +0.096) |
 
+**The drop-in lift, `fixed8` minus FIFO + floor per reader (same controller, unchanged):** Qwen 3B +0.153
+(+0.109, +0.200), Qwen 7B +0.102 (+0.060, +0.145), Qwen 14B +0.102 (+0.060, +0.145), Granite 2B −0.004
+(−0.047, +0.038), Granite 8B +0.049 (+0.002, +0.096). Report copy: `docs/research/exp23_reader_ladder_report.md`;
+figure: `docs/research/figures/exp23_ladder.png`.
+
 The Qwen 7B and 14B rows give the same difference by coincidence. Their answers differ on 227 of 470 questions,
 and their win/loss counts are 78/30 and 76/28: the same net of +48.
 
