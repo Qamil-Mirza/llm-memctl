@@ -3044,6 +3044,54 @@ third of the gap or less. (iii) is at least as good as (ii).
   conversations, with the §20 abstractive notes compared against extractive notes.
 - One pod, an estimate from measured latency, and a stub run with a resume rehearsal first.
 
+### 22a. Interim result: per-write credit beats uniform credit; neither beats a plain logistic writer (2026-10-08)
+
+**Status.** This covers the 30 runs of (i) and (ii) (5 folds × 3 seeds each). (iv) time-forward and the last three
+(iii) runs are still training; they are added when done. Everything is free, at c7316f0. The test is the exact §21
+simulator on each fold's held-out conversations, greedy (`runs/_pipelines/exp22_eval.py` →
+`runs/exp22_eval_main.json`; table `runs/exp22_report_main.md`). Each question is averaged over seeds, and the
+intervals are clustered by conversation.
+
+**Held-out old-evidence accuracy (1,249 questions, 10 conversations):**
+
+| policy | accuracy | age 2 | age 3–5 | age 6+ |
+|---|---|---|---|---|
+| oracle (§21) | 0.286 | 0.306 | 0.355 | 0.179 |
+| (ii) per-write hindsight credit | **0.131** | 0.156 | 0.163 | 0.074 |
+| (i) episode GRPO (uniform credit) | 0.116 | 0.132 | 0.150 | 0.061 |
+| each fold's supervised init, packed per token (the pre-registered baseline) | 0.117 | 0.114 | 0.153 | 0.069 |
+| first turns (§21) | 0.109 | 0.129 | 0.144 | 0.050 |
+
+The first age column here holds only old questions of age 2. The §21 table's "1–2" column also included age 1.
+
+**Pre-registered comparisons.**
+- (ii) minus (i): **+0.015 (+0.007, +0.024)**.
+- (ii) minus the supervised init: **+0.015 (+0.0003, +0.029)**.
+- (i) minus the supervised init: −0.001 (−0.011, +0.009).
+- **Gate: PASS, by a hair**: both intervals sit above 0, the second by 0.0003.
+- (ii) closes about 9% of the gap between the supervised init and the oracle; (i) closes none.
+
+**The caveat that changes the reading** (post hoc and descriptive; it does not change the verdict).
+- The pre-registered baseline is each fold's own init: a small network fitted by BCE on 8 conversations. It scores
+  0.117 held out, against **0.146 for §21's logistic writer** (packed per token).
+- Refit per fold on the same 8 conversations (`runs/_pipelines/exp22_logistic_folds.py`), the logistic writer
+  scores 0.146 packed per token and 0.143 by probability alone.
+- **(ii) minus the logistic writer: −0.014 (−0.038, +0.008).**
+- So per-write credit beats uniform credit, and beats the network it started from. But neither RL variant reaches
+  a plain, well-regularised supervised writer.
+- The network overfits its 8 training conversations: training accuracy on the surrogate rises from 0.282 to 0.350
+  for (ii) (0.247 to 0.289 for (i)), against 0.131 held out.
+
+**Reading.**
+- On the credit-assignment question the result is positive and clear: crediting each write by the later
+  questions it served beats spreading one reward over the conversation. Uniform credit learns nothing (−0.001).
+- On the "RL over supervised" question it is negative here: the gain is smaller than the gap between a weak and a
+  strong supervised initialisation.
+- The natural next free check is the same RL variants initialised from the logistic writer. That would be a new
+  pre-registration, not part of this one.
+- Also noted: §22 declared "imitation of the supervised scores" for the init, and the code fits the BCE labels
+  directly. That is the same supervised model, one step shorter.
+
 ## 5. The sequential task
 
 ```bash
