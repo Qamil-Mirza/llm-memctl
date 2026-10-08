@@ -3214,6 +3214,13 @@ across readers):
     and finished with 100 questions each. Peak RSS is 0.29 GB per worker.
   - The judge script (`runs/_pipelines/exp23_judge.py`) ran on the stub output: 470 answers per arm. Its stub
     entries (486 files) were deleted from `cache/judge_exp23`, so the real pass starts from an empty cache.
+- **Launch (recorded before any result).**
+  - Pod l29poll3lrjuat, created 18:14:24 UTC, in EU-SE-1 at **$0.59/h** (not the $0.49 estimated). The hard stop
+    is moved to 2.5 h → **20:44 UTC, about $1.48**, under the user's ceiling of about $1.50.
+  - Stage order: Qwen 3B, Qwen 14B, Granite 2B, Granite 8B, then Qwen 7B (answers and the blind judge pass, one
+    load).
+  - **Triage rule, pre-declared:** if Qwen 14B has not finished by 19:30 UTC, the Granite pair (secondary) is
+    dropped before anything else, so that the Qwen 7B rows the primary claim needs still run.
 - LoCoMo (exploratory) would add about 6,000 calls per reader. It is not included unless the user wants it.
 
 ## 5. The sequential task
