@@ -3209,6 +3209,11 @@ across readers):
 - **One A40 session, models switched in turn:** about 2–2.5 h, so **about $1.00–1.25**, with a hard stop at 3 h
   (about $1.50). This is the figure accepted at review, for the user's approval.
 - Before launch: a full-size stub run with a resume rehearsal against a changed endpoint, and peak RSS recorded.
+  - **Done at c9bd9e7.** Reader `qwen3b` (stub), 5 folds × 3 arms, was interrupted after 25 s (cells at 11–21 of 100
+    questions), then resumed against a different `base_url`. All 15 cells resumed (`resumed: true`, none refused)
+    and finished with 100 questions each. Peak RSS is 0.29 GB per worker.
+  - The judge script (`runs/_pipelines/exp23_judge.py`) ran on the stub output: 470 answers per arm. Its stub
+    entries (486 files) were deleted from `cache/judge_exp23`, so the real pass starts from an empty cache.
 - LoCoMo (exploratory) would add about 6,000 calls per reader. It is not included unless the user wants it.
 
 ## 5. The sequential task
