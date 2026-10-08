@@ -3080,6 +3080,17 @@ different, weaker row that I introduced at evaluation time.
   0.282 to 0.350 for (ii) (0.247 to 0.289 for (i)), against 0.131 held out.
   - The RL gain is smaller than the gap between the MLP init and the logistic writer, so the policy class, not the
     credit signal, limits this result. §22b tests that with a policy that cannot overfit.
+- **(iv) time-forward credit (label-free; `runs/exp22_eval_fwd.json`, table `runs/exp22_report_iii_pending.md`):**
+  0.119.
+  - (ii) minus (iv): **+0.012 (+0.002, +0.023)**.
+  - (iv) minus (i): +0.003 (−0.005, +0.010).
+  - (iv) minus `learned-knapsack`: −0.027 (−0.048, −0.007).
+  - By the reading declared in §22, the hindsight *linking* buys the gain. Per-session grouping without the evidence
+    links does no better than uniform credit. So the deployable label-free variant does not carry the effect here:
+    per-write credit works because it knows which questions each write served.
+  - Training-curve check: (ii) and (iii) average to the same rounded curve (0.282 → 0.350). The run files differ
+    (fold 0, seed 0: 0.365 against 0.367 at the end; the writers differ), so this is not a duplicated run. Both
+    credit a write by the questions it served.
 - **Compute slip.** Under the 12-job load a cheap run took about 30–40 min, not the measured 12–15 min. The
   laptop has 8 physical cores, and 15 slow (iii) jobs left a tail. The batch ran well past the 5–6 h estimate; the
   measured total is added when the batch ends.
