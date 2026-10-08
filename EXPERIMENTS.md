@@ -3296,7 +3296,7 @@ conversations).**
 All 30 runs ((ii) and (i), 5 folds × 3 seeds), from ea95030 under the amended rule, ran 20:43–22:40 UTC (about
 2 h, within the 2–4 h estimate). The update counts were chosen on the inner pairs by the **surrogate** simulator.
 Each writer was evaluated **once**, on its fold's held-out conversations, by the exact simulator, with knapsack
-packing (`runs/_pipelines/exp22b_eval.py` → `runs/exp22c_eval.json`; table `runs/exp22c_report.md`). The init row
+packing (`runs/_pipelines/exp22b_eval.py` → `runs/exp22c_eval.json`; table `runs/exp22c_report.md`, copied to `docs/research/exp22c_report.md`). The init row
 is the logistic fit on all 8 training conversations (`learned-knapsack`).
 
 **Chosen update counts** (folds 0–4 × seeds 0–2, in order; descriptive):
