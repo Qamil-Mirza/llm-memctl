@@ -3013,6 +3013,14 @@ variant. **The number of updates is provisional (300)** until one surrogate roll
 - 300 updates × 8 conversations × G = 8, over 5 folds, 3 seeds and 4 variants, is about 1.15M conversation rollouts.
 - If the measured total exceeds about 12 hours on the laptop under `guard.sh`, updates or G are cut, and which one
   is written here before training.
+- **Measured before training (2026-10-08).**
+  - Surrogate against exact simulator, on the §21 policies for old-evidence questions: oracle 0.290 against 0.286,
+    first turns 0.108 against 0.109, salience 0.040 against 0.039, random 0.054 against 0.051.
+  - Timing, from 3 updates on fold 0 including about 6 s of start-up: about 2.3–2.9 s per update for (i), (ii)
+    and (iv), and about 42 s for (iii), which re-simulates once per note.
+  - 300 updates is about 12–15 min per run for (i), (ii) and (iv), and about 3.5 h for (iii). That is about 62
+    core-hours in all, about 5–6 h on 12 parallel workers, under the 12 h line. **The budget stays 300 updates,
+    G = 8.**
 - Training learning curves are reported, with no early stopping on test. The test policy is greedy as declared;
   the stochastic policy's mean is descriptive. The test policy is greedy (top-scoring order, filled by the same
 budget rule).

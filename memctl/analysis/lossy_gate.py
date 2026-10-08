@@ -151,7 +151,8 @@ def learned_scores(conversations: int, w: int, encoder) -> tuple[dict[int, dict[
 
 
 def simulate(conversation: int, w: int, budget: int, k: int, retriever: FusionRetriever,
-             scores: dict[str, float] | None = None) -> list[dict]:
+             scores: dict[str, float] | None = None, policies: tuple[str, ...] = POLICIES,
+             settings: tuple[str, ...] = ("lossy", "unlimited")) -> list[dict]:
     episode = load(conversation)
     turns = episode.turns
     by_session = defaultdict(list)
@@ -160,7 +161,7 @@ def simulate(conversation: int, w: int, budget: int, k: int, retriever: FusionRe
     last = max(by_session)
     questions, served = placed(episode, w)
     rows = []
-    for policy in POLICIES:
+    for policy in policies:
         rng = random.Random(conversation)
         notes = {s: choose(policy, by_session[s], budget, served, rng, scores) for s in sorted(by_session)}
         note_items = {s: MemoryItem(f"note:{s}", "\n".join(labelled_text(t) for t in picked) or "(empty)",
@@ -169,7 +170,7 @@ def simulate(conversation: int, w: int, budget: int, k: int, retriever: FusionRe
                       for s, picked in notes.items()}
         answers = {}
         for asked, oldest, q in sorted(questions, key=lambda x: x[0]):
-            for setting in ("lossy", "unlimited"):
+            for setting in settings:
                 window = [item(t, s) for s in range(max(1, asked - w + 1), asked + 1) for t in by_session.get(s, [])]
                 older = [item(t, s) for s in range(1, asked - w + 1) for t in by_session.get(s, [])] if setting == "unlimited" else []
                 kept = [note_items[s] for s in range(1, asked - w + 1)]
