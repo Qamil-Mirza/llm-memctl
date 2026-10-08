@@ -2668,6 +2668,33 @@ of the raw turns?
   session note is "stored" and reused only through the head's mapping from rank to session (and the writer's cache),
   not by being found through search.
 
+**Gate-stage spend and incidents (2026-10-08), recorded before any gate number is read.**
+
+| step | pod | time (UTC) | cost | what happened |
+|---|---|---|---|---|
+| approved | — | — | $0.20–0.30 | the estimate treated note writing like judge calls |
+| pod 1 | phuj1d8j8set0t, CUDA 13.2 | 00:13:53–00:56 | ≈ $0.34 | stopped at the local deadline about half done; note writing is sequential per question (2–3 notes of about 94 tokens), and a sweep runs cells, not episodes, in parallel |
+| pod 2 (+$0.20 approved) | 82brrqh9fmttid, CUDA 13.0 | 01:33:42–01:58:15 | ≈ $0.20 | cells started on pod 1 refused to resume, because the pod URL was part of the saved config identity; only folds 2–4 and new LoCoMo cells advanced |
+| pod 3 (≤ $0.20 approved) | f8t5ck7gw771e9, CUDA 13.0 | 02:03:16–02:25 | ≈ $0.18 | unfinished cells were quarantined (`runs/_aborted_exp20`) and rerun from scratch with cached notes; stopped at the local deadline |
+| **total** | | | **≈ $0.72** | gate budgeted at $0.30 |
+
+- **Coverage at stop.**
+  - LongMemEval `fixed8_sum`: 422 of 500 questions (fold 1 has 46 of 100; folds 2–4 have 92 each).
+  - `fixed8_sess`: 341 of 500.
+  - `sum16`: 456 of 500.
+  - All raw arms are complete (the raw cells of folds 2–4 and LoCoMo ran on CPU, for free).
+  - LoCoMo `sum16`: 7 of 10 conversations; every other LoCoMo arm is complete.
+- **Note-host agreement** (the review's condition). 50 notes written on pod 1 were rewritten on pod 2: 30 of 50
+  match exactly, and the mean word overlap (Jaccard) is 0.898 (`runs/exp20_note_agreement.json`). Pod 1 wrote 6,063
+  notes; the rest came from pods 2 and 3. Every arm of a question uses the same cached note, so this does not bias
+  arm comparisons.
+- **Fix.** `memctl/runlog.py` now leaves serving endpoints (`base_url`, `timeout_s`) out of the config identity used
+  for resuming, with a test: a cell resumes against a new URL but not against a new experiment. Both lessons
+  (estimate from the measured per-call latency of the call type; test a resume against a changed endpoint) are in
+  the pre-launch checklist.
+- **The gate is incomplete.** The pre-registered verdict needs all 470 questions. Whether to finish (a further
+  spend) or to stop is the user's decision. No gate number has been computed.
+
 **The free-gate measure (a reader-free proxy, declared now).** The gold evidence labels are turn ids, and a summary
 is not a turn, so all-found cannot score summary arms. The proxy is **gold-answer containment**: the normalised
 gold answer (`memctl.metrics.normalize_answer`, as in the F1 code) appears as a contiguous word sequence in the

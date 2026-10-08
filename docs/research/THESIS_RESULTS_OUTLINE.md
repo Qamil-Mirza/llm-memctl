@@ -135,8 +135,9 @@ Before the chapter is final, the Experiment 15 head row should be added to it.
   | 18: second judge and LoCoMo exploratory | 0.32 h | $0.16 |
   | 19c: reader test of the adaptive-k picks | 0.74 h | $0.36 |
   | 19d: confirmation of the context-rot pair | 0.20 h | $0.10 |
-  | **benchmark programme (13–19)** | 8.80 h | **$4.31** |
-  | **all experiments** | 17.63 h | **$8.63** |
+  | 20: write-action gate stage (incomplete; three pods) | 1.48 h | $0.72 |
+  | **benchmark programme (13–20)** | 10.28 h | **$5.03** |
+  | **all experiments** | 19.11 h | **$9.35** |
 - **Provenance.**
   - Every run records its commit and a dirty flag.
   - The sharded LongMemEval loader has a test showing it plays the same episodes as the full file.
