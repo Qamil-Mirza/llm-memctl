@@ -2601,8 +2601,18 @@ report `runs/_pipelines/exp19d_report.py` → `runs/exp19d_report.md`.
 
 ## 20. A write action: the reader summarises the turns it cannot afford to show (N5; 2026-10-08, DRAFT pre-registration)
 
-**Status: draft, under review. Nothing runs until the text is agreed and the user approves the cost; every stage
-that writes a summary calls the reader, so even the free-looking gate is paid.**
+**Status.** The text was agreed with the review at 1f1bdae. The user approved the gate stage (about $0.20–0.30)
+on 2026-10-08. The reader stage needs a separate approval.
+
+**Build and dry run.**
+- Code at fe7051c: CONSOLIDATE gains a `write_note` mode (the note is added and its sources are untouched), the
+  floor head gains rank-group and session notes, and the reader can log its prompt.
+- Full-size stub run (stub writer, stub reader): 90 of 90 cells ran, with no failures. Peak RSS per worker is 0.27
+  GB on LongMemEval and 0.86 GB on LoCoMo. Workers: LoCoMo 10 beside LongMemEval 4 (about 9.7 GB).
+- The report (`runs/_pipelines/exp20_report.py`, written before the real notes) ran end to end on the stub output.
+- In the gate stage the reader does not answer. A stub builds and logs the prompt; only the note writer calls the
+  model. The host and the note cache (`cache/notes_qwen7b_exp20`, keyed by prompt) are recorded, so a later full
+  write of every session can be checked against a sample.
 
 **Question.** §19 showed that on LongMemEval eight turns is about the most the reader uses well. Showing 16
 added evidence but no accuracy (§19c, §19d). The head ranks 32 candidates, so 24 of them are never seen. Can a
