@@ -193,7 +193,16 @@ Granite-3.1 2B and 8B) on LongMemEval, with one prompt and one blind judge.
   - A supervised note-writer closes about a fifth of that gap, and packing by probability per token does not help.
   - **With an unlimited archive the gap almost vanishes (+0.016).** That is the sentence tying §21 to §13–§20:
     early memory decisions matter only when memory cannot be repaired at the question.
-- **Next:** §22, credit assignment for the note-writer (free in the simulator); then writing.
+- **Done:** credit assignment for the note-writer (§22, §22b; free, in the simulator).
+  - **Per-write hindsight credit beats uniform episode-level credit** in both policy classes (+0.015 for the MLP,
+    +0.036 for the linear writer).
+  - The gain needs the evidence links: label-free time-forward credit is about the same as uniform.
+  - **No RL variant beats the supervised writer** (0.146); counterfactual credit, the best, reaches 0.141.
+  - Started from the supervised writer, RL makes it worse (−0.027): uniform credit drifts even on its training
+    data, and per-write credit overfits 8 conversations with no KL pull back to the init.
+  - RQ3's answer stands on real conversations: credit assignment matters (per-write over uniform), but RL does not
+    beat imitation here.
+- **Next:** writing.
 
 ## Adaptive k (§19, done)
 
