@@ -2820,49 +2820,56 @@ assign credit over (§16a). The plan's next step is a task where an early memory
 on real text, following MEM1's recipe: questions asked during the stream, plus questions whose answer depends on
 the model's own earlier answer.
 
-**The task (LoCoMo, categories 1–4; built from existing parts: `Question.after` in `memctl/envs/qa.py` and
-`memory.store_agent_actions`).**
-1. **Questions during the stream.** Each question is asked right after the last turn of the session after its last
-   evidence session (a delay of one session). Questions whose evidence is in the final session are asked at the end.
-2. **Recall-of-own-answer questions (the dependence).** For every question A asked during the stream, a follow-up B
-   is asked d sessions later (d = 3, or at the end if fewer remain): "Earlier you were asked: '<A>'. What did you
-   answer?"
-   - B's evidence is A's answer item: the reader's answer, stored as a memory item by `store_agent_actions`.
-   - **B is correct iff A's answer item is in view at B *and* A was answered correctly.** A wrong A makes B wrong
-     even with perfect memory, so B's outcome depends on two earlier decisions: what was in view at A, and what
-     was kept until B.
-3. **The write action (from §20).** At the end of each session the controller may write one session note (≤ 100
-   tokens, the §20 prompt, question-blind). Here notes are first-class memory items: they can be kept, archived and
-   retrieved like turns. This removes §20's declared limitation that notes are never search candidates.
-4. **Budget:** the active-memory budget as a fraction of the history (5% and 10%), as in §13b.
+**Amended after review (before any build).** As first drafted, with an unlimited searchable archive, every
+early decision except deletion could be repaired at the question, and B quoted A, so the gate would very likely
+read "dead". The amendment makes memory **lossy**, as a declared modelling choice: the setting of a bounded-memory
+agent (MEM1's constant-size state; MemoPilot's updated memory).
 
-**Final outcome:** accuracy on the B questions (the chained outcome), with A accuracy reported beside it.
+**The task (LoCoMo categories 1–4 primary; LongMemEval composed 4-question episodes as corroboration).**
+1. **Questions during the stream.** Each question is asked right after the session that follows its last evidence
+   session. Questions whose evidence is in the final session are asked at the end.
+2. **The lossy rule.**
+   - Raw turns older than w = 2 sessions leave memory. They are gone, not archived or searchable.
+   - What survives past w is only what the controller wrote: **one note per session**, written when the session
+     ends, within a note budget of 100 tokens. The stored answer items also survive.
+   - The controller's stream-time decision is therefore *which* of the session's content goes into its note. That
+     decision is question-blind, and its consequences fall only on questions asked w or more sessions later. So it
+     is an early decision with a delayed, unrepairable consequence by construction, and credit assignment is
+     defined on this task.
+3. **Notes are extractive for the free gate.** A note is a set of the session's turns, chosen within 100 tokens and
+   stored as one searchable item. The scripted reader can then score evidence exactly by turn id. Abstractive notes
+   (the §20 writer) need the model, so they belong to the paid stage.
+4. **At a question**, the reader sees the top 8 by fusion search over everything that survives: the raw turns of
+   the last w sessions, all notes and the answer items. A retrieved note brings all its turns into view.
+5. **Recall-of-own-answer questions (B), now secondary.** d = 3 sessions after each in-stream A: "Earlier you were
+   asked: '<A>'. What did you answer?" B is scored against A's *actual* answer (pure retention), with scoring
+   against A's gold reported as description.
 
 **The free oracle gate (decides whether any training happens).**
-- **Reader:** scripted. A is correct iff all of A's evidence is in view (all-found); B is correct iff A was correct
-  and A's answer item is in view at B. There is no model and no cost.
-- **Rows:**
-  - the hindsight oracle (`oracle-approx`, which knows every future need, including answer items);
-  - archive-everything + retrieve top 5 (keep-last-0, fusion search);
-  - FIFO + floor;
-  - the §19 head (`fixed8`, LongMemEval-trained, as a transfer row).
-- **Gate, pre-registered:** credit assignment is worth training on this task only if the oracle's chained accuracy
-  (B) exceeds the best rule's by at least 0.10 at some budget, with a conversation-clustered 95% interval above 0.
-  - If the gap is smaller, credit assignment is dead on this task too, and §21 says so before any training.
-  - The gap in A accuracy is reported beside it, to separate "keeping A's evidence" from "keeping A's answer".
-- **Expectation, written before the run:** the B gap is large under FIFO, because answer items age out, and small
-  under archive-everything + retrieve, if search finds the answer item from B's quoted question. The interesting
-  case is the second: whether lexical search on "Earlier you were asked: '<A>'" retrieves A's answer item.
+- **Reader:** scripted. A question is correct iff all of its evidence is in view. No model, no cost.
+- **Note policies** (each picks turns question-blind within 100 tokens per session, except the oracle):
+  - **oracle:** the session's gold evidence turns of future questions whose evidence lies in that session, most
+    questions served first, within budget (hindsight);
+  - **rules:** salience (density of numbers and capitalised words), the first turns of the session, the shortest
+    turns, and random (seeded). The best rule at each budget is the comparison.
+- **Primary measure:** accuracy on questions whose oldest evidence is older than w sessions at the time they are
+  asked (only these depend on the notes). Also reported:
+  - accuracy for all questions;
+  - evidence survival (in memory at all, before search);
+  - everything by evidence age in sessions (1–2, 3–5, 6+), the central axis under the lossy rule.
+- **Control row:** the unlimited archive (no loss, every raw turn searchable). The oracle-minus-rule gap should
+  vanish there, consistent with §13–§20; that is a finding in itself.
+- **Gate, pre-registered:** on LoCoMo, oracle minus the best rule, on questions with evidence older than w, is at
+  least 0.10 with a conversation-clustered 95% interval above 0. Otherwise credit assignment is dead on this task
+  too, and §21 says so before any training. LongMemEval composed episodes are corroboration only.
+- **Expectation, written before the run:** a large gap, since 100 tokens holds about 3–5 of a session's ~20 turns,
+  so which ones matters, and rules cannot know which.
+- w = 2 is fixed. A second w is descriptive, only if free.
 
-**Open questions for the review.**
-1. Is "repeat your earlier answer" too easy for search, since B quotes A? An alternative B composes A's answer
-   with a new fact (for example "how many sessions after <A's event> did …"), which needs both and cannot be
-   searched by quoting. It is harder to build automatically.
-2. Should B be scored against A's gold (needs A correct) or against A's actual answer (pure retention)? The draft
-   scores against the gold, so B depends on A's correctness.
-3. d = 3 sessions, or several delays (1, 3, 6) as a dose-response?
-4. LongMemEval has a single question per instance; composed 4-question episodes (§13) could give a second
-   benchmark with d = 1–3 questions. Include it, or keep LoCoMo only for the gate?
+**Looking ahead (§22, not part of this gate).** Hindsight credit is directly available here. A session's note is in
+view or not at every later question, so its write decision can be credited from the outcomes of exactly the
+questions it served. That per-write hindsight advantage is the natural GRPO variant, and cheap: the controller is
+small and the reader frozen.
 
 **Paid steps (not proposed yet).** A reader version of the gate (the real 7B answering A and B), and any training,
 come only after the free gate passes, each with its own pre-registration and cost.
