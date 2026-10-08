@@ -32,7 +32,7 @@ from memctl.memory.items import MemoryItem, count_tokens
 from memctl.retrieval import FusionRetriever, labelled_text
 from memctl.sysinfo import collect_metadata
 
-POLICIES = ("oracle", "learned", "salience", "first", "shortest", "random")
+POLICIES = ("oracle", "learned", "learned-knapsack", "salience", "first", "shortest", "random")
 RULES = ("salience", "first", "shortest", "random")
 
 
@@ -53,6 +53,8 @@ def choose(policy: str, turns: list, budget: int, served: dict[str, int], rng: r
         order = sorted((t for t in turns if served.get(t.id)), key=lambda t: (-served[t.id], count_tokens(labelled_text(t))))
     elif policy == "learned":
         order = sorted(turns, key=lambda t: -scores[t.id])
+    elif policy == "learned-knapsack":  # added at review after §21a: the same model, packed by probability per token
+        order = sorted(turns, key=lambda t: -scores[t.id] / count_tokens(labelled_text(t)))
     elif policy == "salience":
         order = sorted(turns, key=lambda t: -salience(t.content))
     elif policy == "first":

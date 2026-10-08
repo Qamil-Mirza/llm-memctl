@@ -2928,6 +2928,9 @@ fusion search, 10 conversations, 1,535 questions, 1,249 of them "old" (oldest ev
   session often serves more questions than that. The note budget, not foresight, limits the oracle.
 - **B (retention of the stored answer, d = 3): 1.000.** Search finds the answer item from B's quoted question, as
   the draft feared. B is uninformative here, as the review expected when it was made secondary.
+- **Added at review, after the gate (declared before it ran): `learned-knapsack`.** The same cross-fitted model,
+  but the note is filled by predicted probability per token, as the oracle fills by questions served per token. If
+  it closes much of the +0.139, the space claimed for §22 shrinks.
 - **Not yet run:** the LongMemEval composed-episode corroboration row (free; to follow).
 
 **What this means for §22.** The pre-registered condition for an RL stage is met. The oracle-minus-learned gap is
