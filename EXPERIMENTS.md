@@ -3044,12 +3044,12 @@ third of the gap or less. (iii) is at least as good as (ii).
   conversations, with the §20 abstractive notes compared against extractive notes.
 - One pod, an estimate from measured latency, and a stub run with a resume rehearsal first.
 
-### 22a. Interim result: per-write credit beats uniform credit; neither beats a plain logistic writer (2026-10-08)
+### 22a. Interim result: per-write credit beats uniform credit (clause 1 passes); RL does not beat the supervised writer (clause 2 fails) (2026-10-08)
 
 **Status.** This covers the 30 runs of (i) and (ii) (5 folds × 3 seeds each). (iv) time-forward and the last three
-(iii) runs are still training; they are added when done. Everything is free, at c7316f0. The test is the exact §21
-simulator on each fold's held-out conversations, greedy (`runs/_pipelines/exp22_eval.py` →
-`runs/exp22_eval_main.json`; table `runs/exp22_report_main.md`). Each question is averaged over seeds, and the
+(iii) runs are still training. §22a closes only when they are in, because (ii) minus (iv) is the label question.
+Everything is free, at c7316f0. The test is the exact §21 simulator on each fold's held-out conversations, greedy
+(`runs/_pipelines/exp22_eval.py` → `runs/exp22_eval_main.json`). Each question is averaged over seeds, and the
 intervals are clustered by conversation.
 
 **Held-out old-evidence accuracy (1,249 questions, 10 conversations):**
@@ -3057,40 +3057,66 @@ intervals are clustered by conversation.
 | policy | accuracy | age 2 | age 3–5 | age 6+ |
 |---|---|---|---|---|
 | oracle (§21) | 0.286 | 0.306 | 0.355 | 0.179 |
-| (ii) per-write hindsight credit | **0.131** | 0.156 | 0.163 | 0.074 |
+| `learned-knapsack`: the cross-fitted logistic writer, packed per token (the named gate row; refit per §22 fold) | **0.146** | | | |
+| (ii) per-write hindsight credit | 0.131 | 0.156 | 0.163 | 0.074 |
+| each run's MLP init, packed per token (descriptive) | 0.117 | 0.114 | 0.153 | 0.069 |
 | (i) episode GRPO (uniform credit) | 0.116 | 0.132 | 0.150 | 0.061 |
-| each fold's supervised init, packed per token (the pre-registered baseline) | 0.117 | 0.114 | 0.153 | 0.069 |
 | first turns (§21) | 0.109 | 0.129 | 0.144 | 0.050 |
 
-The first age column here holds only old questions of age 2. The §21 table's "1–2" column also included age 1.
+The first age column holds only old questions of age 2.
 
-**Pre-registered comparisons.**
-- (ii) minus (i): **+0.015 (+0.007, +0.024)**.
-- (ii) minus the supervised init: **+0.015 (+0.0003, +0.029)**.
-- (i) minus the supervised init: −0.001 (−0.011, +0.009).
-- **Gate: PASS, by a hair**: both intervals sit above 0, the second by 0.0003.
-- (ii) closes about 9% of the gap between the supervised init and the oracle; (i) closes none.
+**Verdict under the pre-registered gate** (the review's ruling, which corrects my first reading). The gate names
+`learned-knapsack`, the §21a row: the cross-fitted logistic writer packed per token. Each run's MLP init was a
+different, weaker row that I introduced at evaluation time.
+- **Clause 1, PASS.** (ii) minus (i) is **+0.015 (+0.007, +0.024)**. Per-write hindsight credit beats uniform
+  credit, and uniform credit learns nothing: (i) minus its init is −0.001 (−0.011, +0.009). That is a real
+  credit-assignment result.
+- **Clause 2, FAIL.** (ii) minus `learned-knapsack` is **−0.014 (−0.038, +0.008)**. Per the §22 text: "RL adds
+  nothing over the supervised writer here".
+- **Descriptive.** (ii) minus its own MLP init is +0.015 (+0.0003, +0.029).
+  - The logistic writer refit per fold (`runs/_pipelines/exp22_logistic_folds.py`) scores 0.146 packed per token
+    and 0.143 by top probability, matching §21a.
+- **Stated cause.** The MLP policy overfits its 8 training conversations: surrogate training accuracy rises from
+  0.282 to 0.350 for (ii) (0.247 to 0.289 for (i)), against 0.131 held out.
+  - The RL gain is smaller than the gap between the MLP init and the logistic writer, so the policy class, not the
+    credit signal, limits this result. §22b tests that with a policy that cannot overfit.
+- **Compute slip.** Under the 12-job load a cheap run took about 30–40 min, not the measured 12–15 min. The
+  laptop has 8 physical cores, and 15 slow (iii) jobs left a tail. The batch ran well past the 5–6 h estimate; the
+  measured total is added when the batch ends.
+- **Init deviation.** §22 declared "imitation of the supervised scores"; the code fits the BCE labels directly.
+  That is the same supervised model, one step shorter.
 
-**The caveat that changes the reading** (post hoc and descriptive; it does not change the verdict).
-- The pre-registered baseline is each fold's own init: a small network fitted by BCE on 8 conversations. It scores
-  0.117 held out, against **0.146 for §21's logistic writer** (packed per token).
-- Refit per fold on the same 8 conversations (`runs/_pipelines/exp22_logistic_folds.py`), the logistic writer
-  scores 0.146 packed per token and 0.143 by probability alone.
-- **(ii) minus the logistic writer: −0.014 (−0.038, +0.008).**
-- So per-write credit beats uniform credit, and beats the network it started from. But neither RL variant reaches
-  a plain, well-regularised supervised writer.
-- The network overfits its 8 training conversations: training accuracy on the surrogate rises from 0.282 to 0.350
-  for (ii) (0.247 to 0.289 for (i)), against 0.131 held out.
+## 22b. The same experiment with a policy that cannot overfit (N7b; 2026-10-08, pre-registered before any run)
 
-**Reading.**
-- On the credit-assignment question the result is positive and clear: crediting each write by the later
-  questions it served beats spreading one reward over the conversation. Uniform credit learns nothing (−0.001).
-- On the "RL over supervised" question it is negative here: the gain is smaller than the gap between a weak and a
-  strong supervised initialisation.
-- The natural next free check is the same RL variants initialised from the logistic writer. That would be a new
-  pre-registration, not part of this one.
-- Also noted: §22 declared "imitation of the supervised scores" for the init, and the code fits the BCE labels
-  directly. That is the same supervised model, one step shorter.
+**Why.** §22a's clause 2 failed because the MLP policy overfits 8 conversations, and its init (0.117) starts below
+the supervised writer (0.146). Here the policy is the logistic writer itself, so the init *is* `learned-knapsack`
+and the comparison is clean.
+
+**Policy.** Linear in the §21 features plus the token count: the `learned` model's form, with one logit per turn.
+It is initialised at the cross-fitted logistic fit for each fold (8 training conversations, C = 0.1, as in §21),
+so every variant starts at the gate row. The sampling and log-probability are §22's (a Plackett–Luce ordered
+prefix), and the test-time packing for all is the knapsack rule (probability per token, filled greedily).
+
+**Variants.** (i) episode GRPO, (ii) per-write hindsight credit and (iv) time-forward credit. (iii) runs only if
+time allows, as it is the slow one, and is reported as a reference if it does.
+
+**Held fixed from §22.** The budget (300 updates, G = 8), 3 seeds, the 5 leave-two-out folds, mean-only
+advantages, the on-policy single-step update with no ratio or clipping, the surrogate for training and the exact
+simulator for testing.
+
+**Gate (the same as §22's, against the same named row).**
+- (ii) minus (i): interval entirely above 0.
+- (ii) minus `learned-knapsack`: interval entirely above 0.
+
+**Expectation, written before any run.** (ii) beats (i) again. Whether (ii) beats `learned-knapsack` is open. If it
+does not, the finding is that the credit signal is real but the supervised writer already captures what these
+features can express: the limit is the features, not the credit.
+
+**Diagnostic (descriptive).** Held-out accuracy on the surrogate is recorded every 50 updates, so overfitting is
+seen rather than inferred. There is no early stopping on it.
+
+**Compute.** A linear policy is cheaper than the MLP. It is timed before launch, under the real parallel load and
+with the longest jobs first, and the measured total is written here before training.
 
 ## 5. The sequential task
 
