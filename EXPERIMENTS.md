@@ -3181,7 +3181,8 @@ The init row is each run's own start, which is the cross-fitted logistic writer.
   again carries most of the per-write advantage.
 
 **The held-out diagnostic** (surrogate, every 50 updates, mean over runs) shows the decline directly, not
-inferred:
+inferred. It was computed on held-out conversations during training and used for interpretation only, not for any
+choice in §22b. §22c nearly reused it to fix its stopping point, and that rule was withdrawn.
 
 | update | 0 | 50 | 100 | 150 | 200 | 250 | 300 |
 |---|---|---|---|---|---|---|---|
@@ -3224,8 +3225,9 @@ captures what the features can express") holds only in part:
 
 ## 22c. Per-write credit with a pull to the supervised writer: the close of RQ3 (N7c; DRAFT, not run; the user decides)
 
-**Status: approved by the user on 2026-10-08** (no dollar cost, about an hour of laptop time). Whatever it shows,
-it closes RQ3 on this task.
+**Status:** the design was amended at the user's objection to any use of held-out information (see the stopping
+rule). The re-estimated laptop time needs the user's go-ahead before relaunch. Whatever it shows, it closes RQ3 on
+this task.
 
 **Question.** §22b showed that hindsight credit is the only variant with a usable training signal, but that it
 overfits 8 conversations with nothing pulling it back to the supervised init. With such a pull, and stopping
@@ -3239,15 +3241,35 @@ perhaps improve it?
   softmax over that session's turns), summed over sessions, with **β = 0.1**. β is fixed now and not tuned.
   - **Scope of the pull.** The KL is on the first-pick distribution, not on the full ordered-prefix Plackett–Luce
     distribution, so later picks are pulled only through the shared weights.
-- **Updates:** **100**, where §22b's held-out diagnostic for (ii) was still flat (0.145 at 0, 50 and 100). This
-  is fixed now; there is no early stopping.
-  - **Leakage, stated plainly.** The stop was chosen from §22b's held-out diagnostic on the same folds, so it uses
-    held-out information once. The clause is a no-harm test, so that leakage can only make it easier to pass: a
-    pass is weaker evidence than a fail.
+- **Stopping rule (amended at the user's objection; it sees training conversations only).** No design choice
+  uses held-out information.
+  - Within each fold, the 8 training conversations are split 6/2, with the split fixed by the seed (a permutation
+    with `numpy.random.default_rng(1000 + seed)`; the last 2 are the inner validation pair).
+  - A writer is trained on the 6 from an init fitted on those 6 only (the logistic writer, which is also the KL
+    anchor), with a checkpoint every 25 updates up to 300. Fitting the init on all 8 would leak the inner pair. The checkpoint with
+    the best surrogate accuracy (greedy, knapsack packing) on the inner 2 is chosen; ties go to fewer updates.
+  - A new writer is then trained on all 8, from the logistic fit on the 8 (the `learned-knapsack` row and the KL
+    anchor), for exactly that many updates, and evaluated **once**, on
+    the fold's held-out conversations, with the exact simulator.
+  - Nothing on the held-out side is computed or written before that update count is fixed. The same rule applies
+    to (i). The chosen update counts are reported as description.
+  - Inner validation pairs (fold: seed 0 / seed 1 / seed 2):
+
+    | fold | seed 0 | seed 1 | seed 2 |
+    |---|---|---|---|
+    | 0 | 7, 9 | 2, 7 | 3, 9 |
+    | 1 | 7, 9 | 0, 7 | 1, 9 |
+    | 2 | 7, 9 | 0, 7 | 1, 9 |
+    | 3 | 5, 9 | 0, 5 | 1, 9 |
+    | 4 | 5, 7 | 0, 5 | 1, 7 |
+- **The first rule, withdrawn.** It fixed 100 updates from §22b's held-out diagnostic. A launch under that rule
+  (20:39 UTC, 2026-10-08) was stopped at about 20:41 UTC at the user's objection, before any run finished. No
+  held-out accuracy from it was computed or read. Its partial folders are quarantined in
+  `runs/exp22c_peek_quarantine/`.
 - **Held fixed from §22b:** G = 8; mean-only advantages; on-policy, one step per batch; Adam with learning rate
   1e-3; entropy bonus 0.01; the surrogate for training and the exact simulator for testing; knapsack packing at
   test; 5 leave-two-out folds × 3 seeds. That is 15 runs per variant, 30 in all.
-- **Diagnostic:** held-out surrogate accuracy every 25 updates, descriptive only.
+- **No held-out diagnostic during training.** Test accuracy is computed once per run, at the end.
 
 **Single clause (pre-registered).** (ii)+KL minus `learned-knapsack`, on held-out old-evidence accuracy
 (conversation-clustered, seeds averaged), has a 95% lower bound above −0.01.
@@ -3260,10 +3282,14 @@ perhaps improve it?
 
 **Expectation, written down.** The lower bound clears −0.01, with a gain near 0.
 
-**Laptop time, from measured throughput (§22b: about 9 s per update under a 12-job load).**
-- 100 updates is about 15 min per run.
-- 30 runs on 12 slots is 3 waves (12, 12, 6), about **45–60 min** wall-clock, under `guard.sh`.
-- Longest jobs first; no more long jobs than slots.
+**Laptop time, from measured throughput (§22b: about 9 s per update under a 12-job load, with 8 training
+conversations).**
+- Inner selection: 300 updates on 6 conversations, about 6.8 s each, about 34 min per run, plus 12 inner
+  evaluations (small).
+- Retrain on 8 conversations for the chosen count: up to 300 updates, about 9 s each, at most 45 min.
+- Per run: about 40–80 min. 30 runs on 12 slots is 3 waves (12, 12, 6), about **2–4 h** wall-clock (about 3 h if
+  the chosen counts sit near the middle), under `guard.sh`.
+- No more long jobs than slots.
 
 ## 23. Does a memory controller lift a small reader to the next size class? (N8; 2026-10-08, pre-registered)
 

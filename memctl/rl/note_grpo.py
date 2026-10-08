@@ -262,6 +262,71 @@ def first_pick_kl(writer: Writer, init: Writer, c: Conversation) -> torch.Tensor
     return total
 
 
+def optimise(writer: Writer, init: Writer | None, train_set: list[Conversation], variant: str, updates: int,
+             group: int, kl: float, rng: np.random.Generator, checkpoint_every: int = 0, on_checkpoint=None) -> list:
+    """The §22 update loop (on-policy, one step per batch, mean-only advantages), optionally with the §22c KL pull.
+    on_checkpoint(update, writer) is called after every `checkpoint_every` updates."""
+    optimizer = torch.optim.Adam([p for p in writer.parameters() if p.requires_grad], lr=1e-3)
+    curve = []
+    for update in range(updates):
+        loss, rewards_seen = 0.0, []
+        for c in train_set:
+            draws = [rollout(c, writer, rng) for _ in range(group)]
+            rewards = np.stack([session_rewards(c, notes, variant) for notes, _, _ in draws])
+            valid = ~np.isnan(rewards)
+            mean = np.where(valid.any(0), np.nanmean(np.where(valid, rewards, np.nan), axis=0), 0.0)
+            advantage = torch.from_numpy(np.where(valid, rewards - mean, 0.0)).float()
+            for g, (_, logps, entropies) in enumerate(draws):
+                loss = loss - (advantage[g] * logps).sum() - 0.01 * entropies.sum()
+            rewards_seen.append(outcomes(c, draws[0][0], np.flatnonzero(c.old)).mean())
+            if init is not None:
+                loss = loss + kl * group * first_pick_kl(writer, init, c)
+        optimizer.zero_grad()
+        (loss / (len(train_set) * group)).backward()
+        optimizer.step()
+        curve.append({"update": update + 1, "train_old_accuracy": float(np.mean(rewards_seen))})
+        if checkpoint_every and (update + 1) % checkpoint_every == 0 and on_checkpoint is not None:
+            on_checkpoint(update + 1, writer)
+    return curve
+
+
+def train_selected(variant: str, fold: int, seed: int, group: int, out: Path, kl: float,
+                   max_updates: int = 300, every: int = 25) -> None:
+    """§22c: choose the update count on an inner 6/2 split of the fold's training conversations, then retrain on
+    all 8 for that count. Nothing on the held-out side is computed here; the exact simulator evaluates the saved
+    writer once, afterwards."""
+    encoder = DenseRetriever()
+    conversations = {n: prepare(n, encoder) for n in range(10)}
+    held = set(FOLDS[fold])
+    training = [n for n in conversations if n not in held]
+    order = np.random.default_rng(1000 + seed).permutation(training)
+    inner_train, inner_valid = sorted(order[:-2].tolist()), sorted(order[-2:].tolist())
+    out.mkdir(parents=True, exist_ok=True)
+    torch.manual_seed(seed)
+    six = [conversations[n] for n in inner_train]
+    writer, init = logistic_init(six), logistic_init(six) if kl else None
+    scores = {0: held_out_accuracy(writer, [conversations[n] for n in inner_valid])}
+
+    def checkpoint(update: int, w: Writer) -> None:
+        scores[update] = held_out_accuracy(w, [conversations[n] for n in inner_valid])  # inner pair, not held out
+
+    inner_curve = optimise(writer, init, six, variant, max_updates, group, kl, np.random.default_rng(seed), every, checkpoint)
+    chosen = max(sorted(scores), key=lambda u: (scores[u], -u))  # best inner accuracy; ties go to fewer updates
+    torch.manual_seed(seed)
+    eight = [conversations[n] for n in training]
+    writer, init = logistic_init(eight), logistic_init(eight) if kl else None
+    torch.save(writer.state_dict(), out / "init.pt")
+    final_curve = optimise(writer, init, eight, variant, chosen, group, kl, np.random.default_rng(seed))
+    torch.save(writer.state_dict(), out / "writer.pt")
+    (out / "curve.json").write_text(json.dumps(final_curve))
+    (out / "selection.json").write_text(json.dumps({"inner_train": inner_train, "inner_valid": inner_valid,
+                                                    "inner_accuracy": scores, "chosen_updates": chosen,
+                                                    "inner_curve": inner_curve}))
+    (out / "metadata.json").write_text(json.dumps({"variant": variant, "fold": fold, "seed": seed, "updates": chosen,
+                                                   "group": group, "policy": "linear", "kl": kl, "selection": "inner",
+                                                   **collect_metadata()}, default=str))
+
+
 def train(variant: str, fold: int, seed: int, updates: int, group: int, out: Path, policy: str = "mlp",
           kl: float = 0.0, diag_every: int = 50) -> None:
     encoder = DenseRetriever()
@@ -331,10 +396,13 @@ def main() -> None:
     parser.add_argument("--policy", choices=["mlp", "linear"], default="mlp")
     parser.add_argument("--kl", type=float, default=0.0, help="§22c: beta of the first-pick KL to the init")
     parser.add_argument("--diag-every", type=int, default=50)
+    parser.add_argument("--select-inner", action="store_true", help="§22c: choose the update count on an inner split")
     parser.add_argument("--time", action="store_true")
     args = parser.parse_args()
     if args.time:
         time_and_agree()
+    elif args.select_inner:
+        train_selected(args.variant, args.fold, args.seed, args.group, args.out, args.kl, args.updates)
     else:
         train(args.variant, args.fold, args.seed, args.updates, args.group, args.out, args.policy, args.kl, args.diag_every)
 
