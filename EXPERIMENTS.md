@@ -3117,6 +3117,10 @@ seen rather than inferred. There is no early stopping on it.
 
 **Compute.** A linear policy is cheaper than the MLP. It is timed before launch, under the real parallel load and
 with the longest jobs first, and the measured total is written here before training.
+- **Measured (2026-10-08, 16:30 UTC, beside the last three §22 (iii) jobs):** about 4.6 s per update, including
+  the held-out diagnostic. That is about 23 min per run alone, and about 32 min under a 12-job load.
+- 45 runs ((i), (ii) and (iv) × 5 folds × 3 seeds), 9 at a time: **about 2.5–3 h**.
+- (iii) is not run in this batch, as allowed by the text above.
 
 ## 5. The sequential task
 
