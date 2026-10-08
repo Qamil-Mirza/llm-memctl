@@ -165,7 +165,10 @@ Before the chapter is final, the Experiment 15 head row should be added to it.
 - **Closed:** RQ3.
 - **Done:** adaptive k (§19): stopped at its time box. More turns pay up to the onset; choosing k per question
   could halve the tokens (the ceiling) but two choosers did not reach it.
-- **Next:** writing.
+- **Done:** a write action (§20): stored session notes gave 70% of the containment gain of eight more raw turns
+  for a fifth of the tokens, the most token-efficient evidence measured, but fell short of the pre-registered
+  bar (+0.043 against +0.05), so no reader test.
+- **Next:** the sequential task (§21), then a GRPO variant; writing.
 
 ## Adaptive k (§19, done)
 

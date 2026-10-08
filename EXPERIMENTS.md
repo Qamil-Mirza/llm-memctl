@@ -2788,6 +2788,23 @@ was approved by the user. Report: `runs/_pipelines/exp20_report.py` (written bef
 - FIFO + floor at 10% is +0.045 at 3,087 tokens.
 - On LoCoMo's short turns, notes match or beat 8 more raw turns at the same or fewer tokens.
 
+**Summary for the write-up.**
+- **Both halves.** The stream-time session note gave 70% of raw `fixed16`'s containment gain (+0.043 against
+  +0.060) for a fifth of its extra tokens (about 300 against 1,520). On LoCoMo, both note forms beat raw `fixed16`
+  at equal or fewer tokens. The write action is the most token-efficient evidence measured here, and it fell short
+  of a bar set at "what eight raw turns buy".
+- **Proxy caveat.** P(contained | all-found) is 0.53 on the raw arms, so containment under-reads evidence in view
+  for every arm, the note arms included.
+- **Declared limitation.** In this version notes never become search candidates.
+- **Process result.**
+  - Spend: $0.81 over four pods, for a $0.30 budget. There were three causes:
+    1. The estimate used judge-call throughput for sequential note writing.
+    2. Resumes were refused when the pod URL changed.
+    3. Cells run their questions in sequence, so the slowest cell sets the pace.
+  - Fixes: estimate from the measured latency of the call type; resumes ignore the serving endpoint (78b76f7);
+    and a cache-only pass lists the exact missing generations, which `fill_cache` then writes in parallel (22fdbc4).
+    The last pod took 11 minutes, about $0.09.
+
 **What this means for the plan.** A first, untrained write action helps in the right places but does not clear
 the pre-registered bar with the 7B writer. The stream-time session note is the better form. That fits the next
 step: the sequential task, where a controller learns *when* to write.
