@@ -3560,6 +3560,13 @@ tried, is a separate pre-registered arm, tuned on training conversations only (n
   carries the vLLM-support risk.
 - **Triage rule, pre-declared:** if Gemma 4B has not started by 1 h 50 min after create, the Gemma pair is dropped
   and the judge runs, so the families already answered are graded inside the hard stop.
+- **Approved by the user (2026-10-08, about $0.95–1.25). Order changed at launch, before any result:** Meta had
+  not yet granted access to Llama-3.2-3B (HTTP 403; Llama 8B, both Gemmas and Phi-4 are reachable), so Llama moves
+  to the end: Phi-4-mini, Phi-4, Gemma 4B, Gemma 12B, Llama 8B, Llama 3B, then Qwen 7B (judge). The triage rule
+  now applies to the Llama pair (the last family): if it has not started by 1 h 50 min after create, it is dropped.
+  If Llama 3B is still refused when its turn comes, Llama 8B runs alone and only claim (a) at 8B is reported for
+  Llama; (b) and the cross-family test are not tested for it. The token reaches the pod as a RunPod secret, so its
+  value never passes through this session.
 
 ## 5. The sequential task
 
