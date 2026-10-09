@@ -1,0 +1,61 @@
+# Experiment 26 (§26), step 0: the smoke call on OpenJev's own pod (JEV_URL), before any experiment cell.
+# Arms A and B on 2 TRAINING conversations of fold 0 (no test question), stub reader. Measures seconds per
+# call, calls per question, the server's model time and usage.input_tokens. Its cache is separate.
+name: exp26_smoke
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 2
+  env:
+    name: longmemeval
+    path: data/longmemeval/longmemeval_s_cleaned.json
+    folds:
+      k: 5
+      fold: 0
+      part: train
+    judge:
+      backend: stub
+      style: longmemeval
+  agent:
+    name: llm
+    reasoning: true
+    labels: compact
+    max_new_tokens: 256
+    model:
+      backend: stub
+  memory:
+    allowed_operations:
+    - KEEP
+    - MOVE_TO_ARCHIVE
+    - RETRIEVE_FROM_ARCHIVE
+    - NO_OP
+    embedder: hashing
+    count_labels: true
+  logging:
+    detail_episodes: 100000
+grid:
+  controller:
+  - name: jev
+    base_url: JEV_URL
+    model: openjev-latest
+    timeout_s: 300
+    retries: 5
+    retrieve_candidates: 32
+    cache_dir: cache/jev_exp26_smoke
+    label: openjev_manage
+    mode: manage
+    call: pressure
+    repair: true
+    max_items_per_request: 40
+  - name: jev
+    base_url: JEV_URL
+    model: openjev-latest
+    timeout_s: 300
+    retries: 5
+    retrieve_candidates: 32
+    cache_dir: cache/jev_exp26_smoke
+    label: openjev_select
+    mode: select
+    select_k: 8
+  memory.budget.fraction:
+  - 0.05

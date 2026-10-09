@@ -7,8 +7,10 @@ import pytest
 from memctl.config import resolve
 from memctl.controllers import build_controller
 from memctl.controllers.jev import (
-    FakeJevClient, JevAnswer, JevResponse, JEVController, JevUnavailableError, TypeSafeJevClient, choice_confidence,
+    ENDPOINT, FakeJevClient, JevAnswer, JevResponse, JEVController, JevUnavailableError, TypeSafeJevClient,
+    choice_confidence, server_model_seconds,
 )
+from tests.fake_jev_server import FakeJevServer
 from memctl.controllers.prompted import PromptedLLMController
 from memctl.harness.runner import run_one
 from memctl.llm import ScriptedLLM
@@ -103,6 +105,13 @@ def test_prompted_controller_offers_archived_items_when_a_query_arrives():
 # ---- JEV ----------------------------------------------------------------------------
 
 
+@pytest.fixture(autouse=True)
+def no_jev_endpoint_override(monkeypatch):
+    """A JEV_BASE_URL or JEV_MODEL in the developer's shell must not change what these tests see."""
+    for name in ("JEV_BASE_URL", "JEV_MODEL", "OPENJEV_API_KEY"):
+        monkeypatch.delenv(name, raising=False)
+
+
 def test_jev_refuses_to_start_without_credentials(monkeypatch):
     monkeypatch.delenv("JEV_API_KEY", raising=False)
     with pytest.raises(JevUnavailableError, match="JEV_API_KEY"):
@@ -135,6 +144,106 @@ def test_the_real_client_parses_the_documented_response_shape():
     assert response.answers["item_0"] == JevAnswer("EVICT", {"KEEP": 0.2, "EVICT": 0.8}, 0.6)
     assert response.model == "jev-1.13.0" and response.cost_usd == pytest.approx(1000 * 0.042 / 1e6)
     assert choice_confidence({"KEEP": 0.2, "EVICT": 0.8}) == pytest.approx(0.6)
+
+
+def test_without_an_override_the_typesafe_endpoint_model_and_price_are_unchanged(monkeypatch):
+    monkeypatch.setenv("JEV_API_KEY", "secret-key-123")
+    client = build_controller({"name": "jev"}).client
+    assert client.endpoint == "https://api.typesafe.ai/v1/systemone" == ENDPOINT
+    assert client.model == "jev-latest" and client.usd_per_million == 0.042 and client.retries == 0
+
+
+def test_the_endpoint_and_model_come_from_env_and_config_wins(monkeypatch):
+    monkeypatch.setenv("JEV_API_KEY", "secret-key-123")
+    monkeypatch.setenv("JEV_BASE_URL", "http://env-host:8080/")
+    monkeypatch.setenv("JEV_MODEL", "openjev-latest")
+    client = build_controller({"name": "jev"}).client
+    assert (client.endpoint, client.model) == ("http://env-host:8080/v1/systemone", "openjev-latest")
+    client = build_controller({"name": "jev", "base_url": "http://cfg-host:9000", "model": "openjev-0.1"}).client
+    assert (client.endpoint, client.model) == ("http://cfg-host:9000/v1/systemone", "openjev-0.1")
+    assert build_controller({"name": "jev", "endpoint": "http://x/y"}).client.endpoint == "http://x/y"
+    # A self-hosted server is free per token and never gets the TypeSafe key.
+    assert client.usd_per_million == 0.0 and client._api_key is None
+
+
+def test_the_override_reaches_a_local_server_over_http_and_the_typesafe_key_stays_home(monkeypatch):
+    server = FakeJevServer().start()
+    try:
+        monkeypatch.setenv("JEV_API_KEY", "secret-key-123")
+        monkeypatch.setenv("JEV_BASE_URL", server.base_url)
+        controller = build_controller({"name": "jev", "model": "openjev-latest"})
+        actions = decide(controller, make_state(FOUR, budget=7))
+        assert server.requests and all(
+            r == {"path": "/v1/systemone", "model": "openjev-latest", "authorization": False, "questions": 4}
+            for r in server.requests
+        )
+        assert actions and controller.decision_info()["cost_usd"] == 0.0
+        assert controller.decision_info()["server_model_s"] > 0 and controller.model_id == "openjev-0.1-FAKE"
+    finally:
+        server.shutdown()
+
+
+def test_a_cached_answer_replays_without_any_server_and_a_miss_is_an_error(tmp_path):
+    server = FakeJevServer().start()
+    try:
+        config = {"name": "jev", "base_url": server.base_url, "cache_dir": str(tmp_path / "jev")}
+        first = build_controller(config)
+        first_actions = decide(first, make_state(FOUR, budget=7))
+        calls = len(server.requests)
+        assert calls and first.decision_info()["cached_calls"] == 0
+    finally:
+        server.shutdown()
+    # The server is gone and the endpoint changed: only the cache can answer.
+    replay = build_controller({**config, "base_url": "http://127.0.0.1:9", "cache_only": True})
+    assert decide(replay, make_state(FOUR, budget=7)) == first_actions
+    info = replay.decision_info()
+    assert info["cached_calls"] == calls and info["server_model_s"] == first.decision_info()["server_model_s"]
+    with pytest.raises(JevUnavailableError, match="cache_only"):
+        decide(replay, make_state(FOUR + ["e1 e2 e3"], budget=7))
+
+
+def test_select_mode_archives_on_arrival_and_ranks_the_shortlist_in_one_call():
+    server = FakeJevServer().start()
+    try:
+        controller = build_controller(
+            {"name": "jev", "base_url": server.base_url, "mode": "select", "select_k": 2, "retrieve_candidates": 4}
+        )
+        state = make_state(["the vault code is K93Q", "vault keys hang by the door", "lunch was soup",
+                            "the vault opens at nine", "vault paint is grey", "filler"], budget=100)
+        controller.reset(episode_info(state))
+        # On an ordinary step everything but the current input is archived and nothing is asked.
+        actions = controller.decide(state.view(), task_for(state))
+        assert [(a.operation, set(a.target_ids)) for a in actions] == [
+            (Operation.MOVE_TO_ARCHIVE, {"o0", "o1", "o2", "o3", "o4"})
+        ] and not server.requests
+        for item_id in ("o0", "o1", "o2", "o3", "o4", "o5"):
+            state.move(item_id, Tier.ARCHIVE, "MOVE_TO_ARCHIVE", "controller")
+        state.step = 7
+        from memctl.memory.items import SourceType
+
+        state.ingest("q", "what is the vault code?", SourceType.USER)
+        actions = controller.decide(state.view(), task_for(state, "q", query=True))
+        # One request, one Choice whose options are the 4 BM25 candidates; the 2 most probable are retrieved.
+        assert len(server.requests) == 1 and server.requests[0]["questions"] == 1
+        info = controller.decision_info()
+        assert info["model_calls"] == 1 and info["candidates"] == 4 and len(info["selected_ids"]) == 2
+        ranked = sorted(info["probabilities"], key=lambda i: -info["probabilities"][i])
+        assert actions[-1].operation is Operation.RETRIEVE_FROM_ARCHIVE
+        assert list(actions[-1].target_ids) == ranked[:2] == info["selected_ids"]
+    finally:
+        server.shutdown()
+
+
+def test_the_default_mode_is_unchanged_and_an_unknown_mode_is_refused(monkeypatch):
+    monkeypatch.setenv("JEV_API_KEY", "k")
+    assert build_controller({"name": "jev"}).mode == "manage"
+    with pytest.raises(ValueError, match="unknown jev mode"):
+        build_controller({"name": "jev", "mode": "pick"})
+
+
+def test_server_timing_is_read_in_seconds():
+    assert server_model_seconds("model;dur=41.2, server;dur=2.8, total;dur=44.0") == pytest.approx(0.0412)
+    assert server_model_seconds(None) is None and server_model_seconds("total;dur=3") is None
 
 
 class ChoosingClient:

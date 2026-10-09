@@ -139,6 +139,20 @@ Phi-4-mini (3.8B) and Phi-4 (14B).
 - **Caveat:** one prompt, tuned on Qwen 7B, for every reader.
 - **Figure:** `figures/exp24_families.png`. Cost: $1.44 (about $0.42 of it an idle pod, disclosed).
 
+## A decision-model controller (§26): OpenJev against the trained head
+
+OpenJev (an open re-creation of the Jev decision API, DiffusionGemma 26B-A4B, run on our own A40) was tried as the
+controller in front of the Qwen 7B reader on the same 500 LongMemEval questions.
+- **As a selector** (8 of the head's 32 candidates, one call per question): 0.489, against FIFO + floor 0.445
+  (+0.045, CI +0.004..+0.087, better) and the head 0.526 (−0.036, CI −0.081..+0.009, not shown). It picks longer
+  turns: 2,373 prompt tokens against the head's 1,049.
+- **As a memory manager** (a call whenever memory overflows): about 21.5 calls and 94 GPU-seconds per question,
+  about $15 per 1,000 questions; accuracy not run, by decision.
+- **Reading:** a general decision model with no training on the task beats a recency rule, but a 27k-parameter
+  head trained on evidence labels is more accurate, shorter and about 16 times cheaper. OpenJev approximates Jev; no
+  claim here is about TypeSafe's model.
+- **Cost:** $0.64 (three pods). Table: `cost_per_question.md`.
+
 ## Protocol section (methods)
 
 - **Folds and scoring.** Stratified 5-fold LongMemEval; LoCoMo categories 1–4, with refusal-scored questions
@@ -172,8 +186,10 @@ Phi-4-mini (3.8B) and Phi-4 (14B).
   | 21–22: sequential task and credit assignment (simulator, CPU) | — | $0 |
   | 23: reader size ladder (five readers, one pod at $0.59/h) | 1.40 h | $0.83 |
   | 24: reader families (six readers, one pod at $0.59/h) | 2.43 h | $1.44 |
-  | **benchmark programme (13–24)** | 14.30 h | **$7.39** |
-  | **all experiments** | 23.13 h | **$11.71** |
+  | 25: StreamMemBench transfer (closed free) | — | $0 |
+  | 26: OpenJev controller (smoke, arm B fill, reader; three pods) | 1.08 h | $0.64 |
+  | **benchmark programme (13–26)** | 15.38 h | **$8.03** |
+  | **all experiments** | 24.21 h | **$12.35** |
 - **Provenance.**
   - Every run records its commit and a dirty flag.
   - The sharded LongMemEval loader has a test showing it plays the same episodes as the full file.
