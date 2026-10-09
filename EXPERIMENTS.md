@@ -4670,7 +4670,7 @@ the laptop, peak RSS 0.05 GB; `runs/exp28_gate/rule.json`).
 ### 28b. Result: the LLM rewrite passes its training gate at v3; on the test folds it is level with the raw question (2026-10-09)
 
 **Pod and cost.** Shared with §27 (pod qpeirhl5gzw7dj, 07:14:04 to about 07:37:30 UTC, about $0.23 for both; the
-ledger and window are in §27a). §28's gate ran 07:16–07:34 while §27's reader ran; its reader and judge ran
+approval is in §27a). §28's gate ran 07:16–07:34 while §27's reader ran; its reader and judge ran
 07:34–07:37.
 
 **The gate, aggregate output only.** Every revision was written from the LoCoMo dev output alone and committed
