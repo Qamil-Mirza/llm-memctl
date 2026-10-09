@@ -3689,6 +3689,13 @@ in §23). Each arm is tested on its own; there is no claim on A against B.
   be tight.
 - The RTX PRO 4500 Blackwell ($0.72/h) is the tested architecture but has not been checked against this image's
   kernels; it is not in the plan.
+- **Step 1 approved by the user (2026-10-09, 05:23 UTC, at most $0.92); arm B's fill, arm A and phase 2 are not
+  approved.** Launch settings, fixed before the pod: image `razorback16/openjev@sha256:07c2e9f5fd98b9f6b525014bd6278a7
+  37f1d9c0bfc671bb93296b03a8c2b5beb` (the 0.6.0 index digest, checked on Docker Hub), port 8080/http, 80 GB container
+  disk, `OPENJEV_VLLM_ARGS="--kv-cache-dtype bfloat16"` (the declared A40 deviation) and
+  `OPENJEV_MAX_MODEL_LEN=32768` (shipped default 65,536; a bf16 KV cache takes twice the FP8 memory, and the
+  largest measured state is about 22k tokens, so no request is affected). Ready means `GET /health` answers
+  within 10 minutes of create; the smoke then runs `exp26_smoke.yaml` through `runs/_pipelines/exp26_smoke.sh`.
 
 **Sequence and cost (NEEDS SPEND; measured inputs, one guess, marked).**
 - **Measured:** §23 Qwen 7B answered 1,500 LongMemEval questions in 10.3 min; first model ready 4.4 min after
