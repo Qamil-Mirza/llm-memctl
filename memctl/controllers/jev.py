@@ -21,16 +21,29 @@ to start unless `allow_fake: true`, in which case a hand-written stand-in runs
 and every output is labelled FAKE. The HTTP client was written from the
 documented request and response shapes and has never been run against the live
 API: treat its response parsing as unverified until the first real call.
+
+Where the requests go (EXPERIMENTS.md §26). The endpoint is, in order: config
+`endpoint` (a full URL), config `base_url`, `$JEV_BASE_URL` (both a server root;
+`/v1/systemone` is appended), else TypeSafe's API. The model name is config
+`model`, else `$JEV_MODEL`, else `jev-latest`. A server other than TypeSafe's
+(for example a self-hosted OpenJev, which speaks the same wire API) never gets
+the TypeSafe key: it gets `$OPENJEV_API_KEY` if set, else no Authorization
+header, and its `cost_usd` is 0 (its cost is the GPU time it runs on). With
+nothing set, the requests and prices are exactly as before.
 """
 
 from __future__ import annotations
 
+import dataclasses
+import hashlib
 import json
 import math
 import os
 import time
+import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Protocol
 
 from memctl.controllers.base import EpisodeInfo, MemoryController
@@ -42,7 +55,13 @@ from memctl.retrieval import LexicalRetriever
 from memctl.task import TaskState
 
 API_KEY_ENV = "JEV_API_KEY"
+BASE_URL_ENV = "JEV_BASE_URL"
+MODEL_ENV = "JEV_MODEL"
+SELF_HOSTED_KEY_ENV = "OPENJEV_API_KEY"  # the key of a self-hosted server; the TypeSafe key never goes there
+SYSTEMONE_PATH = "/v1/systemone"
+DEFAULT_MODEL = "jev-latest"
 ENDPOINT = "https://api.typesafe.ai/v1/systemone"
+RETRY_STATUSES = (429, 503, 529)  # rate limit, backend unavailable, overloaded: all carry retry-after
 USD_PER_MILLION_INPUT_TOKENS = 0.042  # docs.typesafe.ai/models, read 2026-09-28; output tokens are free
 
 OPTION_HELP = {
@@ -80,6 +99,8 @@ class JevResponse:
     latency_s: float
     cost_usd: float
     fake: bool
+    server_model_s: float | None = None  # the server's own model time, from a `Server-Timing: model;dur=` header
+    cached: bool = False  # replayed from the client's cache; the timings are those of the original call
 
 
 class JevClient(Protocol):
@@ -96,32 +117,105 @@ def choice_confidence(probabilities: dict[str, float]) -> float:
     return max(0.0, min(1.0, (n * max(probabilities.values()) - 1) / (n - 1)))
 
 
+def resolve_endpoint(config: dict) -> str:
+    """Config `endpoint`, then config `base_url`, then $JEV_BASE_URL, then TypeSafe's API."""
+    if config.get("endpoint"):
+        return str(config["endpoint"])
+    base = config.get("base_url") or os.environ.get(BASE_URL_ENV)
+    return str(base).rstrip("/") + SYSTEMONE_PATH if base else ENDPOINT
+
+
+def resolve_model(config: dict) -> str:
+    return str(config.get("model") or os.environ.get(MODEL_ENV) or DEFAULT_MODEL)
+
+
+def server_model_seconds(header: str | None) -> float | None:
+    """`model;dur=41.2, server;dur=2.8, total;dur=44.0` -> 0.0412 (OpenJev's Server-Timing header)."""
+    for part in (header or "").split(","):
+        name, _, rest = part.strip().partition(";")
+        if name == "model" and rest.startswith("dur="):
+            try:
+                return float(rest[4:]) / 1000.0
+            except ValueError:
+                return None
+    return None
+
+
 class TypeSafeJevClient:
-    """The real client: one HTTPS request per call. The key is sent in a header and never logged."""
+    """The real client: one HTTPS request per call. The key is sent in a header and never logged.
+
+    It also serves any server with the same wire API (a self-hosted OpenJev): `api_key` may then be None (no
+    Authorization header) and `usd_per_million` 0. `retries` re-sends a request that got 429, 503 or 529, after
+    the server's retry-after; the default 0 keeps the original behaviour (the error is raised).
+
+    `cache_dir` (off by default) stores each answer under a hash of the request body (model, state, questions; not
+    the endpoint), with the latency and server time of the call that made it. A replay returns the stored answer
+    and its original timings, marked `cached`. With `cache_only` a request that is not stored is an error, so a
+    replay can never call a server (EXPERIMENTS.md §26: OpenJev's pod first, the reader's pod after).
+    """
 
     is_fake = False
 
-    def __init__(self, api_key: str, model: str = "jev-latest", endpoint: str = ENDPOINT, timeout_s: float = 60.0) -> None:
+    def __init__(
+        self, api_key: str | None, model: str = DEFAULT_MODEL, endpoint: str = ENDPOINT, timeout_s: float = 60.0,
+        usd_per_million: float = USD_PER_MILLION_INPUT_TOKENS, retries: int = 0, cache_dir: str | None = None,
+        cache_only: bool = False,
+    ) -> None:
         self._api_key = api_key
         self.model = model
         self.endpoint = endpoint
         self.timeout_s = timeout_s
+        self.usd_per_million = usd_per_million
+        self.retries = retries
+        self.cache_dir = Path(cache_dir) if cache_dir else None
+        self.cache_only = cache_only
+        if cache_only and not cache_dir:
+            raise ValueError("cache_only needs a cache_dir")
 
     def build_request(self, state: dict, questions: dict[str, dict]) -> dict:
         return {"model": self.model, "state": state, "questions": questions}
 
     def ask(self, state: dict, questions: dict[str, dict]) -> JevResponse:
         body = json.dumps(self.build_request(state, questions)).encode()
-        request = urllib.request.Request(
-            self.endpoint, data=body,
-            headers={"Content-Type": "application/json", "Authorization": f"Bearer {self._api_key}"},
-        )
+        cache_file = None
+        if self.cache_dir:
+            cache_file = self.cache_dir / f"{hashlib.sha256(body).hexdigest()}.json"
+            if cache_file.exists():
+                entry = json.loads(cache_file.read_text())
+                response = self.parse_response(
+                    entry["payload"], entry["latency_s"], count_tokens(body.decode()), entry.get("server_model_s")
+                )
+                return dataclasses.replace(response, cached=True)
+            if self.cache_only:
+                raise JevUnavailableError(f"cache_only: no stored answer for this request in {self.cache_dir}")
+        headers = {"Content-Type": "application/json"}
+        if self._api_key:
+            headers["Authorization"] = f"Bearer {self._api_key}"
         started = time.perf_counter()
-        with urllib.request.urlopen(request, timeout=self.timeout_s) as response:
-            payload = json.load(response)
-        return self.parse_response(payload, time.perf_counter() - started, fallback_tokens=count_tokens(body.decode()))
+        for attempt in range(self.retries + 1):
+            request = urllib.request.Request(self.endpoint, data=body, headers=headers)
+            try:
+                with urllib.request.urlopen(request, timeout=self.timeout_s) as response:
+                    payload = json.load(response)
+                    timing = response.headers.get("server-timing")
+                break
+            except urllib.error.HTTPError as error:
+                if error.code not in RETRY_STATUSES or attempt == self.retries:
+                    raise
+                time.sleep(min(30.0, float(error.headers.get("retry-after") or 2**attempt)))
+        latency_s, server_s = time.perf_counter() - started, server_model_seconds(timing)
+        if cache_file is not None:
+            cache_file.parent.mkdir(parents=True, exist_ok=True)
+            partial = cache_file.with_suffix(f".{os.getpid()}.tmp")
+            partial.write_text(json.dumps({"payload": payload, "latency_s": latency_s, "server_model_s": server_s}))
+            partial.replace(cache_file)  # atomic, so parallel workers never read half an entry
+        return self.parse_response(
+            payload, latency_s, fallback_tokens=count_tokens(body.decode()), server_model_s=server_s
+        )
 
-    def parse_response(self, payload: dict, latency_s: float, fallback_tokens: int = 0) -> JevResponse:
+    def parse_response(
+        self, payload: dict, latency_s: float, fallback_tokens: int = 0, server_model_s: float | None = None
+    ) -> JevResponse:
         raw_answers = payload.get("answers") or payload.get("results") or {}
         answers = {}
         for question_id, raw in raw_answers.items():
@@ -135,7 +229,7 @@ class TypeSafeJevClient:
         input_tokens = int(usage.get("input_tokens", fallback_tokens))
         return JevResponse(
             answers, str(payload.get("model", self.model)), input_tokens, int(usage.get("output_tokens", 0)),
-            latency_s, input_tokens * USD_PER_MILLION_INPUT_TOKENS / 1e6, fake=False,
+            latency_s, input_tokens * self.usd_per_million / 1e6, fake=False, server_model_s=server_model_s,
         )
 
 
@@ -175,10 +269,20 @@ class FakeJevClient:
 
 
 def make_jev_client(config: dict) -> JevClient:
-    """The real client if a key is present; the fake one only when explicitly allowed."""
+    """The real client if a key is present; the fake one only when explicitly allowed.
+
+    A server other than TypeSafe's (see the module docstring) needs no TypeSafe key and is never sent one.
+    """
+    endpoint, model = resolve_endpoint(config), resolve_model(config)
+    options = {
+        "timeout_s": float(config.get("timeout_s", 60.0)), "retries": int(config.get("retries", 0)),
+        "cache_dir": config.get("cache_dir"), "cache_only": bool(config.get("cache_only", False)),
+    }
+    if endpoint != ENDPOINT:
+        return TypeSafeJevClient(os.environ.get(SELF_HOSTED_KEY_ENV), model, endpoint, usd_per_million=0.0, **options)
     key = os.environ.get(API_KEY_ENV)
     if key:
-        return TypeSafeJevClient(key, config.get("model", "jev-latest"), config.get("endpoint", ENDPOINT))
+        return TypeSafeJevClient(key, model, endpoint, **options)
     if config.get("allow_fake"):
         return FakeJevClient()
     raise JevUnavailableError(
@@ -197,7 +301,7 @@ class JEVController(MemoryController):
     def __init__(self, config: dict, seed: int = 0, client: JevClient | None = None) -> None:
         super().__init__(config, seed)
         self.client = client or make_jev_client(config)
-        self.model_id = "FAKE-jev" if self.client.is_fake else config.get("model", "jev-latest")
+        self.model_id = "FAKE-jev" if self.client.is_fake else resolve_model(config)
         self.call = config.get("call", "pressure")
         self.repair = bool(config.get("repair", True))
         self.batch = int(config.get("max_items_per_request", 40))
@@ -276,7 +380,8 @@ class JEVController(MemoryController):
 
         candidates = [(item, False) for item in active] + [(item, True) for item in shortlist]
         answers: dict[str, JevAnswer] = {}
-        totals = {"model_calls": 0, "input_tokens": 0, "output_tokens": 0, "latency_s": 0.0, "cost_usd": 0.0}
+        totals = {"model_calls": 0, "input_tokens": 0, "output_tokens": 0, "latency_s": 0.0, "cost_usd": 0.0,
+                  "server_model_s": 0.0, "cached_calls": 0}
         for start in range(0, len(candidates), self.batch):
             batch = candidates[start : start + self.batch]
             keys = {item.id: f"item_{n}" for n, (item, _) in enumerate(batch)}
@@ -301,9 +406,12 @@ class JEVController(MemoryController):
             totals["output_tokens"] += response.output_tokens
             totals["latency_s"] += response.latency_s
             totals["cost_usd"] += response.cost_usd
+            totals["server_model_s"] += response.server_model_s or 0.0
+            totals["cached_calls"] += int(response.cached)
             self.call_log.append(
                 {"step": memory.step, "fake": response.fake, "model": response.model, "items": len(batch),
-                 "input_tokens": response.input_tokens, "latency_s": response.latency_s, "cost_usd": response.cost_usd}
+                 "input_tokens": response.input_tokens, "latency_s": response.latency_s, "cost_usd": response.cost_usd,
+                 "server_model_s": response.server_model_s, "cached": response.cached}
             )
             self.model_id = response.model
 
