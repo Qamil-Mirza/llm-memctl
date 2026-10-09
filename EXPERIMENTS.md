@@ -68,7 +68,7 @@ commands given).
 | 21 | Sequential task, lossy memory (LoCoMo; free, scripted) | Oracle gate PASSES: oracle − best rule +0.177 (CI +0.126..+0.224) on old-evidence questions; cross-fitted learned notes reach +0.038 (AUC 0.74–0.84), leaving +0.139 for §22; unlimited-archive control gap +0.016. $0 |
 | 22 | Credit for the note-writer (simulator, free) | Per-write hindsight credit beats uniform GRPO (MLP +0.015; linear +0.036); time-forward (label-free) ≈ uniform; counterfactual best RL (0.141). No RL variant beats the supervised writer (0.146); from the supervised init (§22b) RL makes it worse (−0.027). $0 |
 | 23 | Reader size ladder (Qwen 3B/7B/14B, Granite 2B/8B) | Claim 2 NON-INFERIOR: fixed8 at 7B minus FIFO at 14B +0.034 (CI −0.013..+0.079), closes 150% of the size gap. Claim 1 NOT SHOWN: fixed8 at 3B minus FIFO at 7B −0.121, closes 56%. Granite secondary not shown. $0.83 |
-| 24 | Reader families (Llama, Gemma 3, Phi-4; two sizes each) | Pre-registered; stub check done; waiting for the user's price approval and HF_TOKEN |
+| 24 | Reader families (Llama, Gemma 3, Phi-4; two sizes each) | Lift (a) PASSES in all six readers (+0.06 to +0.16). Size step (b): Gemma 3 4B→12B NON-INFERIOR (+0.015, CI −0.028..+0.057; closes 111%); Llama −0.051 and Phi-4 −0.117 NOT SHOWN. "Smaller gains most" holds in Llama only. $1.44 |
 
 ---
 
@@ -3480,7 +3480,8 @@ benchmark; one judge (Qwen 7B, whose ranking was judge-independent in §18).
 
 ## 24. Does the drop-in lift hold in other model families? (N9; 2026-10-08, pre-registered, NOT YET APPROVED for spend)
 
-**Status:** pre-registered; the stub check is done (below); no pod until the user approves the price.
+**Status:** run 2026-10-09 on pod 7d7fnvmk5actq0, about $1.44; the result is in §24a. The pre-registration text
+below is unchanged apart from the launch and deviation notes added before the judge pass.
 
 **Why.** In §23 the controller lifted every Qwen size, but Granite 2B not at all. One family plus one exception is
 not enough to say whether the lift is a property of the controller or of Qwen. §24 repeats §23 unchanged with
@@ -3592,6 +3593,61 @@ tried, is a separate pre-registered arm, tuned on training conversations only (n
   at least 9 times in a row, the regex `\b(\w+)( \1\b){8,}`; this is the rule behind the Phi-4-mini figure of
   about 6.5% quoted on the channel during the run); or containing **special-token text** (`<|` or `<pad>`). These
   answers are judged like any other; claims (a) and (b) are unchanged.
+
+### 24a. Result: the controller lifts all six new readers; it bridges a size step only in Gemma 3 (2026-10-09)
+
+Pod 7d7fnvmk5actq0 (A40, CA-MTL-1, $0.59/h): 02:57:37 to about 05:23:40 UTC, about 2.43 h, **about $1.44**
+(approved about $0.95–1.25; hard stop $1.48). About 43 min of that ($0.42) was the pod idle after the judge
+finished at 04:40, while a question to the user was pending; my error, and a rule now forbids it. Terminated;
+list-pods was empty afterwards. The one blind Qwen 7B judge pass judged 8,460 answers. Report:
+`runs/_pipelines/exp24_report.py` → `runs/exp24_report.md`, copied to
+`docs/research/exp24_reader_families_report.md`; verdicts in `runs/exp24_verdicts.json`.
+
+**Accuracy on the 470 answerable questions** (P(all in view) per arm 0.498, 0.702, 0.747 and prompt tokens 2,964,
+1,049, 2,569, as in §23):
+
+| reader | FIFO + floor | `fixed8` | `fixed16` | `fixed8` minus FIFO |
+|---|---|---|---|---|
+| Llama 3.2 3B | 0.266 | **0.428** | 0.306 | +0.162 (+0.115, +0.209) |
+| Llama 3.1 8B | 0.479 | **0.540** | 0.534 | +0.062 (+0.015, +0.111) |
+| Gemma 3 4B | 0.357 | **0.504** | 0.421 | +0.147 (+0.102, +0.194) |
+| Gemma 3 12B | 0.489 | **0.596** | 0.574 | +0.106 (+0.062, +0.153) |
+| Phi-4-mini (3.8B) | 0.253 | **0.385** | 0.362 | +0.132 (+0.079, +0.183) |
+| Phi-4 (14B) | 0.502 | **0.630** | 0.591 | +0.128 (+0.085, +0.172) |
+
+**Pre-registered claims.**
+- **(a) Lift: all six PASS.** `fixed8` beats FIFO + floor at every size in every family (every lower bound above 0).
+  With §23, the drop-in lift now holds in 10 of 11 readers across 5 families; Granite 2B is the one exception.
+- **(b) Size step:**
+  - **Gemma 3, NON-INFERIOR.** `fixed8` at 4B minus FIFO at 12B is +0.015 (−0.028, +0.057); share of the size gap
+    closed 1.11 (0.81, 1.55).
+  - **Llama, NOT SHOWN.** −0.051 (−0.100, −0.004); share 0.76 (0.56, 0.98). It falls just short of the margin.
+  - **Phi-4, NOT SHOWN.** −0.117 (−0.168, −0.066); share 0.53 (0.34, 0.72). The 3.8B-to-14B step is large.
+- **Cross-family "the smaller size gains most":** **HOLDS in Llama** (+0.100, CI +0.038..+0.164); **undetermined in
+  Gemma 3** (+0.040, −0.017..+0.098) and **Phi-4** (+0.004, −0.060..+0.066). With §23 (Qwen holds; Granite
+  contradicts), it is a pattern of some families, not a rule.
+
+**Where the gain comes from** (unknown share and P(correct | answered), FIFO → `fixed8`):
+- Every reader refuses less with `fixed8` (unknown falls in all six).
+- Unlike the small Qwen readers in §23, the small readers here also get **more precise**: P(correct | answered)
+  rises for Llama 3B (0.466 → 0.569), Gemma 4B (0.439 → 0.552) and Phi-4-mini (0.312 → 0.420). Only Llama 8B
+  loses a little precision (0.650 → 0.623) while answering more.
+- **Reader-only number, P(correct | all in view) under `fixed8`:** Llama 0.545 → 0.679, Gemma 0.627 → 0.733,
+  Phi 0.482 → 0.803 (small → mid).
+
+**Descriptive.**
+- **Context-rot probe, `fixed16` minus `fixed8`:** Llama 3B −0.121 (−0.166, −0.077), Gemma 4B −0.083 (−0.126,
+  −0.040); the other four include 0 (Llama 8B −0.006, Gemma 12B −0.021, Phi-4-mini −0.023, Phi-4 −0.038). As in
+  Qwen, the small readers of Llama and Gemma pay most for a longer prompt.
+- **Degenerate answers** (declared before the judge pass): only Phi-4-mini has any. FIFO 2 empty / 39 loop / 0
+  special-token; `fixed8` 12 / 13 / 29; `fixed16` 0 / 40 / 1 (of 500). Its answered-wrong share (0.53–0.56) is
+  partly these. The other five readers have none.
+- **Refusals in other words:** judge-wrong answers with a listed refusal phrase are 0–6 per cell, so the literal
+  "unknown" rule misses very little.
+
+**Limitations.** The one prompt was tuned on Qwen 7B (stated in advance); one benchmark; one judge. The Gemma bf16
+reload and the Llama 8B disk-full resume are recorded above, with their checks. The Llama order change was made
+before any result.
 
 ## 5. The sequential task
 
