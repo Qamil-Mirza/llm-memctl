@@ -68,7 +68,7 @@ commands given).
 | 21 | Sequential task, lossy memory (LoCoMo; free, scripted) | Oracle gate PASSES: oracle − best rule +0.177 (CI +0.126..+0.224) on old-evidence questions; cross-fitted learned notes reach +0.038 (AUC 0.74–0.84), leaving +0.139 for §22; unlimited-archive control gap +0.016. $0 |
 | 22 | Credit for the note-writer (simulator, free) | Per-write hindsight credit beats uniform GRPO (MLP +0.015; linear +0.036); time-forward (label-free) ≈ uniform; counterfactual best RL (0.141). No RL variant beats the supervised writer (0.146); from the supervised init (§22b) RL makes it worse (−0.027). $0 |
 | 23 | Reader size ladder (Qwen 3B/7B/14B, Granite 2B/8B) | Claim 2 NON-INFERIOR: fixed8 at 7B minus FIFO at 14B +0.034 (CI −0.013..+0.079), closes 150% of the size gap. Claim 1 NOT SHOWN: fixed8 at 3B minus FIFO at 7B −0.121, closes 56%. Granite secondary not shown. $0.83 |
-| 26 | OpenJev (open Jev stand-in, DiffusionGemma 26B-A4B): arm A as memory manager, arm B as selector (8 of the same 32 as `fixed8`), vs FIFO + floor and `fixed8` | Pre-registered; fork checked (Apache-2.0 confirmed; API matches `jev.py`; image needs SM89+ as shipped, an A40 only with a KV flag); code and stub checks of both arms done. NEEDS SPEND: smoke $0.30 (A40) or up to $0.92 (Ada fallback); without arm A at most about $2.18, with A at most about $5.20; not yet approved |
+| 26 | OpenJev (open Jev re-creation) as a controller | Arm B (selector, 8 of the head's 32 candidates): B − FIFO +0.045 (CI +0.004..+0.087), BETTER; B − `fixed8` −0.036 (CI −0.081..+0.009), not shown; B's prompts 2,373 tokens vs 1,049. Arm A (memory manager) cost only: ~94 GPU-s per question (~$15 per 1,000); accuracy not run by decision. $0.64 |
 
 ---
 
@@ -3768,6 +3768,53 @@ in §23). Each arm is tested on its own; there is no claim on A against B.
   about $5.20**. Each step needs the user's approval; none is approved yet.
 - Free disk is checked with `df -h /` before and during every local run of the pipeline (at least 15 GB free).
 - The pods are verified terminated with list-pods after each phase.
+
+### 26a. Result: OpenJev as a selector beats FIFO but not the head, at about twice the head's prompt (2026-10-09)
+
+**Pods and cost** (all A40 at $0.59/h, each terminated, list-pods empty after each):
+- Step 1, smoke: fhuj9gabzst39f, about 0.31 h, about $0.18 (above).
+- Phase 1, arm B's fill: 5pv7jpxgjpfwnj (OpenJev image), 05:47:09 to about 06:17:20 UTC, about 0.50 h, about $0.30.
+  Ready at 05:54:39; 500 answers (100 per fold), 0 errors, stored in `cache/jev_exp26`.
+- Phase 2: ttrilgxqznp6v4 (vLLM 0.8.5, Qwen2.5-7B), 06:17:21 to about 06:33:50 UTC, about 0.27 h, about $0.16.
+  Arm B replayed only stored answers (`cache_only`; its URL was `http://unused.invalid`). 1,500 answers, then the
+  one blind Qwen 7B judge pass (1,410 answerable answers judged).
+- **§26 in all: about $0.64.**
+- **Served model string:** the server reports its model as `openjev-0.1` (OpenJev's own model version, which
+  `openjev-latest` aliases), from the release image `razorback16/openjev:0.6.0` pinned by digest
+  `sha256:07c2e9f5…2b5beb`. They are two version labels for one artefact, not a mismatch.
+
+**Accuracy on the 470 answerable questions** (report: `runs/_pipelines/exp26_report.py` → `runs/exp26_report.md`;
+verdicts in `runs/exp26_verdicts.json`):
+
+| arm | accuracy (95% CI) | unknown | P(correct \| answered) | P(all in view) | P(correct \| in view) | prompt tokens |
+|---|---|---|---|---|---|---|
+| FIFO + floor | 0.445 (0.400, 0.489) | 0.323 | 0.657 | 0.498 | 0.705 | 2,964 |
+| `fixed8` (the §19 head) | **0.526** (0.481, 0.570) | 0.157 | 0.624 | 0.702 | 0.652 | 1,049 |
+| arm B, OpenJev as selector | 0.489 (0.445, 0.534) | 0.245 | 0.648 | 0.611 | 0.627 | 2,373 |
+
+**Pre-registered claims.**
+- **B1, arm B minus `fixed8`: −0.036 (−0.081, +0.009), NOT SHOWN.** The lower bound is below the −0.03 margin, and
+  the upper bound is above 0, so neither "non-inferior" nor "`fixed8` better" is shown. This matches the
+  expectation written before the run (undetermined, leaning to `fixed8`).
+- **B2, arm B minus FIFO + floor: +0.045 (+0.004, +0.087), BETTER**, as expected.
+- **A1, A2: not tested, by decision** (above).
+
+**What it means.**
+- Given the same 32 candidates and the same 8 slots, OpenJev picks evidence less well than the head: all evidence
+  in view 0.611 against 0.702. The head was trained on this benchmark's evidence labels; OpenJev has never seen
+  the task, and it still beats FIFO.
+- **Its picks are longer:** 2,373 prompt tokens against `fixed8`'s 1,049 for the same 8 items, so it prefers long
+  turns. It reaches below the head's accuracy at more than twice the head's prompt.
+- **Cost axis:** arm B used about 2,700 OpenJev GPU-seconds per 1,000 questions with five folds at once (13.1 s per
+  call, about 13,800 input tokens per call), about $0.44 per 1,000 questions at $0.59/h, against about 134 CPU
+  seconds for the head. Arm A (smoke): about 94 s per question single-stream, about $15 per 1,000.
+- **Pairing check:** this session's FIFO + floor and `fixed8` agree with §23's Qwen 7B verdicts on 98.3% and 96.6%
+  of questions (0.445 against 0.436; 0.526 against 0.538), and `fixed8` minus FIFO is +0.081 (+0.040, +0.121)
+  against §23's +0.102.
+
+**Limitations.** OpenJev approximates Jev; nothing here is a result about TypeSafe's Jev. The A40 runs it with a
+bf16 KV cache (declared deviation) and weight-only FP4. One benchmark, one reader, one judge. Arm A's accuracy was
+not measured.
 
 ## 5. The sequential task
 
