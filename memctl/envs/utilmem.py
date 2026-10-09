@@ -47,7 +47,7 @@ CODE = "https://github.com/peijunallin/UtilMem"
 CODE_COMMIT = "b7ebd4a1ba31379a67540f2b1c95ec48351f6d79"
 DOMAINS = ("studychat", "finance", "mental_health", "fitness", "edgar_10k")
 SPLIT_SEED = 30
-DEV_BUNDLES = 20
+DEV_SHARE = 0.2  # 20 of the 100 bundles
 
 GOAL = (
     "You are the user's long-term AI assistant. Your memory below holds parts of your past conversations with the "
@@ -121,13 +121,13 @@ def parse_score(output: str) -> int | None:
     if start >= 0 and end > start:
         try:
             payload = json.loads(text[start: end + 1])
-            score = payload.get("score") if isinstance(payload, dict) else None
+            score = payload.get("score", payload.get("final_score")) if isinstance(payload, dict) else None
             if isinstance(score, (int, float)) or (isinstance(score, str) and score.strip().isdigit()):
                 score = int(float(score))
                 return score if 1 <= score <= 10 else None
         except (json.JSONDecodeError, ValueError):
             pass
-    found = re.search(r'"score"\s*:\s*"?(\d+)', text)
+    found = re.search(r'"(?:final_)?score"\s*:\s*"?(\d+)', text)
     if found and 1 <= int(found.group(1)) <= 10:
         return int(found.group(1))
     return None
@@ -186,9 +186,10 @@ def _bundle(path: str, number: int) -> dict:
     return json.loads((_shard_dir(path) / f"{number:04d}.json").read_text())
 
 
-def split_bundles(count: int, seed: int = SPLIT_SEED, dev: int = DEV_BUNDLES) -> tuple[list[int], list[int]]:
-    """(development bundles, evaluation bundles), each sorted."""
-    chosen = sorted(random.Random(seed).sample(range(count), dev))
+def split_bundles(count: int, seed: int = SPLIT_SEED) -> tuple[list[int], list[int]]:
+    """(development bundles, evaluation bundles), each sorted: a fifth of the bundles (20 of 100) on the
+    development side."""
+    chosen = sorted(random.Random(seed).sample(range(count), max(1, round(count * DEV_SHARE))))
     return chosen, [n for n in range(count) if n not in set(chosen)]
 
 

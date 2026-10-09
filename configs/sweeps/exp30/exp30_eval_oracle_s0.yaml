@@ -1,0 +1,48 @@
+# Experiment 30 (§30, pre-registered, NOT APPROVED for spend), UtilMem eval side, shard 0 of 5, 100 questions, sample: 100 per domain from the 80 evaluation bundles, seed 30.
+# The oracle reference: the question domain's evidence sessions only, unlimited budget (the paper's reference answer).
+name: exp30_eval_oracle_s0
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env:
+    name: utilmem
+    path: external/UtilMem-hf/multi_domain_eval_strong.json
+    part: eval
+    shard:
+      k: 5
+      index: 0
+    max_turn_tokens: 1000
+    sample:
+      seed: 30
+      per_domain: 100
+    oracle: true
+  agent:
+    name: llm
+    reasoning: false
+    labels: compact
+    max_new_tokens: 512
+    model:
+      backend: openai
+      name: qwen2.5-7b-instruct
+      base_url: POD_URL/v1
+      timeout_s: 600
+      cache_dir: cache/generations_exp30_eval_qwen7b
+  memory:
+    allowed_operations:
+    - KEEP
+    - MOVE_TO_ARCHIVE
+    - RETRIEVE_FROM_ARCHIVE
+    - NO_OP
+    embedder: hashing
+    count_labels: true
+  hindsight:
+    enabled: false
+  logging:
+    detail_episodes: 100000
+grid:
+  controller:
+  - name: full_context
+    label: oracle
+  memory.budget.fraction:
+  - 1.0

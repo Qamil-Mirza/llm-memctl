@@ -73,7 +73,7 @@ commands given).
 | 26 | OpenJev (open Jev re-creation) as a controller | Arm B (selector, 8 of the head's 32 candidates): B − FIFO +0.045 (CI +0.004..+0.087), BETTER; B − `fixed8` −0.036 (CI −0.081..+0.009), not shown; B's prompts 2,373 tokens vs 1,049. Arm A (memory manager) cost only: ~94 GPU-s per question (~$15 per 1,000); accuracy not run by decision. $0.64 |
 | 27 | LRE (published query-blind scorer) as a baseline controller | LRE-slot (8 of the head's 32): 0.109, far below FIFO (−0.328) and the head (−0.428), evidence in view 0.03. LRE-native (in place of recency): +0.028 vs FIFO (CI −0.002..+0.057), non-inferior. About $0.23 shared with §28 |
 | 28 | Query rewriting for the head's 32 candidates | Rule time filter (b): NO GO at its free gate. LLM rewrite (a): training gate passed at v3 (v1 malformed, v2 invented ranges); test folds +0.006 overall (CI −0.017..+0.030) and +0.024 on temporal (n = 127, CI −0.016..+0.063), non-inferior, not better. About $0.23 shared with §27 |
-| 30 | UtilMem: the §19 head zero-shot on spread-out evidence among look-alike distractors | Pre-registered; free part in progress. NEEDS SPEND, not approved |
+| 30 | UtilMem: the §19 head zero-shot on spread-out evidence among look-alike distractors (free part) | Not the §25 case: the question sits a median 12.7k tokens after its newest evidence. Development side, evidence in view: session recall FIFO 0.54, `fixed8` 0.58 (+0.045, CI +0.022..+0.067), all in view 0.05 / 0.09, but `fixed8` shows twice the look-alike distractors (0.37 vs 0.17). Paid run priced at about $1.30–2.30, hard stop 4 h; NEEDS SPEND, not approved; recommended: no pod for now. $0 |
 
 ---
 
@@ -4796,6 +4796,8 @@ main).
   only these. The split was committed (bd02deb) before any evidence position was computed.
 - **Evaluation side:** the other 80 bundles (1,368 questions). Nothing is computed on them before the
   pre-declared evaluation.
+- If a reference answer is itself a refusal, the question is kept (the paper pins every reference at 10), and the
+  count is reported.
 - **Disclosure:** while reading the file format, the first five session headers of bundle 0 were printed (dates,
   role and domain). Bundle 0 fell on the development side. A 2-question timing run (development side, stub
   reader) printed `fixed8`'s summary for those 2 questions before the check below was declared; nothing was changed
@@ -4854,6 +4856,86 @@ by question.
 - If FIFO + floor already holds nearly all the evidence (as in §25), §30 stops before any pod.
 - If every arm's all-in-view is near 0, the benchmark measures a regime the head cannot reach, and that is said
   before any pod.
+
+
+**Free development-side check: result** (349 development questions, stub reader, run once after the declaration
+above; 95% interval by question; `runs/exp30/dev_inview.json`):
+
+| arm | session recall | all in view | any in view | evidence turns in view | in-view turns that are evidence | in-view turns that are same-domain distractors | reader prompt tokens |
+|---|---|---|---|---|---|---|---|
+| FIFO + floor | 0.536 (0.516, 0.555) | 0.049 (0.029, 0.072) | 0.997 | 0.206 | 0.560 | 0.174 | 2,896 |
+| `fixed8` | 0.581 (0.559, 0.602) | 0.092 (0.063, 0.123) | 0.994 | 0.215 | 0.513 | 0.366 | 1,689 |
+| `fixed16` | 0.683 (0.660, 0.705) | 0.180 (0.140, 0.224) | 0.997 | 0.326 | 0.468 | 0.385 | 3,296 |
+
+- `fixed8` minus FIFO: session recall +0.045 (+0.022, +0.067); all in view +0.043 (+0.009, +0.077); same-domain
+  distractor share +0.192 (+0.170, +0.214); 1,207 fewer prompt tokens.
+- `fixed16` minus FIFO: session recall +0.147 (+0.122, +0.173); all in view +0.132 (+0.089, +0.178).
+- By domain, all in view (FIFO / `fixed8` / `fixed16`): 10-K 0.01 / 0.01 / 0.01; studychat 0.00 / 0.00 / 0.05;
+  fitness 0.00 / 0.03 / 0.14; finance 0.08 / 0.28 / 0.17; mental health 0.16 / 0.14 / 0.57.
+
+**What the check says.**
+- **Not the §25 case.** FIFO + floor sees about half of the evidence sessions, not all. Recency does not win.
+- **Neither stop rule fires.** All in view is low (0.05–0.18) but not near 0; every arm touches about half the
+  evidence sessions.
+- **The budget is smaller than the evidence.** A 5% budget is about 3.8k tokens; the evidence alone is a median
+  8.3k. So every arm sees at most a fifth to a third of the evidence turns, and the reference answer saw all of
+  them. Expect low scores and a high DR for every arm; the arm differences will be squeezed.
+- **The head finds a little more evidence, and twice the look-alikes.** `fixed8` touches slightly more evidence
+  sessions with 42% fewer prompt tokens, but 37% of what it shows is same-domain distractors against FIFO's 17%.
+  The paper finds a few distractors cost much of the score. So the sign of `fixed8` minus FIFO on NR is genuinely
+  open. The pre-registered direction (better) stays as written; this check weakens it.
+
+**Stub check (done, free; prelaunch rule).**
+- Full size: 5 arm sweeps (3 cells each) and 5 reference sweeps, 20 cells, 500 questions per arm, all at once,
+  stub reader (`runs/exp30/stub.sh`).
+- **Resume on a new endpoint:** all 10 sweeps were killed after 15 s (arm cells at 6–21 of 100 questions; the
+  reference cells had already finished, in 5–10 s), then rerun with a different `base_url`. All 20 cells finished
+  with 100 distinct questions each, `resumed: true`, none refused.
+- **Peak RSS 0.26 GB** per arm sweep (3 cells), 0.05 GB per reference sweep. About 1.5 min per arm sweep on the
+  laptop (no model).
+- **Calls and prompt sizes** (controller side only; no evidence number was read on the evaluation side): 1,500
+  reader calls (mean prompt: FIFO 2,916 tokens, `fixed8` 1,660, `fixed16` 3,141; largest 4,379); 500 reference
+  calls (mean 6,487, largest 18,316); 1,500 judge calls (mean 7,239 with stub answers, about 7,900 with real ones;
+  largest about 19,900). All fit `--max-model-len 24576` with 512 new tokens.
+- The judge script, the in-view script and the report ran end to end on 8 development questions with made-up
+  scores (pipeline check only).
+- All stub output and stub caches were deleted (`cache/generations_exp30_eval_qwen7b`, `cache/judge_exp30_stub`).
+- **Disk: 14 GB free**, below the 15 GB floor (not from this work). At least 1 GB must be freed before any launch.
+
+**Cost (NEEDS SPEND; from §23's measured calls on the same A40, $0.59/h).**
+- §23's 1,500 Qwen 7B calls (mean prompt 2,193 tokens, mean output 27) took 10.3 min with about 12 calls in
+  flight. A fit of their per-call times gives about 1.23 s + 0.28 s per 1,000 prompt tokens + 0.109 s per output
+  token. **Long answers make output the cost driver here.** The output slope comes from short answers, so it is
+  an extrapolation.
+- §30: 3,500 calls. Answers assumed 250–450 tokens (cap 512), judge verdicts 150–300 (cap 400). That gives
+  **about 2.1–3.7 h of generation** (central about 2.8 h), plus about 5 min to load and 10 min of checks.
+- **About $1.30–2.30 (central about $1.75). Hard stop at 4 h after create (about $2.36).** If the pod is not
+  $0.59/h, the figure is quoted again before the run.
+- **Stage order, one model (Qwen 7B), one pod:** the 15 arm cells and the 5 reference cells at once, then the
+  judge pass, FIFO and `fixed8` first, `fixed16` last (`--arms`).
+- **Triage rule, declared now:** if fewer than half of the arm-cell questions are done 1.5 h after create, the
+  `fixed16` cells are stopped and `fixed16` is not judged, so that the claim's two arms finish.
+- Their GPT-5.2 and GPT-5.4 judges are not priced in: about 1,500 calls of about 8k tokens each per judge, on a
+  paid API that needs a key. Not proposed.
+
+**If §30 closes without a paid run (pre-declared, free).**
+- One label-only evaluation on the 500 evaluation questions: session recall, all in view and the distractor share
+  for the three arms, from the committed configs with only the reader set to stub, with 95% intervals by question.
+- Computed **exactly once**, and **only after the user decides there is no paid run**. If the user chooses the
+  paid run, the run reports the same numbers as its diagnostic instead.
+- Not executed.
+
+**Limitations, stated before any run.**
+- One judge, Qwen 7B, also the reader that wrote the reference and the answers: it may favour its own phrasing. It
+  is the same for every arm, but not neutral, and its reliability on 8k-token rubric prompts is untested. Our
+  numbers are not comparable with the paper's.
+- Turns cut at 1,000 tokens (4% of turns; mostly pasted filings and assignments).
+- The length confound above (evidence turns are longer than distractors).
+- No licence for the data; one benchmark; one budget (5%), below the size of the evidence.
+
+**Recommendation (to the user): no pod for now.** The check closes the §25 failure mode, but the run would most
+likely end "undetermined" or "non-inferior" on a small difference, for about $1.75. The judge is an untested 7B
+self-judge, and the data has no licence. A pod is worth it only if a UtilMem row is wanted for the write-up.
 
 ## 5. The sequential task
 

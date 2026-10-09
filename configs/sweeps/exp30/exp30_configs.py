@@ -27,10 +27,9 @@ out.mkdir(parents=True, exist_ok=True)
 
 
 def model(cache):
-    if stub:
-        return {"backend": "stub", "name": "qwen2.5-7b-instruct", "cache_dir": cache}
-    return {"backend": "openai", "name": "qwen2.5-7b-instruct", "base_url": "POD_URL/v1", "timeout_s": 600,
-            "cache_dir": cache}
+    # The stub keeps base_url, so the stub check can rehearse a resume against a changed endpoint.
+    return {"backend": "stub" if stub else "openai", "name": "qwen2.5-7b-instruct", "base_url": "POD_URL/v1",
+            "timeout_s": 600, "cache_dir": cache}
 
 
 for kind in ("arms", "oracle"):
