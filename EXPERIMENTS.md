@@ -3689,8 +3689,8 @@ before any result.
 
 ## 25. StreamMemBench: does the §19 head transfer to a benchmark with feedback and follow-ups? (N10; 2026-10-08, pre-registered, NOT YET APPROVED for spend)
 
-**Status:** pre-registered before any run; the environment, its tests and the stub check are done; no pod until the
-user approves the price.
+**Status:** closed without a paid run at the user's decision (2026-10-09); the result is in §25a. The
+pre-registration text below is unchanged apart from the review amendments made before the decision.
 
 **The benchmark, checked against the source** (arXiv 2606.14571; github.com/landian60/StreamMemBench at commit
 b32965525da5f982599af9794954c616ddeb34ff, cloned to `external/StreamMemBench`, not in git).
