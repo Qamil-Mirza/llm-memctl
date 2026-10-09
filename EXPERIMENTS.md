@@ -68,7 +68,7 @@ commands given).
 | 21 | Sequential task, lossy memory (LoCoMo; free, scripted) | Oracle gate PASSES: oracle − best rule +0.177 (CI +0.126..+0.224) on old-evidence questions; cross-fitted learned notes reach +0.038 (AUC 0.74–0.84), leaving +0.139 for §22; unlimited-archive control gap +0.016. $0 |
 | 22 | Credit for the note-writer (simulator, free) | Per-write hindsight credit beats uniform GRPO (MLP +0.015; linear +0.036); time-forward (label-free) ≈ uniform; counterfactual best RL (0.141). No RL variant beats the supervised writer (0.146); from the supervised init (§22b) RL makes it worse (−0.027). $0 |
 | 23 | Reader size ladder (Qwen 3B/7B/14B, Granite 2B/8B) | Claim 2 NON-INFERIOR: fixed8 at 7B minus FIFO at 14B +0.034 (CI −0.013..+0.079), closes 150% of the size gap. Claim 1 NOT SHOWN: fixed8 at 3B minus FIFO at 7B −0.121, closes 56%. Granite secondary not shown. $0.83 |
-| 25 | StreamMemBench: does the §19 head transfer to a benchmark with feedback and follow-ups? (zero-shot) | Pre-registered; env, tests and stub check done; the free training-side check predicts FIFO wins; waiting for the user's price approval (about $0.60–0.85) |
+| 25 | StreamMemBench zero-shot transfer of the §19 head (free close) | Closed without a paid run at the user's decision; $0. Evidence in view on 541 evaluation anchors: FIFO 0.93 / 0.91 / 1.00 (initial / revised / follow-up), `fixed8` 0.32 / 0.23 / 0.10: the head does not transfer, because recency wins on this benchmark |
 
 ---
 
@@ -3650,6 +3650,43 @@ read time):**
 - If the user chooses the paid run instead, it is **not** computed beforehand: that would be a peek at the
   evaluation side. The paid run reports the same numbers as its diagnostic.
 - Not executed as of this amendment.
+
+### 25a. Result: closed without a paid run; the head does not transfer, because recency wins (2026-10-09)
+
+**Decision.** At 05:23 UTC on 2026-10-09 the user closed §25 as a free result (the reviewer's recommendation), so
+there is no paid run. The pre-declared closing evaluation was then computed **once**, at 05:27 UTC, from the
+committed configs with only the reader and simulator set to stub (`runs/_pipelines/exp25_close_cfg.py`,
+`exp25_close_eval.py`; per-anchor table in `runs/exp25_close_eval.json`). $0.
+
+**Evaluated set:** 541 anchors on 27 participant-days (the seed-25 sample of 565, less A3_TASHA DAY1's 24); the
+excluded day is absent from the output.
+
+**Evidence in view** (share of requests with all their evidence lines in the reader's prompt; 95% interval by
+anchor):
+
+| request | FIFO + floor | `fixed8` | `fixed16` | `fixed8` minus FIFO | `fixed16` minus FIFO |
+|---|---|---|---|---|---|
+| initial | 0.930 (0.908, 0.950) | 0.318 (0.279, 0.355) | 0.401 (0.359, 0.440) | −0.612 (−0.656, −0.569) | −0.529 (−0.573, −0.486) |
+| revised | 0.908 (0.882, 0.932) | 0.229 (0.194, 0.264) | 0.290 (0.253, 0.329) | −0.678 (−0.719, −0.638) | −0.617 (−0.662, −0.573) |
+| follow-up | 0.996 (0.991, 1.000) | 0.100 (0.078, 0.126) | 0.181 (0.150, 0.214) | −0.896 (−0.921, −0.869) | −0.815 (−0.847, −0.782) |
+
+Mean reader prompt: FIFO 2,949 tokens, `fixed8` 998, `fixed16` 1,824.
+
+**What it means.**
+- **The §19 head does not transfer zero-shot to StreamMemBench.** The pre-declared direction (`fixed8` below FIFO)
+  holds on every request type, by a wide margin; it matches the training-side check (A1/A2).
+- **Why:** this benchmark asks each request right after its evidence segment, and the follow-up right after the
+  stored interaction, so the most recent turns are the evidence. FIFO keeps them; the head archives everything
+  and searches with a forward-looking request that shares few words with the evidence. The worst gap is on the
+  follow-up, the request that most needs the earlier exchange.
+- The reader was not run, so this is a statement about evidence in view, not accuracy. §23 shows what a reader
+  does when the evidence is not in view (P(correct | in view) against out of view), so a paid run would very
+  likely only have confirmed the direction.
+- The "revised" row covers every anchor, because the stub simulator asks for a revision every time; with a real
+  simulator only some anchors are revised.
+
+**Next, if wanted:** a head-plus-recent-window arm, designed on A1/A2 and the LongMemEval training folds only,
+would be a separate pre-registration.
 
 ## 5. The sequential task
 
