@@ -123,6 +123,22 @@ Granite-3.1 2B and 8B) on LongMemEval, with one prompt and one blind judge.
   and −0.026 at 14B.
 - **Figure:** `figures/exp23_ladder.png`. Cost: $0.83.
 
+## Reader families (§24): the lift holds in three more families
+
+The same controller and test were repeated with six more readers: Llama 3.2 3B and 3.1 8B, Gemma 3 4B and 12B,
+Phi-4-mini (3.8B) and Phi-4 (14B).
+- **The lift holds in every reader** (`fixed8` minus FIFO + floor, all lower bounds above 0): Llama +0.162 and
+  +0.062, Gemma +0.147 and +0.106, Phi +0.132 and +0.128. With §23, 10 of 11 readers in 5 families; Granite 2B is
+  the only exception.
+- **It bridges a size step in Gemma 3:** 4B with the controller minus 12B with FIFO + floor is +0.015 (−0.028,
+  +0.057), non-inferior, closing 111% (81–155%) of the gap. Not in Llama (−0.051; 76%) or Phi (−0.117; 53%).
+- **"The smaller size gains most" is family-specific:** it holds in Llama (+0.100, CI +0.038..+0.164), is
+  undetermined in Gemma and Phi, holds in Qwen and is contradicted by Granite (§23).
+- **Mechanism:** every reader refuses less; unlike small Qwen, the small Llama, Gemma and Phi readers also become
+  more precise (P(correct | answered) rises by 0.10–0.11).
+- **Caveat:** one prompt, tuned on Qwen 7B, for every reader.
+- **Figure:** `figures/exp24_families.png`. Cost: $1.44 (about $0.42 of it an idle pod, disclosed).
+
 ## Protocol section (methods)
 
 - **Folds and scoring.** Stratified 5-fold LongMemEval; LoCoMo categories 1–4, with refusal-scored questions
@@ -140,7 +156,7 @@ Granite-3.1 2B and 8B) on LongMemEval, with one prompt and one blind judge.
   - Both judges are 8B-class; a frontier judge was not available.
 - **Run-to-run variation.** The judge's verdict is stable: 50/50 identical on repeated prompts. Parsed answers
   vary by 1 in 50 on one host and 6 in 50 across hosts. This is why accuracy is reported with intervals.
-- **Costs.** All GPU was a RunPod A40 at $0.49/h, each run approved by the user in advance.
+- **Costs.** All GPU was a RunPod A40 ($0.49/h; $0.59/h from §23), each run approved by the user in advance.
 
   | experiment | pod time | cost |
   |---|---|---|
@@ -155,8 +171,9 @@ Granite-3.1 2B and 8B) on LongMemEval, with one prompt and one blind judge.
   | 20: write-action gate stage (four pods; gate failed) | 1.67 h | $0.81 |
   | 21–22: sequential task and credit assignment (simulator, CPU) | — | $0 |
   | 23: reader size ladder (five readers, one pod at $0.59/h) | 1.40 h | $0.83 |
-  | **benchmark programme (13–23)** | 11.87 h | **$5.95** |
-  | **all experiments** | 20.70 h | **$10.27** |
+  | 24: reader families (six readers, one pod at $0.59/h) | 2.43 h | $1.44 |
+  | **benchmark programme (13–24)** | 14.30 h | **$7.39** |
+  | **all experiments** | 23.13 h | **$11.71** |
 - **Provenance.**
   - Every run records its commit and a dirty flag.
   - The sharded LongMemEval loader has a test showing it plays the same episodes as the full file.

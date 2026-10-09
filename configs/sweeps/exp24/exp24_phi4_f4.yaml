@@ -1,0 +1,68 @@
+# Experiment 24 (§24, pre-registered; NOT YET APPROVED for spend), reader microsoft/phi-4 served as phi-4,
+# LongMemEval fold 4. Same as §23 apart from the reader: answers only (stub judge); one blind Qwen 7B judge
+# pass follows (runs/_pipelines/exp24_judge.py).
+name: exp24_phi4_f4
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env:
+    name: longmemeval
+    path: data/longmemeval/longmemeval_s_cleaned.json
+    folds:
+      k: 5
+      fold: 4
+      part: test
+    judge:
+      backend: stub
+      style: longmemeval
+  agent:
+    name: llm
+    reasoning: true
+    labels: compact
+    max_new_tokens: 256
+    model:
+      backend: openai
+      name: phi-4
+      base_url: POD_URL/v1
+      timeout_s: 300
+      cache_dir: cache/generations_exp24_phi4
+  memory:
+    allowed_operations:
+    - KEEP
+    - MOVE_TO_ARCHIVE
+    - RETRIEVE_FROM_ARCHIVE
+    - NO_OP
+    embedder: hashing
+    count_labels: true
+  logging:
+    detail_episodes: 100000
+grid:
+  controller:
+  - name: fifo
+    label: fifo_top5_t3000
+    removal:
+    - MOVE_TO_ARCHIVE
+    retrieve:
+      top_k: 5
+      fit: true
+      method: lexical
+    target_tokens: 3000
+  - name: rl
+    label: fixed8
+    checkpoint: /home/qamil-mirza/Code/llm-memctl/runs/lme_n4_head_f4_a/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: fixed16
+    checkpoint: /home/qamil-mirza/Code/llm-memctl/runs/lme_n4_head_f4_a/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 16
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  memory.budget.fraction:
+  - 0.05
