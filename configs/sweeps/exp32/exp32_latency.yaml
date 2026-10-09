@@ -63,6 +63,8 @@ grid:
     scorer:
       kind: rrf
       model: BAAI/bge-small-en-v1.5
+      cache: null
+      cache_only: false
   - name: rerank
     label: lr_pointwise
     retrieval_method: lexical

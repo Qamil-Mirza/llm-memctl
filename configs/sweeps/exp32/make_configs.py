@@ -26,7 +26,9 @@ def arms(k: int, cache_only: bool, fresh: bool = False) -> list[dict]:
     return [
         {"name": "rl", "label": "fixed8", "checkpoint": HEAD.format(k=k), **SLOT},
         {"name": "rerank", "label": "bm25_top8", **SLOT, "scorer": {"kind": "bm25"}},
-        {"name": "rerank", "label": "rrf_top8", **SLOT, "scorer": {"kind": "rrf", "model": "BAAI/bge-small-en-v1.5"}},
+        {"name": "rerank", "label": "rrf_top8", **SLOT, "scorer": {
+            "kind": "rrf", "model": "BAAI/bge-small-en-v1.5", "cache": ce_cache("dense"),
+            "cache_only": cache_only and not fresh}},
         {"name": "rerank", "label": "lr_pointwise", **SLOT,
          "scorer": {"kind": "pointwise", "model": f"configs/sweeps/exp32/models/lr_f{k}.json"}},
         {"name": "rerank", "label": "gbdt_pointwise", **SLOT,

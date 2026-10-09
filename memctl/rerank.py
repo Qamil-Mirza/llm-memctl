@@ -138,7 +138,7 @@ class CrossEncoderScorer:
                     row = json.loads(line)
                     self.scores[row["k"]] = row["s"]
         elif cache_only:
-            raise FileNotFoundError(f"cache_only cross-encoder scorer, but no cache at {cache}")
+            raise FileNotFoundError(f"cache_only {type(self).__name__}, but no cache at {cache}")
 
     def _model(self):
         if self.model_name not in self._models:
@@ -147,14 +147,17 @@ class CrossEncoderScorer:
             self._models[self.model_name] = CrossEncoder(self.model_name, device="cpu", max_length=self.max_length)
         return self._models[self.model_name]
 
+    def _compute(self, query: str, texts: list[str]):
+        return self._model().predict([(query, text) for text in texts], batch_size=self.batch_size,
+                                     show_progress_bar=False)
+
     def score(self, query: str, texts: Sequence[str]) -> np.ndarray:
         keys = [_key(self.model_name, query, text) for text in texts]
         missing = [j for j, key in enumerate(keys) if key not in self.scores]
         if missing:
             if self.cache_only:
-                raise KeyError(f"cross-encoder cache miss ({len(missing)} pairs) with cache_only: true")
-            values = self._model().predict([(query, texts[j]) for j in missing], batch_size=self.batch_size,
-                                           show_progress_bar=False)
+                raise KeyError(f"{type(self).__name__} cache miss ({len(missing)} pairs) with cache_only: true")
+            values = self._compute(query, [texts[j] for j in missing])
             lines = []
             for j, value in zip(missing, values):
                 self.scores[keys[j]] = float(value)
@@ -166,6 +169,17 @@ class CrossEncoderScorer:
                     handle.flush()
                     os.fsync(handle.fileno())
         return np.array([self.scores[key] for key in keys], dtype=np.float64)
+
+
+class DenseSimilarity(CrossEncoderScorer):
+    """The bge-small cosine of (question, labelled turn text), with the same disk cache (key prefix "dense:")."""
+
+    def __init__(self, model: str, cache: str | None = None, cache_only: bool = False) -> None:
+        super().__init__(f"dense:{model}", cache, cache_only)
+        self.dense = DenseRetriever(model)
+
+    def _compute(self, query: str, texts: list[str]):
+        return self.dense.vectors(texts) @ self.dense.vectors([query])[0]
 
 
 class Scorer:
@@ -185,7 +199,8 @@ class Scorer:
                 raise ValueError("a pointwise scorer needs `model`")
             self.model = load_pointwise(self.config["model"])
         elif self.kind == "rrf":
-            self.dense = DenseRetriever(self.config.get("model", "BAAI/bge-small-en-v1.5"))
+            self.dense = DenseSimilarity(self.config.get("model", "BAAI/bge-small-en-v1.5"), self.config.get("cache"),
+                                         bool(self.config.get("cache_only", False)))
         elif self.kind == "cross_encoder":
             self.cross = CrossEncoderScorer(self.config.get("model", "cross-encoder/ms-marco-MiniLM-L-6-v2"),
                                             self.config.get("cache"), bool(self.config.get("cache_only", False)),
@@ -205,9 +220,7 @@ class Scorer:
         if self.kind == "bm25":
             return -np.arange(n, dtype=np.float64)
         if self.kind == "rrf":
-            vectors = self.dense.vectors([labelled_text(item) for item in items])
-            dense = vectors @ self.dense.vectors([query])[0]
-            return rrf_scores(dense)
+            return rrf_scores(self.dense.score(query, [labelled_text(item) for item in items]))
         if self.kind == "pointwise":
             return pointwise_scores(self.model, rows(item_features, global_features))
         if self.kind == "cross_encoder":

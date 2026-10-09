@@ -66,6 +66,8 @@ grid:
     scorer:
       kind: rrf
       model: BAAI/bge-small-en-v1.5
+      cache: cache/exp32_ce/dense_f3.jsonl
+      cache_only: true
   - name: rerank
     label: lr_pointwise
     retrieval_method: lexical
