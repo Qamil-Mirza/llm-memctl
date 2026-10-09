@@ -1,8 +1,10 @@
 #!/bin/bash
 # Experiment 28 (§28) on the shared Qwen2.5-7B pod. Run from the repository (or worktree) root.
-#   stage.sh gate N URL   prompt vN: rewrite all 500 questions (label-free), print format stats (what a revision may
-#                         use), score on every open fold's TRAINING part; close the gate when every fold passes or
-#                         after v4. A revision vN+1 is written by hand into prompts/vN+1.txt and committed first.
+#   stage.sh gate N URL   prompt vN: rewrite the 307 LoCoMo dev questions and the 500 LongMemEval questions; print
+#                         the LoCoMo dev outputs and dev recall (the only thing a revision may use; LongMemEval text and
+#                         rewrites are never shown); score on every open fold's TRAINING part (aggregate output only);
+#                         close the gate when every fold passes or after v4. A revision vN+1 is written from the dev
+#                         output only, into prompts/vN+1.txt, and committed first.
 #   stage.sh reader URL   fixed8 and fixed8_rewrite on the five test folds, then the blind judge. Refuses unless the
 #                         gate is final and GO; the rewrites are replayed from the cache only.
 # STUB=1: the free rehearsal. Stub backends, separate stub caches and gate folder; no server is called.
@@ -34,7 +36,7 @@ gate)
   if $PY -c "import json,sys; s=json.load(open('$GATE_DIR/state.json')); sys.exit(0 if len(s['selected'])==5 or len(s['versions'])>=4 else 1)"; then
     $PY -m memctl.rewrite_gate --backend $BACKEND final | tee runs/_logs/${TAG}exp28_final.log
   else
-    echo "gate open: folds without a passing version remain; write v$((N + 1)) from the format stats only, or stop"
+    echo "gate open: folds without a passing version remain; write v$((N + 1)) from the LoCoMo dev output only, or stop"
   fi
   ;;
 reader)

@@ -99,3 +99,23 @@ def test_the_rl_controller_runs_with_a_rule_rewriter():
     episode = experiment.run_episode(seed=0, detail=False).episode
     assert episode["invalid_actions"] == 0
     assert experiment.controller.rewriter is not None and experiment.controller.rewriter.action == "drop"
+
+
+def test_inspect_reads_locomo_dev_questions_only_and_refuses_longmemeval():
+    from pathlib import Path
+
+    from memctl import rewrite_gate
+
+    with pytest.raises(PermissionError):
+        rewrite_gate._check_dev_only([0])
+    with pytest.raises(PermissionError):
+        rewrite_gate._check_dev_only(["dev:conv-26_q0", "e47becba"])  # a LongMemEval question id
+    rewrite_gate._check_dev_only(["dev:conv-26_q0"])
+    with pytest.raises(PermissionError):
+        rewrite_gate.inspect(1, ids=[3])  # refused before any output is read
+    assert rewrite_gate._lme_date("1:56 pm on 8 May, 2023") == "2023/05/08 (Mon) 13:56"
+    if Path(rewrite_gate.LOCOMO_PATH).exists():
+        dev = rewrite_gate.dev_questions()
+        assert len(dev) > 200 and all(q.id.startswith("dev:") for q in dev)
+        asked, _ = split_question(dev[0].content)
+        assert asked is not None and all(i.metadata["date"][:4].isdigit() for i in dev[0].items)

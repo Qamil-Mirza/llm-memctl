@@ -2,7 +2,7 @@
 
     python -m memctl.rewrite_gate rule-tune --out runs/exp28_gate/rule.json
     python -m memctl.rewrite_gate rewrite --prompt-file configs/sweeps/exp28/prompts/v1.txt --base-url URL/v1
-    python -m memctl.rewrite_gate inspect --version 1
+    python -m memctl.rewrite_gate inspect --version 1        (LoCoMo dev outputs only; LongMemEval is refused)
     python -m memctl.rewrite_gate gate --version 1
     python -m memctl.rewrite_gate final
     python -m memctl.rewrite_gate evaluate --rule runs/exp28_gate/rule.json     (once, at the evaluation)
@@ -14,6 +14,11 @@ part. The labels of a fold's test part are read only by `evaluate`, which refuse
 recall@32 of a question: the share of its evidence requirements met by the 32 candidates (a marked turn; or,
 for an answer session with no marked turn, any turn of it), as the harness counts them. Abstention questions
 are left out (470 answerable in all; about 376 per training part).
+
+Prompt design (design (i), the reviewer's ruling of 2026-10-09): every LongMemEval question is a test question in
+some fold, so no person or agent reads LongMemEval question text or rewrite outputs to write v2-v4. Revisions are
+written from a disjoint dev set, every fifth non-adversarial LoCoMo question (307), through `inspect`. LongMemEval
+rewrites are read only by `gate` (training-part labels, aggregate output) and `final`.
 
 The gate (pre-declared in EXPERIMENTS.md §28, before any recall was computed): a variant passes on fold f if,
 on f's training part, mean recall@32 rises by at least +0.01 over the raw question, or rises by at least +0.02
@@ -72,6 +77,53 @@ class Question:
         found = {pair[0].id for pair in candidates}
         met = [any(i in found for i in requirement) for requirement in self._requirements]
         return (sum(met) / len(met), all(met)) if met else (1.0, True)
+
+
+# ---- the prompt-design dev set: LoCoMo, disjoint from LongMemEval (§28, design (i)) -------------------------
+
+LOCOMO_PATH = "data/locomo/locomo10.json"
+DEV_EVERY = 5  # every fifth non-adversarial LoCoMo question, in file order (with evidence): 307 questions
+
+
+def _lme_date(text: str) -> str:
+    """A LoCoMo session time ("1:56 pm on 8 May, 2023") in LongMemEval's style ("2023/05/08 (Mon) 13:56")."""
+    from datetime import datetime
+
+    moment = datetime.strptime(text.strip(), "%I:%M %p on %d %B, %Y")
+    return moment.strftime("%Y/%m/%d (%a) %H:%M")
+
+
+class DevQuestion:
+    """One LoCoMo dev question, shaped as a LongMemEval question step: session dates in LongMemEval's format, and
+    the question date taken as the conversation's last session date (LoCoMo gives no question date)."""
+
+    def __init__(self, sample: dict, episode, item) -> None:
+        dates = [t.metadata["date"] for t in episode.turns]
+        self.id, self.type = f"dev:{item.id}", ("temporal-reasoning" if item.category == "temporal" else item.category)
+        self.answerable = not item.unanswerable
+        self.content = f"Question: (asked on {_lme_date(dates[-1])}) {item.question}"
+        self.items = [SimpleNamespace(id=t.id, content=t.content, metadata={**t.metadata, "date": _lme_date(t.metadata["date"])},
+                                      created_at=n) for n, t in enumerate(episode.turns)]
+        self._requirements = [(e,) for e in item.evidence_ids]
+
+    recall = Question.recall
+
+
+def dev_questions() -> list[DevQuestion]:
+    from memctl.envs.locomo import parse_conversation
+
+    found = []
+    for sample in json.loads(Path(LOCOMO_PATH).read_text()):
+        episode = parse_conversation(sample, include_adversarial=False)
+        found += [DevQuestion(sample, episode, item) for item in episode.questions]
+    return [q for q in found if q._requirements][::DEV_EVERY]
+
+
+def _check_dev_only(ids: list[str]) -> None:
+    """inspect reads LoCoMo dev outputs only: a LongMemEval question (a number, or anything not a dev id) is refused."""
+    bad = [i for i in ids if not str(i).startswith("dev:")]
+    if bad:
+        raise PermissionError(f"inspect reads LoCoMo dev questions only; refused: {bad[:5]}")
 
 
 def _training_numbers(fold: int) -> list[int]:
@@ -160,12 +212,15 @@ def _llm(base_url: str | None, cache_only: bool):
     return build_llm(config)
 
 
-def _outputs(template: str, numbers: list[int], llm, workers: int = 16) -> dict[int, str]:
-    def one(number: int) -> str:
-        asked, text = split_question(Question(number).content)
+def _outputs(template: str, numbers: list, llm, workers: int = 16) -> dict:
+    """Rewrites for LongMemEval question numbers, or for DevQuestion objects (keyed by their dev id)."""
+    def one(entry) -> str:
+        content = entry.content if isinstance(entry, DevQuestion) else Question(entry).content
+        asked, text = split_question(content)
         return llm.generate(rewrite_prompt(template, asked, text), REWRITE_MAX_TOKENS)
+    keys = [e.id if isinstance(e, DevQuestion) else e for e in numbers]
     with ThreadPoolExecutor(workers) as threads:
-        return dict(zip(numbers, threads.map(one, numbers)))
+        return dict(zip(keys, threads.map(one, numbers)))
 
 
 def _version_file(version: int) -> Path:
@@ -192,23 +247,40 @@ def rewrite(version: int, base_url: str | None) -> None:
     if _state()["final"] is not None:
         sys.exit("the gate is final; no more rewriting")
     template = load_prompt(_version_file(version))
+    dev = _outputs(template, dev_questions(), _llm(base_url, False))
     numbers = list(range(len(_index(PATH))))
-    outputs = _outputs(template, numbers, _llm(base_url, False))
-    print(f"v{version}: {len(outputs)} questions rewritten into {REWRITE_CACHE}")
+    outputs = _outputs(template, numbers, _llm(base_url, False))  # never printed or shown before `final`
+    print(f"v{version}: {len(dev)} LoCoMo dev and {len(outputs)} LongMemEval questions rewritten into {REWRITE_CACHE}")
 
 
-def inspect(version: int) -> None:
-    """Format only, label-free (what a revision may use): parse failures, how often a range is given, widths."""
+def inspect(version: int, ids: list[str] | None = None) -> dict:
+    """What a revision may use: LoCoMo dev outputs only (format, date style, and dev recall@32 from LoCoMo's own
+    labels). LongMemEval rewrites are never read here; a LongMemEval question is refused (PermissionError)."""
+    questions = dev_questions()
+    if ids is not None:
+        _check_dev_only(ids)
+        wanted = set(ids)
+        questions = [q for q in questions if q.id in wanted]
     template = load_prompt(_version_file(version))
-    numbers = list(range(len(_index(PATH))))
-    outputs = _outputs(template, numbers, _llm(None, True))
-    parsed = [parse_rewrite(o) for o in outputs.values()]
-    malformed = [o for o, p in zip(outputs.values(), parsed) if not p[2]]
-    widths = sorted((p[1][1] - p[1][0]).days for p in parsed if p[1])
-    print(f"v{version}: {len(parsed)} outputs; malformed {len(malformed)}; with a range {len(widths)}; "
-          f"range width days median {widths[len(widths) // 2] if widths else None}")
-    for o in malformed[:5]:
-        print("MALFORMED:", repr(o[:200]))
+    outputs = _outputs(template, questions, _llm(None, True))
+    if "__CACHE_MISS__" in outputs.values():
+        sys.exit(f"dev questions without a v{version} rewrite; run `rewrite` first")
+    retriever, rows = LexicalRetriever(), []
+    for q in questions:
+        asked, _ = split_question(q.content)
+        extra, span, ok = parse_rewrite(outputs[q.id])
+        query = f"{q.content} {extra}" if extra else q.content
+        rows.append({"type": q.type, "raw": q.recall(retriever.search(q.content, q.items, K)),
+                     "llm": q.recall(pool(retriever, query, q.items, K, widen(span, LLM_PAD_DAYS, asked), LLM_ACTION)),
+                     "ok": ok, "width": (span[1] - span[0]).days if span else None})
+    widths = sorted(r["width"] for r in rows if r["width"] is not None)
+    summary = {"dev_n": len(rows), "malformed": sum(not r["ok"] for r in rows), "with_range": len(widths),
+               "median_width_days": widths[len(widths) // 2] if widths else None,
+               "raw": _summary(rows, "raw"), "llm": _summary(rows, "llm")}
+    print(json.dumps(summary, indent=1))
+    for q in questions[:8]:
+        print(f"DEV {q.id}: {q.content!r}\n  -> {outputs[q.id][:300]!r}")
+    return summary
 
 
 def llm_rows(version: int, numbers: list[int]) -> dict[int, dict]:
@@ -256,14 +328,15 @@ def gate(version: int) -> dict:
         overall, temporal = _gain(arm, base)
         ok = passes(overall, temporal)
         entry["folds"][str(fold)] = {"raw": base, "llm": arm, "gain": round(overall, 4),
-                                     "gain_temporal": round(temporal, 4), "passes": ok,
-                                     "malformed": sum(not r["well_formed"] for r in train),
-                                     "with_range": sum(r["range"] for r in train)}
+                                     "gain_temporal": round(temporal, 4), "passes": ok}
         if ok:
             state["selected"][str(fold)] = version  # the first passing version is frozen for this fold
     state["versions"][str(version)] = entry
     _save_state(state)
-    print(json.dumps({f: {k: v for k, v in e.items() if k in ("gain", "gain_temporal", "passes", "malformed")}
+    # Aggregate only: recall per fold, overall and temporal. No question text and no rewrite output is shown.
+    print(json.dumps({f: {"raw": e["raw"]["recall"], "llm": e["llm"]["recall"], "gain": e["gain"],
+                          "raw_temporal": e["raw"]["recall_temporal"], "llm_temporal": e["llm"]["recall_temporal"],
+                          "gain_temporal": e["gain_temporal"], "passes": e["passes"]}
                       for f, e in entry["folds"].items()}, indent=1))
     return entry
 
@@ -318,6 +391,7 @@ def main(argv: list[str] | None = None) -> None:
     p = sub.add_parser("rewrite"); p.add_argument("--version", type=int, required=True)
     p.add_argument("--base-url")
     p = sub.add_parser("inspect"); p.add_argument("--version", type=int, required=True)
+    p.add_argument("--ids", nargs="*", help="LoCoMo dev ids (dev:...); anything else is refused")
     p = sub.add_parser("gate"); p.add_argument("--version", type=int, required=True)
     sub.add_parser("final")
     p = sub.add_parser("evaluate"); p.add_argument("--rule", type=Path, default=GATE_DIR / "rule.json")
@@ -335,7 +409,7 @@ def main(argv: list[str] | None = None) -> None:
     elif args.command == "rewrite":
         rewrite(args.version, args.base_url)
     elif args.command == "inspect":
-        inspect(args.version)
+        inspect(args.version, args.ids)
     elif args.command == "gate":
         gate(args.version)
     elif args.command == "final":

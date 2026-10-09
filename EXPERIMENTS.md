@@ -71,7 +71,7 @@ commands given).
 | 24 | Reader families (Llama, Gemma 3, Phi-4; two sizes each) | Lift (a) PASSES in all six readers (+0.06 to +0.16). Size step (b): Gemma 3 4B→12B NON-INFERIOR (+0.015, CI −0.028..+0.057; closes 111%); Llama −0.051 and Phi-4 −0.117 NOT SHOWN. "Smaller gains most" holds in Llama only. $1.44 |
 | 25 | StreamMemBench zero-shot transfer of the §19 head (free close) | Closed without a paid run at the user's decision; $0. Evidence in view on 541 evaluation anchors: FIFO 0.93 / 0.91 / 1.00 (initial / revised / follow-up), `fixed8` 0.32 / 0.23 / 0.10: the head does not transfer, because recency wins on this benchmark |
 | 26 | OpenJev (open Jev re-creation) as a controller | Arm B (selector, 8 of the head's 32 candidates): B − FIFO +0.045 (CI +0.004..+0.087), BETTER; B − `fixed8` −0.036 (CI −0.081..+0.009), not shown; B's prompts 2,373 tokens vs 1,049. Arm A (memory manager) cost only: ~94 GPU-s per question (~$15 per 1,000); accuracy not run by decision. $0.64 |
-| 28 | Query rewriting for the head's 32 candidates: LLM rewrite (a), rule time filter (b) | (b) NO GO at the free gate: training recall@32 falls in all five folds (−0.004 to −0.008; temporal −0.007 to −0.012). (a) built and stub-checked; its gate and reader NEED SPEND (≤$0.44 on the §27 pod), not approved. $0 |
+| 28 | Query rewriting for the head's 32 candidates: LLM rewrite (a), rule time filter (b) | (b) NO GO at the free gate: training recall@32 falls in all five folds (−0.004 to −0.008; temporal −0.007 to −0.012). (a) built and stub-checked; its gate and reader NEED SPEND (≤$0.49 on the §27 pod); v2–v4 designed on a LoCoMo dev set only, not approved. $0 |
 
 ---
 
@@ -4327,13 +4327,38 @@ RANGE: if the question refers to a time, such as "two weeks ago", "last Saturday
     rescored.
   - If after v4 any fold has no passing version, **arm (a) is dropped before any reader call**, and the reason is
     recorded. Nothing is carried forward as "best of".
-  - A revision may use only what the outputs show about **format** (malformed lines, date style, ranges given or
-    not): `rewrite_gate inspect` prints only that, and reads no label. Never per-question recall, never test-part
-    anything.
+  - **Superseded by the ruling below (design (i)):** a revision is written from LoCoMo dev outputs only, never
+    from LongMemEval.
   - Every version's text, hash and per-fold training recall is logged (`runs/exp28_gate/state.json`) and copied
     into §28.
   - The script enforces the order: versions in turn, each scored once, a scored prompt file may not change, at
     most four, and the reader stage refuses to start until `final` has been written.
+
+**Prompt design on a disjoint dev set: design (i) (the reviewer's ruling, 2026-10-09; recorded before any pod).**
+- **The ruling.** "Label-free" is not the test. Every LongMemEval question is a test question in one fold, so no
+  person or agent may read LongMemEval rewrite outputs, or LongMemEval question text, to design v2–v4. My first
+  version let `inspect` show format stats of LongMemEval outputs; that is withdrawn.
+- **The LoCoMo check (done first, free).** LoCoMo (`data/locomo/locomo10.json`) has what RANGE needs:
+  - session dates on all 288 sessions, all parsed ("1:56 pm on 8 May, 2023");
+  - no question date, so the conversation's **last session date** is used (LoCoMo's questions come after the whole
+    conversation);
+  - time phrases: the rule parser fires on 201 of the 1,540 non-adversarial questions (42 of the 321 temporal ones;
+    an aggregate count). LoCoMo's temporal questions mostly ask "when ...?" rather than give a relative anchor, so
+    RANGE is exercised, but less than on LongMemEval. That is a stated limit of the dev set.
+  - So design (i) is used, not (ii) (a per-fold prompt lineage).
+- **The dev set:** every fifth non-adversarial LoCoMo question with evidence, in file order: **307 questions** (74
+  temporal, 167 single-hop, 48 multi-hop, 18 open-domain). Its dates are put in LongMemEval's format, and each
+  question is shaped as the LongMemEval question step ("Question: (asked on DATE) ..."), so the same prompt applies.
+  LoCoMo is disjoint from LongMemEval; no §28 claim is about LoCoMo.
+- **The flow per version (enforced in `memctl/rewrite_gate.py`):**
+  - `rewrite` writes v*N* for the 307 dev questions and the 500 LongMemEval questions, and prints only the counts.
+  - `inspect` reads **LoCoMo dev outputs only**: format stats, dev recall@32 (raw against rewrite, from LoCoMo's own
+    evidence labels), and a few dev questions with their outputs. Asked for any id that is not a dev id (a
+    LongMemEval number or question id), it **raises PermissionError before reading anything** (tested).
+  - `gate` reads the LongMemEval rewrites with training-part labels, per fold, and prints **aggregates only**:
+    recall per fold, overall and temporal, the gains, pass or fail. No question text, no rewrite output.
+  - `final` closes the gate. LongMemEval rewrites are never printed or shown, before or after.
+  - A revision v*N*+1 is written from `inspect`'s dev output only, and committed before it is scored.
 
 **Arms on the shared pod (later; Qwen2.5-7B reader, frozen 7b5fc30 prompt, five test folds, §19 head A per fold).**
 - `fixed8` (raw question). The §27 branch reruns it for pairing; this branch's configs use the same reader cache,
@@ -4387,9 +4412,9 @@ the laptop, peak RSS 0.05 GB; `runs/exp28_gate/rule.json`).
 **Arm (a), the LLM rewrite: built, not measured (it needs Qwen 7B).**
 - Prompt v1 is frozen (§28 above; committed at 64735e2, before any recall was computed).
 - The pod step, in order (`configs/sweeps/exp28/stage.sh`):
-  1. `stage.sh gate 1 URL`: rewrite all 500 questions (label-free); print the format stats; score v1 on each fold's
-     training part.
-  2. If a fold is still open: write v2 from the format stats only, commit it, `stage.sh gate 2 URL`; up to v4.
+  1. `stage.sh gate 1 URL`: rewrite the 307 LoCoMo dev and the 500 LongMemEval questions; print the dev output
+     (`inspect`); score v1 on each fold's training part (aggregate output only).
+  2. If a fold is still open: write v2 from the LoCoMo dev output only, commit it, `stage.sh gate 2 URL`; up to v4.
   3. The gate closes when every fold has a version, or after v4 (`runs/exp28_gate/selected.json`).
   4. `stage.sh reader URL`: only if GO. `fixed8` and `fixed8_rewrite`, five folds, then the blind judge
      (`configs/sweeps/exp28/judge_report.py`). The report gives the two pre-registered differences.
@@ -4412,25 +4437,31 @@ the laptop, peak RSS 0.05 GB; `runs/exp28_gate/rule.json`).
 - `fixed8_rewrite` replayed every rewrite from the cache with no miss. With malformed stub rewrites it equals the
   raw question, so both arms gave P(all in view) 0.700 (§26's stub: 0.700).
 - All stub output and stub caches were deleted afterwards.
+- **Redone for design (i) (gate loop only; the reader stage is unchanged):** v1–v4 each rewrote the 307 dev and 500
+  LongMemEval questions, printed the dev output and scored the training parts with aggregate output: 42–45 s per
+  version, peak RSS 0.53 GB (loading LoCoMo). `final` wrote DROP (stub answers are malformed); the reader stage
+  refused; `inspect --ids 0 17` was refused with PermissionError. The log held no LongMemEval question text. Stub
+  output deleted.
 
 **Price (NEEDS SPEND; only §28's extra work on the shared §27 pod, Qwen2.5-7B already loaded; A40 $0.59/h).**
 - From §23's measured rate (1,500 LongMemEval answers in 10.3 min; judge about 3 min per 7,000 answers):
-  - one rewrite version: 500 short calls (about 230 prompt tokens, at most 96 out), estimated at most 1.5 min,
-    plus about 0.5 min of laptop scoring: **about 2 min per version** (an estimate; short calls are not measured);
+  - one rewrite version: 807 short calls (307 LoCoMo dev + 500 LongMemEval; about 230 prompt tokens, at most 96
+    out), estimated at most 2.4 min, plus about 0.7 min of laptop scoring: **about 3 min per version** (an
+    estimate; short calls are not measured); at most 4 versions, 3,228 calls;
   - writing a revision: the pod waits; **capped at 10 min per revision**, else the arm is dropped;
   - `fixed8_rewrite` answers: 500, about 3.4 min; judge: 470 more answers, under 1 min.
-- **Best case (v1 passes): about 7 min, about $0.07.** **Worst case (three revisions, GO at v4): about 42 min, about
-  $0.42.** Dropped after v4: about 38 min, about $0.37.
-- **Hard stop: 45 min of §28-only pod time (about $0.44).** If it is reached, arm (a) stops where it is and is
-  reported as not run.
+- **Best case (v1 passes): about 8 min, about $0.08.** **Worst case (three revisions, GO at v4): about 47 min, about
+  $0.46.** Dropped after v4: about 42 min, about $0.41. (Design (i) adds about 1 min per version for the dev pass.)
+- **Hard stop: raised from 45 to 50 min of §28-only pod time (about $0.49),** because the dev pass makes the worst
+  case about 47 min. If it is reached, arm (a) stops where it is and is reported as not run.
 - If §27's pod is not running, a pod of its own adds about 5 min to ready and 3.4 min for `fixed8` (about $0.09).
 - Nothing is approved. No pod was started for §28.
 
 **Recommendation.**
 - Arm (b): stopped by its pre-declared gate.
 - Arm (a): the reviewer's rule stops §28 only if neither variant improves training recall, and (a) cannot be
-  measured without the GPU. Run its gate **only as a ride-along on the §27 pod** (about $0.02 for v1's gate
-  alone; at most $0.44 with revisions and the reader). Expect little: the pool already holds 0.85 of the evidence,
+  measured without the GPU. Run its gate **only as a ride-along on the §27 pod** (about $0.03 for v1's gate
+  alone; at most $0.49 with revisions and the reader). Expect little: the pool already holds 0.85 of the evidence,
   and the rule filter shows that time ranges miss evidence sessions often. If the user prefers, stop here at $0.
 
 ## 5. The sequential task
