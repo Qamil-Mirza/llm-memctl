@@ -71,7 +71,7 @@ commands given).
 | 24 | Reader families (Llama, Gemma 3, Phi-4; two sizes each) | Lift (a) PASSES in all six readers (+0.06 to +0.16). Size step (b): Gemma 3 4B→12B NON-INFERIOR (+0.015, CI −0.028..+0.057; closes 111%); Llama −0.051 and Phi-4 −0.117 NOT SHOWN. "Smaller gains most" holds in Llama only. $1.44 |
 | 25 | StreamMemBench zero-shot transfer of the §19 head (free close) | Closed without a paid run at the user's decision; $0. Evidence in view on 541 evaluation anchors: FIFO 0.93 / 0.91 / 1.00 (initial / revised / follow-up), `fixed8` 0.32 / 0.23 / 0.10: the head does not transfer, because recency wins on this benchmark |
 | 26 | OpenJev (open Jev re-creation) as a controller | Arm B (selector, 8 of the head's 32 candidates): B − FIFO +0.045 (CI +0.004..+0.087), BETTER; B − `fixed8` −0.036 (CI −0.081..+0.009), not shown; B's prompts 2,373 tokens vs 1,049. Arm A (memory manager) cost only: ~94 GPU-s per question (~$15 per 1,000); accuracy not run by decision. $0.64 |
-| 28 | Query rewriting for the head's 32 candidates: LLM rewrite (a), rule time filter (b) | (b) NO GO at the free gate: training recall@32 falls in all five folds (−0.004 to −0.008; temporal −0.007 to −0.012). (a) built and stub-checked; its gate and reader NEED SPEND (≤$0.49 on the §27 pod); v2–v4 designed on a LoCoMo dev set only, not approved. $0 |
+| 28 | Query rewriting for the head's 32 candidates | Rule time filter (b): NO GO at its free gate. LLM rewrite (a): training gate passed at v3 (v1 malformed, v2 invented ranges); test folds +0.006 overall (CI −0.017..+0.030) and +0.024 on temporal (n = 127, CI −0.016..+0.063), non-inferior, not better. About $0.23 shared with §27 |
 
 ---
 
@@ -4241,7 +4241,7 @@ verdicts in `runs/exp26_verdicts.json`):
 bf16 KV cache (declared deviation) and weight-only FP4. One benchmark, one reader, one judge. Arm A's accuracy was
 not measured.
 
-## 28. Query rewriting for the head's candidate pool (2026-10-09, pre-registered, NOT YET APPROVED for spend)
+## 28. Query rewriting for the head's candidate pool (2026-10-09, pre-registered, run 2026-10-09)
 
 **Status:** pre-registered before any recall was computed (64735e2). The free part is in §28a: **arm (b), the rule
 filter, fails its gate on all five folds and stops.** Arm (a) is built and rehearsed; its gate and the reader
@@ -4463,6 +4463,51 @@ the laptop, peak RSS 0.05 GB; `runs/exp28_gate/rule.json`).
   measured without the GPU. Run its gate **only as a ride-along on the §27 pod** (about $0.03 for v1's gate
   alone; at most $0.49 with revisions and the reader). Expect little: the pool already holds 0.85 of the evidence,
   and the rule filter shows that time ranges miss evidence sessions often. If the user prefers, stop here at $0.
+
+### 28b. Result: the LLM rewrite passes its training gate at v3; on the test folds it is level with the raw question (2026-10-09)
+
+**Pod and cost.** Shared with §27 (pod qpeirhl5gzw7dj, 07:14:04 to about 07:37:30 UTC, about $0.23 for both; the
+ledger and window are in §27a). §28's gate ran 07:16–07:34 while §27's reader ran; its reader and judge ran
+07:34–07:37.
+
+**The gate, aggregate output only.** Every revision was written from the LoCoMo dev output alone and committed
+before it was scored; no LongMemEval question text or rewrite was shown.
+
+| version | LoCoMo dev: malformed / with a range (of 307) | training recall@32 gain, overall (folds 0–4) | temporal gain | gate |
+|---|---|---|---|---|
+| v1 (frozen before the pod) | 299 / 7 | about +0.001 in every fold | 0.000 | fail in all folds |
+| v2 (28c4929) | 1 / 306, range = the asked date | −0.168 to −0.193 | −0.006 to −0.017 | fail in all folds |
+| v3 (171faef) | 0 / 3 (median width 7 days) | +0.024, +0.020, +0.011, +0.016, +0.020 | −0.001 to −0.009 | **pass in all folds** |
+
+- v1 failed on format: the model wrote `KEYWORDS:` or bare words, never `QUERY:`, so the parser fell back to the
+  raw question. v2 fixed the format but set RANGE to the date the question was asked for almost every question,
+  which pushed the latest sessions up. v3 makes RANGE "none" by default and never the asked date.
+- **v3's two in-prompt examples:** the first ("charity race run marathon fundraiser Melanie") is the model's own
+  QUERY line for LoCoMo dev question conv-26_q5, from v2's dev output; the second ("dinner restaurant friends ate",
+  asked 2023/05/20, "two weeks ago") was invented. Neither comes from a LongMemEval question; no LongMemEval
+  question text was read in writing any revision.
+- `final`: GO, v3 for every fold. The gate passed on the overall criterion; training recall on temporal questions
+  fell slightly in every fold, reported as pre-declared.
+
+**Test folds** (report: `configs/sweeps/exp28/judge_report.py report` → `runs/exp28_report.md`; 1,000 answers, 0
+failures; one blind Qwen 7B judge pass):
+
+| arm | accuracy (95% CI) | temporal-reasoning accuracy (n = 127) | unknown | P(all in view) | prompt tokens | false answers on the 30 unanswerable |
+|---|---|---|---|---|---|---|
+| `fixed8` (raw question) | 0.534 (0.489, 0.579) | 0.402 | 0.157 | 0.702 | 1,049 | 6 |
+| `fixed8` + LLM rewrite (v3) | 0.540 (0.496, 0.585) | 0.425 | 0.134 | 0.717 | 1,064 | 7 |
+
+**Pre-registered claims** (margin −0.03):
+- **All 470 answerable: +0.006 (−0.017, +0.030), non-inferior.**
+- **Temporal-reasoning subgroup (primary), n = 127: +0.024 (−0.016, +0.063), non-inferior;** not shown better.
+- The rule filter (arm b) was stopped by its free gate (§28a) and not run.
+
+**What it means.** A Qwen 7B query rewrite is safe but adds little: the 32-candidate pool already holds about 0.85
+of the evidence, and the rewrite lifts all-in-view only from 0.702 to 0.717. Its first two prompts show the
+LongMemEval paper's caveat in practice: a 7B model invents date ranges unless told plainly not to.
+
+**Pairing.** `fixed8` here used the same cached generations as §27's (470 of 470 answers identical); the two
+separate judge passes agree on 469 of 470 verdicts (0.534 here, 0.536 in §27).
 
 ## 5. The sequential task
 
