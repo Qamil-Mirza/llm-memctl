@@ -3726,6 +3726,13 @@ in §23). Each arm is tested on its own; there is no claim on A against B.
     - Arm A's fill: 500 × 94 s is 13 h single-stream; even a threefold gain from concurrency is about 4.4 h
       (about $2.60), so under the $3.00 cap only a prefix of each fold is likely (the pre-declared cut rule).
     - Phase 2 (all arms on our vLLM 0.8.5 A40): about $0.25, hard stop 45 min.
+- **Decision (the user, 2026-10-09, after the smoke): arm B's fill and phase 2 are approved (about $0.40–0.80);
+  arm A is not run.** Arm A is reported from the smoke only, on the cost axis (calls, seconds and tokens per
+  question): **cost measured in the smoke; accuracy not run, by decision.** Its pre-registered claims A1 and A2
+  are marked **not tested**, not dropped. At about 94 OpenJev-seconds per question it is about 26 A40-hours (about
+  $15) per 1,000 questions, against about $0.03 per 1,000 for the reader and no GPU for the head. Phase 2 runs FIFO + floor, `fixed8` and arm B
+  (`exp26_qwen7b_f{0..4}.yaml`) and then the one blind Qwen 7B judge pass (`runs/_pipelines/exp26_judge.py`, the
+  §23 judge with these arms and `cache/judge_exp26`); claims B1 and B2 are graded as pre-registered.
 
 **Sequence and cost (NEEDS SPEND; measured inputs, one guess, marked).**
 - **Measured:** §23 Qwen 7B answered 1,500 LongMemEval questions in 10.3 min; first model ready 4.4 min after
