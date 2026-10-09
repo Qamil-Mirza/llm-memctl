@@ -2055,15 +2055,6 @@ is declared once and not swept.
   The full-size stub iteration peaks at 0.44 GB.
 - **Added 2026-10-09 (§24):** before launch, delete the stub output and confirm at least 15 GB of free disk. A
   full-size stub rehearsal of many readers can itself fill the disk (§24's was 20 GB) and break a paid stage.
-- **Spend rule, 2026-10-09 06:53 UTC (the user; confirmed in the reviewer's session).** Until 2026-10-09 18:53 UTC,
-  paid runs need no per-run approval as long as total programme spend on the cost-table ledger stays at or under
-  $20.00 ($12.35 spent at the time, $7.65 left).
-  - A pod may launch only after its pre-registration, the reviewer's grep review and the stub check, and only if
-    its hard stop, counted in full, fits inside both the remaining budget and the 18:53 UTC deadline.
-  - No pod may be created at or after 18:53 UTC, and no running pod's hard stop may extend past it, without a
-    fresh approval. After 18:53 UTC every spend needs the user's per-run approval again.
-  - Each launch note quotes "spent / remaining / window closes 18:53 UTC". Stop and ask if a launch would cross
-    $20.
 - **What a result means, stated in advance.**
   - A pass on RQ3 means RL on the reader's own correctness beats imitation of
     evidence labels. The per-type rows that move then show what the labels
@@ -4423,8 +4414,8 @@ judge; output in `runs/_stub27`, cache in `cache/stub27`).**
 ### 27a. Result: LRE as a slot picker fails badly; LRE in place of recency is level with FIFO; the head leads (2026-10-09)
 
 **Pod and cost.** Shared with §28: qpeirhl5gzw7dj (A40, EU-SE-1, $0.59/h, vLLM 0.8.5, Qwen2.5-7B), 07:14:04 to about
-07:37:30 UTC, about 0.39 h, **about $0.23 for §27 and §28 together**; terminated, list-pods empty. Under the user's
-2026-10-09 spend rule: spent $12.35 before, $12.58 after, $7.42 left; window closes 18:53 UTC. §27's answers ran
+07:37:30 UTC, about 0.39 h, **about $0.23 for §27 and §28 together**; terminated, list-pods empty. Run under a one-day
+budget approval from the user (since expired); the programme total after this pod was $12.58. §27's answers ran
 07:16–07:31 (2,000 answers, 0 failures); the one blind Qwen 7B judge pass judged 1,880. Report:
 `configs/sweeps/exp27/exp27_report.py` → `runs/exp27_report.md`; verdicts `runs/exp27_verdicts.json`.
 
