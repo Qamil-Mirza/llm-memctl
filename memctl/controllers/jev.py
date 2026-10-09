@@ -242,8 +242,11 @@ class FakeJevClient:
         started = time.perf_counter()
         answers = {}
         for question_id, question in questions.items():
-            item = state["memory_items"][question_id]
-            weights = self._weights(item, list(question["criteria"]))
+            items = state["memory_items"]
+            if question_id in items:  # a question about one item: its operations
+                weights = self._weights(items[question_id], list(question["criteria"]))
+            else:  # a selection question whose options are the items: the more similar, the likelier
+                weights = {key: 0.05 + items[key]["similarity_to_current_input"] for key in question["criteria"]}
             total = sum(weights.values())
             probabilities = {option: round(weight / total, 4) for option, weight in weights.items()}
             best = max(probabilities, key=probabilities.get)
@@ -308,6 +311,13 @@ class JEVController(MemoryController):
         self.retrieve_candidates = int(config.get("retrieve_candidates", 8))
         self.min_compact_tokens = int(config.get("min_compact_tokens", 30))
         self.compact_ratio = float(config.get("compact_ratio", 0.5))
+        # mode "manage" (default): the JEV decisions above. Mode "select" (EXPERIMENTS.md §26, arm B): everything
+        # but the current input is archived on arrival, as the §19 head's keep_none; at a question one request
+        # asks a single Choice over the `retrieve_candidates` BM25 hits and the `select_k` most probable are shown.
+        self.mode = config.get("mode", "manage")
+        if self.mode not in ("manage", "select"):
+            raise ValueError(f"unknown jev mode '{self.mode}' (known: manage, select)")
+        self.select_k = int(config.get("select_k", 8))
         self._retriever = LexicalRetriever()
         self._info: dict = {}
         self.call_log: list[dict] = []  # one entry per request; never contains the API key
@@ -367,8 +377,31 @@ class JEVController(MemoryController):
 
     # ---- the decision -------------------------------------------------------------
 
+    def _new_totals(self) -> dict:
+        return {"model_calls": 0, "input_tokens": 0, "output_tokens": 0, "latency_s": 0.0, "cost_usd": 0.0,
+                "server_model_s": 0.0, "cached_calls": 0}
+
+    def _ask(self, state: dict, questions: dict, memory: MemoryView, n_items: int, totals: dict) -> JevResponse:
+        response = self.client.ask(state, questions)
+        totals["model_calls"] += 1
+        totals["input_tokens"] += response.input_tokens
+        totals["output_tokens"] += response.output_tokens
+        totals["latency_s"] += response.latency_s
+        totals["cost_usd"] += response.cost_usd
+        totals["server_model_s"] += response.server_model_s or 0.0
+        totals["cached_calls"] += int(response.cached)
+        self.call_log.append(
+            {"step": memory.step, "fake": response.fake, "model": response.model, "items": n_items,
+             "input_tokens": response.input_tokens, "latency_s": response.latency_s, "cost_usd": response.cost_usd,
+             "server_model_s": response.server_model_s, "cached": response.cached}
+        )
+        self.model_id = response.model
+        return response
+
     def decide(self, memory: MemoryView, task: TaskState) -> list[MemoryAction]:
         self._info = {}
+        if self.mode == "select":
+            return self._select(memory, task)
         shortlist: list[MemoryItem] = []
         if self.allows(Operation.RETRIEVE_FROM_ARCHIVE) and task.observation.requires_response and memory.archived:
             hits = self._retriever.search(task.observation.content, memory.archived, self.retrieve_candidates)
@@ -380,8 +413,7 @@ class JEVController(MemoryController):
 
         candidates = [(item, False) for item in active] + [(item, True) for item in shortlist]
         answers: dict[str, JevAnswer] = {}
-        totals = {"model_calls": 0, "input_tokens": 0, "output_tokens": 0, "latency_s": 0.0, "cost_usd": 0.0,
-                  "server_model_s": 0.0, "cached_calls": 0}
+        totals = self._new_totals()
         for start in range(0, len(candidates), self.batch):
             batch = candidates[start : start + self.batch]
             keys = {item.id: f"item_{n}" for n, (item, _) in enumerate(batch)}
@@ -398,22 +430,9 @@ class JEVController(MemoryController):
                 keys[item.id]: self._question(keys[item.id], self._options(item, archived), archived)
                 for item, archived in batch
             }
-            response = self.client.ask(state, questions)
+            response = self._ask(state, questions, memory, len(batch), totals)
             for item, _ in batch:
                 answers[item.id] = response.answers[keys[item.id]]
-            totals["model_calls"] += 1
-            totals["input_tokens"] += response.input_tokens
-            totals["output_tokens"] += response.output_tokens
-            totals["latency_s"] += response.latency_s
-            totals["cost_usd"] += response.cost_usd
-            totals["server_model_s"] += response.server_model_s or 0.0
-            totals["cached_calls"] += int(response.cached)
-            self.call_log.append(
-                {"step": memory.step, "fake": response.fake, "model": response.model, "items": len(batch),
-                 "input_tokens": response.input_tokens, "latency_s": response.latency_s, "cost_usd": response.cost_usd,
-                 "server_model_s": response.server_model_s, "cached": response.cached}
-            )
-            self.model_id = response.model
 
         actions, repaired = self._actions(memory, active, shortlist, answers, task.observation.content)
         self._info = {
@@ -424,6 +443,43 @@ class JEVController(MemoryController):
             "choices": {item_id: answer.choice for item_id, answer in answers.items()},
             "repaired_items": repaired,
         }
+        return actions
+
+    def _select(self, memory: MemoryView, task: TaskState) -> list[MemoryAction]:
+        """Arm B of §26: archive on arrival; at a question, one Choice over the BM25 shortlist ranks it."""
+        cleared = [item.id for item in memory.active if not item.pinned and item.id != task.observation.id]
+        actions = [MemoryAction(Operation.MOVE_TO_ARCHIVE, tuple(cleared), parameters={"method": "keep_none"})] \
+            if cleared and self.allows(Operation.MOVE_TO_ARCHIVE) else []
+        if not (self.allows(Operation.RETRIEVE_FROM_ARCHIVE) and task.observation.requires_response and memory.archived):
+            return actions
+        query = task.observation.content
+        shortlist = [item for item, _ in self._retriever.search(query, memory.archived, self.retrieve_candidates)]
+        totals, probabilities = self._new_totals(), {}
+        chosen = shortlist  # a shortlist no longer than select_k is shown whole, as the head does; no call
+        if len(shortlist) > self.select_k:
+            keys = {item.id: f"item_{n}" for n, item in enumerate(shortlist)}
+            state = {
+                "situation": "An AI assistant must answer the current input. Its context has room for only "
+                f"{self.select_k} of these archived memory items. Pick the one it most needs.",
+                "current_input": query,
+                "memory_items": {keys[item.id]: self._describe(item, memory, task) for item in shortlist},
+            }
+            question = {
+                "type": "choice",
+                "instructions": "Which memory item does the assistant most need to answer the current input?",
+                "criteria": {keys[item.id]: f"memory_items.{keys[item.id]}" for item in shortlist},
+            }
+            response = self._ask(state, {"selection": question}, memory, len(shortlist), totals)
+            by_key = response.answers["selection"].probabilities
+            probabilities = {item.id: by_key.get(keys[item.id], 0.0) for item in shortlist}
+            # The k most probable; ties keep the BM25 order (sorted is stable).
+            chosen = sorted(shortlist, key=lambda item: -probabilities[item.id])[: self.select_k]
+        actions.append(MemoryAction(
+            Operation.RETRIEVE_FROM_ARCHIVE, tuple(item.id for item in chosen),
+            parameters={"method": "jev_select", "query": query},
+        ))
+        self._info = {**totals, "fake": self.client.is_fake, "candidates": len(shortlist),
+                      "selected_ids": [item.id for item in chosen], "probabilities": probabilities}
         return actions
 
     def _saving(self, item: MemoryItem, operation: Operation) -> int:

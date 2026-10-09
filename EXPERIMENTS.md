@@ -68,7 +68,7 @@ commands given).
 | 21 | Sequential task, lossy memory (LoCoMo; free, scripted) | Oracle gate PASSES: oracle − best rule +0.177 (CI +0.126..+0.224) on old-evidence questions; cross-fitted learned notes reach +0.038 (AUC 0.74–0.84), leaving +0.139 for §22; unlimited-archive control gap +0.016. $0 |
 | 22 | Credit for the note-writer (simulator, free) | Per-write hindsight credit beats uniform GRPO (MLP +0.015; linear +0.036); time-forward (label-free) ≈ uniform; counterfactual best RL (0.141). No RL variant beats the supervised writer (0.146); from the supervised init (§22b) RL makes it worse (−0.027). $0 |
 | 23 | Reader size ladder (Qwen 3B/7B/14B, Granite 2B/8B) | Claim 2 NON-INFERIOR: fixed8 at 7B minus FIFO at 14B +0.034 (CI −0.013..+0.079), closes 150% of the size gap. Claim 1 NOT SHOWN: fixed8 at 3B minus FIFO at 7B −0.121, closes 56%. Granite secondary not shown. $0.83 |
-| 26 | OpenJev (open Jev stand-in, DiffusionGemma 26B-A4B) as the controller, vs FIFO + floor and `fixed8` | Pre-registered; fork checked (Apache-2.0 confirmed; API matches `jev.py`; image needs SM89+ as shipped, an A40 only with a KV flag); code and stub check done. NEEDS SPEND: smoke step about $0.30, not yet approved |
+| 26 | OpenJev (open Jev stand-in, DiffusionGemma 26B-A4B): arm A as memory manager, arm B as selector (8 of the same 32 as `fixed8`), vs FIFO + floor and `fixed8` | Pre-registered; fork checked (Apache-2.0 confirmed; API matches `jev.py`; image needs SM89+ as shipped, an A40 only with a KV flag); code and stub checks of both arms done. NEEDS SPEND: smoke $0.30 (A40) or up to $0.92 (Ada fallback); without arm A at most about $2.18, with A at most about $5.20; not yet approved |
 
 ---
 
@@ -3478,8 +3478,10 @@ benchmark; one judge (Qwen 7B, whose ranking was judge-independent in §18).
 
 ## 26. An open Jev stand-in as the memory controller (OpenJev; 2026-10-08, pre-registered, NOT YET APPROVED for spend)
 
-**Status:** pre-registered; the free parts (fork check, code, stub check) are done; no pod until the user approves
-the smoke step's price. (§24 and §25 are on other branches; this section is numbered 26 regardless.)
+**Status:** pre-registered and accepted at review (94b3f72, 881c7c4). The review added arm B (OpenJev as selector),
+the GPU plan and the step order below, written before any spend. The free parts (fork check, code, stub checks of
+both arms) are done; no pod until the user approves the smoke step's price. (§24 and §25 are on other branches;
+this section is numbered 26 regardless.)
 
 **Why.** The JEV controller (`memctl/controllers/jev.py`) has never run on a real model: TypeSafe's Jev needs a paid
 key. OpenJev is an open server with the same wire API that we can run on our own GPU. It gives the framework's
@@ -3533,15 +3535,16 @@ key. OpenJev is an open server with the same wire API that we can run on our own
   - Blackwell, SM120 (RTX 5090 32 GB; RTX PRO 6000 96 GB, the tested card): native NVFP4, the fastest. The RTX
     5090 is the cheapest card of the tested architecture.
   - Ampere, SM86 (A40): only with the KV flag above, and the slowest per token.
-- **Prices for these classes are in neither repository's docs and must be checked live** before the smoke step.
-  Our only measured price is the A40 at $0.59/h (§23).
+- Prices for these classes are in neither repository's docs. The reviewer read them live; they are in the GPU plan
+  below.
 
 **Arms** (the same 500 LongMemEval test questions, five folds, Qwen2.5-7B reader, frozen 7b5fc30 prompt, as §19
 and §23):
 - FIFO + floor at 5% with the 3k target (the baseline).
 - `fixed8`: the §19 head A, 8 of 32 BM25 candidates. "The §19 head" in the brief is read as this arm: it is the
   head's deployed form, and adaptive k was stopped in §19b.
-- **OpenJev** (`jev`, model `openjev-latest`), the adapter's defaults:
+- **Arm A, "OpenJev as memory manager"** (`jev`, `mode: manage`, label `openjev_manage`, model `openjev-latest`),
+  the adapter's defaults:
   - Called only when memory is over budget (`call: pressure`), one Choice question per unpinned active item (KEEP
     or MOVE_TO_ARCHIVE, the operations this benchmark allows), up to 40 items a request.
   - At the question, a choice per archived BM25 candidate (RETRIEVE or leave). It gets 32 candidates, the §19
@@ -3551,113 +3554,175 @@ and §23):
   - **Counted against it, as the `jev.py` docstring says:** repaired items and the harness's forced evictions or
     returned retrievals are part of the arm. They are reported per question, with the forced share of removals,
     and never excluded.
+- **Arm B, "OpenJev as selector"** (`jev`, `mode: select`, `select_k: 8`, label `openjev_select`; added at review,
+  2026-10-08, before any spend). Built so that B against `fixed8` differs only in who ranks:
+  - Everything but the current input is archived on arrival, as the head's `keep_none`. No call until the question.
+  - At the question, the same 32 BM25 candidates `fixed8` sees (`retrieve_candidates: 32`, the same plain BM25 over
+    the same archive). **One request, one Choice question whose 32 options are the items** ("Which memory item does
+    the assistant most need to answer the current input?"); the state is the question and the 32 items, described
+    as in arm A.
+  - **It shows the reader 8 items, as `fixed8`:** the 8 with the highest probability in that one answer
+    distribution (ties keep the BM25 order). A single Choice gives a ranking over all 32, so no per-item KEEP
+    question is needed; this is the listwise analogue of the head's top 8 by logit.
+  - If the search returns 8 or fewer candidates, all are shown and no call is made, as the head does. (It never
+    happened: all 50 training probes and all 500 stub questions had more.)
+  - **`jev.py` could not do this before;** the smallest change was added (`mode: select`, off by default, `manage`
+    unchanged), with a unit test on the local fake server.
 - FIFO + floor and `fixed8` are rerun in the same session for pairing, as in §23. No §23 row is reused.
-- Nothing in the arm was tuned. Every setting is a `jev.py` default or comes from the §19/§23 configs. No held-out
-  question was looked at to choose anything.
+- Nothing in either arm was tuned. Every setting is a `jev.py` default or comes from the §19/§23 configs. No
+  held-out question was looked at to choose anything.
 
 **Two phases, one pod at a time (the design; no idle pod).**
 - The JEV requests do not depend on the reader: in LongMemEval the question is the last step of every episode
   (checked on all 500 stub episodes), so every OpenJev call happens before the reader answers.
-- **Phase 1, OpenJev's own pod (their image, pinned digest).** `configs/sweeps/exp26/exp26_fill_f{0..4}.yaml`: the
-  OpenJev arm alone, stub reader, five folds at once. Every answer is stored in `cache/jev_exp26` under a hash of
-  the request, with its latency and the server's own time.
-- **Phase 2, our reader pod (the §23 image, vLLM 0.8.5, A40).** `exp26_qwen7b_f{0..4}.yaml`: all three arms. The
-  OpenJev arm replays the stored answers only (`cache_only`); a request not stored is an error, so it cannot call
-  any server.
+- **Phase 1, OpenJev's own pod (their image, pinned digest).** `configs/sweeps/exp26/exp26_fillB_f{0..4}.yaml`
+  (arm B) and `exp26_fillA_f{0..4}.yaml` (arm A): one arm at a time, stub reader, five folds at once. Every answer
+  is stored in `cache/jev_exp26` under a hash of the request, with its latency and the server's own time.
+- **Phase 2, our reader pod (the §23 image, vLLM 0.8.5, A40).** `exp26_qwen7b_f{0..4}.yaml`: FIFO + floor,
+  `fixed8` and arm B; `exp26_qwen7bA_f{0..4}.yaml`: arm A alone, so its question count can be cut to a prefix.
+  Both OpenJev arms replay the stored answers only (`cache_only`); a request not stored is an error, so phase 2
+  cannot call any server.
 - **Why not one GPU for both.** The two servers are different images (CUDA 13 vLLM main against vLLM 0.8.5), and a
   RunPod pod runs one image. Serving Qwen 7B inside OpenJev's newer vLLM would change the reader that §23 pairs
   with. Running both pods at once would leave the reader pod idle for all of phase 1.
 
 **Claims, pre-registered** (470 answerable questions, paired by question, 95% bootstrap intervals; margin −0.03 as
-in §23):
-1. **Claim 1, against the baseline.** OpenJev minus FIFO + floor: **better** if the lower bound is above 0, **worse**
-   if the upper bound is below 0, otherwise undetermined.
-2. **Claim 2, against the learned head.** OpenJev minus `fixed8`: **non-inferior** if the lower bound is above
-   −0.03. Reported the other way too: `fixed8` is **better** if the upper bound of OpenJev minus `fixed8` is below 0.
-- **Expectation, written before any run.**
-  - Claim 2: `fixed8` better. It was trained on this benchmark's evidence labels; OpenJev has never seen the task.
-  - Claim 1: undetermined. OpenJev sees the question and all 32 candidates, but nothing caps how much it keeps or
-    retrieves except the budget. Its prompts may run near the 5% budget (about 5,500 tokens against FIFO's 2,964
-    and `fixed8`'s 1,049), and §19c/§23 showed that longer prompts cost this reader accuracy.
+in §23). Each arm is tested on its own; there is no claim on A against B.
+- **Arm A, OpenJev as memory manager** (written before review; unchanged):
+  1. **Claim A1, against the baseline.** A minus FIFO + floor: **better** if the lower bound is above 0, **worse**
+     if the upper bound is below 0, otherwise undetermined.
+  2. **Claim A2, against the learned head.** A minus `fixed8`: **non-inferior** if the lower bound is above −0.03.
+     Reported the other way too: `fixed8` is **better** if the upper bound of A minus `fixed8` is below 0.
+  - Expectation: A2, `fixed8` better (trained on this benchmark's evidence labels; OpenJev has never seen the task).
+    A1 undetermined: nothing caps what A keeps or retrieves except the budget, so its prompts may run near the 5%
+    budget (about 5,500 tokens against FIFO's 2,964 and `fixed8`'s 1,049), and §19c/§23 showed that longer prompts
+    cost this reader accuracy.
+- **Arm B, OpenJev as selector** (written at review, before any run):
+  1. **Claim B1, against the learned head (the main test of B).** B minus `fixed8`: **non-inferior** if the lower
+     bound is above −0.03; `fixed8` **better** if the upper bound is below 0; B **better** if the lower bound is
+     above 0. Same candidates, same k, same prompt length class: only the ranker differs.
+  2. **Claim B2, against the baseline.** B minus FIFO + floor: **better** if the lower bound is above 0, **worse** if
+     the upper bound is below 0.
+  - Expectation: B2 better (with the same pool and k, `fixed8` beat FIFO + floor by +0.10 in §23, and B shows about
+    the same number of tokens). B1 undetermined, with a lean to `fixed8`: the head was trained on this benchmark's
+    evidence labels, but OpenJev reads every candidate's full text beside the question, which the head does not.
+  - The reader-free part of B1 is P(all in view), B against `fixed8` on the same 32 candidates: it says how much of
+    any accuracy gap is the ranking itself.
 - **Cost axis (descriptive; its own pod, not an API price): GPU-seconds per 1,000 questions.**
-  - OpenJev: phase-1 pod seconds after the model is ready, divided by questions done, × 1,000 (one GPU). Load time
-    is reported apart. The sum of the server's `Server-Timing` model time is printed beside it (it can exceed wall
-    time, since reads run in parallel).
+  - Each OpenJev arm: its phase-1 pod seconds after the model is ready, divided by questions done, × 1,000 (one
+    GPU). Load time is reported apart. The sum of the server's `Server-Timing` model time is printed beside it (it
+    can exceed wall time, since reads run in parallel).
   - `fixed8` and FIFO + floor use no GPU: about 134 and 80 CPU-seconds per 1,000 questions on the laptop (stub run).
   - Reader prompt tokens per arm, beside accuracy, as always.
 - **Reported beside the claims (descriptive):** the §13a decomposition (P(all in view), P(correct | in view)), the
   three disjoint shares (answered-correct, answered-wrong, unknown), P(correct | answered), OpenJev calls per
   question, items retrieved, repaired items and forced actions per question, and false answers on the 30
   unanswerable questions.
-- **If the hard stop cuts phase 1** (the triage rule, pre-declared): each fold runs its questions in the fixed
-  fold order, so a cut leaves the first m of every fold. Phase 2 then runs all three arms on exactly those
-  questions. The claims are pre-registered on all 470; on fewer, the same differences are reported as
-  descriptive and labelled underpowered, with n.
-- Phase-1 output is checked only for calls, timings and errors. Nothing in the arm changes after phase 1 starts.
+- **If the hard stop cuts arm A's phase 1** (the triage rule, pre-declared): each fold runs its questions in the
+  fixed fold order, so a cut leaves the first m of every fold. Arm A's phase 2 (`exp26_qwen7bA`) then runs on
+  exactly those m per fold, and A's claims are paired with the other arms on those questions. The claims are
+  pre-registered on all 470; on fewer, A's differences are reported as descriptive and labelled underpowered, with
+  n. Arm B is not affected: it runs in full first.
+- Phase-1 output is checked only for calls, timings and errors. Nothing in an arm changes after its phase 1 starts.
 
-**Code (free; 94b3f72).**
+**Code (free; 94b3f72, arm B in the follow-up commit).**
 - `jev.py`: the endpoint is config `endpoint`, then config `base_url`, then `$JEV_BASE_URL`, else TypeSafe's URL
   (unchanged); the model is config `model`, then `$JEV_MODEL`, else `jev-latest`. A server other than TypeSafe's
   never receives the TypeSafe key (it gets `$OPENJEV_API_KEY` if set, otherwise no header) and costs $0 per token.
   Optional retries on 429/503/529, the server's model time, and the answer cache. All off by default.
+- `mode: select` (arm B) with `select_k`; the default `mode: manage` is the code path as before. The fake answerer
+  gives a selection question's options weights by similarity to the input.
 - `tests/fake_jev_server.py`: a local HTTP stand-in in OpenJev's answer shape, answering with the hand-written fake
-  heuristic. Tests (`tests/test_controllers_llm.py`, 21 pass): the default URL, model and price are unchanged; env
+  heuristic. Tests (`tests/test_controllers_llm.py`, 23 pass): the default URL, model and price are unchanged; env
   and config overrides work, config wins; calls reach the local server with no Authorization header; a replay
-  from the cache needs no server, and a miss is an error. The full suite: 214 pass; the 2 failures in
-  `test_import_boundaries.py` are on main already and untouched here.
+  from the cache needs no server, and a miss is an error; select mode archives on arrival with no call, then makes
+  one call with one 4-option question and retrieves the 2 most probable; the default mode is `manage` and an
+  unknown mode is refused. The full suite: 216 pass; the 2 failures in `test_import_boundaries.py` are on main
+  already and untouched here.
 
 **Stub check (done, free; against the local fake server, no network).**
 - **Full size, the paid layout (five folds at once, three workers each, `guard.sh`).**
-  - Three arms × five folds, the fake OpenJev live over HTTP: stopped by SIGKILL after 30 s (FIFO 63–68, `fixed8`
-    52–57, OpenJev 21–22 of 100 per cell), then resumed against a different JEV server and a different reader
-    `base_url`. All 15 cells resumed (`resumed: true`), each ended at 100 distinct questions. Peak RSS 0.45 GB
-    per sweep process.
+  - Three arms × five folds (FIFO + floor, `fixed8`, arm A), the fake OpenJev live over HTTP: stopped by SIGKILL
+    after 30 s (FIFO 63–68, `fixed8` 52–57, A 21–22 of 100 per cell), then resumed against a different JEV server
+    and a different reader `base_url`. All 15 cells resumed (`resumed: true`), each ended at 100 distinct
+    questions. Peak RSS 0.45 GB per sweep process.
   - P(all in view): FIFO + floor 0.500, `fixed8` 0.700 over all 500 (§23: 0.498 and 0.702 on the 470 answerable);
-    prompt tokens 2,963 and 1,050 (§23: 2,964 and 1,049). The OpenJev numbers in the stub (0.116, 18.6 forced
+    prompt tokens 2,963 and 1,050 (§23: 2,964 and 1,049). The OpenJev numbers in the stub (A: 0.116, 18.6 forced
     actions per question) are the fake heuristic's and say nothing about OpenJev.
-- **The two phases.**
+- **The two phases, arm A.**
   - Phase 1 (fill), stopped after 25 s (12–14 of 100 per fold) and resumed against a second fake server: all five
     cells ended at 100. 15,642 requests reached the servers (2,075 + 13,567), exactly the 15,642 stored answers:
     the resumed episodes replayed from the cache and no request was sent twice. Peak RSS 0.11 GB per process.
   - Phase 2 (replay), with both fake servers shut down and a dead JEV URL: all 15 cells finished; all 15,642
     OpenJev calls came from the cache; on every one of 247,250 steps the memory and the actions equal phase 1's.
     Peak RSS 0.27 GB per process.
-  - All stub caches were deleted afterwards, so the real run starts from empty caches.
-- **Request size, counted with DiffusionGemma's own tokenizer** (313 requests from 10 training conversations of
-  fold 0, so no test question informs the estimate; OpenJev's layout replicated, 12 questions per read):
-  - the state is about 8,500 tokens (p90 9,600, max 15,600); about 23 questions a request (max 40), so 2 reads;
-  - **about 23,300 prefill tokens a request** (p90 33,800).
-  - The calls per question are the fake heuristic's: **31.3** (training and test sides alike). OpenJev's real rate
-    is unknown until phase 1: it depends on how much it keeps (the ceiling is about one call per step, about 510).
+- **The two phases, arm B (after review; the configs as committed).**
+  - Phase 1 (`fillB`), stopped by SIGKILL after 15 s (64–65 of 100 per fold) and resumed against a second fake
+    server: all five cells resumed (`resumed: true`) and ended at 100 distinct questions. 500 requests in all (321 +
+    179), one per question, none sent twice. Peak RSS 0.29 GB per process.
+  - Arm A's fill was rerun under its new label (15,642 requests). Then phase 2 (`exp26_qwen7b` with FIFO + floor,
+    `fixed8` and B; `exp26_qwen7bA` with A), servers down, dead JEV URL: all 20 cells finished with no cache miss.
+    Every one of the 500 episodes of each OpenJev arm equals its phase-1 row on all 37 compared fields (episode-
+    level check; step logs were switched off this time to save disk). Peak RSS 0.26 GB per process.
+  - All stub run folders and caches were deleted afterwards, so the real run starts from empty caches.
+- **Request size, counted with DiffusionGemma's own tokenizer, on training conversations of fold 0 only**
+  (OpenJev's layout replicated, 12 questions per read):
+  - **Arm A** (313 requests from 10 conversations): the state is about 8,500 tokens (p90 9,600, max 15,600); about
+    23 questions a request (max 40), so 2 reads; **about 23,300 prefill tokens a request** (p90 33,800). Calls per
+    question are the fake heuristic's: **31.3**. A's real rate is unknown until the smoke: it depends on how much
+    it keeps (the ceiling is about one call per step, about 510).
+  - **Arm B** (50 conversations, one request each): the state is **about 13,700 tokens** (median 13,600, p90 15,800,
+    max 21,600), larger than the 3–6k first guessed, because 32 LongMemEval turns are long; one question, one read;
+    **about 14,300 prefill tokens per question**, 1 call per question, 500 calls.
 
-**Cost (NEEDS SPEND; measured inputs, one guess, marked).**
+**GPU plan (written before any smoke; live secure-cloud prices read by the reviewer on 2026-10-08).**
+- Prices per hour: A40 $0.59, L4 $0.59, RTX 4090 $0.89, RTX 6000 Ada 48 GB $0.99, L40S 48 GB $1.09, RTX PRO 4500
+  Blackwell 32 GB $0.72.
+- **First try: A40 with `OPENJEV_VLLM_ARGS="--kv-cache-dtype bfloat16"`.** This is a declared deviation from the
+  shipped config: the KV cache is bf16, not the checkpoint's FP8. Answers may differ slightly from the shipped
+  server's; it is reported as such.
+- **Cap: 10 minutes from pod create to "server ready"** (`GET /v1/models` answers). If the server refuses to start
+  or is not ready in 10 minutes, the A40 is terminated.
+- **Fallback: an RTX 6000 Ada ($0.99/h) or an L40S ($1.09/h), 48 GB, SM89, which run the image as shipped** (FP8 KV
+  native). Whichever has stock; the price is re-quoted at that rate before phase 1.
+- **No 24 GB cards** (L4, RTX 4090): with states up to about 22k tokens and five folds at once, the KV cache would
+  be tight.
+- The RTX PRO 4500 Blackwell ($0.72/h) is the tested architecture but has not been checked against this image's
+  kernels; it is not in the plan.
+
+**Sequence and cost (NEEDS SPEND; measured inputs, one guess, marked).**
 - **Measured:** §23 Qwen 7B answered 1,500 LongMemEval questions in 10.3 min; first model ready 4.4 min after
-  create, model switches 3.1–6.2 min; judge pass 3.1 min for 7,050 answers; A40 at $0.59/h. Here: about 0.73M
-  prefill tokens per question (31.3 calls × 23,300), if OpenJev calls as often as the fake.
+  create, model switches 3.1–6.2 min; judge pass 3.1 min for 7,050 answers. Here: arm A about 0.73M prefill tokens
+  per question (31.3 calls × 23,300, if OpenJev calls as often as the fake); arm B about 14,300 per question.
 - **From OpenJev's README (their measurement, RTX PRO 6000):** about 31K prompt tokens/s with 8K-token states at
-  full load. That gives about 23 GPU-s per question, **about 23,500 GPU-s per 1,000 questions, about 3.3 h for 500**.
-- **GUESS (until the smoke call measures it): an A40 at 6–10K prompt tokens/s** (weight-only FP4 with bf16 compute
-  and a bf16 KV cache). That gives 73–122 GPU-s per question, **10–17 h for 500, about $6–10** at $0.59/h. Too much
-  to approve on a guess.
-- **Step 0, the first paid step: a smoke call on a pod running their container** (razorback16/openjev pinned by
-  digest; not our vLLM 0.8.5 image), before any experiment cell.
-  - GPU class chosen by the user from the live prices above; on an A40 the KV flag is required, and a failed start
-    is itself the answer.
-  - Pull 6.4 GB and 18.9 GB of weights, start (FlashInfer compiles NVFP4 kernels on Blackwell, about 4 min): about
-    15–25 min.
-  - Then from the laptop: `GET /v1/models`, then `configs/sweeps/exp26/exp26_smoke.yaml` (the phase-1 arm on 2
-    training conversations, about 60 calls, one at a time). Measured: seconds per call, prefill tokens per second
-    and the server's `usage.input_tokens` (against the 23,300 counted here). The rate at full load (five folds at
-    once) is first measured in phase 1's opening minutes.
-  - **About 0.5 h, so about $0.30 on an A40; hard stop 45 min.** On another class, 45 min at its live price.
-- **After the smoke, the full price is quoted again from the measured rate** (calls per question stay a planning
-  figure until fold 0's first questions).
-  - Phase 1: OpenJev pod time = 500 × calls per question × seconds per call. **Proposed hard stop: $3.00 of phase-1
-    pod time**, then the triage rule above.
-  - Phase 2 (A40, $0.59/h): about 5 min to ready, 10–11 min for 1,500 answers, under 1 min to judge about 1,500
-    answers: **about 20 min, about $0.20; hard stop 45 min ($0.44).**
-  - **Proposed ceiling for all of §26: about $3.75** (smoke $0.30 + phase 1 $3.00 + phase 2 $0.44). Each step needs
-    the user's approval; none is approved yet.
+  full load.
+- **GUESS (until the smoke measures it): an A40 at 6–10K prompt tokens/s**, an Ada 48 GB card about the same or a
+  little faster (weight-only FP4 through Marlin on both). For arm A that is 73–122 GPU-s per question, 10–17 h for
+  500; for arm B, 1.4–2.4 s per question, **12–20 min for 500**.
+1. **Step 0, the smoke, on their container** (razorback16/openjev pinned by digest; not our vLLM 0.8.5 image),
+   before any experiment cell.
+   - A40 attempt: at most 10 min to ready (about $0.10 if it fails). If ready: `GET /v1/models`, then
+     `configs/sweeps/exp26/exp26_smoke.yaml` (arms A and B on 2 training conversations: about 60 A calls and 2 B
+     calls, one at a time). Measured: A's seconds per call and calls per question (the cost axis), B's seconds per
+     call, prefill tokens per second, and the server's `usage.input_tokens` against the counts above. **About 25
+     min, about $0.25; hard stop 30 min on the A40 ($0.30).**
+   - Fallback, only if the A40 fails: the same on an RTX 6000 Ada or L40S. Image pull and weights 15–25 min, smoke
+     about 10 min. **Hard stop 45 min ($0.74 at $0.99, $0.82 at $1.09).**
+   - **Smoke ceiling: about $0.30 if the A40 works; about $0.92 if it fails and the fallback runs** ($0.10 + $0.82).
+2. **Step 1, arm B's full phase 1** (`exp26_fillB`), on the same pod, right after the smoke (no second load).
+   - About 12–20 min by the guess; re-quoted from the smoke's measured rate before it starts.
+   - **Hard stop 45 min of pod time ($0.44 on the A40, $0.82 at $1.09).**
+3. **Step 2, arm A's phase 1** (`exp26_fillA`), on the same pod, **only if the smoke's measured rate puts all 500
+   questions under the $3.00 cap** (500 × measured calls per question × measured seconds per call × the pod's
+   price, plus 10% margin). Otherwise it runs until **the $3.00 hard stop** and is cut by the prefix rule above.
+   The OpenJev pod is terminated after this step.
+4. **Step 3, phase 2, all arms on our vLLM 0.8.5 A40** ($0.59/h): about 5 min to ready, about 10.3 min for FIFO +
+   floor, `fixed8` and B (1,500 answers), up to 3.5 min more for A (up to 500), about 1 min to judge about 2,000
+   answers. **About 25 min, about $0.25; hard stop 45 min ($0.44).**
+- **Ceilings.** Without arm A: about $1.18 if the A40 works ($0.30 + $0.44 + $0.44 hard stops; expected about
+  $0.65) and about $2.18 on the fallback ($0.92 + $0.82 + $0.44). With arm A at its cap: add $3.00, so **at most
+  about $5.20**. Each step needs the user's approval; none is approved yet.
+- Free disk is checked with `df -h /` before and during every local run of the pipeline (at least 15 GB free).
 - The pods are verified terminated with list-pods after each phase.
 
 ## 5. The sequential task

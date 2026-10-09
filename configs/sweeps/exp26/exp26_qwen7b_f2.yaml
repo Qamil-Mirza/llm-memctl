@@ -1,8 +1,7 @@
-# Experiment 26 (§26, pre-registered; NOT YET APPROVED for spend), phase 2, LongMemEval fold 2:
-# the §23 Qwen 7B config with the cache directory changed and the OpenJev arm added beside FIFO + floor and
-# fixed8 (rerun in the same session for pairing). The OpenJev arm replays phase 1's stored answers only
-# (cache_only); its base_url is never called. POD_URL is the reader pod. Answers only (stub judge); one blind
-# Qwen 7B judge pass follows, as in §23.
+# Experiment 26 (§26, pre-registered; NOT YET APPROVED for spend), phase 2, LongMemEval fold 2: the §23 Qwen 7B config with
+# the cache directory changed and arm B (OpenJev as selector) beside FIFO + floor and fixed8 (rerun in the
+# same session for pairing). Arm B replays phase 1's stored answers only (cache_only); its base_url is never
+# called. POD_URL is the reader pod. Answers only (stub judge); one blind Qwen 7B judge pass follows.
 name: exp26_qwen7b_f2
 base:
   schema_version: 1
@@ -59,16 +58,15 @@ grid:
     floor_head: true
     keep_none: true
   - name: jev
-    label: openjev
     base_url: JEV_URL
     model: openjev-latest
     timeout_s: 300
     retries: 5
-    call: pressure
-    repair: true
     retrieve_candidates: 32
-    max_items_per_request: 40
     cache_dir: cache/jev_exp26
+    label: openjev_select
+    mode: select
+    select_k: 8
     cache_only: true
   memory.budget.fraction:
   - 0.05

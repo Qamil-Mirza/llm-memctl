@@ -1,7 +1,7 @@
-# Experiment 26 (§26, pre-registered; NOT YET APPROVED for spend), phase 1, LongMemEval fold 2: the
-# OpenJev arm alone against OpenJev's own pod (JEV_URL), stub reader. Every answer is stored in
-# cache/jev_exp26 with its latency and server time; phase 2 replays them with the real reader.
-name: exp26_fill_f2
+# Experiment 26 (§26, pre-registered; NOT YET APPROVED for spend), phase 1, LongMemEval fold 1: arm B (OpenJev as selector) alone against OpenJev's
+# own pod (JEV_URL), stub reader. Every answer is stored in cache/jev_exp26 with its latency and server
+# time; phase 2 replays them with the real reader.
+name: exp26_fillB_f1
 base:
   schema_version: 1
   seed: 0
@@ -11,7 +11,7 @@ base:
     path: data/longmemeval/longmemeval_s_cleaned.json
     folds:
       k: 5
-      fold: 2
+      fold: 1
       part: test
     judge:
       backend: stub
@@ -36,15 +36,14 @@ base:
 grid:
   controller:
   - name: jev
-    label: openjev
     base_url: JEV_URL
     model: openjev-latest
     timeout_s: 300
     retries: 5
-    call: pressure
-    repair: true
     retrieve_candidates: 32
-    max_items_per_request: 40
     cache_dir: cache/jev_exp26
+    label: openjev_select
+    mode: select
+    select_k: 8
   memory.budget.fraction:
   - 0.05
