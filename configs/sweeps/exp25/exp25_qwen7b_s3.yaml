@@ -1,5 +1,6 @@
 # Experiment 25 (§25, pre-registered, NOT YET APPROVED for spend), reader qwen2.5-7b-instruct, shard 3 of 7: participant-days [('A3_TASHA', 'DAY2'), ('A3_TASHA', 'DAY7'), ('A4_LUCIA', 'DAY4'), ('A5_KATRINA', 'DAY5'), ('A6_SHURE', 'DAY6')].
 # StreamMemBench (English), A3-A6 only, 200 evidence segments sampled with seed 25. The user simulator is Qwen2.5-7B on the same pod.
+# A3_TASHA DAY1 is excluded from §25 for good (exclude_days; the stub-probe disclosure in §25).
 name: exp25_qwen7b_s3
 base:
   schema_version: 1
@@ -14,6 +15,9 @@ base:
     shard:
       k: 7
       index: 3
+    exclude_days:
+    - - A3_TASHA
+      - DAY1
     chunk_tokens: 150
     simulator:
       style: llm

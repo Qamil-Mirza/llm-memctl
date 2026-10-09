@@ -281,7 +281,10 @@ class StreamMemBenchEnv(TaskEnvironment):
         shard = dict(config.get("shard") or {})
         if shard:
             days = shard_days(self.root, self.items, int(shard["k"]))[int(shard["index"])]
-        self.days = days
+        # Dropped after sampling and sharding, so the sample and the other shards stay as they are (§25 excludes
+        # A3_TASHA DAY1: a stub probe printed its label-based evidence-in-view before the split was set up).
+        excluded = {tuple(day) for day in config.get("exclude_days") or []}
+        self.days = [day for day in days if day not in excluded]
         self.chunk_tokens = int(config.get("chunk_tokens", 150))
         self.unit = config.get("unit", "chunk")
         if self.unit not in ("chunk", "segment"):

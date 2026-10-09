@@ -189,6 +189,8 @@ def test_shards_cover_every_day_once(root):
     shards = shard_days(root, sample_items(root, ("A3_TASHA",), 0, None), 3)
     assert sorted(d for s in shards for d in s) == [("A3_TASHA", "DAY1")]
     assert build_env({"name": "streammembench", "path": root, "shard": {"k": 3, "index": 1}}).days == shards[1] == []
+    excluded = build_env({"name": "streammembench", "path": root, "exclude_days": [["A3_TASHA", "DAY1"]]})
+    assert excluded.days == [] and len(excluded.items) == 2  # the sample itself is unchanged
 
 
 def test_run_one_with_the_rl_free_controllers(root):

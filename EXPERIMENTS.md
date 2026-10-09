@@ -3531,12 +3531,26 @@ b32965525da5f982599af9794954c616ddeb34ff, cloned to `external/StreamMemBench`, n
 - **Training side, reserved:** participants A1_JAKE and A2_ALICE. Any tuning (prompt, chunk size, head retraining)
   uses them only.
 - **Evaluation:** participants A3–A6 (1,848 evidence segments). **200 segments are drawn with seed 25**
-  (`random.Random(25).sample`, `sample_items`): 28 participant-days, **565 anchors**. Days are dealt to 7 shards by
+  (`random.Random(25).sample`, `sample_items`): 28 participant-days, 565 anchors. Days are dealt to 7 shards by
   anchor count (`shard_days`).
+- **A3_TASHA DAY1 is excluded from every §25 evaluation pool, for good** (amended at review, before any run). It is
+  dropped after sampling and sharding (`env.exclude_days` in all 7 configs), so the seed-25 sample and the other
+  shards are unchanged.
+  - Correction to the review note: the day **is** in the current shards, in shard 6 (`exp25_qwen7b_s6.yaml`), which
+    now runs 3 days instead of 4. All 28 A3–A6 days are in the sample, so no shard could lack it.
+  - The evaluated set is therefore **27 days, and 565 anchors minus that day's sampled anchors**. That count is not
+    computed now (no computation on the A3–A6 sample before the decision); it is printed by the run or by the
+    closing evaluation below.
 - Nothing in §25 is trained on StreamMemBench. The design above came from LongMemEval and the benchmark's schema.
 - **Disclosure:** one stub probe on one evaluation day (A3_TASHA DAY1) printed the label-based evidence-in-view per
   arm before the training-side check was set up. No reader output was seen and no setting was changed because of
   it; the numbers below are training-side only.
+- **Order of decisions (from this session's history).** The seed (25) was fixed before that probe: it was
+  hard-coded in the config generator, and the probe ran from configs it made. The 200-segment size was also the
+  value in the probe's configs, but it was **not final** then: 150 and 200 were still being weighed, and 200 was
+  chosen after the probe, from the stub's call counts (cost and power). The shard dealing by anchor count was also
+  added after the probe, for cost. Nothing was committed until after the probe.
+- **With the exclusion, the probe can no longer affect what is evaluated.**
 
 **Arms** (the §23 arms, unchanged: 5% budget, `memory.count_labels`, lexical search):
 - FIFO + floor (3k target, top 5 retrieved): the baseline.
@@ -3558,9 +3572,9 @@ b32965525da5f982599af9794954c616ddeb34ff, cloned to `external/StreamMemBench`, n
   18,600 calls, 19M input and 3M output tokens for §25. It is a paid API with a key, and it would sit in the loop
   while the pod runs. **Not proposed.**
 
-**Pre-registered claim (primary).** Zero-shot transfer: `fixed8` against FIFO + floor, Qwen 7B, 565 anchors, paired
-by anchor.
-- **Metrics:** follow-up reuse (all 565 anchors) and feedback incorporation (anchors revised in both arms; their
+**Pre-registered claim (primary).** Zero-shot transfer: `fixed8` against FIFO + floor, Qwen 7B, the evaluated anchors
+(27 days), paired by anchor.
+- **Metrics:** follow-up reuse (all evaluated anchors) and feedback incorporation (anchors revised in both arms; their
   unconditional mean is also reported).
 - **"Transfers" (non-inferior):** on both metrics, the 95% interval of `fixed8` minus FIFO has a lower bound above
   −0.03. **"Better":** lower bound above 0 on both. **"Worse":** upper bound below 0 on either. Otherwise
@@ -3602,7 +3616,7 @@ read time):**
   lenient there.
 
 **Stub check (done, free; prelaunch rule).**
-- Full size: 7 shards × 3 arms = 21 cells, 28 days, 565 anchors per arm, stub reader and stub simulator. The stub
+- Full size: 7 shards × 3 arms = 21 cells, 28 days (before the A3_TASHA DAY1 exclusion), 565 anchors per arm, stub reader and stub simulator. The stub
   simulator's output never parses, so every initial answer is revised: the call count is an upper bound. Per arm
   1,695 reader and 1,695 simulator calls; **10,170 calls in all**. Mean reader prompt: FIFO 2,952 tokens, `fixed8`
   999, `fixed16` 1,826; simulator prompt about 870 (more with real, longer answers). Largest cell: 261 reader calls.
@@ -3626,6 +3640,16 @@ read time):**
   before the run starts.
 - **Triage rule, pre-declared:** if fewer than half of the days are done 75 min after create, `fixed16`
   (descriptive) is stopped first, so the two arms of the claim finish.
+
+**If §25 closes without a paid run (pre-declared result, free; amended at review).**
+- One label-only evaluation: evidence in view at the initial, revised and follow-up requests, for FIFO + floor,
+  `fixed8` and `fixed16`, on the evaluation anchors (the 565 of the seed-25 sample, less A3_TASHA DAY1's), with the
+  stub reader and stub simulator, from the committed configs. Reported as §25's result, with 95% intervals by
+  anchor.
+- It is computed **exactly once**, and **only after the user decides there is no paid run**.
+- If the user chooses the paid run instead, it is **not** computed beforehand: that would be a peek at the
+  evaluation side. The paid run reports the same numbers as its diagnostic.
+- Not executed as of this amendment.
 
 ## 5. The sequential task
 
