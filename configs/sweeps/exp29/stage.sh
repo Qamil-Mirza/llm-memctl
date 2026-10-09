@@ -23,8 +23,12 @@ else
 fi
 DIR=${EXP29_DIR:-runs/exp29}
 HEADS=${EXP29_HEADS:-configs/sweeps/exp29/heads}
-wait_model() {
-  until curl -sf -m 10 $1/v1/models | grep -q '"qwen2.5-7b-instruct"'; do sleep 10; done
+wait_model() {  # gives up after WAIT_MAX seconds (default 900), so a lost network cannot idle a billing pod
+  local end=$(( $(date +%s) + ${WAIT_MAX:-900} ))
+  until curl -sf -m 10 $1/v1/models | grep -q '"qwen2.5-7b-instruct"'; do
+    [ $(date +%s) -ge $end ] && { echo "model not reachable after ${WAIT_MAX:-900} s" >&2; exit 3; }
+    sleep 10
+  done
 }
 case "$1" in
 rows)

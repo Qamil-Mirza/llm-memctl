@@ -4894,6 +4894,41 @@ as §23; `configs/sweeps/exp29/judge_report.py report`):
 **Pod order** (`configs/sweeps/exp29/stage.sh`): `signal URL` → `tune URL` → `train` → `reader URL` → `report`.
 `rows` ran before the pod. The heads are written to `configs/sweeps/exp29/heads/f{k}/` and committed after the run.
 
+### 29a. Pod run, partial: signal, tune and heads done; the reader did not run (2026-10-09)
+
+**Approval and spend.** The user approved the quote ($0.45–0.74, stop $0.89) on the executor's channel. Pod
+`puynnuax9qx54u` (A40, CA-MTL-1, $0.59/h, vLLM 0.8.5, Qwen 7B) was created 21:48:01 UTC and deleted 23:16:25 UTC
+(list-pods empty): 1.47 h ≈ **$0.87**, inside the stop. **No reader answer was graded and no claim was tested.**
+
+**What finished.** Signal pass 22:02:49–22:20:29 (15,509 logprob calls + 470 tokenize; about 14.5 calls/s). Tune
+22:20:29–22:25:18 (chosen blend weight per fold: 0.5, 0.25, 0.25, 0.25, 0.9, from the inner 282/94 split of each
+fold's training questions). Final heads and the controller check by 22:27:44 (3 training questions × 3 heads per fold:
+controller picks equal row picks). The heads are in `configs/sweeps/exp29/heads/f{k}/`.
+
+**Deviation 1: vLLM out of memory, server flags changed.** At 21:56 the first signal calls crashed vLLM: the
+prompt-logprob gather (`gather_logprobs`) asked for 2.32 GiB with 1.45 GiB free at `--gpu-memory-utilization 0.9`.
+The stub's fake server could not show this. At 22:00 the pod was relaunched with `--gpu-memory-utilization 0.70
+--max-num-batched-tokens 2048` (same image and model); 32 parallel ~5k-token logprob calls then passed. **Mixed
+configs:** 474 cache entries (459 logprob, 15 tokenize) were written 21:56:16–21:56:47 under 0.9; every entry from
+22:02:50 is under 0.70/2048; none in between. They are not recomputed: the utility is a difference of two logprobs
+from one server, and the batching flag changes only chunked-prefill grouping (float-noise drift). Failed calls raise
+before the cache write, so no error was cached. About 12 min of pod time was lost.
+
+**Deviation 2: the laptop lost internet, the pod idled.** From about 22:27 to 23:15 UTC the laptop had no internet
+(journal: NetworkManager CONNECTED_SITE, DNS failures). `stage.sh reader` sat in `wait_model`, which had no deadline,
+for about 48 min while the pod billed. The pre-registered 60-min triage fired on time (22:48:03: `evidence_rows`
+dropped from the reader configs; restored afterwards in git). The reader started at 23:15:46 and the pod was deleted
+40 s later, before the stop. About 100 answers were cached; the cells were marked failed at deletion. No metric was
+read from them.
+
+**Fixes (free, before any rerun).** `wait_model` now gives up after `WAIT_MAX` seconds (default 900). Logprob runs
+launch at 0.70/2048. Checklist: one real-shape logprob call at full concurrency in the pod's first minute. Proposed: a
+self-stop on the pod itself, so a laptop outage cannot leave it billing.
+
+**What is left (NEEDS SPEND).** Only the reader and the judge, on the saved heads: about 5 min load + 17–26 min reader
+(four claim arms; `evidence_rows` adds about a quarter) + 1 min judge ≈ $0.25–0.33, hard stop 40 min ($0.39). Not
+approved.
+
 ## 5. The sequential task
 
 ```bash
