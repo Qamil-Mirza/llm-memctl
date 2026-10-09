@@ -3517,7 +3517,7 @@ FIFO → `fixed8`):
 **Limitations.** One frozen prompt for all readers (the 3B's refusal rate is partly a prompt-format effect); one
 benchmark; one judge (Qwen 7B, whose ranking was judge-independent in §18).
 
-## 24. Does the drop-in lift hold in other model families? (N9; 2026-10-08, pre-registered, NOT YET APPROVED for spend)
+## 24. Does the drop-in lift hold in other model families? (N9; 2026-10-08, pre-registered, run 2026-10-09)
 
 **Status:** run 2026-10-09 on pod 7d7fnvmk5actq0, about $1.44; the result is in §24a. The pre-registration text
 below is unchanged apart from the launch and deviation notes added before the judge pass.
@@ -3900,7 +3900,7 @@ Mean reader prompt: FIFO 2,949 tokens, `fixed8` 998, `fixed16` 1,824.
 **Next, if wanted:** a head-plus-recent-window arm, designed on A1/A2 and the LongMemEval training folds only,
 would be a separate pre-registration.
 
-## 26. An open Jev stand-in as the memory controller (OpenJev; 2026-10-08, pre-registered, NOT YET APPROVED for spend)
+## 26. An open Jev stand-in as the memory controller (OpenJev; 2026-10-08, pre-registered, run 2026-10-09)
 
 **Status:** pre-registered and accepted at review (94b3f72, 881c7c4). The review added arm B (OpenJev as selector),
 the GPU plan and the step order below, written before any spend. The free parts (fork check, code, stub checks of
