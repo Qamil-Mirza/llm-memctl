@@ -4712,6 +4712,170 @@ LongMemEval paper's caveat in practice: a 7B model invents date ranges unless to
 **Pairing.** `fixed8` here used the same cached generations as §27's (470 of 470 answers identical); the two
 separate judge passes agree on 469 of 470 verdicts (0.534 here, 0.536 in §27).
 
+## 29. A reader-utility training signal for the §19 head (2026-10-09, pre-registered; free part done, pod NEEDS SPEND)
+
+**Status:** pre-registered before any utility row exists. The free part (rows, code, tests, full-size stub check) is
+done; see "Stub check" below. The pod steps need spend and the user's per-run approval. Nothing has been launched.
+
+**Question.** The §19 head learned from evidence labels: "this turn holds the answer". Does it do better if it
+learns from what the reader actually gets out of each turn?
+
+**What stays the same as §19.** The head architecture (`listsum`-trained deepsets head, hidden 64, **27,526
+parameters**), the pool (32 plain-BM25 candidates, `keep_none`, top 8 shown), the five folds, the §23 reader
+settings. Only the training signal changes.
+
+**The signal.**
+- Per answerable training question q and per candidate turn c:
+  **utility(q, c) = log P(gold | question + turn c) − log P(gold | question alone)**, from Qwen2.5-7B.
+- **Prompt:** the frozen 7b5fc30 reader prompt (compact labels, the QA goal, "## Memory", "## Current input"), with
+  `reasoning: false`. So the note instruction is left out and the prompt ends with "Answer:". The memory holds the
+  one turn, or "(empty)" for the baseline. A capture-time check asserts that this equals the reader's own
+  `LLMAgent.build_prompt`, turn by turn.
+- **Chat form:** Qwen2.5's chat template (its default system line, the user message), then the gold answer as the
+  assistant reply, with no end token.
+- **Token span:** the gold's tokens are the last n prompt tokens. n is the server tokenizer's count for the gold
+  alone. This holds because the gold follows "assistant\n", and Qwen2's pre-tokenizer never merges a newline into
+  the next word. Each record also checks that those n decoded tokens spell the gold; failures are counted.
+- **Endpoint (vLLM 0.8.5, checked in its source):** `POST /v1/completions` with `echo: true, logprobs: 1,
+  max_tokens: 1, temperature: 0`. In 0.8.5, echo with logprobs turns on prompt logprobs and returns the prompt's
+  tokens and log-probabilities (the first is null) before the one generated token. `usage.prompt_tokens` marks the
+  end of the prompt. n comes from `POST /tokenize` (`add_special_tokens: false`).
+- **Abstention questions are left out** (their "gold" explains why there is no answer). Every §29 head trains on
+  the answerable training questions only.
+- **One pod pass, cached** per (model, prompt text) in `cache/utility_exp29`, so it is replayable and resumes against
+  any `base_url`. The rows: `runs/exp29/utility.jsonl.gz`.
+
+**Exact call count.** 470 answerable questions. Their pools hold **15,039 candidates** (one question's pool has 31,
+the rest 32), plus **470 baselines: 15,509 logprob calls**, plus 470 tokenize calls. (The ≈ 4 × 376 × 32 of the
+brief counts each question once per training fold. The rows do not depend on the fold, so each question is scored
+once.) Prompt size, from the rows: mean 434 tokens (memctl count), median 362, max 5,465; **6.60 M tokens in all**.
+
+**The fold guard.**
+- The utility rows are fold-invariant: one reader, and each row comes from its own question's gold answer. So one
+  pass serves all five folds.
+- But a head for fold k must never train on rows of fold k's test questions.
+- In code (`memctl/reader_utility.py`): `training_rows(fold, part)` reads only the questions of fold k's training
+  part (or its inner split). Other lines of the rows and utility files are skipped **unparsed**. It also raises if any
+  test question of fold k reaches it.
+- Tested: in a rows file whose lines for every other question are the text POISON, fold 2's training rows load. Fold
+  3's do not, because fold 3's training part holds fold 2's test questions.
+- The test folds are touched once, by the reader pass at the pre-declared evaluation.
+
+**The decision rows (free, done).** `python -m memctl.reader_utility rows` replays every question to its question
+step with the §19 controller settings (untrained policy) and records the head's inputs: 32 candidates, their 24
+features, the global features, the evidence labels and the reader lines.
+- With `keep_none` and one question per episode, the inputs do not depend on the policy's weights.
+- The budget is 5%, as at evaluation. (§19 trained at 1.25%; that changes only two global features.)
+- 500 questions in 20 s on the laptop, peak RSS 0.27 GB. `runs/exp29/rows.jsonl.gz`, 9.0 MB.
+
+**Training (CPU, from the cached rows; fixed now, nothing tuned but w).**
+- Per fold, on the 376 answerable training questions: Adam, lr 0.003, batch 64 questions, 40 epochs, gradient clip
+  1.0, seed 0, the last epoch kept. Same network and initialisation as §19.
+- **Utility head:** cross-entropy against softmax(utility / τ) over the 32, τ = 1 nat.
+- **Evidence-rows head:** §19's listsum loss on the evidence labels (questions with no evidence in the 32 skipped).
+- **Blend head:** (1 − w) × listsum + w × the utility loss.
+- This trainer is not §19's (no DAgger, no 4-question composition, the whole training part instead of half). So the
+  evidence-rows head is run beside the others as a **control arm, with no claim**: utility minus evidence-rows is the
+  signal alone, same trainer; evidence-rows minus `fixed8` is the trainer alone.
+
+**The blend weight: pre-declared grid, inner 6/2 split of training conversations.**
+- On LongMemEval a conversation is one question's own history. Fold k's training questions are dealt stratum by
+  stratum (type, abstention apart); places 0–5 of every 8 go to inner-train, 6–7 to inner-val. That gives 281–282
+  and 94–95 answerable questions.
+- **Grid: w ∈ {0.1, 0.25, 0.5, 0.75, 0.9}** (strictly between the two pure heads, which are their own arms).
+- **Criterion:** a blend head per w trained on inner-train; on inner-val, the reader's mean log P(gold | question + the
+  head's top 8 in arrival order), same prompt shape as the signal. This is the reader's own number, so it favours
+  neither label. Highest mean wins; ties go to the w closest to 0.5, then the smaller.
+- At most 5 × 472 = **2,360 calls**, fewer when two weights pick the same 8.
+- Reported (training side, descriptive): each w's inner-val score and its pool-relative all-found@8.
+- Then the final blend head is trained with fold k's chosen w on all 376.
+
+**Arms** (the same 500 LongMemEval test questions, five folds, Qwen2.5-7B reader, frozen 7b5fc30 prompt, budget 5%,
+as §23 and §27; `configs/sweeps/exp29/exp29_qwen7b_f{0..4}.yaml`; new cache `cache/generations_exp29_qwen7b`):
+- FIFO + floor at 5% with the 3k target, and `fixed8` (the §19 head A): rerun in the same session for pairing.
+- `utility_head`, `blend_head`: 8 of the same 32, ranked by the new heads.
+- `evidence_rows`: the control above.
+
+**Claims, pre-registered** (470 answerable questions, paired by question, 95% bootstrap by question, margin −0.03,
+as §23; `configs/sweeps/exp29/judge_report.py report`):
+1. **C1, utility head − `fixed8`.** Better if the lower bound is above 0; worse if the upper bound is below 0;
+   non-inferior if the lower bound is above −0.03. **Direction undetermined.**
+2. **C2, blend head − `fixed8`.** Same thresholds. **Expected: at least non-inferior.**
+3. **C3, utility head − FIFO + floor; C4, blend head − FIFO + floor.** Better / worse as above. **Expected: better.**
+- **Reader-free columns, per arm, as usual:** P(all in view) and prompt tokens. They are read once, by the report,
+  after the judge pass.
+- **Beside them (descriptive):** the §13a decomposition, unknown rate, P(correct | answered), false answers on the
+  30 unanswerable questions, the two control differences above, and the `fixed8` − FIFO pairing check (§23 +0.102,
+  §27 +0.100).
+
+**Optional second signal: declared, costed, not run in this pass.**
+- Definition: leave-one-out utility within the evidence head's top 8, log P(gold | question + the 8) − log P(gold |
+  question + the 8 without turn c).
+- Why not now: `fixed8` shows all 8, in arrival order, so credit inside the 8 cannot change what is shown. It would
+  matter only as a demotion rule (a top-8 turn with negative credit swapped for the 9th), which is a new design, not
+  declared here. Also, the evidence head's top 8 differ by fold, so the rows are not fold-invariant: 4 folds × 470 ×
+  (1 + 8) = 16,920 calls of about 1.1k tokens each.
+
+**Stub check (free, done; stub scorer, stub reader and stub judge through a fake vLLM 0.8.5 server,
+`configs/sweeps/exp29/fake_vllm.py`; separate stub folders and caches).**
+- **Signal pass, full size, two endpoints.** Pass A (`127.0.0.1:18101`) was stopped by SIGKILL after 25 s, with
+  4,954 cache entries written. Pass B (`:18102`) resumed and finished in 31 s: 15,509 calls planned, 12,502 new,
+  the rest from the cache; **0 span-check failures**; peak RSS 0.35 GB. The cache then held 15,867 entries: **15,483
+  distinct prompts** (26 candidate turns repeat within their question) and 384 distinct gold answers.
+- **Tune, full size** (third endpoint): all five folds in parallel, 65 s wall, peak RSS 0.38 GB; every fold wrote
+  its weight. (A first attempt ran torch with many threads and was much slower; training now uses one thread per
+  process, and its per-fold file makes a stopped tune resumable.)
+- **Final training:** 15 heads in 119 s with the controller check, peak RSS 0.38 GB; each head 27,526 parameters,
+  about 23–31 s. **Controller check passed:** in all five folds the trained heads, loaded by the real `rl` controller,
+  show exactly the 8 that the rows predict (3 training questions × 3 heads per fold).
+- **Reader pass, full size** (five folds × five arms × 100, three workers per fold, through the fake server's chat
+  route): stopped by SIGKILL after 40 s (endpoint A), resumed and stopped again after 25 s (endpoint B), then
+  finished on endpoint C in 54 s. **Every cell ended with 100 distinct questions; every cell that had started
+  resumed (`resumed: true`), none refused**; peak RSS 0.27 GB. Step logs were off (`detail_episodes: 0`) to save
+  disk.
+- **Judge and report:** a 3-question-per-fold run with step logs on (75 answers): the judge graded 75, and the report
+  ran and printed the four claim lines. Its numbers were not read. Step logs: about 26 MB per fold, so 1.7 MB per
+  answer, as in §27.
+- `fixed8` and FIFO + floor reproduce their known P(all in view), 0.700 and 0.500 (§27's stub: 0.700 and 0.500).
+- **Disclosed: one test-fold number was seen.** The check script printed P(all in view) for every stub arm on the
+  test folds. For the utility and blend arms these are stub heads (fake utility) and mean nothing. But the
+  evidence-rows head does not depend on the utility, so its stub value, **0.698**, is the real head's. Nothing was
+  chosen or changed after it: the arms, claims, grid, loss and training settings above were all written before the
+  stub run, and the evidence-rows arm carries no claim. It is reported here so the reader knows.
+- **Disk.** Free space was 13.6–14.4 GB throughout (other runs hold the rest), never under the 12 GB floor. The stub
+  output's peak footprint was 244 MB. **All stub output, stub caches, stub configs and stub logs were deleted.** The
+  free rows file (`runs/exp29/rows.jsonl.gz`, sha256 2a82c8ac87e3…) is kept for the pod day.
+- Tests: `tests/test_reader_utility.py`, 6 pass (prompt equality, losses, the fold guard and the POISON file,
+  deterministic training and a checkpoint the controller loads, the scorer against the fake server with resume on a
+  second URL). Full suite: 254 pass; the 2 failures in `test_import_boundaries.py` are on main already.
+
+**Price (NEEDS SPEND; per-run approval by the user; nothing approved).**
+- **Measured inputs:** §23's Qwen 7B answered 1,500 LongMemEval questions in 10.3 min on one A40 at $0.59/h; model
+  load 3–6 min; the judge did about 7,000 answers in 3.1 min.
+- **How the scoring calls are estimated.** They are prompt-only (one output token). §23 pushed about 3.3 M prompt
+  tokens (mean 2,194 over its three arms) through in 10.3 min, besides all its generated text. Charging all 10.3 min
+  to the prompts gives a floor of about **5,300 prompt tokens/s**. It is also about the A40's compute limit for a 7B
+  model (≈ 14 GFLOP per token at about half of its bf16 peak), so it is not optimistic.
+  - Signal: 6.60 M tokens → **at most about 21 min**.
+  - Tune: at most 2,360 calls × at most 2,383 tokens (BM25's top 8; the head's picks are shorter) → **at most about
+    18 min**, plus about 1 min of laptop training (measured: 65 s for all five folds in parallel).
+  - Final training and the controller check: **about 2 min** (measured), the pod waiting.
+- **Reader:** 2,500 answers at §23's 0.41 s each → **about 17 min**; up to 26 min if the new heads pick long turns
+  (×1.5). **Judge:** 2,350 answers, about 1 min.
+- **Total, one pod, one model load:** about 45–75 min (the upper end adds every upper bound) → **about
+  $0.45–0.74**.
+- **Hard stop: 90 min from create (about $0.89).** Triage, pre-declared:
+  - if the signal pass is not done by 40 min from create, stop: nothing downstream can run;
+  - if the reader has not started by 60 min, drop the `evidence_rows` control arm first;
+  - the reader then runs the four arms the claims need; anything not finished by the stop is reported as not run.
+- **Disk:** the reader writes step logs (about 1.7 MB per answer, §27): about 4.3 GB for 2,500. **Before launch,
+  confirm at least 17 GB free** (4.3 GB plus the 12 GB floor), or free space first. The signal cache is about 65 MB.
+- The pod is verified terminated with list-pods afterwards.
+- **Not approved. The user decides.**
+
+**Pod order** (`configs/sweeps/exp29/stage.sh`): `signal URL` → `tune URL` → `train` → `reader URL` → `report`.
+`rows` ran before the pod. The heads are written to `configs/sweeps/exp29/heads/f{k}/` and committed after the run.
+
 ## 5. The sequential task
 
 ```bash
