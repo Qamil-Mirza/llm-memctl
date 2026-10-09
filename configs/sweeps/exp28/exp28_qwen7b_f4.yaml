@@ -1,0 +1,73 @@
+# Experiment 28 (§28, pre-registered; NOT YET APPROVED for spend), reader qwen2.5-7b-instruct, LongMemEval fold 4.
+# fixed8 (raw question) and fixed8_rewrite (arm (a), the LLM rewrite, replayed from cache/rewrite_exp28 only).
+# The reader cache is the §27 branch's, so both branches' fixed8 rows are the same generations.
+# Arm (b), the rule time filter, failed its training-side gate (§28a) and is not run.
+# POD_URL and REWRITE_PROMPT are filled by configs/sweeps/exp28/stage.sh; REWRITE_PROMPT is this fold's frozen
+# version from runs/exp28_gate/selected.json, and the stage refuses to start before the gate is final and GO.
+name: exp28_qwen7b_f4
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env:
+    name: longmemeval
+    path: data/longmemeval/longmemeval_s_cleaned.json
+    folds:
+      k: 5
+      fold: 4
+      part: test
+    judge:
+      backend: stub
+      style: longmemeval
+  agent:
+    name: llm
+    reasoning: true
+    labels: compact
+    max_new_tokens: 256
+    model:
+      backend: openai
+      name: qwen2.5-7b-instruct
+      base_url: POD_URL/v1
+      timeout_s: 300
+      cache_dir: cache/generations_exp27_qwen7b
+  memory:
+    allowed_operations:
+    - KEEP
+    - MOVE_TO_ARCHIVE
+    - RETRIEVE_FROM_ARCHIVE
+    - NO_OP
+    embedder: hashing
+    count_labels: true
+  logging:
+    detail_episodes: 100000
+grid:
+  controller:
+  - name: rl
+    label: fixed8
+    checkpoint: /home/qamil-mirza/Code/llm-memctl/runs/lme_n4_head_f4_a/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rl
+    label: fixed8_rewrite
+    checkpoint: /home/qamil-mirza/Code/llm-memctl/runs/lme_n4_head_f4_a/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    query_rewrite:
+      mode: llm
+      action: demote
+      pad_days: 3
+      prompt_file: REWRITE_PROMPT
+      model:
+        backend: openai
+        name: qwen2.5-7b-instruct
+        base_url: http://unused.invalid/v1
+        cache_dir: cache/rewrite_exp28
+        cache_only: true
+  memory.budget.fraction:
+  - 0.05

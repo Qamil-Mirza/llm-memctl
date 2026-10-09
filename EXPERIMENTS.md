@@ -72,6 +72,7 @@ commands given).
 | 25 | StreamMemBench zero-shot transfer of the §19 head (free close) | Closed without a paid run at the user's decision; $0. Evidence in view on 541 evaluation anchors: FIFO 0.93 / 0.91 / 1.00 (initial / revised / follow-up), `fixed8` 0.32 / 0.23 / 0.10: the head does not transfer, because recency wins on this benchmark |
 | 26 | OpenJev (open Jev re-creation) as a controller | Arm B (selector, 8 of the head's 32 candidates): B − FIFO +0.045 (CI +0.004..+0.087), BETTER; B − `fixed8` −0.036 (CI −0.081..+0.009), not shown; B's prompts 2,373 tokens vs 1,049. Arm A (memory manager) cost only: ~94 GPU-s per question (~$15 per 1,000); accuracy not run by decision. $0.64 |
 | 27 | LRE (published query-blind scorer) as a baseline controller | LRE-slot (8 of the head's 32): 0.109, far below FIFO (−0.328) and the head (−0.428), evidence in view 0.03. LRE-native (in place of recency): +0.028 vs FIFO (CI −0.002..+0.057), non-inferior. About $0.23 shared with §28 |
+| 28 | Query rewriting for the head's 32 candidates | Rule time filter (b): NO GO at its free gate. LLM rewrite (a): training gate passed at v3 (v1 malformed, v2 invented ranges); test folds +0.006 overall (CI −0.017..+0.030) and +0.024 on temporal (n = 127, CI −0.016..+0.063), non-inferior, not better. About $0.23 shared with §27 |
 
 ---
 
@@ -4451,6 +4452,274 @@ judge; output in `runs/_stub27`, cache in `cache/stub27`).**
 
 **Limitations.** LRE is re-implemented from their formulas (no LICENSE file in the repository); our unit is a turn,
 theirs a session; their held-out-text de-duplication was not used. One benchmark, reader and judge.
+
+## 28. Query rewriting for the head's candidate pool (2026-10-09, pre-registered, run 2026-10-09)
+
+**Status:** pre-registered before any recall was computed (64735e2). The free part is in §28a: **arm (b), the rule
+filter, fails its gate on all five folds and stops.** Arm (a) is built and rehearsed; its gate and the reader
+NEED SPEND and are not approved.
+
+**Why.**
+- The §19 head picks 8 of the 32 BM25 candidates. It cannot show a turn that is not in the 32. So a better pool
+  could lift `fixed8` with no change to the head.
+- **The LongMemEval paper's claim, not ours** (Wu et al., arXiv 2410.10813, memory-design section): time-aware
+  query expansion gives +7–11% recall on temporal questions; fact-augmented keys give +4% retrieval and +5%
+  accuracy.
+- **Caveat from the same paper:** Llama 3.1 8B struggled to extract time ranges; GPT-4o did not. Our rewriter
+  would be Qwen2.5-7B, so the same risk applies.
+
+**Where the query is formed.** `memctl/controllers/rl.py`, `decide()`: the BM25 query is the question
+observation's text, "(asked on DATE) question". The new `query_rewrite` config (`memctl/query_rewrite.py`) changes
+only the search. The head and the reader still see the question unchanged.
+
+**Two variants, against `fixed8` (raw question).**
+- **(a) LLM rewrite.** Qwen2.5-7B gets the question and the question date, and writes two lines: `QUERY:` extra
+  search words, and `RANGE:` a date range or "none". One call per question, cached (`cache/rewrite_exp28`), so the
+  reader run replays it (`cache_only`; a miss is an error).
+  - BM25 query = the question text plus the `QUERY` words (expansion; nothing of the question is removed).
+  - The range is widened by 3 days each side and applied by `demote` (below). A malformed answer gives the raw
+    question. Both fixed before any rewrite.
+- **(b) Rule-based time filter.** No model. A regex parser (`rule_range`) reads time phrases ("N days/weeks/months
+  ago", "last week/month/year/weekend", "the past N weeks", "yesterday", "last Saturday", "in March", "May 3rd",
+  "the 5th of April", "this month", YYYY/MM/DD) and turns them into a date range, counted back from the question
+  date. Several phrases give their union. The end is never after the question date.
+  - **No new dependency.** `dateparser` is not installed; the parser uses only the standard library.
+  - **Written blind.** The parser was written from general English phrasing, and checked only on made-up
+    sentences, before any LongMemEval question was read for this experiment. No question text is read to change it.
+- **Two ways to apply a range** (both rank the whole archive once, so BM25 statistics do not change):
+  - `drop`: only candidates whose session date is in the range (the pool may be smaller than 32);
+  - `demote`: in-range candidates first, then the rest, each in BM25 order, up to 32.
+
+**No held-out peeking: cross-fitting, as the §19 head.**
+- The head has one checkpoint per fold, trained on that fold's training part. Every §28 choice is made the same
+  way: for fold f, on fold f's training part only (about 376 answerable questions), then applied to fold f's
+  test part.
+- With five folds over all 500 questions, every question is in some fold's training part. So "train first, test
+  later" cannot mean "rewrite these questions later". What is held out is **the labels**: fold f's test-part
+  evidence is read by nothing until the evaluation.
+- Enforced in code (`memctl/rewrite_gate.py`): the gate reads labels only through each fold's training part;
+  `evaluate`, the only code that reads test-part labels, refuses to run before the arm (a) gate is final, and runs
+  once (it refuses if its output exists).
+- The rewrites themselves read no label, so all 500 are written in one pass (a question's rewrite does not depend
+  on which fold it is tested in).
+
+**The metric for every choice: BM25 recall@32 of evidence turns.** Per question, the share of its evidence
+requirements in the 32 (a marked turn; for an answer session with no marked turn, any turn of it), as the harness
+counts them. Abstention questions are left out. "All in the 32" is reported beside it.
+
+**The gate (one rule for both variants; fixed now).**
+- On fold f's training part, a variant **passes** if mean recall@32 rises by at least **+0.01** over the raw
+  question, **or** rises by at least **+0.02 on the temporal-reasoning questions while not falling overall**.
+- A variant goes to the reader only if it passes on **all five** folds. If neither passes, §28 stops before the pod,
+  as §25 did.
+
+**Arm (b)'s settings, chosen per fold on the training part.** Action `drop` or `demote`, and slack 0.5, 1, 2 or 4
+(the window around a point in time: ±2 days, ±4 for weeks, ±15 for months, ±120 for years, times the slack). The
+choice is the highest overall training recall@32; ties go to `demote`, then the smaller slack. Then the gate.
+
+**Arm (a)'s prompt: the first version is frozen now** (`configs/sweeps/exp28/prompts/v1.txt`; `{asked}` is the
+question date with its weekday, `{question}` the question):
+
+```
+You help search a user's past chats with an AI assistant. A keyword search (BM25) will look for the chat messages that answer the user's question below.
+
+The question was asked on {asked}.
+Question: {question}
+
+Write exactly two lines and nothing else:
+QUERY: the words a message that answers the question would likely contain: the key nouns, names, places, activities and verbs of the question, plus a few close synonyms. Do not repeat question words such as "how many" or "when", and do not write dates here.
+RANGE: if the question refers to a time, such as "two weeks ago", "last Saturday", "in March", "yesterday" or "last month", the dates the chat most likely took place, as YYYY/MM/DD - YYYY/MM/DD, worked out from the date the question was asked. If the question does not refer to a time, write: RANGE: none
+```
+
+- It is not tuned now: a small CPU model is not a stand-in for Qwen 7B's behaviour. Its training recall@32 is the
+  **first step on the pod**, before any reader call.
+- **Up to 3 revisions on the pod (the reviewer's refinement, 2026-10-09).** After v1, up to three more versions
+  (v2–v4) may be written, each scored once by the gate on the training parts of the folds still open.
+  - **A fold freezes the first version that passes on its training part.** Folds already frozen are not
+    rescored.
+  - If after v4 any fold has no passing version, **arm (a) is dropped before any reader call**, and the reason is
+    recorded. Nothing is carried forward as "best of".
+  - **Superseded by the ruling below (design (i)):** a revision is written from LoCoMo dev outputs only, never
+    from LongMemEval.
+  - Every version's text, hash and per-fold training recall is logged (`runs/exp28_gate/state.json`) and copied
+    into §28.
+  - The script enforces the order: versions in turn, each scored once, a scored prompt file may not change, at
+    most four, and the reader stage refuses to start until `final` has been written.
+
+**Prompt design on a disjoint dev set: design (i) (the reviewer's ruling, 2026-10-09; recorded before any pod).**
+- **The ruling.** "Label-free" is not the test. Every LongMemEval question is a test question in one fold, so no
+  person or agent may read LongMemEval rewrite outputs, or LongMemEval question text, to design v2–v4. My first
+  version let `inspect` show format stats of LongMemEval outputs; that is withdrawn.
+- **The LoCoMo check (done first, free).** LoCoMo (`data/locomo/locomo10.json`) has what RANGE needs:
+  - session dates on all 288 sessions, all parsed ("1:56 pm on 8 May, 2023");
+  - no question date, so the conversation's **last session date** is used (LoCoMo's questions come after the whole
+    conversation);
+  - time phrases: the rule parser fires on 201 of the 1,540 non-adversarial questions (42 of the 321 temporal ones;
+    an aggregate count). LoCoMo's temporal questions mostly ask "when ...?" rather than give a relative anchor, so
+    RANGE is exercised, but less than on LongMemEval. That is a stated limit of the dev set.
+  - So design (i) is used, not (ii) (a per-fold prompt lineage).
+- **The dev set:** every fifth non-adversarial LoCoMo question with evidence, in file order: **307 questions** (74
+  temporal, 167 single-hop, 48 multi-hop, 18 open-domain). Its dates are put in LongMemEval's format, and each
+  question is shaped as the LongMemEval question step ("Question: (asked on DATE) ..."), so the same prompt applies.
+  LoCoMo is disjoint from LongMemEval; no §28 claim is about LoCoMo.
+- **The flow per version (enforced in `memctl/rewrite_gate.py`):**
+  - `rewrite` writes v*N* for the 307 dev questions and the 500 LongMemEval questions, and prints only the counts.
+  - `inspect` reads **LoCoMo dev outputs only**: format stats, dev recall@32 (raw against rewrite, from LoCoMo's own
+    evidence labels), and a few dev questions with their outputs. Asked for any id that is not a dev id (a
+    LongMemEval number or question id), it **raises PermissionError before reading anything** (tested).
+  - `gate` reads the LongMemEval rewrites with training-part labels, per fold, and prints **aggregates only**:
+    recall per fold, overall and temporal, the gains, pass or fail. No question text, no rewrite output.
+  - `final` closes the gate. LongMemEval rewrites are never printed or shown, before or after.
+  - A revision v*N*+1 is written from `inspect`'s dev output only, and committed before it is scored.
+
+**Arms on the shared pod (later; Qwen2.5-7B reader, frozen 7b5fc30 prompt, five test folds, §19 head A per fold).**
+- `fixed8` (raw question). The §27 branch reruns it for pairing; this branch's configs use the same reader cache,
+  `cache/generations_exp27_qwen7b`, so both branches' `fixed8` rows are the same generations.
+- `fixed8_rewrite` (arm (a)), only if its gate is GO.
+- `fixed8_timefilter` (arm (b)), only if its gate is GO.
+
+**Pre-registered claims** (470 answerable questions, paired by question, 95% bootstrap by question as §23; margin
+−0.03).
+1. **Each variant minus `fixed8`, on all 470.** Non-inferior if the lower bound is above −0.03; better if above 0.
+   Expected ≥ 0.
+2. **The same difference on the temporal-reasoning subset, the primary subgroup** (n is given in §28a from the
+   `question_type` field). Same thresholds.
+- Reported once, at evaluation (`rewrite_gate evaluate`): reader-free P(all in view) and BM25 recall@32 per arm on
+  the test folds.
+- Abstention questions: false answers on the 30 unanswerable questions, reported as usual.
+
+### 28a. Free part: the rule filter fails its gate on every fold; arm (a) is built and rehearsed (2026-10-09)
+
+**Arm (b), the rule time filter: NO GO.** `python -m memctl.rewrite_gate rule-tune` (training parts only; 23 s on
+the laptop, peak RSS 0.05 GB; `runs/exp28_gate/rule.json`).
+- Per fold, the best setting by training recall was **`demote` with slack 4** (the widest window) in all five
+  folds. Every `drop` setting was worse still (best `drop` 0.829–0.837 against raw 0.847–0.861).
+- Recall@32 on each fold's training part (376 answerable questions; temporal-reasoning n = 101–102):
+
+  | fold | raw | rule filter | gain | temporal raw | temporal rule | temporal gain | gate |
+  |---|---|---|---|---|---|---|---|
+  | 0 | 0.851 | 0.844 | −0.007 | 0.855 | 0.847 | −0.008 | fails |
+  | 1 | 0.853 | 0.849 | −0.004 | 0.849 | 0.840 | −0.009 | fails |
+  | 2 | 0.861 | 0.853 | −0.008 | 0.879 | 0.867 | −0.012 | fails |
+  | 3 | 0.855 | 0.847 | −0.008 | 0.858 | 0.846 | −0.012 | fails |
+  | 4 | 0.847 | 0.843 | −0.005 | 0.850 | 0.842 | −0.007 | fails |
+
+- **Plainly: the rule filter lowers recall, overall and on temporal questions, in every fold.** The best setting
+  is the one that changes the pool least. Arm (b) does not go to the reader.
+- The parser fires on about 15% of questions (56–60 of 376; 22–24 of the 101–102 temporal ones).
+- **Why (descriptive; fold 0's training part; no choice depends on it).** On the 56 questions where it fires,
+  only 56% of the evidence lies in the range at slack 1, and 84% at slack 4. All of a question's evidence lies in
+  the range for 25 of 56 questions at slack 1, and 43 of 56 at slack 4. Recall on those 56: raw 0.712, `demote`
+  slack 4 0.667, `drop` slack 1 0.386.
+  - A time phrase in the question often does not point at the session the evidence is in. Example of the kind:
+    the user mentions an event in a later chat, or the evidence spans several sessions.
+  - This also bears on arm (a): an LLM's range, even a correct reading of the phrase, faces the same mismatch.
+- The total number of answerable temporal-reasoning questions (the primary subgroup at evaluation) is **n = 127**
+  (from the `question_type` field).
+- **One fix before the numbers above, disclosed:** the first pass gave the search the question without the
+  "Question: " prefix the environment puts on it (`memctl/envs/qa.py`). That was corrected so the gate's query is
+  the controller's. The verdict did not change (every fold failed both times). The gate's 32 candidates were
+  checked equal to the controller's shortlist on 4 training questions of fold 0 (4 of 4).
+
+**Arm (a), the LLM rewrite: built, not measured (it needs Qwen 7B).**
+- Prompt v1 is frozen (§28 above; committed at 64735e2, before any recall was computed).
+- The pod step, in order (`configs/sweeps/exp28/stage.sh`):
+  1. `stage.sh gate 1 URL`: rewrite the 307 LoCoMo dev and the 500 LongMemEval questions; print the dev output
+     (`inspect`); score v1 on each fold's training part (aggregate output only).
+  2. If a fold is still open: write v2 from the LoCoMo dev output only, commit it, `stage.sh gate 2 URL`; up to v4.
+  3. The gate closes when every fold has a version, or after v4 (`runs/exp28_gate/selected.json`).
+  4. `stage.sh reader URL`: only if GO. `fixed8` and `fixed8_rewrite`, five folds, then the blind judge
+     (`configs/sweeps/exp28/judge_report.py`). The report gives the two pre-registered differences.
+  5. `python -m memctl.rewrite_gate evaluate`: test-fold recall@32 and all-in-32 per arm, once.
+- **The scripts enforce the order** (checked in the stub run): a version scored before the one before it, or
+  twice, is refused; a scored prompt file that changes is refused; `final` refuses while a fold is open and fewer
+  than four versions are scored; after `final` no more rewriting; the reader stage refuses unless the gate is GO;
+  `evaluate` refuses before the gate is final, and refuses to run twice.
+
+**Stub check (done, free; stub reader, stub rewriter, stub judge, separate stub caches).**
+- **Gate loop, full size:** v1–v4 each rewrote 500 questions and scored the five training parts, 30–56 s per
+  version, peak RSS 0.08 GB. The stub's answers are all malformed (it answers "unknown"), so every gain is 0, no
+  fold passed, and `final` wrote **DROP**, as the rule says. The reader stage then refused to start.
+- **Reader stage, full size (gate file forced to GO for the rehearsal only):** both arms × five folds, three workers
+  each, as on the pod. Stopped by SIGKILL after 40 s (60–100 of 100 per cell), then resumed against a different
+  `base_url`. All 10 cells resumed (`resumed: true`) and ended with 100 distinct questions; the resume took 24 s.
+  The stub judge graded 940 answerable answers (60 abstention answers kept).
+- Peak RSS **0.60 GB** per sweep process. Disk: about 315 MB per fold (1.6 GB in all), so the run fits (20 GB free;
+  the rule is at least 15 GB).
+- `fixed8_rewrite` replayed every rewrite from the cache with no miss. With malformed stub rewrites it equals the
+  raw question, so both arms gave P(all in view) 0.700 (§26's stub: 0.700).
+- All stub output and stub caches were deleted afterwards.
+- **Redone for design (i) (gate loop only; the reader stage is unchanged):** v1–v4 each rewrote the 307 dev and 500
+  LongMemEval questions, printed the dev output and scored the training parts with aggregate output: 42–45 s per
+  version, peak RSS 0.53 GB (loading LoCoMo). `final` wrote DROP (stub answers are malformed); the reader stage
+  refused; `inspect --ids 0 17` was refused with PermissionError. The log held no LongMemEval question text. Stub
+  output deleted.
+
+**Price (NEEDS SPEND; only §28's extra work on the shared §27 pod, Qwen2.5-7B already loaded; A40 $0.59/h).**
+- From §23's measured rate (1,500 LongMemEval answers in 10.3 min; judge about 3 min per 7,000 answers):
+  - one rewrite version: 807 short calls (307 LoCoMo dev + 500 LongMemEval; about 230 prompt tokens, at most 96
+    out), estimated at most 2.4 min, plus about 0.7 min of laptop scoring: **about 3 min per version** (an
+    estimate; short calls are not measured); at most 4 versions, 3,228 calls;
+  - writing a revision: the pod waits; **capped at 10 min per revision**, else the arm is dropped;
+  - `fixed8_rewrite` answers: 500, about 3.4 min; judge: 470 more answers, under 1 min.
+- **Best case (v1 passes): about 8 min, about $0.08.** **Worst case (three revisions, GO at v4): about 47 min, about
+  $0.46.** Dropped after v4: about 42 min, about $0.41. (Design (i) adds about 1 min per version for the dev pass.)
+- **Hard stop: raised from 45 to 50 min of §28-only pod time (about $0.49),** because the dev pass makes the worst
+  case about 47 min. If it is reached, arm (a) stops where it is and is reported as not run.
+- If §27's pod is not running, a pod of its own adds about 5 min to ready and 3.4 min for `fixed8` (about $0.09).
+- Nothing is approved. No pod was started for §28.
+
+**Recommendation.**
+- Arm (b): stopped by its pre-declared gate.
+- Arm (a): the reviewer's rule stops §28 only if neither variant improves training recall, and (a) cannot be
+  measured without the GPU. Run its gate **only as a ride-along on the §27 pod** (about $0.03 for v1's gate
+  alone; at most $0.49 with revisions and the reader). Expect little: the pool already holds 0.85 of the evidence,
+  and the rule filter shows that time ranges miss evidence sessions often. If the user prefers, stop here at $0.
+
+### 28b. Result: the LLM rewrite passes its training gate at v3; on the test folds it is level with the raw question (2026-10-09)
+
+**Pod and cost.** Shared with §27 (pod qpeirhl5gzw7dj, 07:14:04 to about 07:37:30 UTC, about $0.23 for both; the
+ledger and window are in §27a). §28's gate ran 07:16–07:34 while §27's reader ran; its reader and judge ran
+07:34–07:37.
+
+**The gate, aggregate output only.** Every revision was written from the LoCoMo dev output alone and committed
+before it was scored; no LongMemEval question text or rewrite was shown.
+
+| version | LoCoMo dev: malformed / with a range (of 307) | training recall@32 gain, overall (folds 0–4) | temporal gain | gate |
+|---|---|---|---|---|
+| v1 (frozen before the pod) | 299 / 7 | about +0.001 in every fold | 0.000 | fail in all folds |
+| v2 (28c4929) | 1 / 306, range = the asked date | −0.168 to −0.193 | −0.006 to −0.017 | fail in all folds |
+| v3 (171faef) | 0 / 3 (median width 7 days) | +0.024, +0.020, +0.011, +0.016, +0.020 | −0.001 to −0.009 | **pass in all folds** |
+
+- v1 failed on format: the model wrote `KEYWORDS:` or bare words, never `QUERY:`, so the parser fell back to the
+  raw question. v2 fixed the format but set RANGE to the date the question was asked for almost every question,
+  which pushed the latest sessions up. v3 makes RANGE "none" by default and never the asked date.
+- **v3's two in-prompt examples:** the first ("charity race run marathon fundraiser Melanie") is the model's own
+  QUERY line for LoCoMo dev question conv-26_q5, from v2's dev output; the second ("dinner restaurant friends ate",
+  asked 2023/05/20, "two weeks ago") was invented. Neither comes from a LongMemEval question; no LongMemEval
+  question text was read in writing any revision.
+- `final`: GO, v3 for every fold. The gate passed on the overall criterion; training recall on temporal questions
+  fell slightly in every fold, reported as pre-declared.
+
+**Test folds** (report: `configs/sweeps/exp28/judge_report.py report` → `runs/exp28_report.md`; 1,000 answers, 0
+failures; one blind Qwen 7B judge pass):
+
+| arm | accuracy (95% CI) | temporal-reasoning accuracy (n = 127) | unknown | P(all in view) | prompt tokens | false answers on the 30 unanswerable |
+|---|---|---|---|---|---|---|
+| `fixed8` (raw question) | 0.534 (0.489, 0.579) | 0.402 | 0.157 | 0.702 | 1,049 | 6 |
+| `fixed8` + LLM rewrite (v3) | 0.540 (0.496, 0.585) | 0.425 | 0.134 | 0.717 | 1,064 | 7 |
+
+**Pre-registered claims** (margin −0.03):
+- **All 470 answerable: +0.006 (−0.017, +0.030), non-inferior.**
+- **Temporal-reasoning subgroup (primary), n = 127: +0.024 (−0.016, +0.063), non-inferior;** not shown better.
+- The rule filter (arm b) was stopped by its free gate (§28a) and not run.
+
+**What it means.** A Qwen 7B query rewrite is safe but adds little: the 32-candidate pool already holds about 0.85
+of the evidence, and the rewrite lifts all-in-view only from 0.702 to 0.717. Its first two prompts show the
+LongMemEval paper's caveat in practice: a 7B model invents date ranges unless told plainly not to.
+
+**Pairing.** `fixed8` here used the same cached generations as §27's (470 of 470 answers identical); the two
+separate judge passes agree on 469 of 470 verdicts (0.534 here, 0.536 in §27).
 
 ## 5. The sequential task
 
