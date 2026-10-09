@@ -3696,6 +3696,36 @@ in §23). Each arm is tested on its own; there is no claim on A against B.
   `OPENJEV_MAX_MODEL_LEN=32768` (shipped default 65,536; a bf16 KV cache takes twice the FP8 memory, and the
   largest measured state is about 22k tokens, so no request is affected). Ready means `GET /health` answers
   within 10 minutes of create; the smoke then runs `exp26_smoke.yaml` through `runs/_pipelines/exp26_smoke.sh`.
+- **Step 1 result (smoke, 2026-10-09).** Pod fhuj9gabzst39f (A40, CA-MTL-1, $0.59/h), 05:26:31 to about 05:45:15
+  UTC, about 0.31 h, **about $0.18**; terminated, list-pods empty.
+  - **The A40 works with the declared flag.** The image pulled in 3 min (digest confirmed in the pod log); vLLM
+    accepted `kv_cache_dtype=bfloat16`, loaded the weights in 32 s (18.15 GiB; weight-only FP4 through Marlin, as
+    predicted), and `/health` answered at 05:34:01, 7.5 min after create. No fallback card was needed.
+  - **One bug, fixed before any answer was stored:** the first smoke call got HTTP 403, because RunPod's proxy
+    refuses Python's default User-Agent. `jev.py` now sends `User-Agent: memctl`, as `memctl/llm.py` already did
+    (1f98053; 23 jev tests pass). The rerun stored every answer.
+  - About 7 min of the pod time was idle after the smoke finished (05:37:41), because my wait loop matched its
+    own command line; disclosed.
+  - **Measured, 2 training conversations of fold 0 (no test question), stub reader, both arms at once:**
+
+    | | arm A (memory manager) | arm B (selector) |
+    |---|---|---|
+    | OpenJev calls per question | 21.5 | 1 |
+    | wall seconds per call | 4.4 (median 4.0) | 6.4 |
+    | OpenJev wall seconds per question | about 94 | about 6.4 |
+    | input tokens per call (server `usage`) | about 21,100 | about 12,700 |
+    | server model seconds per call | 12.3 | 8.7 |
+    | forced evictions per question | 1 | 0 |
+
+  - **Cost axis, from this smoke (single stream):** arm A about 94,000 OpenJev wall seconds per 1,000 questions,
+    arm B about 6,400; `fixed8` uses no GPU (about 134 CPU seconds). Concurrency across folds will lower wall time;
+    how much is measured in phase 1.
+  - **Re-quote for the next steps (not approved; for the user):**
+    - Arm B's fill on a new A40: 7.5 min to ready, then 500 calls at about 6.4 s each, five folds at once:
+      about 15–55 min in all, **about $0.15–0.55, hard stop 60 min ($0.59)**.
+    - Arm A's fill: 500 × 94 s is 13 h single-stream; even a threefold gain from concurrency is about 4.4 h
+      (about $2.60), so under the $3.00 cap only a prefix of each fold is likely (the pre-declared cut rule).
+    - Phase 2 (all arms on our vLLM 0.8.5 A40): about $0.25, hard stop 45 min.
 
 **Sequence and cost (NEEDS SPEND; measured inputs, one guess, marked).**
 - **Measured:** §23 Qwen 7B answered 1,500 LongMemEval questions in 10.3 min; first model ready 4.4 min after
