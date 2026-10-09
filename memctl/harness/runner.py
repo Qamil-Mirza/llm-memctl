@@ -85,7 +85,13 @@ class Experiment:
             return UNLIMITED, None, None
         if "tokens" in budget:
             return int(budget["tokens"]), None, None
-        history = self.hindsight(seed).total_tokens
+        # An environment whose stream depends on the agent (StreamMemBench: feedback quotes the answers) can
+        # state its history size itself, so the budget needs no reference pass with the real agent.
+        known = getattr(self.env, "history_tokens", None)
+        if callable(known):
+            history = int(known(seed, bool(self.config["memory"].get("count_labels", False))))
+        else:
+            history = self.hindsight(seed).total_tokens
         return max(1, int(float(budget["fraction"]) * history)), history, float(budget["fraction"])
 
     def run_episode(
