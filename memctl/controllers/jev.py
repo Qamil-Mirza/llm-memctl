@@ -188,7 +188,7 @@ class TypeSafeJevClient:
                 return dataclasses.replace(response, cached=True)
             if self.cache_only:
                 raise JevUnavailableError(f"cache_only: no stored answer for this request in {self.cache_dir}")
-        headers = {"Content-Type": "application/json"}
+        headers = {"Content-Type": "application/json", "User-Agent": "memctl"}  # proxies refuse the urllib default (403)
         if self._api_key:
             headers["Authorization"] = f"Bearer {self._api_key}"
         started = time.perf_counter()
