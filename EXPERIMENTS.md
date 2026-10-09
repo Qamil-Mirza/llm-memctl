@@ -3567,6 +3567,20 @@ tried, is a separate pre-registered arm, tuned on training conversations only (n
   If Llama 3B is still refused when its turn comes, Llama 8B runs alone and only claim (a) at 8B is reported for
   Llama; (b) and the cross-family test are not tested for it. The token reaches the pod as a RunPod secret, so its
   value never passes through this session.
+- **Deviations during the run (recorded before the judge pass; no grading result seen).**
+  - Gemma 4B first loaded with vLLM's default dtype and produced only `<pad>` tokens (the known float16 overflow).
+    The stage was stopped after 75 answers, all empty; they were deleted ungraded from the cache and the run
+    folders. The model was reloaded with `--dtype bfloat16` (the pre-registered bf16), and Gemma 12B is served the
+    same way.
+  - The check after the reload was one outside question, "What is the capital of France? Answer briefly."
+    (answer "Paris."), not a benchmark question; then the first 60 benchmark answers were checked for emptiness
+    and `<pad>` only (0 of each), never for correctness.
+  - Phi-4-mini's answers were checked the same way (emptiness and form only): 14 of 1,500 empty.
+- **Degenerate answers, a descriptive column (declared before the judge pass).** Per reader and arm, the report
+  counts raw reader outputs that are: **empty** (blank after stripping); in a **repetition loop** (one word repeated
+  at least 9 times in a row, the regex `\b(\w+)( \1\b){8,}`; this is the rule behind the Phi-4-mini figure of
+  about 6.5% quoted on the channel during the run); or containing **special-token text** (`<|` or `<pad>`). These
+  answers are judged like any other; claims (a) and (b) are unchanged.
 
 ## 5. The sequential task
 
