@@ -2049,6 +2049,8 @@ is declared once and not swept.
     order-by-order loop in value and gradient.
 
   The full-size stub iteration peaks at 0.44 GB.
+- **Added 2026-10-09 (§24):** before launch, delete the stub output and confirm at least 15 GB of free disk. A
+  full-size stub rehearsal of many readers can itself fill the disk (§24's was 20 GB) and break a paid stage.
 - **What a result means, stated in advance.**
   - A pass on RQ3 means RL on the reader's own correctness beats imitation of
     evidence labels. The per-type rows that move then show what the labels
@@ -3576,6 +3578,15 @@ tried, is a separate pre-registered arm, tuned on training conversations only (n
     (answer "Paris."), not a benchmark question; then the first 60 benchmark answers were checked for emptiness
     and `<pad>` only (0 of each), never for correctness.
   - Phi-4-mini's answers were checked the same way (emptiness and form only): 14 of 1,500 empty.
+  - **Disk full during Llama 8B (about 04:20 UTC).** The laptop disk filled up (the §24 stub output was 20 GB), and
+    the Llama 8B `fixed8`/`fixed16` cells stopped with ENOSPC at 54–69 of 100 questions; the FIFO cells were complete.
+    The stub output was deleted, one truncated last line of `f0/fixed8/steps.jsonl` was removed, and 9 partial
+    `.tmp` cache files were deleted (every cache entry parses). The stage resumed at 04:24 on the same endpoint,
+    through the rehearsed resume path, and finished at 04:28:54.
+  - **Checks after the resume (before the judge pass):** every Llama 8B cell has exactly 100 distinct questions,
+    each with one scored answer; P(all in view) and prompt tokens per question equal Phi-4's in all 15 cells (the
+    controller side is reader-independent, so the resume changed no state); none of the 1,500 cached Llama 8B
+    answers is empty.
 - **Degenerate answers, a descriptive column (declared before the judge pass).** Per reader and arm, the report
   counts raw reader outputs that are: **empty** (blank after stripping); in a **repetition loop** (one word repeated
   at least 9 times in a row, the regex `\b(\w+)( \1\b){8,}`; this is the rule behind the Phi-4-mini figure of
