@@ -4784,8 +4784,12 @@ features, the global features, the evidence labels and the reader lines.
   and 94–95 answerable questions.
 - **Grid: w ∈ {0.1, 0.25, 0.5, 0.75, 0.9}** (strictly between the two pure heads, which are their own arms).
 - **Criterion:** a blend head per w trained on inner-train; on inner-val, the reader's mean log P(gold | question + the
-  head's top 8 in arrival order), same prompt shape as the signal. This is the reader's own number, so it favours
-  neither label. Highest mean wins; ties go to the w closest to 0.5, then the smaller.
+  head's top 8 in arrival order), same prompt shape as the signal. Highest mean wins; ties go to the w closest to
+  0.5, then the smaller.
+- **Note (review): the criterion leans toward utility.** Mean log P(gold) under the head's top 8 is close to the
+  quantity the utility term trains toward, so it may favour the larger w. It stays as the criterion: it is a
+  reader-side proxy computed on training questions only, with no generation and no judge. The reader pass on the test
+  folds is what decides C2.
 - At most 5 × 472 = **2,360 calls**, fewer when two weights pick the same 8.
 - Reported (training side, descriptive): each w's inner-val score and its pool-relative all-found@8.
 - Then the final blend head is trained with fold k's chosen w on all 376.
@@ -4794,7 +4798,8 @@ features, the global features, the evidence labels and the reader lines.
 as §23 and §27; `configs/sweeps/exp29/exp29_qwen7b_f{0..4}.yaml`; new cache `cache/generations_exp29_qwen7b`):
 - FIFO + floor at 5% with the 3k target, and `fixed8` (the §19 head A): rerun in the same session for pairing.
 - `utility_head`, `blend_head`: 8 of the same 32, ranked by the new heads.
-- `evidence_rows`: the control above.
+- `evidence_rows`: the control above. **It carries no claim, now or after the run**: it is reported only as the two
+  descriptive differences below, and no verdict is drawn from it.
 
 **Claims, pre-registered** (470 answerable questions, paired by question, 95% bootstrap by question, margin −0.03,
 as §23; `configs/sweeps/exp29/judge_report.py report`):
@@ -4811,6 +4816,10 @@ as §23; `configs/sweeps/exp29/judge_report.py report`):
 **Optional second signal: declared, costed, not run in this pass.**
 - Definition: leave-one-out utility within the evidence head's top 8, log P(gold | question + the 8) − log P(gold |
   question + the 8 without turn c).
+- **Note (review): the main signal is pointwise.** It scores one turn at a time against the question alone. Turns
+  that help only together (a multi-session count, or a date in one turn and the event in another) each get little
+  credit, so the utility head may under-rank them. Leave-one-out credit within a set is the declared way to address
+  that; it is not part of this run.
 - Why not now: `fixed8` shows all 8, in arrival order, so credit inside the 8 cannot change what is shown. It would
   matter only as a demotion rule (a top-8 turn with negative credit swapped for the 9th), which is a new design, not
   declared here. Also, the evidence head's top 8 differ by fold, so the rows are not fold-invariant: 4 folds × 470 ×
@@ -4842,10 +4851,19 @@ as §23; `configs/sweeps/exp29/judge_report.py report`):
   evidence-rows head does not depend on the utility, so its stub value, **0.698**, is the real head's. Nothing was
   chosen or changed after it: the arms, claims, grid, loss and training settings above were all written before the
   stub run, and the evidence-rows arm carries no claim. It is reported here so the reader knows.
+  - **Ruling (review):** it stays disclosed as a leak; it does not taint C1–C4, because no claim involves the
+    evidence-rows arm and nothing was decided after it.
+  - **Fixed so it cannot happen again.** The leak came from an ad hoc script that read the stub reader cells, which
+    played the test folds. Now (a) the rehearsal's reader cells play each fold's **training** part (`stage.sh` rewrites
+    `part: test` to `part: train` under `STUB=1`), and (b) every stub metric goes through
+    `memctl.reader_utility.cell_questions`, which raises PermissionError for a cell not on a training part, or for any
+    episode whose question is in its fold's test part, before any metric is read. The stub judge and report use the
+    same check. The same pattern as the rows guard: refuse, never filter. Tested
+    (`test_stub_metrics_refuse_test_fold_cells`). No metric was recomputed for this fix.
 - **Disk.** Free space was 13.6–14.4 GB throughout (other runs hold the rest), never under the 12 GB floor. The stub
   output's peak footprint was 244 MB. **All stub output, stub caches, stub configs and stub logs were deleted.** The
   free rows file (`runs/exp29/rows.jsonl.gz`, sha256 2a82c8ac87e3…) is kept for the pod day.
-- Tests: `tests/test_reader_utility.py`, 6 pass (prompt equality, losses, the fold guard and the POISON file,
+- Tests: `tests/test_reader_utility.py`, 7 pass with the stub-metric guard test added later (prompt equality, losses, the fold guard and the POISON file,
   deterministic training and a checkpoint the controller loads, the scorer against the fake server with resume on a
   second URL). Full suite: 254 pass; the 2 failures in `test_import_boundaries.py` are on main already.
 

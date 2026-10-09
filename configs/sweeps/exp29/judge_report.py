@@ -32,11 +32,21 @@ out = args.out or Path(args.runs) / f"{args.prefix}_verdicts.json"
 index = _index(PATH)
 
 
+STUB = args.prefix.startswith("stub")
+
+
 def cells():
+    """The real run's cells are on the test folds; a stub run's are on the training parts (stage.sh), and each stub
+    cell is checked by memctl.reader_utility.cell_questions, which refuses a test-fold cell before anything is read."""
+    from memctl.reader_utility import cell_questions
+
     for k in range(5):
-        chosen = fold_indices(index, 5, k)
         for arm in ARMS:
-            yield k, chosen, arm, Path(args.runs) / f"{args.prefix}_qwen7b_f{k}" / f"{arm}__fraction0.05"
+            cell = Path(args.runs) / f"{args.prefix}_qwen7b_f{k}" / f"{arm}__fraction0.05"
+            if STUB and (cell / "config.yaml").exists():
+                cell_questions(cell)
+            chosen = fold_indices(index, 5, k, "train" if STUB else "test")
+            yield k, chosen, arm, cell
 
 
 if args.stage == "judge":

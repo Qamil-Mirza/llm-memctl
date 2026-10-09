@@ -6,7 +6,9 @@
 #   stage.sh train         CPU: final utility / blend / evidence-rows heads per fold, then the controller check
 #   stage.sh reader URL    pod step 2: five arms x five test folds, then the one blind judge pass
 #   stage.sh report        the pre-registered claims, once
-# STUB=1: the free rehearsal against configs/sweeps/exp29/fake_vllm.py; separate stub folders and caches.
+# STUB=1: the free rehearsal against configs/sweeps/exp29/fake_vllm.py; separate stub folders and caches. Its reader
+# cells play each fold's training part; its metrics go through memctl.reader_utility stub-metrics, which refuses
+# test-fold cells.
 set -u -o pipefail
 ROOT=/home/qamil-mirza/Code/llm-memctl
 PY=$ROOT/.venv/bin/python
@@ -59,8 +61,9 @@ reader)
     OUT=runs/_sweeps/${TAG}exp29_qwen7b_f$k.yaml
     sed -e "s#POD_URL#$URL#g" -e "s#HEADS_DIR#$HEADS#g" configs/sweeps/exp29/exp29_qwen7b_f$k.yaml > $OUT
     if [ -n "$TAG" ]; then
+      # The rehearsal plays each fold's TRAINING part, never its test part, so no stub number is a test-fold number.
       sed -i -e "s#cache/generations_exp29_qwen7b#cache/stub_generations_exp29#g" -e "s#^name: exp29_#name: stub_exp29_#" \
-          -e "s#detail_episodes: 100000#detail_episodes: ${STUB_DETAIL:-100000}#" $OUT
+          -e "s#detail_episodes: 100000#detail_episodes: ${STUB_DETAIL:-100000}#" -e "s#part: test#part: train#" $OUT
     fi
     $GUARD $PY -m memctl.sweep --config $OUT --workers 3 >> runs/_logs/${TAG}exp29_reader.log 2>&1 &
   done

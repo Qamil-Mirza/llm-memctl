@@ -153,3 +153,36 @@ def test_scorer_reads_the_gold_span_and_resumes_against_another_url(tmp_path, fa
     assert first["logprob"] > empty["logprob"]  # the turn holding the answer has positive utility
     other = ru.Scorer(fake_server[1], str(tmp_path / "cache"))
     assert other.logprob(user, "Business Administration") == first and other.calls == 0 and other.hits == 2
+
+
+def _cell(tmp_path, name, folds):
+    import yaml
+
+    cell = tmp_path / name
+    cell.mkdir()
+    env = {"name": "longmemeval", **({"folds": folds} if folds else {})}
+    (cell / "config.yaml").write_text(yaml.safe_dump({"env": env}))
+    (cell / "episodes.jsonl").write_text("".join(json.dumps({"seed": s, "evidence_complete_rate": 1.0}) + "\n"
+                                                 for s in range(3)))
+    (cell / "metadata.json").write_text(json.dumps({"resumed": True}))
+    return cell
+
+
+@needs_s
+def test_stub_metrics_refuse_test_fold_cells(tmp_path):
+    from memctl.envs.longmemeval import _index
+    from memctl.splits import fold_indices
+
+    test_cell = _cell(tmp_path, "test", {"k": 5, "fold": 1, "part": "test"})
+    with pytest.raises(PermissionError):
+        ru.stub_metrics([test_cell])
+    with pytest.raises(PermissionError):  # no folds at all: the whole file, test questions included
+        ru.cell_questions(_cell(tmp_path, "nofolds", None))
+    train_cell = _cell(tmp_path, "train", {"k": 5, "fold": 1, "part": "train"})
+    fold, ids = ru.cell_questions(train_cell)
+    index = _index(ru.PATH)
+    test_ids = {index[i]["question_id"] for i in fold_indices(index, 5, 1, "test")}
+    assert fold == 1 and len(ids) == 3 and not test_ids & set(ids)
+    assert ru.stub_metrics([train_cell])[str(train_cell)]["distinct"] == 3
+    stage = (ROOT / "configs/sweeps/exp29/stage.sh").read_text()
+    assert "s#part: test#part: train#" in stage  # the rehearsal's reader cells play the training parts

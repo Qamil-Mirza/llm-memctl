@@ -555,9 +555,52 @@ def check(rows_path: Path, fold: int, n: int) -> None:
     print(f"check: fold {fold}, {n} training questions x 3 heads: controller picks equal row picks")
 
 
+def cell_questions(cell: Path) -> tuple[int, list[str]]:
+    """(fold, question ids) of a finished sweep cell, refusing any cell that is not on a TRAINING part.
+
+    The stub rehearsal's metrics go through here (and judge_report.py's stub report), so no stub number can ever be
+    computed on test-fold questions: a cell configured on `part: test`, or any episode whose question is in its
+    fold's test part, raises PermissionError before any metric is read."""
+    import yaml
+
+    from memctl.envs.longmemeval import _index
+    from memctl.splits import fold_indices
+
+    config = yaml.safe_load((cell / "config.yaml").read_text())
+    folds = (config.get("env") or {}).get("folds") or {}
+    part, fold = folds.get("part", "test"), int(folds.get("fold", -1))
+    if part not in ("train", "train_a", "train_b") or fold < 0:
+        raise PermissionError(f"{cell}: stub metrics run on training parts only (this cell is on part {part!r})")
+    index = _index(PATH)
+    chosen = fold_indices(index, int(folds.get("k", K)), fold, part)
+    test = {index[i]["question_id"] for i in fold_indices(index, int(folds.get("k", K)), fold, "test")}
+    ids = []
+    with open(cell / "episodes.jsonl") as handle:
+        for line in handle:
+            ids.append(index[chosen[json.loads(line)["seed"] % len(chosen)]]["question_id"])
+    if test & set(ids):
+        raise PermissionError(f"{cell}: {len(test & set(ids))} test-fold questions; refusing")
+    return fold, ids
+
+
+def stub_metrics(cells: list[Path]) -> dict:
+    """Reader-free rehearsal checks per cell (episodes, distinct questions, resumed, P(all in view)), on training-part
+    cells only (cell_questions refuses anything else before a metric is read)."""
+    out = {}
+    for cell in cells:
+        _, ids = cell_questions(cell)
+        episodes = [json.loads(line) for line in open(cell / "episodes.jsonl")]
+        meta = json.loads((cell / "metadata.json").read_text())
+        out[str(cell)] = {"episodes": len(episodes), "distinct": len(set(ids)), "resumed": meta.get("resumed"),
+                          "all_in_view": sum((e.get("evidence_complete_rate") or 0) >= 1 for e in episodes)
+                          / max(1, len(episodes))}
+    return out
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("stage", choices=("rows", "signal", "tune", "train", "check"))
+    parser.add_argument("stage", choices=("rows", "signal", "tune", "train", "check", "stub-metrics"))
+    parser.add_argument("--cells", nargs="*", default=[], help="stub-metrics: sweep cell folders (training parts only)")
     parser.add_argument("--base-url")
     parser.add_argument("--backend", default="openai", choices=("openai", "stub"))
     parser.add_argument("--cache", default=os.environ.get("EXP29_CACHE", "cache/utility_exp29"))
@@ -568,6 +611,9 @@ def main() -> None:
     rows_path, utility_path = OUT / "rows.jsonl.gz", OUT / "utility.jsonl.gz"
     if args.stage == "rows":
         build_rows(rows_path, args.workers)
+        return
+    if args.stage == "stub-metrics":
+        print(json.dumps(stub_metrics([Path(c) for c in args.cells]), indent=1))
         return
     if args.stage in ("signal", "tune") and args.backend == "openai" and not args.base_url:
         parser.error("--base-url is needed")
