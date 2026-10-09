@@ -34,6 +34,7 @@ from memctl.features import ITEM_FEATURES, GLOBAL_DIM, VERSION_FEATURES, Featuri
 from memctl.memory.actions import MemoryAction, Operation
 from memctl.memory.items import Fidelity, MemoryItem, count_tokens
 from memctl.memory.state import MemoryView
+from memctl.query_rewrite import QueryRewriter
 from memctl.retrieval import bridge_search, build_retriever
 from memctl.rl.policy import N_COLUMNS, REMOVAL_OPERATIONS, RETRIEVE_COLUMN, ItemPolicy, KChooser, MassChooser, NeededModel, k_features, k_masses
 from memctl.task import TaskState
@@ -152,10 +153,15 @@ class RLController(MemoryController):
         # rank first (a question-blind note that depends only on its session). Notes are CONSOLIDATE actions with
         # write_note (memctl/memory/engine.py), and are deleted, not archived, at the next step.
         self.notes = dict(config["notes"]) if config.get("notes") else None
+        # Experiment 28: query_rewrite changes which candidates the shortlist holds (memctl/query_rewrite.py):
+        # extra search words from a model and/or a date range from the question. The head and the reader still
+        # see the question unchanged. None (default) leaves the search as before.
+        self.rewriter = QueryRewriter(dict(config["query_rewrite"])) if config.get("query_rewrite") else None
         self._order: list[int] = []
         self.hindsight = None
         self._question_tokens = 0
         self._k_info: dict = {}
+        self._rewrite_info: dict = {}
         # Target fill: remove until active memory is at most this many tokens, even when the budget allows
         # more (a small reader can do worse with more context). None (default) fills up to the budget.
         self.target_tokens = int(config["target_tokens"]) if config.get("target_tokens") else None
@@ -235,14 +241,19 @@ class RLController(MemoryController):
         return item.token_count
 
     def decide(self, memory: MemoryView, task: TaskState) -> list[MemoryAction]:
-        self._info, self._k_info, self._order = {}, {}, []
+        self._info, self._k_info, self._order, self._rewrite_info = {}, {}, [], {}
         self._question_tokens = count_tokens(task.observation.content)
         for item in memory.active:  # keep lineage up to date even on steps with no decision
             self._root_ids(item)
         shortlist: list[tuple[MemoryItem, float]] = []
         searching = self.allows(Operation.RETRIEVE_FROM_ARCHIVE) and task.observation.requires_response and memory.archived
         if searching:
-            shortlist = self.retriever.search(task.observation.content, memory.archived, self.retrieve_candidates)
+            if self.rewriter is not None:
+                shortlist = self.rewriter.search(self.retriever, task.observation.content, memory.archived,
+                                                 self.retrieve_candidates)
+                self._rewrite_info = {"rewrite": dict(self.rewriter.last)}
+            else:
+                shortlist = self.retriever.search(task.observation.content, memory.archived, self.retrieve_candidates)
         bridge: dict[str, float] = {}
         if self.bridge_search and searching:
             found = bridge_search(self.retriever, task.observation.content, memory.active, memory.archived,
@@ -474,7 +485,8 @@ class RLController(MemoryController):
         return k
 
     def decision_info(self) -> dict:
-        return {**self._info, **self._k_info} if self._k_info else self._info
+        info = {**self._info, **self._k_info} if self._k_info else self._info
+        return {**info, **self._rewrite_info} if self._rewrite_info else info
 
     # ---- checkpoints ------------------------------------------------------------------
 

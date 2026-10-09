@@ -71,6 +71,7 @@ commands given).
 | 24 | Reader families (Llama, Gemma 3, Phi-4; two sizes each) | Lift (a) PASSES in all six readers (+0.06 to +0.16). Size step (b): Gemma 3 4B→12B NON-INFERIOR (+0.015, CI −0.028..+0.057; closes 111%); Llama −0.051 and Phi-4 −0.117 NOT SHOWN. "Smaller gains most" holds in Llama only. $1.44 |
 | 25 | StreamMemBench zero-shot transfer of the §19 head (free close) | Closed without a paid run at the user's decision; $0. Evidence in view on 541 evaluation anchors: FIFO 0.93 / 0.91 / 1.00 (initial / revised / follow-up), `fixed8` 0.32 / 0.23 / 0.10: the head does not transfer, because recency wins on this benchmark |
 | 26 | OpenJev (open Jev re-creation) as a controller | Arm B (selector, 8 of the head's 32 candidates): B − FIFO +0.045 (CI +0.004..+0.087), BETTER; B − `fixed8` −0.036 (CI −0.081..+0.009), not shown; B's prompts 2,373 tokens vs 1,049. Arm A (memory manager) cost only: ~94 GPU-s per question (~$15 per 1,000); accuracy not run by decision. $0.64 |
+| 28 | Query rewriting for the head's 32 candidates: LLM rewrite (a), rule time filter (b) | Pre-registered; the free training-side gate for (b) is in §28a. (a) NEEDS SPEND, not approved |
 
 ---
 
@@ -4239,6 +4240,115 @@ verdicts in `runs/exp26_verdicts.json`):
 **Limitations.** OpenJev approximates Jev; nothing here is a result about TypeSafe's Jev. The A40 runs it with a
 bf16 KV cache (declared deviation) and weight-only FP4. One benchmark, one reader, one judge. Arm A's accuracy was
 not measured.
+
+## 28. Query rewriting for the head's candidate pool (2026-10-09, pre-registered, NOT YET APPROVED for spend)
+
+**Status:** pre-registered before any recall was computed. The free part (the rule filter's training-side recall)
+follows in §28a. The paid part (arm (a)'s gate and the reader) NEEDS SPEND and is not approved.
+
+**Why.**
+- The §19 head picks 8 of the 32 BM25 candidates. It cannot show a turn that is not in the 32. So a better pool
+  could lift `fixed8` with no change to the head.
+- **The LongMemEval paper's claim, not ours** (Wu et al., arXiv 2410.10813, memory-design section): time-aware
+  query expansion gives +7–11% recall on temporal questions; fact-augmented keys give +4% retrieval and +5%
+  accuracy.
+- **Caveat from the same paper:** Llama 3.1 8B struggled to extract time ranges; GPT-4o did not. Our rewriter
+  would be Qwen2.5-7B, so the same risk applies.
+
+**Where the query is formed.** `memctl/controllers/rl.py`, `decide()`: the BM25 query is the question
+observation's text, "(asked on DATE) question". The new `query_rewrite` config (`memctl/query_rewrite.py`) changes
+only the search. The head and the reader still see the question unchanged.
+
+**Two variants, against `fixed8` (raw question).**
+- **(a) LLM rewrite.** Qwen2.5-7B gets the question and the question date, and writes two lines: `QUERY:` extra
+  search words, and `RANGE:` a date range or "none". One call per question, cached (`cache/rewrite_exp28`), so the
+  reader run replays it (`cache_only`; a miss is an error).
+  - BM25 query = the question text plus the `QUERY` words (expansion; nothing of the question is removed).
+  - The range is widened by 3 days each side and applied by `demote` (below). A malformed answer gives the raw
+    question. Both fixed before any rewrite.
+- **(b) Rule-based time filter.** No model. A regex parser (`rule_range`) reads time phrases ("N days/weeks/months
+  ago", "last week/month/year/weekend", "the past N weeks", "yesterday", "last Saturday", "in March", "May 3rd",
+  "the 5th of April", "this month", YYYY/MM/DD) and turns them into a date range, counted back from the question
+  date. Several phrases give their union. The end is never after the question date.
+  - **No new dependency.** `dateparser` is not installed; the parser uses only the standard library.
+  - **Written blind.** The parser was written from general English phrasing, and checked only on made-up
+    sentences, before any LongMemEval question was read for this experiment. No question text is read to change it.
+- **Two ways to apply a range** (both rank the whole archive once, so BM25 statistics do not change):
+  - `drop`: only candidates whose session date is in the range (the pool may be smaller than 32);
+  - `demote`: in-range candidates first, then the rest, each in BM25 order, up to 32.
+
+**No held-out peeking: cross-fitting, as the §19 head.**
+- The head has one checkpoint per fold, trained on that fold's training part. Every §28 choice is made the same
+  way: for fold f, on fold f's training part only (about 376 answerable questions), then applied to fold f's
+  test part.
+- With five folds over all 500 questions, every question is in some fold's training part. So "train first, test
+  later" cannot mean "rewrite these questions later". What is held out is **the labels**: fold f's test-part
+  evidence is read by nothing until the evaluation.
+- Enforced in code (`memctl/rewrite_gate.py`): the gate reads labels only through each fold's training part;
+  `evaluate`, the only code that reads test-part labels, refuses to run before the arm (a) gate is final, and runs
+  once (it refuses if its output exists).
+- The rewrites themselves read no label, so all 500 are written in one pass (a question's rewrite does not depend
+  on which fold it is tested in).
+
+**The metric for every choice: BM25 recall@32 of evidence turns.** Per question, the share of its evidence
+requirements in the 32 (a marked turn; for an answer session with no marked turn, any turn of it), as the harness
+counts them. Abstention questions are left out. "All in the 32" is reported beside it.
+
+**The gate (one rule for both variants; fixed now).**
+- On fold f's training part, a variant **passes** if mean recall@32 rises by at least **+0.01** over the raw
+  question, **or** rises by at least **+0.02 on the temporal-reasoning questions while not falling overall**.
+- A variant goes to the reader only if it passes on **all five** folds. If neither passes, §28 stops before the pod,
+  as §25 did.
+
+**Arm (b)'s settings, chosen per fold on the training part.** Action `drop` or `demote`, and slack 0.5, 1, 2 or 4
+(the window around a point in time: ±2 days, ±4 for weeks, ±15 for months, ±120 for years, times the slack). The
+choice is the highest overall training recall@32; ties go to `demote`, then the smaller slack. Then the gate.
+
+**Arm (a)'s prompt: the first version is frozen now** (`configs/sweeps/exp28/prompts/v1.txt`; `{asked}` is the
+question date with its weekday, `{question}` the question):
+
+```
+You help search a user's past chats with an AI assistant. A keyword search (BM25) will look for the chat messages that answer the user's question below.
+
+The question was asked on {asked}.
+Question: {question}
+
+Write exactly two lines and nothing else:
+QUERY: the words a message that answers the question would likely contain: the key nouns, names, places, activities and verbs of the question, plus a few close synonyms. Do not repeat question words such as "how many" or "when", and do not write dates here.
+RANGE: if the question refers to a time, such as "two weeks ago", "last Saturday", "in March", "yesterday" or "last month", the dates the chat most likely took place, as YYYY/MM/DD - YYYY/MM/DD, worked out from the date the question was asked. If the question does not refer to a time, write: RANGE: none
+```
+
+- It is not tuned now: a small CPU model is not a stand-in for Qwen 7B's behaviour. Its training recall@32 is the
+  **first step on the pod**, before any reader call.
+- **Up to 3 revisions on the pod (the reviewer's refinement, 2026-10-09).** After v1, up to three more versions
+  (v2–v4) may be written, each scored once by the gate on the training parts of the folds still open.
+  - **A fold freezes the first version that passes on its training part.** Folds already frozen are not
+    rescored.
+  - If after v4 any fold has no passing version, **arm (a) is dropped before any reader call**, and the reason is
+    recorded. Nothing is carried forward as "best of".
+  - A revision may use only what the outputs show about **format** (malformed lines, date style, ranges given or
+    not): `rewrite_gate inspect` prints only that, and reads no label. Never per-question recall, never test-part
+    anything.
+  - Every version's text, hash and per-fold training recall is logged (`runs/exp28_gate/state.json`) and copied
+    into §28.
+  - The script enforces the order: versions in turn, each scored once, a scored prompt file may not change, at
+    most four, and the reader stage refuses to start until `final` has been written.
+
+**Arms on the shared pod (later; Qwen2.5-7B reader, frozen 7b5fc30 prompt, five test folds, §19 head A per fold).**
+- `fixed8` (raw question). The §27 branch reruns it for pairing; this branch's configs use the same reader cache,
+  `cache/generations_exp27_qwen7b`, so both branches' `fixed8` rows are the same generations.
+- `fixed8_rewrite` (arm (a)), only if its gate is GO.
+- `fixed8_timefilter` (arm (b)), only if its gate is GO.
+
+**Pre-registered claims** (470 answerable questions, paired by question, 95% bootstrap by question as §23; margin
+−0.03).
+1. **Each variant minus `fixed8`, on all 470.** Non-inferior if the lower bound is above −0.03; better if above 0.
+   Expected ≥ 0.
+2. **The same difference on the temporal-reasoning subset, the primary subgroup** (n is given in §28a from the
+   `question_type` field). Same thresholds.
+- Reported once, at evaluation (`rewrite_gate evaluate`): reader-free P(all in view) and BM25 recall@32 per arm on
+  the test folds.
+- Abstention questions: false answers on the 30 unanswerable questions, reported as usual.
 
 ## 5. The sequential task
 

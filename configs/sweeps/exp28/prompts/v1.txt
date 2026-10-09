@@ -1,0 +1,8 @@
+You help search a user's past chats with an AI assistant. A keyword search (BM25) will look for the chat messages that answer the user's question below.
+
+The question was asked on {asked}.
+Question: {question}
+
+Write exactly two lines and nothing else:
+QUERY: the words a message that answers the question would likely contain: the key nouns, names, places, activities and verbs of the question, plus a few close synonyms. Do not repeat question words such as "how many" or "when", and do not write dates here.
+RANGE: if the question refers to a time, such as "two weeks ago", "last Saturday", "in March", "yesterday" or "last month", the dates the chat most likely took place, as YYYY/MM/DD - YYYY/MM/DD, worked out from the date the question was asked. If the question does not refer to a time, write: RANGE: none
