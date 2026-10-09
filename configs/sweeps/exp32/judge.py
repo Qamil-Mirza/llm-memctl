@@ -13,8 +13,7 @@ from memctl.judge import Judge
 from memctl.splits import fold_indices
 
 PATH = "data/longmemeval/longmemeval_s_cleaned.json"
-ARMS = ("fixed8", "bm25_top8", "rrf_top8", "lr_pointwise", "gbdt_pointwise", "cross_encoder_zero",
-        "cross_encoder_tuned")
+ARMS = ("fixed8", "bm25_top8", "rrf_top8", "lr_pointwise", "gbdt_pointwise", "cross_encoder_zero")
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--base-url")

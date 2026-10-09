@@ -32,7 +32,8 @@ def arms(k: int, cache_only: bool, fresh: bool = False) -> list[dict]:
         {"name": "rerank", "label": "gbdt_pointwise", **SLOT,
          "scorer": {"kind": "pointwise", "model": f"configs/sweeps/exp32/models/gbdt_f{k}.pkl"}},
         ce("cross_encoder_zero", CE, "zero"),
-        ce("cross_encoder_tuned", f"runs/exp32_rerankers/ce_tuned_f{k}", "tuned"),
+        # cross_encoder_tuned was dropped before any test-fold run: CPU fine-tuning is not feasible in minutes here
+        # (EXPERIMENTS.md §32, "Cross-encoder fine-tuning dropped").
     ]
 
 

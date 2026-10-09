@@ -20,7 +20,7 @@ mkdir -p runs/_logs runs/_sweeps
 left() { [ -z "${DEADLINE:-}" ] && { echo 86400; return; }; echo $(( DEADLINE - $(date +%s) )); }
 FREE=$(df --output=avail -BG . | tail -1 | tr -dc 0-9)
 [ "$FREE" -lt 15 ] && { echo "only ${FREE} GB free; need 15" >&2; exit 4; }
-for k in 0 1 2 3 4; do for name in zero tuned; do
+for k in 0 1 2 3 4; do for name in zero; do
   [ -s cache/exp32_ce/${name}_f$k.jsonl ] || { echo "missing cache/exp32_ce/${name}_f$k.jsonl: run the free pass first" >&2; exit 5; }
 done; done
 if [ "$BACKEND" = openai ]; then

@@ -98,17 +98,5 @@ grid:
       model: cross-encoder/ms-marco-MiniLM-L-6-v2
       cache: cache/exp32_ce/zero_f4.jsonl
       cache_only: true
-  - name: rerank
-    label: cross_encoder_tuned
-    retrieval_method: lexical
-    retrieve_floor: 8
-    retrieve_candidates: 32
-    floor_head: true
-    keep_none: true
-    scorer:
-      kind: cross_encoder
-      model: runs/exp32_rerankers/ce_tuned_f4
-      cache: cache/exp32_ce/tuned_f4.jsonl
-      cache_only: true
   memory.budget.fraction:
   - 0.05

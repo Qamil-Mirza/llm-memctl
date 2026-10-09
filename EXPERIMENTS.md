@@ -4758,8 +4758,8 @@ head's order, with the head's own feature rows.
    100, 200, 400} (read off one 400-round fit), no internal early stopping. **No lambdarank row** (it needs LightGBM).
 5. `cross_encoder_zero`: cross-encoder/ms-marco-MiniLM-L-6-v2 (22.7M parameters) on (question text, turn text) for
    the 32 candidates, max length 512, zero-shot; top 8. Scores are cached on disk, so the reader pass replays them.
-6. `cross_encoder_tuned`: the same model fine-tuned on CPU per fold (below). Feasible: about 1.4 s per 32 pairs on
-   one thread at inference; training is minutes per epoch per fold on 3 threads.
+6. ~~`cross_encoder_tuned`~~: **dropped before any test-fold run** (see §32a). The brief allowed it only if CPU
+   fine-tuning takes minutes; measured, it does not.
 7. `fixed8`: the §19 head A as deployed, per fold (`runs/lme_n4_head_f{k}_a/checkpoints/policy_best.pt`), not
    retrained, run by the unchanged `rl` controller.
 
@@ -4809,6 +4809,52 @@ questions that share no answer session with any training question.
 - Descriptive: every other arm minus `fixed8`; the three disjoint answer shares (an "unknown" answer judged correct
   is flagged, `memctl/analysis/shares.py`); P(correct | answered); prompt tokens; false answers on the 30
   unanswerable questions; the pairing check of `fixed8` against §27 (0.536) and §28 (0.534).
+
+### 32a. Training-side choices, recorded before any test-fold number (2026-10-09)
+
+**Rows** (`memctl/rerank_data.py`, code at dcdce6c; laptop CPU, peak RSS 0.35 GB per process): half A, 1,000
+question decisions and about 32,000 rows per fold (1,332–1,395 positives); half B, 200 questions per fold.
+
+**Pointwise selection on half B** (`python -m memctl.rerank_train`; `runs/exp32_rerankers/inner_selection.json`, a
+copy in `configs/sweeps/exp32/models/`; models `lr_f{k}.json`, `gbdt_f{k}.pkl` committed beside it):
+
+| fold | `lr` setting | all-found@8 | recall | `gbdt` setting (depth / leaves / rounds) | all-found@8 | recall |
+|---|---|---|---|---|---|---|
+| 0 | C 0.001 | 0.700 | 0.800 | none / 15 / 100 | 0.685 | 0.788 |
+| 1 | C 0.001 | 0.695 | 0.798 | none / 15 / 25 | 0.680 | 0.783 |
+| 2 | C 0.001 | 0.695 | 0.810 | 3 / 15 / 50 | 0.680 | 0.805 |
+| 3 | C 0.01 | 0.705 | 0.812 | 3 / 15 / 25 | 0.695 | 0.816 |
+| 4 | C 0.01, balanced | 0.680 | 0.787 | 3 / 7 / 25 | 0.685 | 0.796 |
+| pooled | | **0.695** | 0.801 | | 0.685 | 0.798 |
+
+- **The best classical reranker is `lr_pointwise`** (pooled half-B all-found@8 0.695 against 0.685), by the rule
+  fixed in §32. It is the primary claim's comparator. The margin is small (2 questions in 1,000); the rule decides.
+- `lr` chose the strongest regularisation (C = 0.001, the grid's edge) in 3 of 5 folds: the features carry little
+  that a looser fit uses. Not widened: the grid was fixed in advance.
+- Sizes: `lr` 31 parameters; `gbdt` 325–2,900 tree nodes.
+- One code fix during this step, before any result: `truncate_gbdt` set the read-only `n_iter_` and crashed on
+  fold 0 before writing anything (fixed in the next commit; nothing else changed).
+
+**Cross-encoder fine-tuning dropped (decided before any test-fold run).** The run with the pre-fixed settings
+(`memctl/rerank_ce.py tune`, 25ba106) on five folds at once, 3 threads each: two folds were killed by the kernel
+for memory (about 6 GB resident each at max length 512), and the other three had not finished their **first**
+epoch after 73 minutes. The brief admits the arm only if fine-tuning takes minutes, so `cross_encoder_tuned` is
+not run, and the reader stage has six arms. No tuned model or score was produced or read.
+
+**Found while building (not fixed; reported):**
+- **The §19 head A checkpoints of folds 1 and 2 are byte-identical, and so are those of folds 3 and 4**
+  (`runs/lme_n4_head_f{k}_a/checkpoints/policy_best.pt`, sha256 2825193… and 849e524…). Cause: `memctl/splits.py`
+  deals half A and half B alternately from each fold's training list, and with k = 5 removing place 1 or place 2
+  (or 3 or 4) from the dealing order leaves the same alternate half. So half A is the same 200 questions for folds
+  1 and 2 (and for 3 and 4), and the same seeds give the same head. **This is not a leak**: half A never meets its
+  fold's test part (checked: 0 of 200 in every fold). But `fixed8` is three distinct heads, not five, and the §32
+  pointwise models of folds 1 and 2 are identical too (`lr_f1.json` = `lr_f2.json`). The half-B sets differ, so the
+  inner checks are not duplicated.
+- Under `keep_none` the turn just before the question is archived at the question step, after the search, so it is
+  never a candidate (all arms alike). On LongMemEval it carries a requirement for 1 question of 500 and is never the
+  only carrier: harmless.
+- A turn longer than the whole budget is deleted on arrival by `enforce_budget` (EVICT), not archived, so it can
+  never be retrieved (all arms alike): 6 of 500 `fixed8` episodes in §27 (one 7,737-token turn). Pinned by a test.
 
 ## 5. The sequential task
 

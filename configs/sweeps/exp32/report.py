@@ -18,8 +18,7 @@ from collections import defaultdict
 
 from memctl.analysis.shares import answer_shares
 
-ARMS = ["fixed8", "bm25_top8", "rrf_top8", "lr_pointwise", "gbdt_pointwise", "cross_encoder_zero",
-        "cross_encoder_tuned"]
+ARMS = ["fixed8", "bm25_top8", "rrf_top8", "lr_pointwise", "gbdt_pointwise", "cross_encoder_zero"]
 parser = argparse.ArgumentParser()
 parser.add_argument("--verdicts", default="runs/exp32_verdicts.json")
 parser.add_argument("--selection", default="runs/exp32_rerankers/inner_selection.json")

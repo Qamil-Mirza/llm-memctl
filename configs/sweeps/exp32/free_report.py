@@ -2,7 +2,7 @@
 resamples, seed 0), plus the sensitivity row (test questions sharing no answer session with any training question).
     PYTHONPATH=. python configs/sweeps/exp32/free_report.py > runs/exp32_rerankers/free_report.md
 Reads runs/exp32_free_f{k}/<arm>__fraction0.05/episodes.jsonl, runs/exp32_latency (select_ms per question),
-runs/exp32_rerankers/{split_audit,inner_selection}.json and ce_tuned_f*.json."""
+runs/exp32_rerankers/split_audit.json."""
 import argparse
 import json
 import random
@@ -12,8 +12,7 @@ from pathlib import Path
 from memctl.envs.longmemeval import _index
 from memctl.splits import fold_indices
 
-ARMS = ["fixed8", "bm25_top8", "rrf_top8", "lr_pointwise", "gbdt_pointwise", "cross_encoder_zero",
-        "cross_encoder_tuned"]
+ARMS = ["fixed8", "bm25_top8", "rrf_top8", "lr_pointwise", "gbdt_pointwise", "cross_encoder_zero"]
 MEASURES = [("all", "P(all in view)"), ("recall", "requirement recall"), ("precision", "precision of the 8"),
             ("tokens", "prompt tokens")]
 
