@@ -3512,6 +3512,12 @@ three more families, two sizes each.
   (`runs/_pipelines/exp24_judge.py`), which never sees which reader wrote an answer.
 - The same report columns: three disjoint shares (answered-correct, answered-wrong, unknown), P(correct |
   answered), P(correct | all in view), prompt tokens, and false answers on the 30 unanswerable questions.
+- **How "unknown" is counted (interpretation only).** An answer counts as unknown only if it literally starts
+  with "unknown", the reply the reader prompt asks for (`memctl/envs/qa.py:44`). A new family may refuse in other
+  words, and those answers land in answered-wrong. So the report also prints, as a descriptive column only, the
+  count of judge-wrong answers that contain one of these refusal phrases (fixed now; case-insensitive, a curly apostrophe read as straight): "don't
+  know", "do not know", "not mention", "no information", "cannot determine", "unable to". No claim
+  depends on it: claims (a) and (b) use only the judge's correct or incorrect.
 - **Token counts, stated plainly.** The memory budget, the 3k target and the prompt-token column are counted with
   memctl's model-free counter (words plus punctuation marks, `memctl/memory/items.py:42`), as in §23, not with each
   reader's tokenizer. So every reader is shown exactly the same text in each arm; only the number of model tokens
