@@ -4899,7 +4899,8 @@ unchanged):**
 **Price (NEEDS SPEND; per-run user approval).**
 - **Plan, one A40 (EU-SE-1, $0.59/h as §23), one pod, two phases:**
   1. The §23 image (vLLM 0.8.5, which has torch and transformers ≥ 4.51.1) with the start command replaced: fetch
-     `memctl/ttt_server.py` at the pinned commit from GitHub, then `serve --model Qwen/Qwen2.5-3B-Instruct
+     `memctl/ttt_server.py` from GitHub at a pinned commit (ae1a5e8, or the branch head at launch, recorded), then
+     `serve --model Qwen/Qwen2.5-3B-Instruct
      --revision aa8e72537993ba99e69dfaafa59ed015b17504d1 --served-name qwen2.5-3b-instruct-hf --replicas 4`.
      Locally: `configs/sweeps/exp31/exp31_stage.sh POD_URL` (5 folds × 4 cells, 4 workers a fold).
   2. The pod switched to `vllm serve Qwen/Qwen2.5-7B-Instruct` (as §23); then `exp31_judge.py --prune` (2,820 judge
