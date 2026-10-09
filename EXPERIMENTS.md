@@ -71,7 +71,7 @@ commands given).
 | 24 | Reader families (Llama, Gemma 3, Phi-4; two sizes each) | Lift (a) PASSES in all six readers (+0.06 to +0.16). Size step (b): Gemma 3 4B→12B NON-INFERIOR (+0.015, CI −0.028..+0.057; closes 111%); Llama −0.051 and Phi-4 −0.117 NOT SHOWN. "Smaller gains most" holds in Llama only. $1.44 |
 | 25 | StreamMemBench zero-shot transfer of the §19 head (free close) | Closed without a paid run at the user's decision; $0. Evidence in view on 541 evaluation anchors: FIFO 0.93 / 0.91 / 1.00 (initial / revised / follow-up), `fixed8` 0.32 / 0.23 / 0.10: the head does not transfer, because recency wins on this benchmark |
 | 26 | OpenJev (open Jev re-creation) as a controller | Arm B (selector, 8 of the head's 32 candidates): B − FIFO +0.045 (CI +0.004..+0.087), BETTER; B − `fixed8` −0.036 (CI −0.081..+0.009), not shown; B's prompts 2,373 tokens vs 1,049. Arm A (memory manager) cost only: ~94 GPU-s per question (~$15 per 1,000); accuracy not run by decision. $0.64 |
-| 27 | LRE (arXiv 2606.20954), a query-blind published scorer, as a controller | Pre-registered, NOT YET APPROVED for spend. Arms: LRE-native (LRE's order in place of FIFO's recency) and LRE-slot (8 of the head's 32 candidates). Trained per fold on training folds only (about 1 min, 10,007 parameters, about 480 KB). Training side: LRE's labels are 97% non-evidence and find a third of evidence turns. Free parts $0; reader pass about $0.08–0.11 on the shared pod (hard stop $0.20) |
+| 27 | LRE (published query-blind scorer) as a baseline controller | LRE-slot (8 of the head's 32): 0.109, far below FIFO (−0.328) and the head (−0.428), evidence in view 0.03. LRE-native (in place of recency): +0.028 vs FIFO (CI −0.002..+0.057), non-inferior. About $0.23 shared with §28 |
 
 ---
 
@@ -4241,7 +4241,7 @@ verdicts in `runs/exp26_verdicts.json`):
 bf16 KV cache (declared deviation) and weight-only FP4. One benchmark, one reader, one judge. Arm A's accuracy was
 not measured.
 
-## 27. LRE, a published query-blind scorer, as a baseline controller (N11; 2026-10-09, pre-registered, NOT YET APPROVED for spend)
+## 27. LRE, a published query-blind scorer, as a baseline controller (N11; 2026-10-09, pre-registered, run 2026-10-09)
 
 **Status:** pre-registered before any held-out evaluation. The free parts (code check, controller, tests, per-fold
 training, training-side label check, configs, stub check) are done (code at c2258e6). The reader pass needs spend and the user's
@@ -4409,6 +4409,39 @@ judge; output in `runs/_stub27`, cache in `cache/stub27`).**
   §27's 2,000. Free disk is 19 GB now, so 15 GB would be left: **before launch confirm at least 19 GB free**, or free
   space first. LRE runs on the laptop CPU; no GPU for the controller.
 - **Not approved. The user decides.**
+
+### 27a. Result: LRE as a slot picker fails badly; LRE in place of recency is level with FIFO; the head leads (2026-10-09)
+
+**Pod and cost.** Shared with §28: qpeirhl5gzw7dj (A40, EU-SE-1, $0.59/h, vLLM 0.8.5, Qwen2.5-7B), 07:14:04 to about
+07:37:30 UTC, about 0.39 h, **about $0.23 for §27 and §28 together**; terminated, list-pods empty. Under the user's
+2026-10-09 spend rule: spent $12.35 before, $12.58 after, $7.42 left; window closes 18:53 UTC. §27's answers ran
+07:16–07:31 (2,000 answers, 0 failures); the one blind Qwen 7B judge pass judged 1,880. Report:
+`configs/sweeps/exp27/exp27_report.py` → `runs/exp27_report.md`; verdicts `runs/exp27_verdicts.json`.
+
+| arm | accuracy (95% CI) | unknown | P(correct \| answered) | P(all in view) | P(correct \| in view) | prompt tokens |
+|---|---|---|---|---|---|---|
+| FIFO + floor | 0.436 (0.391, 0.481) | 0.330 | 0.651 | 0.498 | 0.701 | 2,964 |
+| `fixed8` (the §19 head) | **0.536** (0.491, 0.581) | 0.157 | 0.636 | 0.702 | 0.661 | 1,049 |
+| LRE-native | 0.464 (0.419, 0.509) | 0.300 | 0.663 | 0.506 | 0.756 | 2,860 |
+| LRE-slot | 0.109 (0.081, 0.138) | 0.766 | 0.464 | 0.028 | 0.769 | 4,305 |
+
+**Pre-registered claims** (margin −0.03):
+- **C1, `fixed8` minus LRE-slot: +0.428 (+0.377, +0.477), the head better**, as expected.
+- **C2, LRE-slot minus FIFO + floor: −0.328 (−0.377, −0.277), WORSE.** The expectation was "better"; the
+  training-side warning in §27 (all evidence in view 0.10 on 20 training questions) was right.
+- **C3, LRE-native minus FIFO + floor: +0.028 (−0.002, +0.057), non-inferior** (pre-declared as undetermined).
+
+**What it means.**
+- **Query-blind scoring cannot pick the 8 turns a question needs.** With the same 32 candidates, LRE-slot has all
+  evidence in view for 2.8% of questions against the head's 70.2%. It prefers long turns (4,305 prompt tokens for
+  8 items, against the head's 1,049), as its loose label rule taught it: one shared word of a two-word answer
+  makes a turn positive, so long turns are positive most often.
+- **As a keep-order in place of recency it does no harm and may help a little** (+0.028, interval just touching 0),
+  at the same prompt size as FIFO. The evidence-in-view rate barely moves (0.506 against 0.498).
+- **Pairing check:** `fixed8` minus FIFO is +0.100 (+0.060, +0.143), against §23's +0.102.
+
+**Limitations.** LRE is re-implemented from their formulas (no LICENSE file in the repository); our unit is a turn,
+theirs a session; their held-out-text de-duplication was not used. One benchmark, reader and judge.
 
 ## 5. The sequential task
 
