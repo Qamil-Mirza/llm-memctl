@@ -1,0 +1,109 @@
+# Experiment 32 (§32) reader-free pass, LongMemEval fold 3, test part. No reader: a stub model answers so
+# the real prompt is built and counted. Every arm ranks the same 32 BM25 candidates (keep_none) and shows 8.
+name: exp32_free_f3
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env:
+    name: longmemeval
+    path: data/longmemeval/longmemeval_s_cleaned.json
+    folds:
+      k: 5
+      fold: 3
+      part: test
+    judge:
+      backend: stub
+      style: longmemeval
+  agent:
+    name: llm
+    reasoning: true
+    labels: compact
+    max_new_tokens: 256
+    model:
+      backend: stub
+  memory:
+    allowed_operations:
+    - KEEP
+    - MOVE_TO_ARCHIVE
+    - RETRIEVE_FROM_ARCHIVE
+    - NO_OP
+    embedder: hashing
+    count_labels: true
+  logging:
+    detail_episodes: 100000
+grid:
+  controller:
+  - name: rl
+    label: fixed8
+    checkpoint: /home/qamil-mirza/Code/llm-memctl/runs/lme_n4_head_f3_a/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rerank
+    label: bm25_top8
+    retrieval_method: lexical
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    scorer:
+      kind: bm25
+  - name: rerank
+    label: rrf_top8
+    retrieval_method: lexical
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    scorer:
+      kind: rrf
+      model: BAAI/bge-small-en-v1.5
+  - name: rerank
+    label: lr_pointwise
+    retrieval_method: lexical
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    scorer:
+      kind: pointwise
+      model: configs/sweeps/exp32/models/lr_f3.json
+  - name: rerank
+    label: gbdt_pointwise
+    retrieval_method: lexical
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    scorer:
+      kind: pointwise
+      model: configs/sweeps/exp32/models/gbdt_f3.pkl
+  - name: rerank
+    label: cross_encoder_zero
+    retrieval_method: lexical
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    scorer:
+      kind: cross_encoder
+      model: cross-encoder/ms-marco-MiniLM-L-6-v2
+      cache: cache/exp32_ce/zero_f3.jsonl
+      cache_only: false
+  - name: rerank
+    label: cross_encoder_tuned
+    retrieval_method: lexical
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    scorer:
+      kind: cross_encoder
+      model: runs/exp32_rerankers/ce_tuned_f3
+      cache: cache/exp32_ce/tuned_f3.jsonl
+      cache_only: false
+  memory.budget.fraction:
+  - 0.05
