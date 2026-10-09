@@ -19,6 +19,7 @@ from pathlib import Path
 
 from memctl.envs.longmemeval import _index, _instance
 from memctl.judge import Judge
+from memctl.runlog import open_trace
 from memctl.splits import fold_indices
 from memctl.sysinfo import collect_metadata
 
@@ -39,7 +40,7 @@ def answers(runs: Path, controller: str) -> list[dict]:
         folder = runs / template.format(k=k) / cell
         chosen = fold_indices(index, 5, k)
         failed = {json.loads(line)["seed"] for line in open(folder / "failures.jsonl")}
-        for line in open(folder / "steps.jsonl"):
+        for line in open_trace(folder / "steps.jsonl"):
             step = json.loads(line)
             if not step.get("scored"):
                 continue
