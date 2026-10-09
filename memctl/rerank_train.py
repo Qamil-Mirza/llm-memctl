@@ -103,7 +103,6 @@ def truncate_gbdt(model, rounds: int):
 
     cut = copy.deepcopy(model)
     cut._predictors = cut._predictors[:rounds]
-    cut.n_iter_ = rounds
     cut.max_iter = rounds
     return cut
 
