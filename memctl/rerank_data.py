@@ -13,7 +13,7 @@
 One record per question decision: the 32 candidates' 24 item features and the 6 global features (the head's
 inputs, memctl/features.py), the expert's label per candidate (the designated carrier of a requirement needed at
 this question: memctl/rl/expert.py and Hindsight.designated), for each requirement the candidates that would
-satisfy it (any alternative carrier, as the harness counts evidence), the question and candidate texts, and token
+satisfy it (any alternative carrier, as the harness counts evidence), the question and candidate texts (plain, and labelled as the dense search sees them), and token
 counts. Nothing here reads the fold's test part: the environment is built with `part: train_a|train_b`.
 """
 
@@ -29,6 +29,7 @@ import numpy as np
 import yaml
 
 from memctl.harness.runner import Experiment
+from memctl.retrieval import labelled_text
 from memctl.rl.expert import make_expert
 from memctl.runlog import peak_rss_mb
 from memctl.splits import fold_indices
@@ -74,8 +75,9 @@ def collect(fold: int, part: str, episodes: int | None = None, data_path: str | 
         before = len(controller.recorded)
         actions = original(memory, task)
         for decision in controller.recorded[before:]:
-            decision.texts = (task.observation.content,
-                              [memory.get(i).content for i in decision.item_ids[decision.n_active:]])
+            pool = [memory.get(i) for i in decision.item_ids[decision.n_active:]]
+            decision.texts = (task.observation.content, [item.content for item in pool],
+                              [labelled_text(item) for item in pool])
         return actions
 
     controller.decide = decide
@@ -106,7 +108,7 @@ def collect(fold: int, part: str, episodes: int | None = None, data_path: str | 
                 "label": np.asarray(decision.expert_retrieved, dtype=np.int8),
                 "requirements": requirements, "n_requirements": len(requirements), "evidence": evidence,
                 "tokens": list(decision.retrieve_tokens), "item_ids": list(decision.item_ids[n:]),
-                "query": decision.texts[0], "texts": decision.texts[1],
+                "query": decision.texts[0], "texts": decision.texts[1], "labelled": decision.texts[2],
             })
         controller.recorded = []
         experiment._hindsight.pop(seed, None)
