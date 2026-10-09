@@ -73,6 +73,7 @@ commands given).
 | 26 | OpenJev (open Jev re-creation) as a controller | Arm B (selector, 8 of the head's 32 candidates): B − FIFO +0.045 (CI +0.004..+0.087), BETTER; B − `fixed8` −0.036 (CI −0.081..+0.009), not shown; B's prompts 2,373 tokens vs 1,049. Arm A (memory manager) cost only: ~94 GPU-s per question (~$15 per 1,000); accuracy not run by decision. $0.64 |
 | 27 | LRE (published query-blind scorer) as a baseline controller | LRE-slot (8 of the head's 32): 0.109, far below FIFO (−0.328) and the head (−0.428), evidence in view 0.03. LRE-native (in place of recency): +0.028 vs FIFO (CI −0.002..+0.057), non-inferior. About $0.23 shared with §28 |
 | 28 | Query rewriting for the head's 32 candidates | Rule time filter (b): NO GO at its free gate. LLM rewrite (a): training gate passed at v3 (v1 malformed, v2 invented ranges); test folds +0.006 overall (CI −0.017..+0.030) and +0.024 on temporal (n = 127, CI −0.016..+0.063), non-inferior, not better. About $0.23 shared with §27 |
+| 31 | Test-time training (qTTT) on the 3B reader: claim 1 of §23 without LoRA | Free part only; NEEDS SPEND, not run. No code from either paper; EASE-TTT dropped (nothing to select at 1–3k tokens). HF server with per-question W_Q adaptation built and stub-checked at full size; about 3–4 s a question on an A40 (under 10 s); about $0.50–0.70, hard stop $0.89. Expected: claim 1 NOT SHOWN |
 
 ---
 
@@ -4720,6 +4721,204 @@ LongMemEval paper's caveat in practice: a 7B model invents date ranges unless to
 
 **Pairing.** `fixed8` here used the same cached generations as §27's (470 of 470 answers identical); the two
 separate judge passes agree on 469 of 470 verdicts (0.534 here, 0.536 in §27).
+
+## 31. Test-time training on the 3B reader: the last route to §23's claim 1 without LoRA (2026-10-09, pre-registered, not run)
+
+**Status:** the free part is done (this section). The pod run NEEDS SPEND and is not approved. No pod was started.
+
+**Why.**
+- §23's claim 1 was NOT SHOWN: Qwen 3B with `fixed8` (0.315) against Qwen 7B with FIFO + floor (0.436), −0.121
+  (−0.170, −0.070), margin −0.03.
+- The controller already puts the evidence in view. What the 3B lacks is reading: P(correct | all in view) under
+  `fixed8` is 0.397 at 3B against 0.667 at 7B, and the 3B answers "unknown" on 0.372 of answerable questions.
+- Test-time training (TTT) changes the reader for one question at a time, using only that question's prompt. It is
+  the only reader change left that is not LoRA training.
+
+**The two methods, and their code.**
+- **qTTT** (Bansal et al., "Let's (not) just put things in Context: Test-Time Training for Long-Context LLMs",
+  ICLR 2026, arXiv 2512.13898).
+  - **No code released.** No repository is linked from the paper, and none was found on GitHub on 2026-10-09.
+    The paper is CC BY 4.0.
+  - **What is adapted (Algorithm 1, Appendix C):** W_Q, the query projection of every attention layer. Nothing else.
+  - One prefill caches the prompt's keys and values; they are never recomputed.
+  - Then N steps of AdamW, each on the next-token loss of one random k-token span of the same prompt, with the span
+    attending to the frozen cached prefix. Then the answer is decoded from the frozen cache with the adapted W_Q.
+  - **Defaults:** N = 32, k = 128, AdamW with weight decay 0.01, gradient clipping 1.0, bf16, batch 1.
+  - **Learning rate: no single default.** The paper picks it per dataset on held-out validation data, from
+    {3e−4, 3e−5, 1e−5, 3e−6, 1e−6, 3e−7}. Its Table 1 says results are flat between 1e−5 and 1e−6.
+  - Models: Qwen3 1.7B–8B (and 32B), contexts of 8k–128k tokens on the benchmarks.
+- **EASE-TTT** (Yuan et al., arXiv 2606.06906).
+  - **No code released.** The authors' repository (github.com/xia0pengyuan/EASE-TTT, created 2026-05-26) is empty:
+    no commits, no licence. A third-party MIT re-creation exists (andrewtjin/STEEZ-TTT, commit e8968d5, Qwen3-0.6B
+    only). It was read, not run.
+  - **What is adapted:** LoRA (rank 8, scale 16, dropout 0.05) on the query projections only.
+  - **Loss:** KL from a target attention distribution to the layer-14 attention of the last token. The target puts
+    mass 0.6 on the top 4 "evidence" chunks (512-token chunks cut at loss spikes), ranked by how much each lowers the
+    loss on the question. 15 steps, AdamW at 1e−4, weight decay 0.01.
+  - Models: Qwen3-0.6B, Qwen3-1.7B, Llama-3.2-1B. Reported cost: 9.1 s per example against qTTT's 6.7 s
+    (Qwen3-1.7B, contexts up to 32k).
+- **The third-party re-creation's finding (not ours):** at Qwen3-0.6B, qTTT with the paper's objective changed
+  266 of 550 answers but gained only +0.2 F1 overall; the paper's qTTT gain was not reproduced at that size.
+
+**Decision: qTTT only. EASE-TTT is not run** (decided before any run, for these reasons):
+- At our prompt lengths it has nothing to select. A `fixed8` prompt is about 1,150 Qwen tokens: two or three
+  512-token chunks. "Top 4 chunks" is then the whole prompt, so the target is uniform and carries no signal.
+- Using per-turn chunks instead would be a new method, not EASE-TTT.
+- Its layer (14 of 28 in Qwen3) has no counterpart in a 36-layer Qwen2.5-3B. Choosing one would need a training-fold
+  sweep and a GPU.
+
+**Hyperparameters, all fixed now, before any run (no held-out peeking).**
+- N = 32 steps, k = 128 tokens, AdamW with weight decay 0.01, clipping 1.0, W_Q of all 36 layers (the bias stays
+  frozen): the paper's defaults.
+- **Learning rate 3e−6**, chosen from the paper alone: the geometric middle of its recommended range [1e−6, 1e−5].
+  In its Table 1, on the four rows nearest our prompt lengths (512 to 2,536 tokens), 3e−6 and 1e−5 are tied (sum
+  128.5 against 127.1). Our data was not used.
+- **Nothing is learned across questions.** Each question starts from the original weights; W_Q is restored bit for
+  bit and the optimizer is dropped after each answer (tested). The random spans are seeded by the prompt's hash, so
+  an answer does not depend on the order of questions, and a resumed run gives the same answer.
+- The training signal is the question's own prompt (its memory lines and the question text), with no labels.
+
+**A precision trap, found in the free part.** At lr 3e−6 one AdamW step moves a weight by about 3e−6. A bf16
+weight of size 0.02 has a rounding step of about 1e−4, so in plain bf16 the update rounds away and **nothing
+adapts**. The server keeps W_Q (and computes the query projection) in float32; the rest of the model is bf16
+(tested: a bf16 model's W_Q moves at 3e−6).
+
+**Serving: vLLM cannot do this, so a small HF server.** `memctl/ttt_server.py` (torch, transformers and the standard
+library only; the pod fetches this one file at a pinned commit).
+- An OpenAI-compatible `/v1/chat/completions`. One loaded model answers under two names: `qwen2.5-3b-instruct-hf`
+  (no adaptation) and `qwen2.5-3b-instruct-hf-qttt` (32 steps). memctl's `openai` backend calls it unchanged, so
+  `memctl.sweep` writes the same generation cache and replays and resumes as with vLLM.
+- The prompt is the frozen 7b5fc30 reader prompt (`memctl/agents/llm.py`, reasoning on, compact labels, 256 new
+  tokens), as one user turn through the model's chat template, as vLLM does.
+- Greedy decoding with the Qwen2.5 `generation_config` repetition penalty 1.05, which we believe vLLM 0.8.5 applied
+  in §23 (not verified). The paired rerun makes the TTT effect immune to this, and the A-against-§23 check measures it.
+- Several model replicas (processes) share one GPU behind one port. `/stats` gives running mean timings.
+- A wrong model name is refused (404), so no answer can be cached under the wrong arm.
+- Tested on transformers 5.17 (the venv) and 4.51.3 (vLLM 0.8.5 needs at least 4.51.1; the image's exact version is
+  printed on the pod before the run).
+
+**Arms (pre-registered; LongMemEval, the same 470 answerable + 30 abstention questions, 5 folds, §23's controllers
+unchanged):**
+
+| arm | controller | reader |
+|---|---|---|
+| A | `fixed8` | 3B, HF server, no adaptation |
+| B | `fixed8` | 3B, HF server, qTTT |
+| C | FIFO + floor | 3B, HF server, no adaptation |
+| D | FIFO + floor | 3B, HF server, qTTT |
+| 7B | FIFO + floor | §23's Qwen 7B answers (vLLM), judged again in the same pass |
+
+- **The no-adaptation 3B rows are rerun in the same session, not taken from §23.** HF and vLLM differ in kernels
+  and rounding, so §23's vLLM rows would mix "TTT" with "a different serving stack". A and C go through the same
+  server and code path as B and D, so B − A is TTT alone. §23's 3B `fixed8` answers are judged again as a check of
+  the serving change.
+- **The 7B row is reused from §23** (answers only; they are judged again in the same blind pass). Those answers
+  came from the same vLLM 0.8.5 image and model at temperature 0, and §23's 7B rerun matched §19c on 0.979 of
+  questions, so a new run would repeat them. Claim 1 compares two readers on two serving stacks either way, as §23
+  did.
+- **Claim 1 again:** B − 7B FIFO + floor, paired by question; non-inferior if the 95% lower bound is above −0.03,
+  better if above 0.
+- **TTT effect (paired):** B − A (primary), and D − C as the control, so TTT's gain is separated from the
+  controller's. (B − A) − (D − C) is descriptive.
+- **Judge:** one blind Qwen 7B pass with the official LongMemEval prompts, as §23; it sees question, gold and answer
+  text only. Answers are made first with a stub judge, then judged together.
+- **Reported beside accuracy:** the unknown share, P(correct | answered), false answers on the 30 unanswerable
+  questions, and the mean span loss before and after adaptation from the server log (a mechanical check that
+  adaptation happened).
+- **Expectation, written before any run:** claim 1 NOT SHOWN. qTTT targets "score dilution" in long contexts
+  (8k–128k tokens in the paper); our prompts are 1–3k tokens. The 3B's problem is refusals and reading, and the
+  re-creation found almost no qTTT gain at 0.6B. A gain at FIFO + floor (longer prompts) larger than at `fixed8`
+  would fit the dilution story.
+
+**Cost per query: measured on CPU, extrapolated to the A40.**
+- **Method.** The real Qwen2.5-3B layer shapes (hidden 2,048, 16 query and 2 key-value heads, MLP 11,008, vocabulary
+  151,936; config and tokenizer only, about 12 MB; no weights downloaded), random weights, float32, 8 CPU threads
+  (i7-11800H), with 1 and then 2 of the 36 layers. A straight line through the two gives the cost per layer and the
+  fixed part (embedding and output head); 36 layers are extrapolated from it. `python -m memctl.ttt_server bench`.
+  Prompt lengths are the arms' means in Qwen tokens: `fixed8` about 1,150, FIFO + floor about 3,250 (1.095 Qwen
+  tokens per memctl token, measured on §23's 3B prompts).
+- **Measured on CPU (seconds):**
+
+  | | 1 layer, 1,150 / 3,250 tokens | 2 layers, 1,150 / 3,250 | 36 layers (extrapolated), 1,150 / 3,250 |
+  |---|---|---|---|
+  | prefill | 0.52 / 1.55 | 1.10 / 3.18 | about 21 / 59 |
+  | 32 qTTT steps | 25.6 / 27.0 | 31.8 / 33.6 | about 242 / 258 |
+  | decode, 32 tokens | 3.3 / 3.3 | 4.0 / 4.0 | about 28 |
+
+  - Peak RSS 3.4 GB (2 layers). The span loss fell in every run (for example 12.32 → 12.24), so the steps do update.
+- **FLOPs per question (counted from the shapes; 3.09B parameters with the tied output head):** 32 steps on 128-token
+  spans are about 55 TFLOP (`fixed8`) and 60 TFLOP (FIFO + floor), about 1.7–1.9 TFLOP a step (forward, backward to
+  the activations, W_Q gradients, attention to the cache). The prefill is about 6.6 and 19.6 TFLOP.
+- **CPU check of the count:** the CPU ran the 32 steps at 0.72 of the efficiency of the prefill (0.23 against 0.31
+  TFLOP/s), so the steps have no hidden cost beyond their FLOPs and small-matrix overhead.
+- **A40 extrapolation. Assumptions:** bf16 tensor peak 149.7 TFLOP/s; the prefill at 40% of peak (60 TFLOP/s);
+  the steps at 0.72 of that (as on CPU), with a pessimistic case at 15% of peak; 0.5 s of kernel-launch overhead for
+  32 steps (about 1,600 kernels a step at about 10 µs); decoding by HF at 30 ms a token (the memory-bandwidth floor
+  is 9 ms: 6.2 GB of weights at 696 GB/s; HF's Python loop adds the rest); 32 output tokens on average (the mean of
+  §23's 3B answers in Qwen tokens; p90 85, maximum 256; used for cost only).
+
+  | per question, one replica | `fixed8` | FIFO + floor |
+  |---|---|---|
+  | prefill | 0.1 s | 0.3 s |
+  | 32 qTTT steps (expected / pessimistic) | 1.8 s / 2.9 s | 1.9 s / 3.1 s |
+  | decode (32 tokens) | 1.0 s | 1.0 s |
+  | **total with qTTT** | **about 2.9 s (pessimistic 4.0 s)** | **about 3.2 s (pessimistic 4.4 s)** |
+  | total without (arms A, C) | about 1.1 s | about 1.3 s |
+
+  - **Feasible: well under 10 s a question.** The worst single question (6,357-token prompt, 256 tokens out) is
+    about 12 s.
+  - **A warning from the paper itself.** Its Table 11 lists 13.7 s for 32 qTTT steps on Qwen3-4B on an A100 at every
+    context length. Scaled to 3.09B parameters and to the A40's half of the A100's bf16 peak, that is about 22 s a
+    question, over the 10 s line. That table looks derived from FLOPs rather than timed (its 8k-token prefill of a
+    1.7B model takes 8.7 s, about 1% of the A100's peak), and our FLOP count gives 1–3 s. The disagreement is the
+    reason for the time gate below.
+- **GPU memory per replica:** bf16 weights 6.2 GB; float32 W_Q, its saved copy, gradient and AdamW moments 3.0 GB;
+  cache, span activations and logits under 1 GB. About 10 GB, so 4 replicas fit the A40's 48 GB (3 if not).
+
+**Full-size stub run** (the pre-launch rule; `configs/sweeps/exp31/exp31_stub.sh`).
+- **Pipeline at full size:** 5 folds × 4 cells × 100 questions = 2,000 answers through the HF server (1,000 with
+  32 qTTT steps), with the real Qwen2.5 tokenizer and chat template, a random Qwen2-architecture model, 4 replicas
+  and 2 sweep workers a fold. 2,000 of 2,000 answers, 0 server errors after the fix below; all 20 cells finished
+  with 100 episodes.
+- **Resume against a changed endpoint:** interrupted with the plain cells at 25–31 questions, resumed on port 8132,
+  interrupted again, resumed on port 8134. Every cell resumed (`resumed: true`, none refused) and finished.
+- **The stub found a bug before any spend:** in the first pass every qTTT request failed (HTTP 500). With fewer layers
+  than the checkpoint, the per-layer type list kept 36 entries and the cache crop failed on the empty ones. Fixed
+  (`_trim_layer_types`); the real 36-layer model does not hit it.
+- **Peak RSS:** 0.82 GB for the stub server (the largest process), 0.34 GB per sweep process.
+- **Stub model:** the first pass used a 42M-parameter random model; it was too slow on the laptop CPU (about 37 s
+  a qTTT answer under load), so the resumed passes used a 10M one (hidden 64, 1 layer). Random weights write
+  256 tokens every time; the mean server time was 2.7 s without and 13.1 s with adaptation (10.5 s of it the 32
+  steps, dominated by the 151,936-word output head). These are CPU stub numbers, not a GPU estimate.
+- **Judge and report scripts** (`configs/sweeps/exp31/exp31_judge.py`, `exp31_report.py`) ran on the stub output
+  with the stub judge: they read §23's 3B `fixed8` and 7B FIFO rows correctly (unknown 0.372 and 0.328, false
+  answers 7 and 6 of 30, as §23). `--prune` keeps only scored step rows, because full step logs are about 1.7 MB a
+  question (about 3.4 GB for this run); the stub resume passes ran with step logs off for the same reason.
+- **Stub output deleted** (runs and caches, about 0.5 GB at the peak). Free disk stayed at 14 GB throughout.
+
+**Price (NEEDS SPEND; per-run user approval).**
+- **Plan, one A40 (EU-SE-1, $0.59/h as §23), one pod, two phases:**
+  1. The §23 image (vLLM 0.8.5, which has torch and transformers ≥ 4.51.1) with the start command replaced: fetch
+     `memctl/ttt_server.py` at the pinned commit from GitHub, then `serve --model Qwen/Qwen2.5-3B-Instruct
+     --revision aa8e72537993ba99e69dfaafa59ed015b17504d1 --served-name qwen2.5-3b-instruct-hf --replicas 4`.
+     Locally: `configs/sweeps/exp31/exp31_stage.sh POD_URL` (5 folds × 4 cells, 4 workers a fold).
+  2. The pod switched to `vllm serve Qwen/Qwen2.5-7B-Instruct` (as §23); then `exp31_judge.py --prune` (2,820 judge
+     calls: 4 cells and 2 §23 rows of 470) and `exp31_report.py`.
+- **Time gate (pre-registered, automatic in `exp31_stage.sh`):** after 100 qTTT answers, if the mean server time per
+  qTTT answer divided by the 4 replicas is above 10 s, all sweeps stop and the pod is terminated. A failed gate costs
+  about 15 min, about $0.15.
+- **Estimate:** pod ready about 7 min (3B download, 4 loads); reader 2,000 answers about 30–45 min (1,000 at about
+  3–4.4 s and 1,000 at about 1.2 s, with the replicas overlapping decoding about 2×); 7B load about 7 min; judge about
+  5–10 min. **About 50–70 min, about $0.50–0.70.**
+- **Hard stop: 1.5 h after create, about $0.89.** If the reader stage is not done by 1 h 05 min, the FIFO + floor
+  qTTT cell (arm D, the control) is dropped first, so that arms A, B and the judge pass still fit.
+- Not yet measured, and only measurable on the pod: GPU seconds per step. The gate is the check.
+
+**Recommendation.** **Pod, if the user wants this route closed; otherwise stop.** It is feasible (about 3–4 s a question
+expected, under the 10 s line) and cheap (under $0.90 with the hard stop), and it is the last reader change short of
+LoRA. But the expected result is NOT SHOWN: the paper's gains come at 8k–128k tokens, our prompts are 1–3k, and an
+independent re-creation found almost no qTTT gain at 0.6B. To pass the margin, B would need about 0.46 (the 7B's
+0.436 plus about +0.02, given an interval about ±0.05 wide): B − A of about +0.14.
 
 ## 5. The sequential task
 
