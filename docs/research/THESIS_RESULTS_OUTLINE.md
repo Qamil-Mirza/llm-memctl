@@ -149,7 +149,7 @@ controller in front of the Qwen 7B reader on the same 500 LongMemEval questions.
 - **As a memory manager** (a call whenever memory overflows): about 21.5 calls and 94 GPU-seconds per question,
   about $15 per 1,000 questions; accuracy not run, by decision.
 - **Reading:** a general decision model with no training on the task beats a recency rule, but a 27k-parameter
-  head trained on evidence labels is more accurate, shorter and about 14 times cheaper. OpenJev approximates Jev; no
+  head trained on evidence labels is more accurate, shorter and about 16 times cheaper. OpenJev approximates Jev; no
   claim here is about TypeSafe's model.
 - **Cost:** $0.64 (three pods). Table: `cost_per_question.md`.
 

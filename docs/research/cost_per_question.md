@@ -43,7 +43,7 @@ upper bound for a stream that asks many questions per session.
   calls of its own. The writer's per-question cost, if notes are written fresh, is several times the reader's.
 - **Proposal.** Report cost as reader prompt tokens plus controller model calls and tokens, as here. Dollars are a
   derived column, at stated prices.
-- **A decision-model controller is measured now (§26, OpenJev on an A40).** As a selector it costs about 14 times
+- **A decision-model controller is measured now (§26, OpenJev on an A40).** As a selector it costs about 16 times
   the head's whole arm (about $0.52 against $0.032 per 1,000 questions) and is less accurate (0.489 against 0.526).
   As a full memory manager it costs about $15 per 1,000 questions before the reader runs. The cost axis separates
   the controller families more sharply than accuracy does.
