@@ -69,6 +69,7 @@ commands given).
 | 22 | Credit for the note-writer (simulator, free) | Per-write hindsight credit beats uniform GRPO (MLP +0.015; linear +0.036); time-forward (label-free) ≈ uniform; counterfactual best RL (0.141). No RL variant beats the supervised writer (0.146); from the supervised init (§22b) RL makes it worse (−0.027). §22c (KL to init, update count chosen on an inner split): level with supervised, −0.001 (CI −0.012..+0.011), clause FAILS narrowly; RQ3 closed. $0 |
 | 23 | Reader size ladder (Qwen 3B/7B/14B, Granite 2B/8B) | Claim 2 NON-INFERIOR: fixed8 at 7B minus FIFO at 14B +0.034 (CI −0.013..+0.079), closes 150% of the size gap. Claim 1 NOT SHOWN: fixed8 at 3B minus FIFO at 7B −0.121, closes 56%. Granite secondary not shown. $0.83 |
 | 24 | Reader families (Llama, Gemma 3, Phi-4; two sizes each) | Lift (a) PASSES in all six readers (+0.06 to +0.16). Size step (b): Gemma 3 4B→12B NON-INFERIOR (+0.015, CI −0.028..+0.057; closes 111%); Llama −0.051 and Phi-4 −0.117 NOT SHOWN. "Smaller gains most" holds in Llama only. $1.44 |
+| 25 | StreamMemBench zero-shot transfer of the §19 head (free close) | Closed without a paid run at the user's decision; $0. Evidence in view on 541 evaluation anchors: FIFO 0.93 / 0.91 / 1.00 (initial / revised / follow-up), `fixed8` 0.32 / 0.23 / 0.10: the head does not transfer, because recency wins on this benchmark |
 
 ---
 
@@ -3685,6 +3686,218 @@ list-pods was empty afterwards. The one blind Qwen 7B judge pass judged 8,460 an
 **Limitations.** The one prompt was tuned on Qwen 7B (stated in advance); one benchmark; one judge. The Gemma bf16
 reload and the Llama 8B disk-full resume are recorded above, with their checks. The Llama order change was made
 before any result.
+
+## 25. StreamMemBench: does the §19 head transfer to a benchmark with feedback and follow-ups? (N10; 2026-10-08, pre-registered, NOT YET APPROVED for spend)
+
+**Status:** closed without a paid run at the user's decision (2026-10-09); the result is in §25a. The
+pre-registration text below is unchanged apart from the review amendments made before the decision.
+
+**The benchmark, checked against the source** (arXiv 2606.14571; github.com/landian60/StreamMemBench at commit
+b32965525da5f982599af9794954c616ddeb34ff, cloned to `external/StreamMemBench`, not in git).
+- **Text only: confirmed.** Every observation is an EgoLife first-person narration line ("I put my phone away.",
+  357,705 lines) or a dialogue line ("Jake: Okay.", 297,770 lines). No images or audio.
+- **3,347 five-minute segments: confirmed.** 6 participants × 7 days, 42 day files.
+- **15,520 queries: does not match the release.** The paper says 7,760 anchors and 15,520 queries. The released data
+  (Chinese and English) has 2,854 evidence segments, **8,107 anchors and 16,214 tasks** (one initial and one
+  follow-up per anchor), as its README and metadata say. §25 uses the release.
+- **Size and licence.** The repository is 832 MB with the data inside (no separate download); the English release is
+  347 MB, copied to `data/streammembench/` (gitignored). Code: MIT. Data: derived from EgoLife, "subject to the
+  upstream EgoLife license and Hugging Face access terms". Used here for research only, not redistributed.
+- **A task, per anchor** (their `runner.py`): the stream up to the evidence segment is ingested; the **initial
+  request** is asked right after that segment; a **user simulator** (an LLM) compares the answer with a hidden
+  `expected_behavior` and evidence statement and returns affirm or revise with 1–3 sentences of feedback; on
+  revise, the system answers again with the feedback; the interaction is stored; then the **follow-up request** is
+  asked.
+- **The four metrics are judge-made, not rule-based.** Each is a 0/1 per anchor:
+  - fidelity: an LLM auditor says the records saved at that segment contain the evidence statement;
+  - initial evidence use: the simulator affirms the first answer;
+  - feedback incorporation: the simulator affirms the revised answer (only anchors that were revised);
+  - follow-up reuse: the simulator affirms the follow-up answer.
+- **Their judge:** DeepSeek-V4-Pro, three votes per decision at temperature 0.5, majority vote (paper; their default
+  config). Backbones in the paper: DeepSeek-V4-Flash, Gemini-3-Flash, Qwen3-14B. Their RAG-raw with Qwen3-14B:
+  initial use 0.170, feedback incorporation 0.630, follow-up reuse 0.220 (paper's table).
+- **Label quality.** Supporting observations carry a day-level `stream_index`. 20,644 of 25,671 point at the same
+  text in the same segment; the rest point elsewhere. 1,498 of 8,107 anchors have no matching line.
+  `source_span.raw_indices` is not usable as a pointer (out of range for most anchors).
+
+**The environment** (`memctl/envs/streammembench.py`, registered as `streammembench`; tests in
+`tests/test_streammembench.py`).
+- One episode is one participant-day (mean 126k tokens, close to LongMemEval_s's 103k). The paper keeps one memory
+  per participant over 7 days; a day is used so a stream has the scale the controllers were built for.
+- Lines are grouped into chunks of about 150 tokens (between LongMemEval's median turn, 91, and mean, 210), never
+  across a segment. A chunk is one memory item, labelled "Name, DAY1 11:10:00 - 11:15:00". The day is shown up to
+  its last evaluated segment.
+- After each evaluated segment, each anchor runs: initial request → (revise: the feedback, quoting the request and
+  the first answer) → the stored interaction (their `store_interaction` text) → follow-up request. Feedback and the
+  stored interaction enter memory like any other observation, so the controller decides whether they stay in view.
+- The user simulator is **their prompt, vendored verbatim** (checked equal to their file), sent as one message.
+  One vote at temperature 0, not three at 0.5. Unparsable output counts as revise, and is counted.
+- Fidelity is not computed: memctl keeps every chunk, so it would be 1 for every arm (their RAG-raw also scores
+  1.00). The label-based "evidence in view" (the §13a P(all in view)) replaces it as a diagnostic. For the
+  follow-up, "in view" means the evidence chunks or the stored interaction.
+- The budget fraction is taken from the day's stream tokens, without a reference pass: the stream depends on the
+  answers, so a reference pass would call the reader (`memctl/harness/runner.py`, `history_tokens`).
+
+**Split (no held-out peeking).**
+- **Training side, reserved:** participants A1_JAKE and A2_ALICE. Any tuning (prompt, chunk size, head retraining)
+  uses them only.
+- **Evaluation:** participants A3–A6 (1,848 evidence segments). **200 segments are drawn with seed 25**
+  (`random.Random(25).sample`, `sample_items`): 28 participant-days, 565 anchors. Days are dealt to 7 shards by
+  anchor count (`shard_days`).
+- **A3_TASHA DAY1 is excluded from every §25 evaluation pool, for good** (amended at review, before any run). It is
+  dropped after sampling and sharding (`env.exclude_days` in all 7 configs), so the seed-25 sample and the other
+  shards are unchanged.
+  - Correction to the review note: the day **is** in the current shards, in shard 6 (`exp25_qwen7b_s6.yaml`), which
+    now runs 3 days instead of 4. All 28 A3–A6 days are in the sample, so no shard could lack it.
+  - The evaluated set is therefore **27 days, and 565 anchors minus that day's sampled anchors**. That count is not
+    computed now (no computation on the A3–A6 sample before the decision); it is printed by the run or by the
+    closing evaluation below.
+- Nothing in §25 is trained on StreamMemBench. The design above came from LongMemEval and the benchmark's schema.
+- **Disclosure:** one stub probe on one evaluation day (A3_TASHA DAY1) printed the label-based evidence-in-view per
+  arm before the training-side check was set up. No reader output was seen and no setting was changed because of
+  it; the numbers below are training-side only.
+- **Order of decisions (from this session's history).** The seed (25) was fixed before that probe: it was
+  hard-coded in the config generator, and the probe ran from configs it made. The 200-segment size was also the
+  value in the probe's configs, but it was **not final** then: 150 and 200 were still being weighed, and 200 was
+  chosen after the probe, from the stub's call counts (cost and power). The shard dealing by anchor count was also
+  added after the probe, for cost. Nothing was committed until after the probe.
+- **With the exclusion, the probe can no longer affect what is evaluated.**
+
+**Arms** (the §23 arms, unchanged: 5% budget, `memory.count_labels`, lexical search):
+- FIFO + floor (3k target, top 5 retrieved): the baseline.
+- `fixed8`: the §19 head A (`runs/lme_n4_head_f0_a/checkpoints/policy_best.pt`, trained on half A of LongMemEval fold 0's
+  training part only), 32 BM25 candidates, keep none.
+- `fixed16`: the same head, 16 shown.
+- **Their RAG-raw: not included.** It does not drop in: one record per segment (about 1,700 tokens), top 10, so
+  about 17k-token prompts, a 32k context and about 6× the prefill per call, with their own answer prompt. The
+  environment supports `unit: segment` if it is wanted later as its own arm.
+
+**Reader and simulator.**
+- Reader: Qwen2.5-7B-Instruct (vLLM, A40), `reasoning: false`, compact labels, up to 320 new tokens. Instructions:
+  their RAG answer prompt, adapted ("You are {person}'s personal AI assistant … say you don't know …"). No tuning.
+- Simulator: **the same Qwen 7B server.** The feedback is part of the stream, so it must run online; it cannot be a
+  separate blind pass as in §23. It sees the request, the answer and the hidden labels, never the arm.
+- Qwen3-14B (the paper's open backbone): **not included.** memctl's OpenAI backend cannot yet turn off Qwen3's
+  thinking mode; that is code to add first. If added, about +1.6–2.3 h (+$0.95–1.35, from §23's 14B/7B time ratio).
+- Their API judge (DeepSeek-V4-Pro, 3 votes, plus the fidelity audit): about 11 calls per anchor and arm, so about
+  18,600 calls, 19M input and 3M output tokens for §25. It is a paid API with a key, and it would sit in the loop
+  while the pod runs. **Not proposed.**
+
+**Pre-registered claim (primary).** Zero-shot transfer: `fixed8` against FIFO + floor, Qwen 7B, the evaluated anchors
+(27 days), paired by anchor.
+- **Metrics:** follow-up reuse (all evaluated anchors) and feedback incorporation (anchors revised in both arms; their
+  unconditional mean is also reported).
+- **"Transfers" (non-inferior):** on both metrics, the 95% interval of `fixed8` minus FIFO has a lower bound above
+  −0.03. **"Better":** lower bound above 0 on both. **"Worse":** upper bound below 0 on either. Otherwise
+  undetermined.
+- Intervals: bootstrap over anchors (paired), as §23; a bootstrap over days (anchors share a day's memory) is
+  reported beside it as a check.
+- **Direction expected, written before any run: `fixed8` below FIFO on both metrics**, so the claim is expected to
+  fail. Reason: the free training-side check below.
+- Secondary (descriptive): initial evidence use, `fixed16`, prompt tokens, evidence in view, the share of answers
+  with a refusal phrase (the §24 list: "don't know", "do not know", "not mention", "no information", "cannot
+  determine", "unable to"), simulator parse failures per arm (flagged if above 5% of calls).
+
+**Free training-side check (A1 and A2, 100 segments with seed 25, 275 anchors, stub reader; evidence in view at
+read time):**
+
+| arm | initial | revised | follow-up (evidence or stored interaction) | reader prompt tokens |
+|---|---|---|---|---|
+| FIFO + floor | 0.978 | 0.960 | 1.000 | about 2,990 |
+| `fixed8` | 0.433 | 0.291 | 0.233 | about 1,000 |
+| `fixed16` | 0.516 | 0.382 | 0.338 | about 1,800 |
+
+- The benchmark asks each request right after its evidence segment, and the feedback and stored interaction are the
+  newest items. A recency window keeps all of them. The head archives everything and searches with the request,
+  which is usually future-oriented ("what should I remind them to do tonight?") and shares few words with the
+  evidence.
+- So §25 mainly tests whether a head trained on LongMemEval's "old evidence" questions transfers to a benchmark
+  where the evidence is recent. The check says it does not reach the evidence. A run would measure how much that
+  costs the reader; it is unlikely to show a transfer.
+- Not built, and a separate pre-registration if wanted: the head plus a recent window (keep the last ~3k tokens,
+  head fills the rest), chosen on the training side.
+
+**Confounds and limitations, stated before any run.**
+- The head was trained on LongMemEval chat turns; this stream is first-person narration and multi-speaker dialogue.
+  A loss may be the domain, not the head.
+- The reader and the simulator are the same model, so the simulator may favour its own phrasing. It is the same for
+  every arm, but not neutral; the paper's numbers (DeepSeek judge) are not comparable to ours.
+- One vote at temperature 0, not three at 0.5; one day of memory, not seven; English release only.
+- About 18% of anchors have no usable evidence label; for them the whole segment counts, so evidence in view is
+  lenient there.
+
+**Stub check (done, free; prelaunch rule).**
+- Full size: 7 shards × 3 arms = 21 cells, 28 days (before the A3_TASHA DAY1 exclusion), 565 anchors per arm, stub reader and stub simulator. The stub
+  simulator's output never parses, so every initial answer is revised: the call count is an upper bound. Per arm
+  1,695 reader and 1,695 simulator calls; **10,170 calls in all**. Mean reader prompt: FIFO 2,952 tokens, `fixed8`
+  999, `fixed16` 1,826; simulator prompt about 870 (more with real, longer answers). Largest cell: 261 reader calls.
+- **Resume on a new endpoint:** all 7 sweeps were killed after 14 s (cells at 0–3 of 3–5 days), then rerun with a
+  different `base_url` for the reader and the simulator. All 21 cells finished with every day once (no duplicates,
+  none refused); the cells that had finished days resumed from them. An interrupted day restarts, and its calls
+  come back from the generation cache.
+- **Peak RSS 0.64 GB** per sweep process (3 cells), so 7 sweeps need about 4.5 GB on the launching machine.
+- All stub cache entries were deleted afterwards (`cache/generations_exp25_qwen7b`, `cache/simulator_exp25`), so the
+  real run starts empty.
+
+**Cost (NEEDS SPEND; from §23's measured stage times on the same A40, $0.59/h).**
+- §23 measured: first model ready 4.4 min after create; Qwen 7B answered 1,500 LongMemEval questions in 10.3 min
+  (about 0.41 s per call across 15 cells; mean prompt about 2,200 tokens, up to 256 new tokens).
+- §25: up to 10,170 calls (reader prompts mean about 1,930 tokens, up to 320 new tokens; simulator prompts about
+  1,000 tokens, short JSON replies). If 60–80% of initial answers are revised (the paper's RAG-raw rates), about
+  9,200–9,800 calls. At 0.3–0.41 s per call: **about 50–70 min of generation**.
+- With pod start, model load and checks: **about 1.0–1.4 h, so about $0.60–0.85.** One model for everything (Qwen
+  7B), one stage.
+- **Hard stop at 2 h after create (about $1.18).** If the pod's price is not $0.59/h, the figure is re-quoted
+  before the run starts.
+- **Triage rule, pre-declared:** if fewer than half of the days are done 75 min after create, `fixed16`
+  (descriptive) is stopped first, so the two arms of the claim finish.
+
+**If §25 closes without a paid run (pre-declared result, free; amended at review).**
+- One label-only evaluation: evidence in view at the initial, revised and follow-up requests, for FIFO + floor,
+  `fixed8` and `fixed16`, on the evaluation anchors (the 565 of the seed-25 sample, less A3_TASHA DAY1's), with the
+  stub reader and stub simulator, from the committed configs. Reported as §25's result, with 95% intervals by
+  anchor.
+- It is computed **exactly once**, and **only after the user decides there is no paid run**.
+- If the user chooses the paid run instead, it is **not** computed beforehand: that would be a peek at the
+  evaluation side. The paid run reports the same numbers as its diagnostic.
+- Not executed as of this amendment.
+
+### 25a. Result: closed without a paid run; the head does not transfer, because recency wins (2026-10-09)
+
+**Decision.** At 05:23 UTC on 2026-10-09 the user closed §25 as a free result (the reviewer's recommendation), so
+there is no paid run. The pre-declared closing evaluation was then computed **once**, at 05:27 UTC, from the
+committed configs with only the reader and simulator set to stub (`runs/_pipelines/exp25_close_cfg.py`,
+`exp25_close_eval.py`; per-anchor table in `runs/exp25_close_eval.json`). $0.
+
+**Evaluated set:** 541 anchors on 27 participant-days (the seed-25 sample of 565, less A3_TASHA DAY1's 24); the
+excluded day is absent from the output.
+
+**Evidence in view** (share of requests with all their evidence lines in the reader's prompt; 95% interval by
+anchor):
+
+| request | FIFO + floor | `fixed8` | `fixed16` | `fixed8` minus FIFO | `fixed16` minus FIFO |
+|---|---|---|---|---|---|
+| initial | 0.930 (0.908, 0.950) | 0.318 (0.279, 0.355) | 0.401 (0.359, 0.440) | −0.612 (−0.656, −0.569) | −0.529 (−0.573, −0.486) |
+| revised | 0.908 (0.882, 0.932) | 0.229 (0.194, 0.264) | 0.290 (0.253, 0.329) | −0.678 (−0.719, −0.638) | −0.617 (−0.662, −0.573) |
+| follow-up | 0.996 (0.991, 1.000) | 0.100 (0.078, 0.126) | 0.181 (0.150, 0.214) | −0.896 (−0.921, −0.869) | −0.815 (−0.847, −0.782) |
+
+Mean reader prompt: FIFO 2,949 tokens, `fixed8` 998, `fixed16` 1,824.
+
+**What it means.**
+- **The §19 head does not transfer zero-shot to StreamMemBench.** The pre-declared direction (`fixed8` below FIFO)
+  holds on every request type, by a wide margin; it matches the training-side check (A1/A2).
+- **Why:** this benchmark asks each request right after its evidence segment, and the follow-up right after the
+  stored interaction, so the most recent turns are the evidence. FIFO keeps them; the head archives everything
+  and searches with a forward-looking request that shares few words with the evidence. The worst gap is on the
+  follow-up, the request that most needs the earlier exchange.
+- The reader was not run, so this is a statement about evidence in view, not accuracy. §23 shows what a reader
+  does when the evidence is not in view (P(correct | in view) against out of view), so a paid run would very
+  likely only have confirmed the direction.
+- The "revised" row covers every anchor, because the stub simulator asks for a revision every time; with a real
+  simulator only some anchors are revised.
+
+**Next, if wanted:** a head-plus-recent-window arm, designed on A1/A2 and the LongMemEval training folds only,
+would be a separate pre-registration.
 
 ## 5. The sequential task
 
