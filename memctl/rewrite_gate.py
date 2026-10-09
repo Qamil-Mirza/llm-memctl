@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -40,8 +41,8 @@ from memctl.splits import fold_indices
 PATH = "data/longmemeval/longmemeval_s_cleaned.json"
 K = 32
 FOLDS = 5
-GATE_DIR = Path("runs/exp28_gate")
-REWRITE_CACHE = "cache/rewrite_exp28"
+GATE_DIR = Path(os.environ.get("EXP28_GATE_DIR", "runs/exp28_gate"))  # overridden only by the stub rehearsal
+REWRITE_CACHE = os.environ.get("EXP28_REWRITE_CACHE", "cache/rewrite_exp28")
 MAX_VERSIONS = 4
 ACTIONS = ("drop", "demote")
 SLACKS = (0.5, 1.0, 2.0, 4.0)
@@ -61,7 +62,7 @@ class Question:
         item = episode.questions[0]
         self.number, self.id, self.type = number, item.id, item.category
         self.answerable = not item.unanswerable
-        self.content = item.question  # "(asked on DATE) question", the observation's text
+        self.content = f"Question: {item.question}"  # the observation's text, as memctl/envs/qa.py writes it
         self.items = [SimpleNamespace(id=t.id, content=t.content, metadata=t.metadata, created_at=n)
                       for n, t in enumerate(episode.turns)]
         self._requirements = [(e,) for e in item.evidence_ids] + [tuple(ids) for ids in fallback]
@@ -168,7 +169,7 @@ def _outputs(template: str, numbers: list[int], llm, workers: int = 16) -> dict[
 
 
 def _version_file(version: int) -> Path:
-    return Path(f"configs/sweeps/exp28/prompts/v{version}.txt")
+    return Path(os.environ.get("EXP28_PROMPT_DIR", "configs/sweeps/exp28/prompts")) / f"v{version}.txt"
 
 
 def _sha(path: Path) -> str:

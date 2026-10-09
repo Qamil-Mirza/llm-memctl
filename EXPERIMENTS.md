@@ -71,7 +71,7 @@ commands given).
 | 24 | Reader families (Llama, Gemma 3, Phi-4; two sizes each) | Lift (a) PASSES in all six readers (+0.06 to +0.16). Size step (b): Gemma 3 4B→12B NON-INFERIOR (+0.015, CI −0.028..+0.057; closes 111%); Llama −0.051 and Phi-4 −0.117 NOT SHOWN. "Smaller gains most" holds in Llama only. $1.44 |
 | 25 | StreamMemBench zero-shot transfer of the §19 head (free close) | Closed without a paid run at the user's decision; $0. Evidence in view on 541 evaluation anchors: FIFO 0.93 / 0.91 / 1.00 (initial / revised / follow-up), `fixed8` 0.32 / 0.23 / 0.10: the head does not transfer, because recency wins on this benchmark |
 | 26 | OpenJev (open Jev re-creation) as a controller | Arm B (selector, 8 of the head's 32 candidates): B − FIFO +0.045 (CI +0.004..+0.087), BETTER; B − `fixed8` −0.036 (CI −0.081..+0.009), not shown; B's prompts 2,373 tokens vs 1,049. Arm A (memory manager) cost only: ~94 GPU-s per question (~$15 per 1,000); accuracy not run by decision. $0.64 |
-| 28 | Query rewriting for the head's 32 candidates: LLM rewrite (a), rule time filter (b) | Pre-registered; the free training-side gate for (b) is in §28a. (a) NEEDS SPEND, not approved |
+| 28 | Query rewriting for the head's 32 candidates: LLM rewrite (a), rule time filter (b) | (b) NO GO at the free gate: training recall@32 falls in all five folds (−0.004 to −0.008; temporal −0.007 to −0.012). (a) built and stub-checked; its gate and reader NEED SPEND (≤$0.44 on the §27 pod), not approved. $0 |
 
 ---
 
@@ -4243,8 +4243,9 @@ not measured.
 
 ## 28. Query rewriting for the head's candidate pool (2026-10-09, pre-registered, NOT YET APPROVED for spend)
 
-**Status:** pre-registered before any recall was computed. The free part (the rule filter's training-side recall)
-follows in §28a. The paid part (arm (a)'s gate and the reader) NEEDS SPEND and is not approved.
+**Status:** pre-registered before any recall was computed (64735e2). The free part is in §28a: **arm (b), the rule
+filter, fails its gate on all five folds and stops.** Arm (a) is built and rehearsed; its gate and the reader
+NEED SPEND and are not approved.
 
 **Why.**
 - The §19 head picks 8 of the 32 BM25 candidates. It cannot show a turn that is not in the 32. So a better pool
@@ -4349,6 +4350,88 @@ RANGE: if the question refers to a time, such as "two weeks ago", "last Saturday
 - Reported once, at evaluation (`rewrite_gate evaluate`): reader-free P(all in view) and BM25 recall@32 per arm on
   the test folds.
 - Abstention questions: false answers on the 30 unanswerable questions, reported as usual.
+
+### 28a. Free part: the rule filter fails its gate on every fold; arm (a) is built and rehearsed (2026-10-09)
+
+**Arm (b), the rule time filter: NO GO.** `python -m memctl.rewrite_gate rule-tune` (training parts only; 23 s on
+the laptop, peak RSS 0.05 GB; `runs/exp28_gate/rule.json`).
+- Per fold, the best setting by training recall was **`demote` with slack 4** (the widest window) in all five
+  folds. Every `drop` setting was worse still (best `drop` 0.829–0.837 against raw 0.847–0.861).
+- Recall@32 on each fold's training part (376 answerable questions; temporal-reasoning n = 101–102):
+
+  | fold | raw | rule filter | gain | temporal raw | temporal rule | temporal gain | gate |
+  |---|---|---|---|---|---|---|---|
+  | 0 | 0.851 | 0.844 | −0.007 | 0.855 | 0.847 | −0.008 | fails |
+  | 1 | 0.853 | 0.849 | −0.004 | 0.849 | 0.840 | −0.009 | fails |
+  | 2 | 0.861 | 0.853 | −0.008 | 0.879 | 0.867 | −0.012 | fails |
+  | 3 | 0.855 | 0.847 | −0.008 | 0.858 | 0.846 | −0.012 | fails |
+  | 4 | 0.847 | 0.843 | −0.005 | 0.850 | 0.842 | −0.007 | fails |
+
+- **Plainly: the rule filter lowers recall, overall and on temporal questions, in every fold.** The best setting
+  is the one that changes the pool least. Arm (b) does not go to the reader.
+- The parser fires on about 15% of questions (56–60 of 376; 22–24 of the 101–102 temporal ones).
+- **Why (descriptive; fold 0's training part; no choice depends on it).** On the 56 questions where it fires,
+  only 56% of the evidence lies in the range at slack 1, and 84% at slack 4. All of a question's evidence lies in
+  the range for 25 of 56 questions at slack 1, and 43 of 56 at slack 4. Recall on those 56: raw 0.712, `demote`
+  slack 4 0.667, `drop` slack 1 0.386.
+  - A time phrase in the question often does not point at the session the evidence is in. Example of the kind:
+    the user mentions an event in a later chat, or the evidence spans several sessions.
+  - This also bears on arm (a): an LLM's range, even a correct reading of the phrase, faces the same mismatch.
+- The total number of answerable temporal-reasoning questions (the primary subgroup at evaluation) is **n = 127**
+  (from the `question_type` field).
+- **One fix before the numbers above, disclosed:** the first pass gave the search the question without the
+  "Question: " prefix the environment puts on it (`memctl/envs/qa.py`). That was corrected so the gate's query is
+  the controller's. The verdict did not change (every fold failed both times). The gate's 32 candidates were
+  checked equal to the controller's shortlist on 4 training questions of fold 0 (4 of 4).
+
+**Arm (a), the LLM rewrite: built, not measured (it needs Qwen 7B).**
+- Prompt v1 is frozen (§28 above; committed at 64735e2, before any recall was computed).
+- The pod step, in order (`configs/sweeps/exp28/stage.sh`):
+  1. `stage.sh gate 1 URL`: rewrite all 500 questions (label-free); print the format stats; score v1 on each fold's
+     training part.
+  2. If a fold is still open: write v2 from the format stats only, commit it, `stage.sh gate 2 URL`; up to v4.
+  3. The gate closes when every fold has a version, or after v4 (`runs/exp28_gate/selected.json`).
+  4. `stage.sh reader URL`: only if GO. `fixed8` and `fixed8_rewrite`, five folds, then the blind judge
+     (`configs/sweeps/exp28/judge_report.py`). The report gives the two pre-registered differences.
+  5. `python -m memctl.rewrite_gate evaluate`: test-fold recall@32 and all-in-32 per arm, once.
+- **The scripts enforce the order** (checked in the stub run): a version scored before the one before it, or
+  twice, is refused; a scored prompt file that changes is refused; `final` refuses while a fold is open and fewer
+  than four versions are scored; after `final` no more rewriting; the reader stage refuses unless the gate is GO;
+  `evaluate` refuses before the gate is final, and refuses to run twice.
+
+**Stub check (done, free; stub reader, stub rewriter, stub judge, separate stub caches).**
+- **Gate loop, full size:** v1–v4 each rewrote 500 questions and scored the five training parts, 30–56 s per
+  version, peak RSS 0.08 GB. The stub's answers are all malformed (it answers "unknown"), so every gain is 0, no
+  fold passed, and `final` wrote **DROP**, as the rule says. The reader stage then refused to start.
+- **Reader stage, full size (gate file forced to GO for the rehearsal only):** both arms × five folds, three workers
+  each, as on the pod. Stopped by SIGKILL after 40 s (60–100 of 100 per cell), then resumed against a different
+  `base_url`. All 10 cells resumed (`resumed: true`) and ended with 100 distinct questions; the resume took 24 s.
+  The stub judge graded 940 answerable answers (60 abstention answers kept).
+- Peak RSS **0.60 GB** per sweep process. Disk: about 315 MB per fold (1.6 GB in all), so the run fits (20 GB free;
+  the rule is at least 15 GB).
+- `fixed8_rewrite` replayed every rewrite from the cache with no miss. With malformed stub rewrites it equals the
+  raw question, so both arms gave P(all in view) 0.700 (§26's stub: 0.700).
+- All stub output and stub caches were deleted afterwards.
+
+**Price (NEEDS SPEND; only §28's extra work on the shared §27 pod, Qwen2.5-7B already loaded; A40 $0.59/h).**
+- From §23's measured rate (1,500 LongMemEval answers in 10.3 min; judge about 3 min per 7,000 answers):
+  - one rewrite version: 500 short calls (about 230 prompt tokens, at most 96 out), estimated at most 1.5 min,
+    plus about 0.5 min of laptop scoring: **about 2 min per version** (an estimate; short calls are not measured);
+  - writing a revision: the pod waits; **capped at 10 min per revision**, else the arm is dropped;
+  - `fixed8_rewrite` answers: 500, about 3.4 min; judge: 470 more answers, under 1 min.
+- **Best case (v1 passes): about 7 min, about $0.07.** **Worst case (three revisions, GO at v4): about 42 min, about
+  $0.42.** Dropped after v4: about 38 min, about $0.37.
+- **Hard stop: 45 min of §28-only pod time (about $0.44).** If it is reached, arm (a) stops where it is and is
+  reported as not run.
+- If §27's pod is not running, a pod of its own adds about 5 min to ready and 3.4 min for `fixed8` (about $0.09).
+- Nothing is approved. No pod was started for §28.
+
+**Recommendation.**
+- Arm (b): stopped by its pre-declared gate.
+- Arm (a): the reviewer's rule stops §28 only if neither variant improves training recall, and (a) cannot be
+  measured without the GPU. Run its gate **only as a ride-along on the §27 pod** (about $0.02 for v1's gate
+  alone; at most $0.44 with revisions and the reader). Expect little: the pool already holds 0.85 of the evidence,
+  and the rule filter shows that time ranges miss evidence sessions often. If the user prefers, stop here at $0.
 
 ## 5. The sequential task
 

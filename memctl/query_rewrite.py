@@ -64,7 +64,8 @@ def parse_date(text: str) -> date | None:
 
 
 def split_question(content: str) -> tuple[date | None, str]:
-    """(question date, question text) from the LongMemEval observation "(asked on DATE) question"."""
+    """(question date, question text) from the LongMemEval observation "Question: (asked on DATE) question"."""
+    content = content[len("Question: "):] if content.startswith("Question: ") else content
     match = re.match(r"^\(asked on (.*?\d{1,2}:\d{2})\)\s*", content) or re.match(r"^\(asked on ([^)]*)\)\s*", content)
     if not match:
         return None, content

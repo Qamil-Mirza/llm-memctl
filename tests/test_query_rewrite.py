@@ -40,6 +40,7 @@ def test_slack_widens_the_window():
 
 def test_split_question_and_parse_rewrite():
     assert split_question("(asked on 2023/05/30 (Tue) 23:40) What did I buy?") == (ASKED, "What did I buy?")
+    assert split_question("Question: (asked on 2023/05/30 (Tue) 23:40) What?") == (ASKED, "What?")
     assert parse_rewrite("QUERY: yoga class\nRANGE: 2023/05/10 - 2023/05/01") == \
         ("yoga class", (date(2023, 5, 1), date(2023, 5, 10)), True)
     assert parse_rewrite("QUERY: yoga\nRANGE: none") == ("yoga", None, True)
