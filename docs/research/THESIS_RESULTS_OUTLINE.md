@@ -153,6 +153,19 @@ controller in front of the Qwen 7B reader on the same 500 LongMemEval questions.
   claim here is about TypeSafe's model.
 - **Cost:** $0.64 (three pods). Table: `cost_per_question.md`.
 
+## Two more baselines for the pool (§27, §28)
+
+- **LRE (§27), a published query-blind turn scorer**, re-implemented and trained per fold with its own label
+  rule. Picking 8 of the head's 32 candidates it collapses (0.109; all evidence in view 0.03), because it is
+  query-blind and its loose labels favour long turns. In place of recency it is level with FIFO + floor (+0.028,
+  non-inferior). The head leads both (0.536).
+- **Query rewriting (§28).** A rule-based time filter lowered training recall and was stopped free. A Qwen 7B
+  rewrite passed its training gate only at the third prompt (the first two failed on format and on invented date
+  ranges, the LongMemEval paper's caveat for 7–8B models) and is level with the raw question on the test folds
+  (+0.006; temporal +0.024, n = 127).
+- **Reading:** the head's 32-candidate pool already holds about 0.85 of the evidence; neither a better query nor a
+  published scorer beats the head's choice within it. Cost $0.23 for both.
+
 ## Protocol section (methods)
 
 - **Folds and scoring.** Stratified 5-fold LongMemEval; LoCoMo categories 1–4, with refusal-scored questions
@@ -188,8 +201,9 @@ controller in front of the Qwen 7B reader on the same 500 LongMemEval questions.
   | 24: reader families (six readers, one pod at $0.59/h) | 2.43 h | $1.44 |
   | 25: StreamMemBench transfer (closed free) | — | $0 |
   | 26: OpenJev controller (smoke, arm B fill, reader; three pods) | 1.08 h | $0.64 |
-  | **benchmark programme (13–26)** | 15.38 h | **$8.03** |
-  | **all experiments** | 24.21 h | **$12.35** |
+  | 27–28: LRE baseline and query rewrite (one shared pod) | 0.39 h | $0.23 |
+  | **benchmark programme (13–28)** | 15.77 h | **$8.26** |
+  | **all experiments** | 24.60 h | **$12.58** |
 - **Provenance.**
   - Every run records its commit and a dirty flag.
   - The sharded LongMemEval loader has a test showing it plays the same episodes as the full file.

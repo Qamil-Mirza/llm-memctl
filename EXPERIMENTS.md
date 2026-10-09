@@ -71,6 +71,7 @@ commands given).
 | 24 | Reader families (Llama, Gemma 3, Phi-4; two sizes each) | Lift (a) PASSES in all six readers (+0.06 to +0.16). Size step (b): Gemma 3 4B→12B NON-INFERIOR (+0.015, CI −0.028..+0.057; closes 111%); Llama −0.051 and Phi-4 −0.117 NOT SHOWN. "Smaller gains most" holds in Llama only. $1.44 |
 | 25 | StreamMemBench zero-shot transfer of the §19 head (free close) | Closed without a paid run at the user's decision; $0. Evidence in view on 541 evaluation anchors: FIFO 0.93 / 0.91 / 1.00 (initial / revised / follow-up), `fixed8` 0.32 / 0.23 / 0.10: the head does not transfer, because recency wins on this benchmark |
 | 26 | OpenJev (open Jev re-creation) as a controller | Arm B (selector, 8 of the head's 32 candidates): B − FIFO +0.045 (CI +0.004..+0.087), BETTER; B − `fixed8` −0.036 (CI −0.081..+0.009), not shown; B's prompts 2,373 tokens vs 1,049. Arm A (memory manager) cost only: ~94 GPU-s per question (~$15 per 1,000); accuracy not run by decision. $0.64 |
+| 27 | LRE (published query-blind scorer) as a baseline controller | LRE-slot (8 of the head's 32): 0.109, far below FIFO (−0.328) and the head (−0.428), evidence in view 0.03. LRE-native (in place of recency): +0.028 vs FIFO (CI −0.002..+0.057), non-inferior. About $0.23 shared with §28 |
 | 28 | Query rewriting for the head's 32 candidates | Rule time filter (b): NO GO at its free gate. LLM rewrite (a): training gate passed at v3 (v1 malformed, v2 invented ranges); test folds +0.006 overall (CI −0.017..+0.030) and +0.024 on temporal (n = 127, CI −0.016..+0.063), non-inferior, not better. About $0.23 shared with §27 |
 
 ---
@@ -3518,7 +3519,7 @@ FIFO → `fixed8`):
 **Limitations.** One frozen prompt for all readers (the 3B's refusal rate is partly a prompt-format effect); one
 benchmark; one judge (Qwen 7B, whose ranking was judge-independent in §18).
 
-## 24. Does the drop-in lift hold in other model families? (N9; 2026-10-08, pre-registered, NOT YET APPROVED for spend)
+## 24. Does the drop-in lift hold in other model families? (N9; 2026-10-08, pre-registered, run 2026-10-09)
 
 **Status:** run 2026-10-09 on pod 7d7fnvmk5actq0, about $1.44; the result is in §24a. The pre-registration text
 below is unchanged apart from the launch and deviation notes added before the judge pass.
@@ -3689,7 +3690,7 @@ list-pods was empty afterwards. The one blind Qwen 7B judge pass judged 8,460 an
 reload and the Llama 8B disk-full resume are recorded above, with their checks. The Llama order change was made
 before any result.
 
-## 25. StreamMemBench: does the §19 head transfer to a benchmark with feedback and follow-ups? (N10; 2026-10-08, pre-registered, NOT YET APPROVED for spend)
+## 25. StreamMemBench: does the §19 head transfer to a benchmark with feedback and follow-ups? (N10; 2026-10-08, pre-registered, closed 2026-10-09 without a paid run)
 
 **Status:** closed without a paid run at the user's decision (2026-10-09); the result is in §25a. The
 pre-registration text below is unchanged apart from the review amendments made before the decision.
@@ -3901,7 +3902,7 @@ Mean reader prompt: FIFO 2,949 tokens, `fixed8` 998, `fixed16` 1,824.
 **Next, if wanted:** a head-plus-recent-window arm, designed on A1/A2 and the LongMemEval training folds only,
 would be a separate pre-registration.
 
-## 26. An open Jev stand-in as the memory controller (OpenJev; 2026-10-08, pre-registered, NOT YET APPROVED for spend)
+## 26. An open Jev stand-in as the memory controller (OpenJev; 2026-10-08, pre-registered, run 2026-10-09)
 
 **Status:** pre-registered and accepted at review (94b3f72, 881c7c4). The review added arm B (OpenJev as selector),
 the GPU plan and the step order below, written before any spend. The free parts (fork check, code, stub checks of
@@ -4240,6 +4241,208 @@ verdicts in `runs/exp26_verdicts.json`):
 **Limitations.** OpenJev approximates Jev; nothing here is a result about TypeSafe's Jev. The A40 runs it with a
 bf16 KV cache (declared deviation) and weight-only FP4. One benchmark, one reader, one judge. Arm A's accuracy was
 not measured.
+
+## 27. LRE, a published query-blind scorer, as a baseline controller (N11; 2026-10-09, pre-registered, run 2026-10-09)
+
+**Status:** pre-registered before any held-out evaluation. The free parts (code check, controller, tests, per-fold
+training, training-side label check, configs, stub check) are done (code at c2258e6). The reader pass needs spend and the user's
+approval; it is meant to share one pod with §28 (query-rewrite arms), both pairing with this session's `fixed8`.
+
+**Why.** LRE ("Learning What Not to Forget", arXiv 2606.20954) is a published, CPU-only, learned scorer for what to
+keep in a long context. It is the nearest outside baseline to the §19 head: small, cheap and trained. It gives the
+head a peer from the literature, not only FIFO.
+
+**The key design difference, stated plainly.** LRE is **query-blind** at selection: its score of a turn never sees
+the question. The §19 head **sees the question** (its BM25 candidates and features are built from it). So any gap
+between them is partly "knowing the question", by design. That is the comparison the user asked for.
+
+**Code check (2026-10-09; cloned to `external/LRE`, gitignored, read only; none of it was run).**
+- **Pinned commit:** `1aa51d672d772b27a272cab1393cd9968c13d158` (2026-06-23, "Initial LRE code"; the only commit).
+- **Licence: MISMATCH.** There is **no LICENSE file**. `pyproject.toml` says **MIT**; the paper is said to be CC BY
+  4.0. We copy no file: `memctl/lre.py` re-implements the few formulas, with the source cited. Either licence allows
+  that.
+- **What was claimed, against the code:**
+
+  | claim | in the code | verdict |
+  |---|---|---|
+  | L2 logistic regression | `LogisticRegression(max_iter=1000, class_weight="balanced")`, sklearn default L2, C = 1 | **checks out** |
+  | CPU-only | sklearn only; no GPU path | **checks out** |
+  | query-blind | the conversational scorer's inputs are the unit's text and position only | **checks out** |
+  | kilobyte-scale | the agent scorer (10 features) is; the conversational one has up to 10,006 weights plus a 10,000-word vocabulary. Ours: **about 480 KB as JSON, 10,007 parameters** | **partly**: hundreds of KB |
+  | "~10 causal features (trajectory + TF-IDF)" | the conversational scorer is **TF-IDF (up to 10,000 terms) + 6 trajectory features** (position, recency, log length, digits, has "?", capitalised words). The 10-feature vector (`lre/features.py`) belongs to the **agent** scorer, which has no TF-IDF | **mismatch** |
+  | "causal" | position and recency use n, the number of units; offline, n is the final length. At question time this is causal | **checks out at question time** |
+  | label: overlap with the gold answer, recall ≥ 0.4 | `answer_overlap_labels(threshold=0.4, metric="recall")`, the `lre_self_sup` condition. Tokens: lower case, a/an/the removed, punctuation deleted; **other stop words are kept** | **checks out**; the stop-word detail is new |
+  | top-k by score under a budget fraction 0.20, verbatim | `run_downstream.topk`: k = ceil(0.20 × number of units), kept text verbatim. The fraction is of **units, not tokens** | **checks out**, with that detail |
+  | unit = a turn | on LongMemEval their unit is a **whole session**; on LoCoMo a turn | **mismatch on LongMemEval** |
+- **Other differences that matter here:**
+  - Their default downstream run also has `lre_supervised`, trained on gold evidence sessions. We use the answer-
+    overlap rule only, as the user decided.
+  - Their LongMemEval split is a 5-fold grouped CV with a **dedup guard**: training units whose text also appears in
+    the test fold are dropped. That reads held-out texts, so **we do not use it** (the §19 head was trained without
+    it too). Shared filler turns can therefore be in both sides; their labels come from training answers only.
+  - Their reader (OpenRouter, GPT-4o-mini) and judge are not used. Ours are §23's.
+
+**Our implementation (`memctl/lre.py`, `memctl/lre_train.py`, `memctl/controllers/lre.py`).**
+- **Label rule as implemented** (their rule, applied to a training question's own gold answer): a turn is positive
+  when the share of the answer's tokens found in the turn is at least 0.4. Tokens as above. A numeric answer is
+  compared as text. Abstention questions are included, as their loader includes them.
+- **Rows:** every turn of every training question's history, in the order the controller sees them (sessions by
+  date). About 197,300 rows per fold. **Only the four training folds are loaded** (`fold_indices(..., part="train")`).
+- **Features:** TF-IDF (sklearn, English stop words, at most 10,000 terms, fitted on the training rows) and their 6
+  trajectory features, standardised on the training rows. At a decision, idx is the turn's arrival order and n the
+  number of turns seen so far. At the question this equals the training layout.
+- **Model:** their settings unchanged (C = 1, balanced classes, max_iter 1000, random_state 0). Nothing was tuned.
+- **Stored as JSON** (vocabulary, idf, weights, scaler), scored without sklearn. A test checks it gives sklearn's own
+  logits to 1e-9.
+- **Training (laptop CPU, one process):**
+
+  | fold | rows | train s | load s | model size | iterations | sha256 (first 12) |
+  |---|---|---|---|---|---|---|
+  | 0 | 197,285 | 55.2 | 16.3 | 479,792 B | 270 | 81ba2adbb690 |
+  | 1 | 197,321 | 46.5 | 20.0 | 480,055 B | 220 | f7a72c9feeaf |
+  | 2 | 197,307 | 59.9 | 19.9 | 479,723 B | 305 | 074e5e33b8b7 |
+  | 3 | 197,562 | 61.2 | 17.7 | 479,839 B | 307 | d43bfdffb615 |
+  | 4 | 197,525 | 60.6 | 19.2 | 480,034 B | 286 | 86c3c97074b8 |
+
+  - About 1 min to train and 1.2 min wall per fold; peak RSS 0.83 GB. 10,007 parameters.
+  - The models are committed in `configs/sweeps/exp27/lre/lre_f{0..4}.json`, with `train_f{k}.json` beside them.
+- **Tests** (`tests/test_lre.py`, 9 pass): the label rule (recall, not F1; articles and punctuation; empty and numeric
+  answers); the six features; JSON model equals sklearn; unknown mode and missing model refused; slot mode archives
+  on arrival, scores only the shortlist, never the question, and retrieves the k best by logit; a short shortlist is
+  shown whole; native mode archives the lowest score, not the oldest; native retrieves exactly what FIFO + floor
+  retrieves and never removes the question. Full suite: 233 pass, 2 skipped; the 2 failures in
+  `test_import_boundaries.py` are on main already and untouched.
+
+**Training side only: LRE's labels against our evidence labels** (descriptive; per fold, on that fold's training
+questions; no held-out question). Our evidence turn: a turn marked `has_answer`, or any turn of an answer session
+with no marked turn. Answerable questions:
+
+| fold | LRE positive rate | evidence rate | agreement | precision (LRE label is evidence) | recall (evidence gets an LRE label) |
+|---|---|---|---|---|---|
+| 0 | 0.059 | 0.0057 | 0.939 | 0.030 | 0.312 |
+| 1 | 0.065 | 0.0061 | 0.933 | 0.031 | 0.331 |
+| 2 | 0.068 | 0.0061 | 0.930 | 0.029 | 0.327 |
+| 3 | 0.061 | 0.0065 | 0.936 | 0.033 | 0.315 |
+| 4 | 0.065 | 0.0062 | 0.933 | 0.030 | 0.315 |
+
+- LRE's rule marks about 10 times as many turns as our evidence labels, and **about 97% of its positives are not
+  evidence**. It finds about a third of the evidence turns.
+- The high agreement (0.93) is only because almost every turn is negative under both.
+- Why (fold 0's 376 answerable training questions): the median answer is **2 tokens** (61% have at most 2), so
+  recall 0.4 needs **one** shared token, which long turns often have. The median LRE-positive turn is **331 words**,
+  against 66 for negatives and **56 for evidence turns**. The rule favours long turns.
+- Abstention questions (about 6% of rows): LRE marks 2% of turns; precision 0.19–0.20, recall 0.08–0.12.
+- This does not change either arm. It is reported because it says what LRE learns: "turns that share words with
+  some answer", not "the evidence".
+
+**Arms** (the same 500 LongMemEval test questions, five folds, Qwen2.5-7B reader, frozen 7b5fc30 prompt, budget 5%,
+as §23 and §26; `configs/sweeps/exp27/exp27_qwen7b_f{0..4}.yaml`):
+- FIFO + floor at 5% with the 3k target, and `fixed8` (the §19 head, 8 of 32 BM25 candidates): the §23 settings,
+  rerun in the same session for pairing. No §23 or §26 row is reused.
+- **LRE-native** (`lre`, `mode: native`, label `lre_native`). FIFO + floor with LRE's score in place of recency:
+  - Same removal (MOVE_TO_ARCHIVE), same 3k target, same 5% budget. When memory is over the target, the
+    lowest-scoring turns are archived until it fits; ties go oldest-first.
+  - **Archive and retrieve are FIFO + floor's own, unchanged:** at the question, the top 5 BM25 hits from the
+    archive (fit to the room) are retrieved first and protected; then removal runs. The question is never removed.
+  - So LRE-native and FIFO + floor differ only in the keep order. It is the code path of the `fifo` controller.
+  - Their native budget is "20% of units"; ours is the §23 token budget. That is a declared deviation, so all arms
+    share one budget.
+- **LRE-slot** (`lre`, `mode: slot`, `select_k: 8`, label `lre_slot`). Like-for-like with `fixed8` and §26 arm B:
+  - Everything but the current input is archived on arrival (as the head's `keep_none`).
+  - At the question: the same 32 BM25 candidates `fixed8` sees (same plain BM25, same archive). LRE scores them,
+    without the question, and the 8 highest are retrieved (ties keep the BM25 order). Up to 8 candidates: all shown.
+  - B against `fixed8` differs only in who ranks the same 32.
+  - Long picks can exceed the budget; then the harness's forced removals are counted against the arm, as in §26.
+- Nothing in the LRE arms was tuned. Every setting is LRE's default or comes from the §23 configs.
+
+**Claims, pre-registered** (470 answerable questions, paired by question, 95% bootstrap by question; margin −0.03 as
+in §23; `configs/sweeps/exp27/exp27_report.py`):
+1. **C1, the head against LRE as selector.** `fixed8` minus LRE-slot. **Pre-declared direction: the head better**
+   (lower bound above 0). LRE-slot **non-inferior** if the upper bound is below +0.03; otherwise not shown.
+2. **C2, LRE as selector against the baseline.** LRE-slot minus FIFO + floor: **better** if the lower bound is
+   above 0, **worse** if the upper bound is below 0. Expected: better (the user's decision; same pool and k as
+   `fixed8`, which beat FIFO by +0.08 to +0.10).
+3. **C3, LRE's own use against the baseline.** LRE-native minus FIFO + floor: better / worse as C2; **non-
+   inferior** if the lower bound is above −0.03. **Expectation: undetermined.**
+- **Reader-free, per arm: P(all in view)**, from the evaluation's own episodes, computed **once**, by the report
+  script, after the judge pass. It is not computed before: in the stub check below, the LRE arms' evidence and token
+  columns were not printed (only FIFO + floor's and `fixed8`'s, which are known from §23).
+- **Reported beside (descriptive):** the §13a decomposition, the three shares (answered-correct, answered-wrong,
+  unknown), P(correct | answered), prompt tokens, forced removals per question, false answers on the 30
+  unanswerable questions, and the pairing check of FIFO + floor and `fixed8` against §23 and §26.
+- **A warning, written before the evaluation, from training-side data only.** A 20-question sanity run on fold 0's
+  *training* questions (in-sample for LRE, stub reader): LRE-slot had all evidence in view on 0.10 against
+  `fixed8`'s 0.95 and FIFO's 0.80, with 4,497 prompt tokens against 1,008. LRE-native had 0.70 at 2,902 tokens.
+  This is consistent with the label check (LRE prefers long turns). **So C2 may well fail, against the expectation
+  above.** The claims and expectations are left as decided; this note is the honest prior. It is in-sample and
+  n = 20, and its output was deleted.
+
+**Stub check (done, free; the paid layout: five folds at once, three workers each, `guard.sh`; stub reader and stub
+judge; output in `runs/_stub27`, cache in `cache/stub27`).**
+- Step logs were switched off in the stub (`detail_episodes: 0`; logging is not part of a cell's identity) to keep
+  15 GB free: a first attempt with them on used 1.6 GB by 30% done (about 1.7 MB per question), and was deleted.
+- **Two interruptions, three endpoints.** Pass A (`http://stub-a.invalid`) was stopped by SIGKILL after 30 s (FIFO
+  67–75, `fixed8` 55–60, LRE-native 29–30, LRE-slot not started, of 100 per cell). Pass B (`stub-b`) resumed and was
+  stopped by SIGKILL with LRE-slot at 19–28 of 100 (one `fixed8` cell at 99). Pass C (`stub-c`) finished.
+  - **All 20 cells resumed (`resumed: true`), none refused, and each ended with 100 distinct questions.**
+  - Peak RSS 0.23–0.24 GB per sweep process; pass C took 32–45 s per fold.
+- **Known numbers reproduce** (over all 500): P(all in view) FIFO + floor 0.500, `fixed8` 0.700 (§26's stub: 0.500 and
+  0.700); prompt tokens at read about 2,963 and 1,050.
+- The judge script (`configs/sweeps/exp27/exp27_judge.py`, the §26 judge with these arms and `cache/judge_exp27`)
+  ran with the stub judge on a 3-question run with step logs on: 12 answers, 4 arms.
+- **All stub run folders and caches were deleted** (`runs/_stub27*`, `cache/stub27*`), so the real run starts from
+  empty caches. Free disk after: 19 GB.
+
+**Cost (NEEDS SPEND; from measured §23 numbers).**
+- **Measured inputs:** §23's Qwen 7B answered 1,500 LongMemEval questions in 10.3 min (0.41 s each, five folds at
+  once); model load 3–6 min; the judge did about 7,000 answers in 3.1 min; A40 $0.59/h.
+- **§27's extra arms only** (the shared pod's load, FIFO + floor and `fixed8` are counted once, under §28 or
+  whichever pass runs them):
+  - LRE-native and LRE-slot: 1,000 answers, about 6.9 min at §23's rate. LRE-slot's prompts may be up to about 4.5k
+    tokens (the training-side sanity run), against §23's mix of about 2.2k, so allow up to 1.5×: **7–10 min.**
+  - Judge: 940 more answerable answers, under 1 min.
+  - **About 8–11 min of pod time: about $0.08–0.11.**
+- **If §27 runs on its own pod** (no §28): load 3–6 min, 2,000 answers 14–17 min, judge 1,880 answers about 1 min:
+  **about 18–24 min, about $0.18–0.24.**
+- **Hard stop:** §27's share at 20 min of pod time (**$0.20**); on its own pod, 40 min from create (**$0.39**).
+  Triage, pre-declared: if the stop is reached, LRE-native is dropped before LRE-slot (C1 and C2 are the main tests).
+- **Disk:** the real run writes step logs (the judge reads them): about 1.7 MB per question, so about 3.4 GB for
+  §27's 2,000. Free disk is 19 GB now, so 15 GB would be left: **before launch confirm at least 19 GB free**, or free
+  space first. LRE runs on the laptop CPU; no GPU for the controller.
+- **Not approved. The user decides.**
+
+### 27a. Result: LRE as a slot picker fails badly; LRE in place of recency is level with FIFO; the head leads (2026-10-09)
+
+**Pod and cost.** Shared with §28: qpeirhl5gzw7dj (A40, EU-SE-1, $0.59/h, vLLM 0.8.5, Qwen2.5-7B), 07:14:04 to about
+07:37:30 UTC, about 0.39 h, **about $0.23 for §27 and §28 together**; terminated, list-pods empty. Under the user's
+2026-10-09 spend rule: spent $12.35 before, $12.58 after, $7.42 left; window closes 18:53 UTC. §27's answers ran
+07:16–07:31 (2,000 answers, 0 failures); the one blind Qwen 7B judge pass judged 1,880. Report:
+`configs/sweeps/exp27/exp27_report.py` → `runs/exp27_report.md`; verdicts `runs/exp27_verdicts.json`.
+
+| arm | accuracy (95% CI) | unknown | P(correct \| answered) | P(all in view) | P(correct \| in view) | prompt tokens |
+|---|---|---|---|---|---|---|
+| FIFO + floor | 0.436 (0.391, 0.481) | 0.330 | 0.651 | 0.498 | 0.701 | 2,964 |
+| `fixed8` (the §19 head) | **0.536** (0.491, 0.581) | 0.157 | 0.636 | 0.702 | 0.661 | 1,049 |
+| LRE-native | 0.464 (0.419, 0.509) | 0.300 | 0.663 | 0.506 | 0.756 | 2,860 |
+| LRE-slot | 0.109 (0.081, 0.138) | 0.766 | 0.464 | 0.028 | 0.769 | 4,305 |
+
+**Pre-registered claims** (margin −0.03):
+- **C1, `fixed8` minus LRE-slot: +0.428 (+0.377, +0.477), the head better**, as expected.
+- **C2, LRE-slot minus FIFO + floor: −0.328 (−0.377, −0.277), WORSE.** The expectation was "better"; the
+  training-side warning in §27 (all evidence in view 0.10 on 20 training questions) was right.
+- **C3, LRE-native minus FIFO + floor: +0.028 (−0.002, +0.057), non-inferior** (pre-declared as undetermined).
+
+**What it means.**
+- **Query-blind scoring cannot pick the 8 turns a question needs.** With the same 32 candidates, LRE-slot has all
+  evidence in view for 2.8% of questions against the head's 70.2%. It prefers long turns (4,305 prompt tokens for
+  8 items, against the head's 1,049), as its loose label rule taught it: one shared word of a two-word answer
+  makes a turn positive, so long turns are positive most often.
+- **As a keep-order in place of recency it does no harm and may help a little** (+0.028, interval just touching 0),
+  at the same prompt size as FIFO. The evidence-in-view rate barely moves (0.506 against 0.498).
+- **Pairing check:** `fixed8` minus FIFO is +0.100 (+0.060, +0.143), against §23's +0.102.
+
+**Limitations.** LRE is re-implemented from their formulas (no LICENSE file in the repository); our unit is a turn,
+theirs a session; their held-out-text de-duplication was not used. One benchmark, reader and judge.
 
 ## 28. Query rewriting for the head's candidate pool (2026-10-09, pre-registered, run 2026-10-09)
 
