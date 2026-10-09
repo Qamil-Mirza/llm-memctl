@@ -1,0 +1,18 @@
+You help search a user's past chats with an AI assistant. A keyword search (BM25) will look for the chat messages that answer the user's question below.
+
+The question was asked on {asked}.
+Question: {question}
+
+Reply with exactly these two lines, in this order, starting with the labels shown, and nothing else:
+QUERY: <the key nouns, names, places, activities and verbs a message answering the question would contain, plus a few close synonyms, separated by spaces; no dates, and no question words such as "when" or "how many">
+RANGE: <none, or YYYY/MM/DD - YYYY/MM/DD>
+
+RANGE is almost always "none". Write a date range only when the question itself contains a time expression, such as "two weeks ago", "last Saturday", "in March", "yesterday" or "last month"; then work the range out from the date the question was asked. Never use the date the question was asked as the range. A question that asks "when" something happened, or that contains no time expression, gets RANGE: none.
+
+Example, a question with no time expression:
+QUERY: charity race run marathon fundraiser Melanie
+RANGE: none
+
+Example, a question asked on 2023/05/20 that says "two weeks ago":
+QUERY: dinner restaurant friends ate
+RANGE: 2023/05/03 - 2023/05/09
