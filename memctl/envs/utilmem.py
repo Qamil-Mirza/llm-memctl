@@ -217,26 +217,26 @@ def parse_question(bundle: dict, domain: str, number: int, oracle: bool = False,
     evidence = set(bundle["answer_session_ids"][domain])
     order = sorted(range(len(bundle["haystack_sessions"])), key=lambda n: bundle["haystack_dates"][n])
     turns, text_of, groups = [], {}, {}
-    for position in order:
+    for rank, position in enumerate(order):
         session_id = bundle["haystack_session_ids"][position]
         if oracle and session_id not in evidence:
             continue
         date = bundle["haystack_dates"][position]
+        # Neutral ids: the release's distractor session ids start with "noise_", a label no controller may see.
+        neutral = f"s{rank:03d}"
         for n, turn in enumerate(bundle["haystack_sessions"][position]):
-            item_id = f"{session_id}:{n}"
-            if item_id in text_of:
-                item_id = f"{session_id}#{position}:{n}"
+            item_id = f"{neutral}:{n}"
             text = turn["content"]
             if max_turn_tokens:
                 from memctl.memory.items import truncate_tokens
 
                 text = truncate_tokens(text, max_turn_tokens)
             source = SourceType.USER if turn["role"] == "user" else SourceType.OBSERVATION
-            turns.append(Observation(item_id, text, source, metadata={"speaker": turn["role"], "session": session_id,
+            turns.append(Observation(item_id, text, source, metadata={"speaker": turn["role"], "session": neutral,
                                                                       "date": date}))
             text_of[item_id] = text
             if session_id in evidence:
-                groups.setdefault(session_id, []).append(item_id)
+                groups.setdefault(neutral, []).append(item_id)
     question_id = f"{bundle['sample_id']}/{domain}/q{number}"
     flat = tuple(i for ids in groups.values() for i in ids)
     question = QAItem(question_id, bundle["question_pool"][domain][number], "", domain, flat)

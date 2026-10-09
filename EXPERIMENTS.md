@@ -73,6 +73,7 @@ commands given).
 | 26 | OpenJev (open Jev re-creation) as a controller | Arm B (selector, 8 of the head's 32 candidates): B − FIFO +0.045 (CI +0.004..+0.087), BETTER; B − `fixed8` −0.036 (CI −0.081..+0.009), not shown; B's prompts 2,373 tokens vs 1,049. Arm A (memory manager) cost only: ~94 GPU-s per question (~$15 per 1,000); accuracy not run by decision. $0.64 |
 | 27 | LRE (published query-blind scorer) as a baseline controller | LRE-slot (8 of the head's 32): 0.109, far below FIFO (−0.328) and the head (−0.428), evidence in view 0.03. LRE-native (in place of recency): +0.028 vs FIFO (CI −0.002..+0.057), non-inferior. About $0.23 shared with §28 |
 | 28 | Query rewriting for the head's 32 candidates | Rule time filter (b): NO GO at its free gate. LLM rewrite (a): training gate passed at v3 (v1 malformed, v2 invented ranges); test folds +0.006 overall (CI −0.017..+0.030) and +0.024 on temporal (n = 127, CI −0.016..+0.063), non-inferior, not better. About $0.23 shared with §27 |
+| 30 | UtilMem: the §19 head zero-shot on spread-out evidence among look-alike distractors | Pre-registered; free part in progress. NEEDS SPEND, not approved |
 
 ---
 
@@ -4720,6 +4721,139 @@ LongMemEval paper's caveat in practice: a 7B model invents date ranges unless to
 
 **Pairing.** `fixed8` here used the same cached generations as §27's (470 of 470 answers identical); the two
 separate judge passes agree on 469 of 470 verdicts (0.534 here, 0.536 in §27).
+
+## 30. UtilMem: does the §19 head help when the evidence is spread over many sessions among look-alike distractors? (N12; 2026-10-09, pre-registered)
+
+**Status:** the free part is done (adapter, checks, stub run, price). The paid run **NEEDS SPEND and is not
+approved**. Nothing below was computed on the evaluation side.
+
+**The benchmark, checked against the source** (arXiv 2608.30508, Qing, Shi and Vosoughi; README says EMNLP 2026
+main).
+- **Code: none yet.** github.com/peijunallin/UtilMem at commit b7ebd4a1ba31379a67540f2b1c95ec48351f6d79 holds one
+  README. "Evaluation and benchmark-construction code — coming soon". No LICENSE file. Cloned to
+  `external/UtilMem` (not in git).
+- **Data:** Hugging Face `KrisQ/utilmem` at revision 15a774f0d630498e17ad4ba3eedaf06d08c5796e, one file,
+  `multi_domain_eval_strong.json`, 54 MB (sha256 2816fb72…). Ungated.
+- **Licence: none stated** for the code or the data (no dataset card). The paper is CC BY 4.0, and its ethics
+  statement says the benchmark is "intended for research evaluation". The mental-wellness domain is rewritten Reddit
+  posts. **So the file was not copied to `data/`.** It sits at `external/UtilMem-hf/` (gitignored, not
+  redistributed). Copying it to `data/utilmem/` is the user's call.
+- **1,717 instances: confirmed.** 100 bundles; each bundle has 3–4 questions per domain: studychat 352, finance 350,
+  mental_health 319, fitness 350, edgar_10k 346.
+- **Five domains: confirmed** (learning support, finance, mental wellness, fitness, 10-K filings).
+- **History length.** A bundle is one user's 65–85 sessions (mean 74), 228–358 turns, in date order. By our token
+  count (words and punctuation) a history is 77k–149k tokens, median about 94k. The paper says a mean of 120K with
+  its tokenizer.
+- **"Separates evidence recovered from evidence used": only partly checkable.** The release gives, per question
+  domain, the evidence session ids (2,372 in all), and nothing else: **no gold answer, no reference answer, no
+  turn-level label.** The paper separates the two with an analysis (its §5.2: judge score against session recall
+  for NaiveRAG). That code is not released.
+- **The scorer is an LLM rubric judge, not a rule.**
+  - The same QA model first answers from the evidence sessions alone. That answer is the reference, pinned at
+    score 10. Then it answers from the memory system's retrieval.
+  - A judge sees the evidence sessions, the question, the reference and the answer. It rates five sub-dimensions,
+    then gives one integer score, 1–10 (prompt: their Appendix F).
+  - Two judges, GPT-5.2 and GPT-5.4 (paid API), averaged. QA model: Qwen3-235B-A22B, temperature 0.
+  - Metrics: RS (mean score); NR, "RS rescaled to 0–100", their headline; DR, the share scored 6 or lower.
+  - Their results: NaiveRAG NR 58.9–59.3, DR 49.2–49.6; A-MEM 56.0 / 54.4; Mem0 17.3 / 98.3.
+  - Even with most evidence retrieved (recall at least 0.8), the mean score stays at 6.4–7.9.
+- **Two leaks in the release, closed in the adapter.**
+  - Distractor session ids start with `noise_`. The adapter renames every session `s000`, `s001`, … in date order,
+    so no controller or reader can see the label.
+  - Evidence turns are longer than distractor turns. Example (development side, median tokens): finance assistant
+    turns 1,150 against 494; studychat assistant turns 529 against 139; 10-K user turns at the 90th percentile 8,161
+    against 513 (pasted filing text). A length-aware rule could find evidence by size. It cannot be closed without
+    changing the data, so it is stated as a confound: it may favour BM25 and the head over FIFO.
+
+**Where each question sits relative to its evidence** (development side, 349 questions; `configs/sweeps/exp30/exp30_structure.py`):
+- **The question is not right after its evidence.** It is asked after the whole history (the paper gives each
+  question the full history). The newest evidence session ends a median 12.7k tokens before the question (0 to
+  73k). The oldest starts a median 81k tokens back.
+- In no question (0 of 349) are all the evidence sessions inside the last 6k tokens. In 17.5% does any evidence
+  session end inside the last 3k.
+- 3–7 evidence sessions per question (median 5). Evidence text per question: median 8.3k tokens; 10-K questions
+  median 25k, up to 53k.
+- So this is **not** the §25 situation: recency should not win here by construction. The free check below
+  measures it.
+
+**The environment** (`memctl/envs/utilmem.py`, registered as `utilmem`; tests in `tests/test_utilmem.py`).
+- One episode is one question: the bundle's turns in date order (one turn is one memory item, as in
+  LongMemEval), then the question.
+- **Labels** (evaluation only): one requirement per evidence session of the question's domain, met when any of its
+  turns is in view. So "all in view" means every evidence session is touched: session recall 1, the paper's §5.2
+  recall. It does not mean every evidence turn is in view.
+- **Turns are cut at 1,000 tokens** (`max_turn_tokens`; chosen on the development side: 4.0% of turns are longer;
+  the longest is 37,897 tokens). Without the cut, one pasted filing could exceed the whole 5% budget, and 10-K
+  reference prompts reach 53k tokens, more than the reader's context. The cut applies to every arm, the reference
+  and the judge's context alike. With it, the median history is about 75k tokens, the 5% budget about 3.8k, and
+  the longest reference prompt about 17.6k tokens.
+- No gold answer, so the environment records the answer and logs every question's evidence status; the score
+  comes afterwards from the judge pass.
+
+**Split (no held-out peeking).**
+- **Development side:** 20 of the 100 bundles, drawn with seed 30 (`split_bundles`): bundles 0, 3, 6, 9, 10, 17,
+  20, 26, 31, 32, 37, 48, 50, 59, 66, 69, 78, 79, 82, 83 (349 questions). Every check and every choice in §30 uses
+  only these. The split was committed (bd02deb) before any evidence position was computed.
+- **Evaluation side:** the other 80 bundles (1,368 questions). Nothing is computed on them before the
+  pre-declared evaluation.
+- **Disclosure:** while reading the file format, the first five session headers of bundle 0 were printed (dates,
+  role and domain). Bundle 0 fell on the development side. A 2-question timing run (development side, stub
+  reader) printed `fixed8`'s summary for those 2 questions before the check below was declared; nothing was changed
+  because of it.
+- **Pre-registered evaluation sample:** 100 questions per domain, drawn with seed 30 from the evaluation side
+  (`question_pool(..., "eval", {"seed": 30, "per_domain": 100})`): **500 questions**, dealt to 5 shards.
+- Nothing is trained on UtilMem. The head and the reader are used as they are.
+
+**Arms** (the §23 arms, unchanged: 5% budget, `memory.count_labels`, lexical search):
+- FIFO + floor (3k target, top 5 retrieved): the baseline.
+- `fixed8`: the §19 head A (`runs/lme_n4_head_f0_a/checkpoints/policy_best.pt`, trained on LongMemEval only),
+  32 BM25 candidates, keep none. Zero-shot.
+- `fixed16`: the same head, 16 shown.
+- **Reference ("oracle"):** the question domain's evidence sessions only, unlimited budget (`env.oracle: true`,
+  `full_context`). This is the paper's reference answer, rewritten by our reader, since theirs is not released.
+
+**Reader and judge.**
+- Reader: Qwen2.5-7B-Instruct, vLLM 0.8.5 on an A40, `--max-model-len 24576`, temperature 0, `reasoning: false`,
+  compact labels, **up to 512 new tokens** (fixed now; the paper sets no length). Instructions: a long-form version
+  of the §23 prompt (`utilmem.GOAL`): ground every detail in the memory, beware of look-alike conversations, reply
+  "unknown" if nothing is relevant. No tuning.
+- Judge: **the paper's Appendix F prompt, vendored** (`utilmem.JUDGE_PROMPT`; list markers rebuilt from the HTML).
+  The context is the reference's evidence sessions, cut the same way. **One judge, Qwen2.5-7B, on the same pod**,
+  in one blind pass after all answers, as §23: it never sees the arm. Unparsable verdicts are counted and dropped
+  (flagged if above 5% per arm).
+- **Their GPT-5.2 and GPT-5.4 judges are not proposed.** About 1,500 judge calls of about 9k–10k tokens each for
+  the 500 questions, on a paid API, plus the reference answers that only our reader can write. Not comparable to
+  their numbers anyway, since the reference model differs.
+- Their Qwen3-235B QA model is not proposed (it needs several 80 GB GPUs).
+
+**Measures** (per arm, on the 500 questions).
+- **Their metrics:** RS, NR = (RS − 1) / 9 on a 0–1 scale, DR (score 6 or lower).
+- **Our three shares**, for the §23 tables: unknown = the answer starts with "unknown" or has a §24 refusal phrase
+  in its first 200 characters; answered-correct = not unknown and score 7 or higher (not degraded, by the paper's
+  own threshold); answered-wrong = not unknown and score 6 or lower.
+- **P(correct | all in view):** answered-correct among questions with every evidence session touched, beside
+  P(correct | not all in view).
+- Evidence in view: session recall, all in view, any in view, and the share of in-view turns that are same-domain
+  distractors. Prompt tokens.
+
+**Pre-registered claim (primary).** `fixed8` minus FIFO + floor on NR, Qwen 7B, the 500 questions, paired by
+question.
+- **"Non-inferior":** the 95% paired bootstrap interval's lower bound is above −0.03 (NR on its 0–1 scale, so 3
+  NR points). **"Better":** lower bound above 0. **"Worse":** upper bound below 0. Otherwise undetermined.
+- A bootstrap over bundles (questions share a history) is reported beside it as a check.
+- **Direction expected, written before any check: `fixed8` above FIFO + floor (better).** Reason: the evidence is
+  old and spread out, so FIFO's recent window rarely holds it, and the head picks 8 turns where FIFO + floor
+  retrieves 5. Against it: the distractors are written to share words with the evidence, and the paper finds
+  that a few distractors in view cost much of the score.
+- Secondary (descriptive): DR, RS, the three shares, `fixed16`, by domain, P(correct | all in view).
+
+**Free development-side check (pre-declared before it ran).** The three arms on the 349 development questions
+with a stub reader (`configs/sweeps/exp30/exp30_inview.py`): session recall, all in view, any in view, evidence-turn
+share, the share of in-view turns that are same-domain distractors, and reader prompt tokens, with 95% intervals
+by question.
+- If FIFO + floor already holds nearly all the evidence (as in §25), §30 stops before any pod.
+- If every arm's all-in-view is near 0, the benchmark measures a regime the head cannot reach, and that is said
+  before any pod.
 
 ## 5. The sequential task
 
