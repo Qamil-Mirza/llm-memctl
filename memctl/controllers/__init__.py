@@ -20,6 +20,7 @@ REGISTRY = {
     "prompted_llm": "memctl.controllers.prompted:PromptedLLMController",
     "jev": "memctl.controllers.jev:JEVController",
     "rl": "memctl.controllers.rl:RLController",
+    "lre": "memctl.controllers.lre:LREController",
 }
 
 

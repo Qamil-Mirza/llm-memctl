@@ -1,0 +1,46 @@
+{
+ "fold": 3,
+ "rows": 197562,
+ "load_seconds": 17.7,
+ "train_seconds": 61.2,
+ "model_bytes": 479839,
+ "parameters": 10007,
+ "vocabulary": 10000,
+ "n_iter": 307,
+ "peak_rss_gb": 0.83,
+ "labels_vs_evidence": {
+  "all": {
+   "rows": 197562,
+   "lre_positive_rate": 0.05866,
+   "evidence_positive_rate": 0.00842,
+   "agreement": 0.93724,
+   "precision_lre_vs_evidence": 0.0368,
+   "recall_lre_vs_evidence": 0.2562,
+   "lre_positives": 11588,
+   "evidence_positives": 1663,
+   "both": 426
+  },
+  "answerable": {
+   "rows": 185366,
+   "lre_positive_rate": 0.06121,
+   "evidence_positive_rate": 0.00645,
+   "agreement": 0.9364,
+   "precision_lre_vs_evidence": 0.0332,
+   "recall_lre_vs_evidence": 0.3152,
+   "lre_positives": 11347,
+   "evidence_positives": 1196,
+   "both": 377
+  },
+  "abstention": {
+   "rows": 12196,
+   "lre_positive_rate": 0.01976,
+   "evidence_positive_rate": 0.03829,
+   "agreement": 0.94998,
+   "precision_lre_vs_evidence": 0.2033,
+   "recall_lre_vs_evidence": 0.1049,
+   "lre_positives": 241,
+   "evidence_positives": 467,
+   "both": 49
+  }
+ }
+}
