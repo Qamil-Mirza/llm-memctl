@@ -3689,7 +3689,7 @@ list-pods was empty afterwards. The one blind Qwen 7B judge pass judged 8,460 an
 reload and the Llama 8B disk-full resume are recorded above, with their checks. The Llama order change was made
 before any result.
 
-## 25. StreamMemBench: does the §19 head transfer to a benchmark with feedback and follow-ups? (N10; 2026-10-08, pre-registered, NOT YET APPROVED for spend)
+## 25. StreamMemBench: does the §19 head transfer to a benchmark with feedback and follow-ups? (N10; 2026-10-08, pre-registered, closed 2026-10-09 without a paid run)
 
 **Status:** closed without a paid run at the user's decision (2026-10-09); the result is in §25a. The
 pre-registration text below is unchanged apart from the review amendments made before the decision.
