@@ -74,6 +74,8 @@ commands given).
 | 27 | LRE (published query-blind scorer) as a baseline controller | LRE-slot (8 of the head's 32): 0.109, far below FIFO (−0.328) and the head (−0.428), evidence in view 0.03. LRE-native (in place of recency): +0.028 vs FIFO (CI −0.002..+0.057), non-inferior. About $0.23 shared with §28 |
 | 28 | Query rewriting for the head's 32 candidates | Rule time filter (b): NO GO at its free gate. LLM rewrite (a): training gate passed at v3 (v1 malformed, v2 invented ranges); test folds +0.006 overall (CI −0.017..+0.030) and +0.024 on temporal (n = 127, CI −0.016..+0.063), non-inferior, not better. About $0.23 shared with §27 |
 | 29 | A reader-utility training signal for the §19 head | Utility head − `fixed8` −0.013 (CI −0.051..+0.026), blend − `fixed8` −0.002: both UNDETERMINED; both beat FIFO + floor (+0.09, +0.10). The utility head picks longer turns. Closed as a negative (§29b, branch `reader-utility`). About $1.02 ($0.87 partial run + half of the shared pod) |
+| 30 | UtilMem: the §19 head zero-shot on spread-out evidence among look-alike distractors | Closed without a pod run at the user's decision (2026-10-10); the free part (adapter, checks, stub run, price) is the record. $0 |
+| 31 | Test-time training (qTTT) on the 3B reader: claim 1 of §23 without LoRA | Closed without a pod run at the user's decision (2026-10-10): little gain in a third-party re-creation at small scale, and our prompts are far shorter than qTTT's target. Free part is the record. $0 |
 | 32 | The §19 head against standard rerankers of the same 32 candidates | Reader: head − logistic regression (31 parameters) +0.013 (CI −0.017..+0.043), head − zero-shot cross-encoder +0.013 (CI −0.030..+0.053): NON-INFERIOR, not better; only BM25 order is clearly worse (+0.068). `fixed8` is 3 distinct heads, not 5. About $0.15 (half of the shared pod) |
 
 ---
@@ -5275,6 +5277,425 @@ and `key.csv`.
 - **Magnitude.** 28 → 33 of 50 is +0.10 absolute (+18% relative). For the thesis: with a strict 7B judge, absolute
   accuracies are understated by roughly 0.1; the paired comparisons are not affected, because the strictness falls on
   question types, which every arm shares.
+
+## 30. UtilMem: does the §19 head help when the evidence is spread over many sessions among look-alike distractors? (N12; 2026-10-09, pre-registered; closed, not run)
+
+**Status: CLOSED without a pod run, at the user's decision (2026-10-10).** Nothing was spent. The free part below
+(adapter, checks, stub run, price) is kept as the record; the original status line follows.
+
+**Status:** the free part is done (adapter, checks, stub run, price). The paid run **NEEDS SPEND and is not
+approved**. Nothing below was computed on the evaluation side.
+
+**The benchmark, checked against the source** (arXiv 2608.30508, Qing, Shi and Vosoughi; README says EMNLP 2026
+main).
+- **Code: none yet.** github.com/peijunallin/UtilMem at commit b7ebd4a1ba31379a67540f2b1c95ec48351f6d79 holds one
+  README. "Evaluation and benchmark-construction code — coming soon". No LICENSE file. Cloned to
+  `external/UtilMem` (not in git).
+- **Data:** Hugging Face `KrisQ/utilmem` at revision 15a774f0d630498e17ad4ba3eedaf06d08c5796e, one file,
+  `multi_domain_eval_strong.json`, 54 MB (sha256 2816fb72…). Ungated.
+- **Licence: none stated** for the code or the data (no dataset card). The paper is CC BY 4.0, and its ethics
+  statement says the benchmark is "intended for research evaluation". The mental-wellness domain is rewritten Reddit
+  posts. **So the file was not copied to `data/`.** It sits at `external/UtilMem-hf/` (gitignored, not
+  redistributed). Copying it to `data/utilmem/` is the user's call.
+- **1,717 instances: confirmed.** 100 bundles; each bundle has 3–4 questions per domain: studychat 352, finance 350,
+  mental_health 319, fitness 350, edgar_10k 346.
+- **Five domains: confirmed** (learning support, finance, mental wellness, fitness, 10-K filings).
+- **History length.** A bundle is one user's 65–85 sessions (mean 74), 228–358 turns, in date order. By our token
+  count (words and punctuation) a history is 77k–149k tokens, median about 94k. The paper says a mean of 120K with
+  its tokenizer.
+- **"Separates evidence recovered from evidence used": only partly checkable.** The release gives, per question
+  domain, the evidence session ids (2,372 in all), and nothing else: **no gold answer, no reference answer, no
+  turn-level label.** The paper separates the two with an analysis (its §5.2: judge score against session recall
+  for NaiveRAG). That code is not released.
+- **The scorer is an LLM rubric judge, not a rule.**
+  - The same QA model first answers from the evidence sessions alone. That answer is the reference, pinned at
+    score 10. Then it answers from the memory system's retrieval.
+  - A judge sees the evidence sessions, the question, the reference and the answer. It rates five sub-dimensions,
+    then gives one integer score, 1–10 (prompt: their Appendix F).
+  - Two judges, GPT-5.2 and GPT-5.4 (paid API), averaged. QA model: Qwen3-235B-A22B, temperature 0.
+  - Metrics: RS (mean score); NR, "RS rescaled to 0–100", their headline; DR, the share scored 6 or lower.
+  - Their results: NaiveRAG NR 58.9–59.3, DR 49.2–49.6; A-MEM 56.0 / 54.4; Mem0 17.3 / 98.3.
+  - Even with most evidence retrieved (recall at least 0.8), the mean score stays at 6.4–7.9.
+- **Two leaks in the release, closed in the adapter.**
+  - Distractor session ids start with `noise_`. The adapter renames every session `s000`, `s001`, … in date order,
+    so no controller or reader can see the label.
+  - Evidence turns are longer than distractor turns. Example (development side, median tokens): finance assistant
+    turns 1,150 against 494; studychat assistant turns 529 against 139; 10-K user turns at the 90th percentile 8,161
+    against 513 (pasted filing text). A length-aware rule could find evidence by size. It cannot be closed without
+    changing the data, so it is stated as a confound: it may favour BM25 and the head over FIFO.
+
+**Where each question sits relative to its evidence** (development side, 349 questions; `configs/sweeps/exp30/exp30_structure.py`):
+- **The question is not right after its evidence.** It is asked after the whole history (the paper gives each
+  question the full history). The newest evidence session ends a median 12.7k tokens before the question (0 to
+  73k). The oldest starts a median 81k tokens back.
+- In no question (0 of 349) are all the evidence sessions inside the last 6k tokens. In 17.5% does any evidence
+  session end inside the last 3k.
+- 3–7 evidence sessions per question (median 5). Evidence text per question: median 8.3k tokens; 10-K questions
+  median 25k, up to 53k.
+- So this is **not** the §25 situation: recency should not win here by construction. The free check below
+  measures it.
+
+**The environment** (`memctl/envs/utilmem.py`, registered as `utilmem`; tests in `tests/test_utilmem.py`).
+- One episode is one question: the bundle's turns in date order (one turn is one memory item, as in
+  LongMemEval), then the question.
+- **Labels** (evaluation only): one requirement per evidence session of the question's domain, met when any of its
+  turns is in view. So "all in view" means every evidence session is touched: session recall 1, the paper's §5.2
+  recall. It does not mean every evidence turn is in view.
+- **Turns are cut at 1,000 tokens** (`max_turn_tokens`; chosen on the development side: 4.0% of turns are longer;
+  the longest is 37,897 tokens). Without the cut, one pasted filing could exceed the whole 5% budget, and 10-K
+  reference prompts reach 53k tokens, more than the reader's context. The cut applies to every arm, the reference
+  and the judge's context alike. With it, the median history is about 75k tokens, the 5% budget about 3.8k, and
+  the longest reference prompt about 17.6k tokens.
+- No gold answer, so the environment records the answer and logs every question's evidence status; the score
+  comes afterwards from the judge pass.
+
+**Split (no held-out peeking).**
+- **Development side:** 20 of the 100 bundles, drawn with seed 30 (`split_bundles`): bundles 0, 3, 6, 9, 10, 17,
+  20, 26, 31, 32, 37, 48, 50, 59, 66, 69, 78, 79, 82, 83 (349 questions). Every check and every choice in §30 uses
+  only these. The split was committed (bd02deb) before any evidence position was computed.
+- **Evaluation side:** the other 80 bundles (1,368 questions). Nothing is computed on them before the
+  pre-declared evaluation.
+- If a reference answer is itself a refusal, the question is kept (the paper pins every reference at 10), and the
+  count is reported.
+- **Disclosure:** while reading the file format, the first five session headers of bundle 0 were printed (dates,
+  role and domain). Bundle 0 fell on the development side. A 2-question timing run (development side, stub
+  reader) printed `fixed8`'s summary for those 2 questions before the check below was declared; nothing was changed
+  because of it.
+- **Pre-registered evaluation sample:** 100 questions per domain, drawn with seed 30 from the evaluation side
+  (`question_pool(..., "eval", {"seed": 30, "per_domain": 100})`): **500 questions**, dealt to 5 shards.
+- Nothing is trained on UtilMem. The head and the reader are used as they are.
+
+**Arms** (the §23 arms, unchanged: 5% budget, `memory.count_labels`, lexical search):
+- FIFO + floor (3k target, top 5 retrieved): the baseline.
+- `fixed8`: the §19 head A (`runs/lme_n4_head_f0_a/checkpoints/policy_best.pt`, trained on LongMemEval only),
+  32 BM25 candidates, keep none. Zero-shot.
+- `fixed16`: the same head, 16 shown.
+- **Reference ("oracle"):** the question domain's evidence sessions only, unlimited budget (`env.oracle: true`,
+  `full_context`). This is the paper's reference answer, rewritten by our reader, since theirs is not released.
+
+**Reader and judge.**
+- Reader: Qwen2.5-7B-Instruct, vLLM 0.8.5 on an A40, `--max-model-len 24576`, temperature 0, `reasoning: false`,
+  compact labels, **up to 512 new tokens** (fixed now; the paper sets no length). Instructions: a long-form version
+  of the §23 prompt (`utilmem.GOAL`): ground every detail in the memory, beware of look-alike conversations, reply
+  "unknown" if nothing is relevant. No tuning.
+- Judge: **the paper's Appendix F prompt, vendored** (`utilmem.JUDGE_PROMPT`; list markers rebuilt from the HTML).
+  The context is the reference's evidence sessions, cut the same way. **One judge, Qwen2.5-7B, on the same pod**,
+  in one blind pass after all answers, as §23: it never sees the arm. Unparsable verdicts are counted and dropped
+  (flagged if above 5% per arm).
+- **Their GPT-5.2 and GPT-5.4 judges are not proposed.** About 1,500 judge calls of about 9k–10k tokens each for
+  the 500 questions, on a paid API, plus the reference answers that only our reader can write. Not comparable to
+  their numbers anyway, since the reference model differs.
+- Their Qwen3-235B QA model is not proposed (it needs several 80 GB GPUs).
+
+**Measures** (per arm, on the 500 questions).
+- **Their metrics:** RS, NR = (RS − 1) / 9 on a 0–1 scale, DR (score 6 or lower).
+- **Our three shares**, for the §23 tables: unknown = the answer starts with "unknown" or has a §24 refusal phrase
+  in its first 200 characters; answered-correct = not unknown and score 7 or higher (not degraded, by the paper's
+  own threshold); answered-wrong = not unknown and score 6 or lower.
+- **P(correct | all in view):** answered-correct among questions with every evidence session touched, beside
+  P(correct | not all in view).
+- Evidence in view: session recall, all in view, any in view, and the share of in-view turns that are same-domain
+  distractors. Prompt tokens.
+
+**Pre-registered claim (primary).** `fixed8` minus FIFO + floor on NR, Qwen 7B, the 500 questions, paired by
+question.
+- **"Non-inferior":** the 95% paired bootstrap interval's lower bound is above −0.03 (NR on its 0–1 scale, so 3
+  NR points). **"Better":** lower bound above 0. **"Worse":** upper bound below 0. Otherwise undetermined.
+- A bootstrap over bundles (questions share a history) is reported beside it as a check.
+- **Direction expected, written before any check: `fixed8` above FIFO + floor (better).** Reason: the evidence is
+  old and spread out, so FIFO's recent window rarely holds it, and the head picks 8 turns where FIFO + floor
+  retrieves 5. Against it: the distractors are written to share words with the evidence, and the paper finds
+  that a few distractors in view cost much of the score.
+- Secondary (descriptive): DR, RS, the three shares, `fixed16`, by domain, P(correct | all in view).
+
+**Free development-side check (pre-declared before it ran).** The three arms on the 349 development questions
+with a stub reader (`configs/sweeps/exp30/exp30_inview.py`): session recall, all in view, any in view, evidence-turn
+share, the share of in-view turns that are same-domain distractors, and reader prompt tokens, with 95% intervals
+by question.
+- If FIFO + floor already holds nearly all the evidence (as in §25), §30 stops before any pod.
+- If every arm's all-in-view is near 0, the benchmark measures a regime the head cannot reach, and that is said
+  before any pod.
+
+
+**Free development-side check: result** (349 development questions, stub reader, run once after the declaration
+above; 95% interval by question; `runs/exp30/dev_inview.json`):
+
+| arm | session recall | all in view | any in view | evidence turns in view | in-view turns that are evidence | in-view turns that are same-domain distractors | reader prompt tokens |
+|---|---|---|---|---|---|---|---|
+| FIFO + floor | 0.536 (0.516, 0.555) | 0.049 (0.029, 0.072) | 0.997 | 0.206 | 0.560 | 0.174 | 2,896 |
+| `fixed8` | 0.581 (0.559, 0.602) | 0.092 (0.063, 0.123) | 0.994 | 0.215 | 0.513 | 0.366 | 1,689 |
+| `fixed16` | 0.683 (0.660, 0.705) | 0.180 (0.140, 0.224) | 0.997 | 0.326 | 0.468 | 0.385 | 3,296 |
+
+- `fixed8` minus FIFO: session recall +0.045 (+0.022, +0.067); all in view +0.043 (+0.009, +0.077); same-domain
+  distractor share +0.192 (+0.170, +0.214); 1,207 fewer prompt tokens.
+- `fixed16` minus FIFO: session recall +0.147 (+0.122, +0.173); all in view +0.132 (+0.089, +0.178).
+- By domain, all in view (FIFO / `fixed8` / `fixed16`): 10-K 0.01 / 0.01 / 0.01; studychat 0.00 / 0.00 / 0.05;
+  fitness 0.00 / 0.03 / 0.14; finance 0.08 / 0.28 / 0.17; mental health 0.16 / 0.14 / 0.57.
+
+**What the check says.**
+- **Not the §25 case.** FIFO + floor sees about half of the evidence sessions, not all. Recency does not win.
+- **Neither stop rule fires.** All in view is low (0.05–0.18) but not near 0; every arm touches about half the
+  evidence sessions.
+- **The budget is smaller than the evidence.** A 5% budget is about 3.8k tokens; the evidence alone is a median
+  8.3k. So every arm sees at most a fifth to a third of the evidence turns, and the reference answer saw all of
+  them. Expect low scores and a high DR for every arm; the arm differences will be squeezed.
+- **The head finds a little more evidence, and twice the look-alikes.** `fixed8` touches slightly more evidence
+  sessions with 42% fewer prompt tokens, but 37% of what it shows is same-domain distractors against FIFO's 17%.
+  The paper finds a few distractors cost much of the score. So the sign of `fixed8` minus FIFO on NR is genuinely
+  open. The pre-registered direction (better) stays as written; this check weakens it.
+
+**Stub check (done, free; prelaunch rule).**
+- Full size: 5 arm sweeps (3 cells each) and 5 reference sweeps, 20 cells, 500 questions per arm, all at once,
+  stub reader (`runs/exp30/stub.sh`).
+- **Resume on a new endpoint:** all 10 sweeps were killed after 15 s (arm cells at 6–21 of 100 questions; the
+  reference cells had already finished, in 5–10 s), then rerun with a different `base_url`. All 20 cells finished
+  with 100 distinct questions each, `resumed: true`, none refused.
+- **Peak RSS 0.26 GB** per arm sweep (3 cells), 0.05 GB per reference sweep. About 1.5 min per arm sweep on the
+  laptop (no model).
+- **Calls and prompt sizes** (controller side only; no evidence number was read on the evaluation side): 1,500
+  reader calls (mean prompt: FIFO 2,916 tokens, `fixed8` 1,660, `fixed16` 3,141; largest 4,379); 500 reference
+  calls (mean 6,487, largest 18,316); 1,500 judge calls (mean 7,239 with stub answers, about 7,900 with real ones;
+  largest about 19,900). All fit `--max-model-len 24576` with 512 new tokens.
+- The judge script, the in-view script and the report ran end to end on 8 development questions with made-up
+  scores (pipeline check only).
+- All stub output and stub caches were deleted (`cache/generations_exp30_eval_qwen7b`, `cache/judge_exp30_stub`).
+- **Disk: 14 GB free**, below the 15 GB floor (not from this work). At least 1 GB must be freed before any launch.
+
+**Cost (NEEDS SPEND; from §23's measured calls on the same A40, $0.59/h).**
+- §23's 1,500 Qwen 7B calls (mean prompt 2,193 tokens, mean output 27) took 10.3 min with about 12 calls in
+  flight. A fit of their per-call times gives about 1.23 s + 0.28 s per 1,000 prompt tokens + 0.109 s per output
+  token. **Long answers make output the cost driver here.** The output slope comes from short answers, so it is
+  an extrapolation.
+- §30: 3,500 calls. Answers assumed 250–450 tokens (cap 512), judge verdicts 150–300 (cap 400). That gives
+  **about 2.1–3.7 h of generation** (central about 2.8 h), plus about 5 min to load and 10 min of checks.
+- **About $1.30–2.30 (central about $1.75). Hard stop at 4 h after create (about $2.36).** If the pod is not
+  $0.59/h, the figure is quoted again before the run.
+- **Stage order, one model (Qwen 7B), one pod:** the 15 arm cells and the 5 reference cells at once, then the
+  judge pass, FIFO and `fixed8` first, `fixed16` last (`--arms`).
+- **Triage rule, declared now:** if fewer than half of the arm-cell questions are done 1.5 h after create, the
+  `fixed16` cells are stopped and `fixed16` is not judged, so that the claim's two arms finish.
+- Their GPT-5.2 and GPT-5.4 judges are not priced in: about 1,500 calls of about 8k tokens each per judge, on a
+  paid API that needs a key. Not proposed.
+
+**If §30 closes without a paid run (pre-declared, free).**
+- One label-only evaluation on the 500 evaluation questions: session recall, all in view and the distractor share
+  for the three arms, from the committed configs with only the reader set to stub, with 95% intervals by question.
+- Computed **exactly once**, and **only after the user decides there is no paid run**. If the user chooses the
+  paid run, the run reports the same numbers as its diagnostic instead.
+- Not executed.
+
+**Limitations, stated before any run.**
+- One judge, Qwen 7B, also the reader that wrote the reference and the answers: it may favour its own phrasing. It
+  is the same for every arm, but not neutral, and its reliability on 8k-token rubric prompts is untested. Our
+  numbers are not comparable with the paper's.
+- Turns cut at 1,000 tokens (4% of turns; mostly pasted filings and assignments).
+- The length confound above (evidence turns are longer than distractors).
+- No licence for the data; one benchmark; one budget (5%), below the size of the evidence.
+
+**Recommendation (to the user): no pod for now.** The check closes the §25 failure mode, but the run would most
+likely end "undetermined" or "non-inferior" on a small difference, for about $1.75. The judge is an untested 7B
+self-judge, and the data has no licence. A pod is worth it only if a UtilMem row is wanted for the write-up.
+
+## 31. Test-time training on the 3B reader: the last route to §23's claim 1 without LoRA (2026-10-09, pre-registered; closed, not run)
+
+**Status: CLOSED without a pod run, at the user's decision (2026-10-10).** The free part below is kept as the record.
+No pod was started and nothing was spent. Reasons given at the decision: the third-party re-creation found almost no
+gain at small scale (+0.2 F1), and our prompts (about 1,150 tokens) are far shorter than the contexts qTTT was built for.
+
+**Why.**
+- §23's claim 1 was NOT SHOWN: Qwen 3B with `fixed8` (0.315) against Qwen 7B with FIFO + floor (0.436), −0.121
+  (−0.170, −0.070), margin −0.03.
+- The controller already puts the evidence in view. What the 3B lacks is reading: P(correct | all in view) under
+  `fixed8` is 0.397 at 3B against 0.667 at 7B, and the 3B answers "unknown" on 0.372 of answerable questions.
+- Test-time training (TTT) changes the reader for one question at a time, using only that question's prompt. It is
+  the only reader change left that is not LoRA training.
+
+**The two methods, and their code.**
+- **qTTT** (Bansal et al., "Let's (not) just put things in Context: Test-Time Training for Long-Context LLMs",
+  ICLR 2026, arXiv 2512.13898).
+  - **No code released.** No repository is linked from the paper, and none was found on GitHub on 2026-10-09.
+    The paper is CC BY 4.0.
+  - **What is adapted (Algorithm 1, Appendix C):** W_Q, the query projection of every attention layer. Nothing else.
+  - One prefill caches the prompt's keys and values; they are never recomputed.
+  - Then N steps of AdamW, each on the next-token loss of one random k-token span of the same prompt, with the span
+    attending to the frozen cached prefix. Then the answer is decoded from the frozen cache with the adapted W_Q.
+  - **Defaults:** N = 32, k = 128, AdamW with weight decay 0.01, gradient clipping 1.0, bf16, batch 1.
+  - **Learning rate: no single default.** The paper picks it per dataset on held-out validation data, from
+    {3e−4, 3e−5, 1e−5, 3e−6, 1e−6, 3e−7}. Its Table 1 says results are flat between 1e−5 and 1e−6.
+  - Models: Qwen3 1.7B–8B (and 32B), contexts of 8k–128k tokens on the benchmarks.
+- **EASE-TTT** (Yuan et al., arXiv 2606.06906).
+  - **No code released.** The authors' repository (github.com/xia0pengyuan/EASE-TTT, created 2026-05-26) is empty:
+    no commits, no licence. A third-party MIT re-creation exists (andrewtjin/STEEZ-TTT, commit e8968d5, Qwen3-0.6B
+    only). It was read, not run.
+  - **What is adapted:** LoRA (rank 8, scale 16, dropout 0.05) on the query projections only.
+  - **Loss:** KL from a target attention distribution to the layer-14 attention of the last token. The target puts
+    mass 0.6 on the top 4 "evidence" chunks (512-token chunks cut at loss spikes), ranked by how much each lowers the
+    loss on the question. 15 steps, AdamW at 1e−4, weight decay 0.01.
+  - Models: Qwen3-0.6B, Qwen3-1.7B, Llama-3.2-1B. Reported cost: 9.1 s per example against qTTT's 6.7 s
+    (Qwen3-1.7B, contexts up to 32k).
+- **The third-party re-creation's finding (not ours):** at Qwen3-0.6B, qTTT with the paper's objective changed
+  266 of 550 answers but gained only +0.2 F1 overall; the paper's qTTT gain was not reproduced at that size.
+
+**Decision: qTTT only. EASE-TTT is not run** (decided before any run, for these reasons):
+- At our prompt lengths it has nothing to select. A `fixed8` prompt is about 1,150 Qwen tokens: two or three
+  512-token chunks. "Top 4 chunks" is then the whole prompt, so the target is uniform and carries no signal.
+- Using per-turn chunks instead would be a new method, not EASE-TTT.
+- Its layer (14 of 28 in Qwen3) has no counterpart in a 36-layer Qwen2.5-3B. Choosing one would need a training-fold
+  sweep and a GPU.
+
+**Hyperparameters, all fixed now, before any run (no held-out peeking).**
+- N = 32 steps, k = 128 tokens, AdamW with weight decay 0.01, clipping 1.0, W_Q of all 36 layers (the bias stays
+  frozen): the paper's defaults.
+- **Learning rate 3e−6**, chosen from the paper alone: the geometric middle of its recommended range [1e−6, 1e−5].
+  In its Table 1, on the four rows nearest our prompt lengths (512 to 2,536 tokens), 3e−6 and 1e−5 are tied (sum
+  128.5 against 127.1). Our data was not used.
+- **Nothing is learned across questions.** Each question starts from the original weights; W_Q is restored bit for
+  bit and the optimizer is dropped after each answer (tested). The random spans are seeded by the prompt's hash, so
+  an answer does not depend on the order of questions, and a resumed run gives the same answer.
+- The training signal is the question's own prompt (its memory lines and the question text), with no labels.
+
+**A precision trap, found in the free part.** At lr 3e−6 one AdamW step moves a weight by about 3e−6. A bf16
+weight of size 0.02 has a rounding step of about 1e−4, so in plain bf16 the update rounds away and **nothing
+adapts**. The server keeps W_Q (and computes the query projection) in float32; the rest of the model is bf16
+(tested: a bf16 model's W_Q moves at 3e−6).
+
+**Serving: vLLM cannot do this, so a small HF server.** `memctl/ttt_server.py` (torch, transformers and the standard
+library only; the pod fetches this one file at a pinned commit).
+- An OpenAI-compatible `/v1/chat/completions`. One loaded model answers under two names: `qwen2.5-3b-instruct-hf`
+  (no adaptation) and `qwen2.5-3b-instruct-hf-qttt` (32 steps). memctl's `openai` backend calls it unchanged, so
+  `memctl.sweep` writes the same generation cache and replays and resumes as with vLLM.
+- The prompt is the frozen 7b5fc30 reader prompt (`memctl/agents/llm.py`, reasoning on, compact labels, 256 new
+  tokens), as one user turn through the model's chat template, as vLLM does.
+- Greedy decoding with the Qwen2.5 `generation_config` repetition penalty 1.05, which we believe vLLM 0.8.5 applied
+  in §23 (not verified). The paired rerun makes the TTT effect immune to this, and the A-against-§23 check measures it.
+- Several model replicas (processes) share one GPU behind one port. `/stats` gives running mean timings.
+- A wrong model name is refused (404), so no answer can be cached under the wrong arm.
+- Tested on transformers 5.17 (the venv) and 4.51.3 (vLLM 0.8.5 needs at least 4.51.1; the image's exact version is
+  printed on the pod before the run).
+
+**Arms (pre-registered; LongMemEval, the same 470 answerable + 30 abstention questions, 5 folds, §23's controllers
+unchanged):**
+
+| arm | controller | reader |
+|---|---|---|
+| A | `fixed8` | 3B, HF server, no adaptation |
+| B | `fixed8` | 3B, HF server, qTTT |
+| C | FIFO + floor | 3B, HF server, no adaptation |
+| D | FIFO + floor | 3B, HF server, qTTT |
+| 7B | FIFO + floor | §23's Qwen 7B answers (vLLM), judged again in the same pass |
+
+- **The no-adaptation 3B rows are rerun in the same session, not taken from §23.** HF and vLLM differ in kernels
+  and rounding, so §23's vLLM rows would mix "TTT" with "a different serving stack". A and C go through the same
+  server and code path as B and D, so B − A is TTT alone. §23's 3B `fixed8` answers are judged again as a check of
+  the serving change.
+- **The 7B row is reused from §23** (answers only; they are judged again in the same blind pass). Those answers
+  came from the same vLLM 0.8.5 image and model at temperature 0, and §23's 7B rerun matched §19c on 0.979 of
+  questions, so a new run would repeat them. Claim 1 compares two readers on two serving stacks either way, as §23
+  did.
+- **Claim 1 again:** B − 7B FIFO + floor, paired by question; non-inferior if the 95% lower bound is above −0.03,
+  better if above 0.
+- **TTT effect (paired):** B − A (primary), and D − C as the control, so TTT's gain is separated from the
+  controller's. (B − A) − (D − C) is descriptive.
+- **Judge:** one blind Qwen 7B pass with the official LongMemEval prompts, as §23; it sees question, gold and answer
+  text only. Answers are made first with a stub judge, then judged together.
+- **Reported beside accuracy:** the unknown share, P(correct | answered), false answers on the 30 unanswerable
+  questions, and the mean span loss before and after adaptation from the server log (a mechanical check that
+  adaptation happened).
+- **Expectation, written before any run:** claim 1 NOT SHOWN. qTTT targets "score dilution" in long contexts
+  (8k–128k tokens in the paper); our prompts are 1–3k tokens. The 3B's problem is refusals and reading, and the
+  re-creation found almost no qTTT gain at 0.6B. A gain at FIFO + floor (longer prompts) larger than at `fixed8`
+  would fit the dilution story.
+
+**Cost per query: measured on CPU, extrapolated to the A40.**
+- **Method.** The real Qwen2.5-3B layer shapes (hidden 2,048, 16 query and 2 key-value heads, MLP 11,008, vocabulary
+  151,936; config and tokenizer only, about 12 MB; no weights downloaded), random weights, float32, 8 CPU threads
+  (i7-11800H), with 1 and then 2 of the 36 layers. A straight line through the two gives the cost per layer and the
+  fixed part (embedding and output head); 36 layers are extrapolated from it. `python -m memctl.ttt_server bench`.
+  Prompt lengths are the arms' means in Qwen tokens: `fixed8` about 1,150, FIFO + floor about 3,250 (1.095 Qwen
+  tokens per memctl token, measured on §23's 3B prompts).
+- **Measured on CPU (seconds):**
+
+  | | 1 layer, 1,150 / 3,250 tokens | 2 layers, 1,150 / 3,250 | 36 layers (extrapolated), 1,150 / 3,250 |
+  |---|---|---|---|
+  | prefill | 0.52 / 1.55 | 1.10 / 3.18 | about 21 / 59 |
+  | 32 qTTT steps | 25.6 / 27.0 | 31.8 / 33.6 | about 242 / 258 |
+  | decode, 32 tokens | 3.3 / 3.3 | 4.0 / 4.0 | about 28 |
+
+  - Peak RSS 3.4 GB (2 layers). The span loss fell in every run (for example 12.32 → 12.24), so the steps do update.
+- **FLOPs per question (counted from the shapes; 3.09B parameters with the tied output head):** 32 steps on 128-token
+  spans are about 55 TFLOP (`fixed8`) and 60 TFLOP (FIFO + floor), about 1.7–1.9 TFLOP a step (forward, backward to
+  the activations, W_Q gradients, attention to the cache). The prefill is about 6.6 and 19.6 TFLOP.
+- **CPU check of the count:** the CPU ran the 32 steps at 0.72 of the efficiency of the prefill (0.23 against 0.31
+  TFLOP/s), so the steps have no hidden cost beyond their FLOPs and small-matrix overhead.
+- **A40 extrapolation. Assumptions:** bf16 tensor peak 149.7 TFLOP/s; the prefill at 40% of peak (60 TFLOP/s);
+  the steps at 0.72 of that (as on CPU), with a pessimistic case at 15% of peak; 0.5 s of kernel-launch overhead for
+  32 steps (about 1,600 kernels a step at about 10 µs); decoding by HF at 30 ms a token (the memory-bandwidth floor
+  is 9 ms: 6.2 GB of weights at 696 GB/s; HF's Python loop adds the rest); 32 output tokens on average (the mean of
+  §23's 3B answers in Qwen tokens; p90 85, maximum 256; used for cost only).
+
+  | per question, one replica | `fixed8` | FIFO + floor |
+  |---|---|---|
+  | prefill | 0.1 s | 0.3 s |
+  | 32 qTTT steps (expected / pessimistic) | 1.8 s / 2.9 s | 1.9 s / 3.1 s |
+  | decode (32 tokens) | 1.0 s | 1.0 s |
+  | **total with qTTT** | **about 2.9 s (pessimistic 4.0 s)** | **about 3.2 s (pessimistic 4.4 s)** |
+  | total without (arms A, C) | about 1.1 s | about 1.3 s |
+
+  - **Feasible: well under 10 s a question.** The worst single question (6,357-token prompt, 256 tokens out) is
+    about 12 s.
+  - **A warning from the paper itself.** Its Table 11 lists 13.7 s for 32 qTTT steps on Qwen3-4B on an A100 at every
+    context length. Scaled to 3.09B parameters and to the A40's half of the A100's bf16 peak, that is about 22 s a
+    question, over the 10 s line. That table looks derived from FLOPs rather than timed (its 8k-token prefill of a
+    1.7B model takes 8.7 s, about 1% of the A100's peak), and our FLOP count gives 1–3 s. The disagreement is the
+    reason for the time gate below.
+- **GPU memory per replica:** bf16 weights 6.2 GB; float32 W_Q, its saved copy, gradient and AdamW moments 3.0 GB;
+  cache, span activations and logits under 1 GB. About 10 GB, so 4 replicas fit the A40's 48 GB (3 if not).
+
+**Full-size stub run** (the pre-launch rule; `configs/sweeps/exp31/exp31_stub.sh`).
+- **Pipeline at full size:** 5 folds × 4 cells × 100 questions = 2,000 answers through the HF server (1,000 with
+  32 qTTT steps), with the real Qwen2.5 tokenizer and chat template, a random Qwen2-architecture model, 4 replicas
+  and 2 sweep workers a fold. 2,000 of 2,000 answers, 0 server errors after the fix below; all 20 cells finished
+  with 100 episodes.
+- **Resume against a changed endpoint:** interrupted with the plain cells at 25–31 questions, resumed on port 8132,
+  interrupted again, resumed on port 8134. Every cell resumed (`resumed: true`, none refused) and finished.
+- **The stub found a bug before any spend:** in the first pass every qTTT request failed (HTTP 500). With fewer layers
+  than the checkpoint, the per-layer type list kept 36 entries and the cache crop failed on the empty ones. Fixed
+  (`_trim_layer_types`); the real 36-layer model does not hit it.
+- **Peak RSS:** 0.82 GB for the stub server (the largest process), 0.34 GB per sweep process.
+- **Stub model:** the first pass used a 42M-parameter random model; it was too slow on the laptop CPU (about 37 s
+  a qTTT answer under load), so the resumed passes used a 10M one (hidden 64, 1 layer). Random weights write
+  256 tokens every time; the mean server time was 2.7 s without and 13.1 s with adaptation (10.5 s of it the 32
+  steps, dominated by the 151,936-word output head). These are CPU stub numbers, not a GPU estimate.
+- **Judge and report scripts** (`configs/sweeps/exp31/exp31_judge.py`, `exp31_report.py`) ran on the stub output
+  with the stub judge: they read §23's 3B `fixed8` and 7B FIFO rows correctly (unknown 0.372 and 0.328, false
+  answers 7 and 6 of 30, as §23). `--prune` keeps only scored step rows, because full step logs are about 1.7 MB a
+  question (about 3.4 GB for this run); the stub resume passes ran with step logs off for the same reason.
+- **Stub output deleted** (runs and caches, about 0.5 GB at the peak). Free disk stayed at 14 GB throughout.
+
+**Price (NEEDS SPEND; per-run user approval).**
+- **Plan, one A40 (EU-SE-1, $0.59/h as §23), one pod, two phases:**
+  1. The §23 image (vLLM 0.8.5, which has torch and transformers ≥ 4.51.1) with the start command replaced: fetch
+     `memctl/ttt_server.py` from GitHub at a pinned commit (ae1a5e8, or the branch head at launch, recorded), then
+     `serve --model Qwen/Qwen2.5-3B-Instruct
+     --revision aa8e72537993ba99e69dfaafa59ed015b17504d1 --served-name qwen2.5-3b-instruct-hf --replicas 4`.
+     Locally: `configs/sweeps/exp31/exp31_stage.sh POD_URL` (5 folds × 4 cells, 4 workers a fold).
+  2. The pod switched to `vllm serve Qwen/Qwen2.5-7B-Instruct` (as §23); then `exp31_judge.py --prune` (2,820 judge
+     calls: 4 cells and 2 §23 rows of 470) and `exp31_report.py`.
+- **Time gate (pre-registered, automatic in `exp31_stage.sh`):** after 100 qTTT answers, if the mean server time per
+  qTTT answer divided by the 4 replicas is above 10 s, all sweeps stop and the pod is terminated. A failed gate costs
+  about 15 min, about $0.15.
+- **Estimate:** pod ready about 7 min (3B download, 4 loads); reader 2,000 answers about 30–45 min (1,000 at about
+  3–4.4 s and 1,000 at about 1.2 s, with the replicas overlapping decoding about 2×); 7B load about 7 min; judge about
+  5–10 min. **About 50–70 min, about $0.50–0.70.**
+- **Hard stop: 1.5 h after create, about $0.89.** If the reader stage is not done by 1 h 05 min, the FIFO + floor
+  qTTT cell (arm D, the control) is dropped first, so that arms A, B and the judge pass still fit.
+- Not yet measured, and only measurable on the pod: GPU seconds per step. The gate is the check.
+
+**Recommendation.** **Pod, if the user wants this route closed; otherwise stop.** It is feasible (about 3–4 s a question
+expected, under the 10 s line) and cheap (under $0.90 with the hard stop), and it is the last reader change short of
+LoRA. But the expected result is NOT SHOWN: the paper's gains come at 8k–128k tokens, our prompts are 1–3k, and an
+independent re-creation found almost no qTTT gain at 0.6B. To pass the margin, B would need about 0.46 (the 7B's
+0.436 plus about +0.02, given an interval about ±0.05 wide): B − A of about +0.14.
 
 ## 5. The sequential task
 
