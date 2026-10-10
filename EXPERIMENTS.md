@@ -4958,6 +4958,7 @@ unjudged). No triage, no deadline. The report (`runs/exp29_report.md`) was run o
   +0.145) → **BETTER**.
 - Descriptive: evidence-rows − `fixed8` −0.002; utility − evidence-rows −0.011 (−0.047, +0.026); pairing check
   `fixed8` − FIFO + floor +0.104 (§23 +0.102, §27 +0.100).
+- **Reader noise floor.** `fixed8` scores 0.543 here and 0.536 in §32c on the same picks (prompt tokens equal on 470 of 470). vLLM at temperature 0 is not batch-deterministic: 35 of 470 answer texts differ between the two passes. The 7 verdict flips split into 6 from different answers and 1 from the judge on an identical answer. So two passes over the same picks differ by about ±0.007 in accuracy.
 
 **Said plainly.** Training the head on what the reader finds useful (the drop in the gold answer's log-probability)
 instead of on which turns hold the evidence did not help: the utility head is level with the head at best and picks
