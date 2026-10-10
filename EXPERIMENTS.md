@@ -5015,7 +5015,14 @@ three-heads caveat (§32a) applies to `fixed8`.
 
 **Human spot check (prepared, not done).** 50 judged answers stratified by arm (8–9 each) and spread over question
 types, seed 32 (`configs/sweeps/exp32/spot_sample.py`): `runs/exp32_spotcheck/sample.csv` (arm and verdict hidden)
-and `key.csv`. The user grades them.
+and `key.csv`.
+- **Spot check done (2026-10-10).** A blind second grading of all 50 (by Claude, before reading the key) agreed with
+  the Qwen judge on 45 of 50. All 5 disagreements are the judge marking wrong an answer the second grader accepts
+  (samples 10, 12, 26, 36, 39: arms RRF, lr ×2, GBDT, `fixed8`). The judge never accepted an answer the second
+  grader rejected. The user then judged those 5 by hand and called **all 5 correct**. So the judge is strict: it
+  under-counts correct answers, about 5 of 28 judged-correct in this sample (judge 28 of 50, after the human calls 33
+  of 50). The misses are spread over four arms, including the head, so they lower every arm's accuracy rather than
+  favouring one; the pre-registered comparisons are kept as judged.
 
 ## 5. The sequential task
 
