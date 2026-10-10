@@ -11,6 +11,7 @@ REGISTRY = {
     "locomo": "memctl.envs.locomo:LoCoMoEnv",
     "longmemeval": "memctl.envs.longmemeval:LongMemEvalEnv",
     "streammembench": "memctl.envs.streammembench:StreamMemBenchEnv",
+    "utilmem": "memctl.envs.utilmem:UtilMemEnv",
 }
 
 
