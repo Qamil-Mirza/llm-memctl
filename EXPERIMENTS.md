@@ -73,8 +73,8 @@ commands given).
 | 26 | OpenJev (open Jev re-creation) as a controller | Arm B (selector, 8 of the head's 32 candidates): B − FIFO +0.045 (CI +0.004..+0.087), BETTER; B − `fixed8` −0.036 (CI −0.081..+0.009), not shown; B's prompts 2,373 tokens vs 1,049. Arm A (memory manager) cost only: ~94 GPU-s per question (~$15 per 1,000); accuracy not run by decision. $0.64 |
 | 27 | LRE (published query-blind scorer) as a baseline controller | LRE-slot (8 of the head's 32): 0.109, far below FIFO (−0.328) and the head (−0.428), evidence in view 0.03. LRE-native (in place of recency): +0.028 vs FIFO (CI −0.002..+0.057), non-inferior. About $0.23 shared with §28 |
 | 28 | Query rewriting for the head's 32 candidates | Rule time filter (b): NO GO at its free gate. LLM rewrite (a): training gate passed at v3 (v1 malformed, v2 invented ranges); test folds +0.006 overall (CI −0.017..+0.030) and +0.024 on temporal (n = 127, CI −0.016..+0.063), non-inferior, not better. About $0.23 shared with §27 |
-| 29 | A reader-utility training signal for the §19 head | Pod run partial (branch `reader-utility`, §29a): signal, tune and heads done; the reader did not run (vLLM out of memory at the start, then a laptop internet outage idled the pod). No claim tested; reader rerun pending approval. $0.87 |
-| 32 | The §19 head against standard rerankers of the same 32 candidates | Reader-free (§32b): logistic regression on the head's 30 inputs −0.016 (CI −0.036..+0.002) all-found vs `fixed8` 0.700, not shown worse; GBDT, RRF and the zero-shot cross-encoder −0.034 (CIs exclude 0); BM25 −0.116. `fixed8` is 3 distinct heads, not 5. Reader stage not run. $0 so far |
+| 29 | A reader-utility training signal for the §19 head | Utility head − `fixed8` −0.013 (CI −0.051..+0.026), blend − `fixed8` −0.002: both UNDETERMINED; both beat FIFO + floor (+0.09, +0.10). The utility head picks longer turns. Closed as a negative (§29b, branch `reader-utility`). About $1.02 ($0.87 partial run + half of the shared pod) |
+| 32 | The §19 head against standard rerankers of the same 32 candidates | Reader: head − logistic regression (31 parameters) +0.013 (CI −0.017..+0.043), head − zero-shot cross-encoder +0.013 (CI −0.030..+0.053): NON-INFERIOR, not better; only BM25 order is clearly worse (+0.068). `fixed8` is 3 distinct heads, not 5. About $0.15 (half of the shared pod) |
 
 ---
 
@@ -4985,6 +4985,36 @@ then `configs/sweeps/exp32/report.py` (the pre-registered claims).
 **Disclosure.** No test-fold number was computed before 565d1d8 (every choice committed before it). The split
 audit reads only session ids of the data file. The reader-free pass is the only read of test-fold evidence, as
 pre-registered.
+
+### 32c. Reader result: the head is non-inferior to every baseline, and better than none of the learned ones (2026-10-10)
+
+**Run.** Shared pod with §29 (`009mqsuixjvjyn`, 03:39:31–about 04:09:31 UTC, 0.50 h ≈ $0.30 in all; approved quote
+$0.57–0.74, stop $0.89). §32 ran 03:56:13–04:09:21: 30 of 30 cells, the judge graded 2,820 answers (180 abstention
+answers kept aside). No deadline fired. The report (`configs/sweeps/exp32/report.py` → `runs/exp32_report.md`) was
+run once.
+
+| arm | accuracy (95% CI) | unknown | P(correct \| answered) | prompt tokens |
+|---|---|---|---|---|
+| `fixed8` (the head) | 0.536 (0.491, 0.581) | 0.153 | 0.633 | 1,049 |
+| `lr_pointwise` (31 parameters) | 0.523 (0.479, 0.568) | 0.155 | 0.620 | 952 |
+| `cross_encoder_zero` | 0.523 (0.479, 0.568) | 0.217 | 0.668 | 2,001 |
+| `gbdt_pointwise` | 0.515 (0.470, 0.560) | 0.162 | 0.614 | 984 |
+| `rrf_top8` | 0.509 (0.464, 0.555) | 0.223 | 0.655 | 1,978 |
+| `bm25_top8` | 0.468 (0.423, 0.513) | 0.296 | 0.665 | 2,468 |
+
+- **Primary, `fixed8` − `lr_pointwise`:** +0.013 (−0.017, +0.043), n = 470 → **head NON-INFERIOR**, not better.
+- **Secondary, `fixed8` − `cross_encoder_zero`:** +0.013 (−0.030, +0.053) → **head NON-INFERIOR**, not better.
+- Descriptive: − BM25 +0.068 (+0.026, +0.113, better); − RRF +0.028 (−0.011, +0.068); − GBDT +0.021 (−0.015, +0.055).
+
+**Said plainly.** On reader accuracy the §19 head is at least as good as each standard reranker (non-inferior at the
+−0.03 margin), but it is not shown better than a 31-parameter logistic regression on its own 30 inputs, nor than an
+off-the-shelf cross-encoder. Only plain BM25 order is clearly worse. The learned part that matters is the feature set
+and the evidence labels, not the network; the cross-encoder gets the same accuracy at about twice the prompt. The
+three-heads caveat (§32a) applies to `fixed8`.
+
+**Human spot check (prepared, not done).** 50 judged answers stratified by arm (8–9 each) and spread over question
+types, seed 32 (`configs/sweeps/exp32/spot_sample.py`): `runs/exp32_spotcheck/sample.csv` (arm and verdict hidden)
+and `key.csv`. The user grades them.
 
 ## 5. The sequential task
 
