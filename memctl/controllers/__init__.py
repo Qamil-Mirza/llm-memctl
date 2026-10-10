@@ -21,6 +21,7 @@ REGISTRY = {
     "jev": "memctl.controllers.jev:JEVController",
     "rl": "memctl.controllers.rl:RLController",
     "lre": "memctl.controllers.lre:LREController",
+    "rerank": "memctl.controllers.rerank:RerankController",
 }
 
 

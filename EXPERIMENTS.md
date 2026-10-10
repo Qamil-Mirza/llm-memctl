@@ -73,6 +73,8 @@ commands given).
 | 26 | OpenJev (open Jev re-creation) as a controller | Arm B (selector, 8 of the head's 32 candidates): B − FIFO +0.045 (CI +0.004..+0.087), BETTER; B − `fixed8` −0.036 (CI −0.081..+0.009), not shown; B's prompts 2,373 tokens vs 1,049. Arm A (memory manager) cost only: ~94 GPU-s per question (~$15 per 1,000); accuracy not run by decision. $0.64 |
 | 27 | LRE (published query-blind scorer) as a baseline controller | LRE-slot (8 of the head's 32): 0.109, far below FIFO (−0.328) and the head (−0.428), evidence in view 0.03. LRE-native (in place of recency): +0.028 vs FIFO (CI −0.002..+0.057), non-inferior. About $0.23 shared with §28 |
 | 28 | Query rewriting for the head's 32 candidates | Rule time filter (b): NO GO at its free gate. LLM rewrite (a): training gate passed at v3 (v1 malformed, v2 invented ranges); test folds +0.006 overall (CI −0.017..+0.030) and +0.024 on temporal (n = 127, CI −0.016..+0.063), non-inferior, not better. About $0.23 shared with §27 |
+| 29 | A reader-utility training signal for the §19 head | Utility head − `fixed8` −0.013 (CI −0.051..+0.026), blend − `fixed8` −0.002: both UNDETERMINED; both beat FIFO + floor (+0.09, +0.10). The utility head picks longer turns. Closed as a negative (§29b, branch `reader-utility`). About $1.02 ($0.87 partial run + half of the shared pod) |
+| 32 | The §19 head against standard rerankers of the same 32 candidates | Reader: head − logistic regression (31 parameters) +0.013 (CI −0.017..+0.043), head − zero-shot cross-encoder +0.013 (CI −0.030..+0.053): NON-INFERIOR, not better; only BM25 order is clearly worse (+0.068). `fixed8` is 3 distinct heads, not 5. About $0.15 (half of the shared pod) |
 
 ---
 
@@ -4965,6 +4967,314 @@ instead of on which turns hold the evidence did not help: the utility head is le
 longer turns (1,881 vs 1,049 tokens, fewer "all in view"). Mixing the two signals gives back the evidence head. Every
 learned head still beats FIFO + floor by about 0.10. The reader-side signal is closed as a negative; the evidence
 labels were already a sufficient signal at this n.
+
+## 32. The §19 head against standard rerankers of the same pool (N12; 2026-10-09, pre-registered, free stage)
+
+**Status:** the free part (code, rows, training-side selection, reader-free pass, split audit, tests, stub rehearsal)
+is done on branch `reranker-baselines` (§32a, §32b). The reader pass NEEDS SPEND and is not approved.
+
+**Why.** As deployed (`fixed8`), the §19 head is a top-k reranker: memory keeps nothing but the current turn
+(`keep_none`), and at a question the head picks 8 of the 32 BM25 candidates by its logit
+(`memctl/controllers/rl.py`, the shortlist search and the floor-head top-k). The fair outside comparison is
+therefore not a memory controller (§26, §27) but a standard supervised reranker of the same 32. If one of those
+matches the head, the head is "a reranker", and the thesis should say so.
+
+**The question set is LongMemEval** (500 questions: 470 answerable + 30 abstention, the five stratified folds of
+`memctl/splits.py`), as in §19, §23 and §27. (The brief said LoCoMo; the 470 + 30 set and the folds are
+LongMemEval's.)
+
+**Held fixed across every arm.** The 32 BM25 candidates of the head (plain `LexicalRetriever`, the question text as
+the query, the archive under `keep_none`), k = 8, budget 5% of the history, the same 500 questions and five folds,
+the same harness (picks that do not fit are returned by `enforce_budget` and counted as forced removals). No arm sees
+gold evidence at inference. One new controller does it: `rerank` (`memctl/controllers/rerank.py`) is the `rl`
+controller with only the top-k scorer swapped (`memctl/rerank.py`); a test checks it sees the head's pool, in the
+head's order, with the head's own feature rows.
+
+**Arms.**
+1. `bm25_top8`: the BM25 order, top 8. No learning.
+2. `rrf_top8`: reciprocal rank fusion (constant 60) of the BM25 rank and the bge-small-en-v1.5 dense rank (cosine of
+   the labelled turn text and the question, as `DenseRetriever`), **both ranks counted within the 32-candidate
+   pool**. `FusionRetriever` as written fuses whole-archive ranks of a *labelled* BM25 and would change the pool,
+   so it is not used; within the pool the dense order is the same as the whole-archive one, only the RRF rank
+   numbers differ. Ties keep the BM25 order (all arms).
+3. `lr_pointwise`: logistic regression on exactly the head's inputs: 24 item features + 6 global features
+   (`memctl/features.py`), one row per candidate, standardised. Grid: C ∈ {0.001, 0.01, 0.1, 1, 10, 100} ×
+   class_weight ∈ {none, balanced}.
+4. `gbdt_pointwise`: LightGBM is **not installed**, so scikit-learn's `HistGradientBoostingClassifier` on the same
+   rows. Grid: max_depth ∈ {3, 6, none} × max_leaf_nodes ∈ {7, 15, 31}, learning rate 0.05, rounds ∈ {25, 50,
+   100, 200, 400} (read off one 400-round fit), no internal early stopping. **No lambdarank row** (it needs LightGBM).
+5. `cross_encoder_zero`: cross-encoder/ms-marco-MiniLM-L-6-v2 (22.7M parameters) on (question text, turn text) for
+   the 32 candidates, max length 512, zero-shot; top 8. Scores are cached on disk, so the reader pass replays them.
+6. ~~`cross_encoder_tuned`~~: **dropped before any test-fold run** (see §32a). The brief allowed it only if CPU
+   fine-tuning takes minutes; measured, it does not.
+7. `fixed8`: the §19 head A as deployed, per fold (`runs/lme_n4_head_f{k}_a/checkpoints/policy_best.pt`), not
+   retrained, run by the unchanged `rl` controller.
+
+**Training rows (same rows as the head, DAgger-free; training part only).** `memctl/rerank_data.py`.
+- **Fitting rows, half A** of each fold's training part (the head A's own half): the head's training setup
+  (`configs/rl/lme_n4/head_f{k}_a.yaml`): composed 4-question episodes, budget fraction 0.0125, the regret expert
+  (retrieval_risk 0.36), the head's own seeds 100000–100249 (10 iterations × 25 episodes). DAgger-free: the expert
+  drives every episode (the head's iteration 0), so the rows depend on no learner. About 1,000 question decisions and
+  32,000 rows per fold.
+- **Label:** the head's: a candidate is positive if it is the **designated carrier** of a requirement needed at
+  this question (`Hindsight.designated`: of a requirement's carriers, the shortest, the earliest among equals). For a
+  marked (`has_answer`) turn that is the turn itself. For an answer session with no marked turn, it is one turn of
+  that session only (a test pins this; see "Findings" below). Pointwise models use every row, including lists with
+  no positive (the head's list loss skips those).
+- **Inner validation, half B** of each fold's training part (the head A never trained on it): every half-B question
+  once, played as the test folds are (one question per episode, 5% budget). About 200 questions per fold.
+
+**Selection (no held-out peeking; fixed in code before any fit: the pointwise grids at dcdce6c
+(`memctl/rerank_train.py`), the cross-encoder tuning at 25ba106 (`memctl/rerank_ce.py`)).**
+- The selection measure is **inner all-found@8** on half B (every requirement has one of its carriers among the 8;
+  computed from the candidates' requirement sets, no budget), ties broken by requirement recall@8, then the simpler
+  setting.
+- Each grid setting is fitted on half A and scored on half B; the best setting's half-A model is the fold's model
+  (not refitted).
+- Cross-encoder fine-tuning, fixed before any run: every positive and 7 negatives per question drawn uniformly from
+  its other candidates (seed 0); binary cross-entropy; AdamW, lr 2e-5, batch 16, 10% linear warm-up then linear
+  decay, max length 512, 2 epochs; the epoch with the higher half-B all-found@8 is kept.
+- **The best classical reranker** (the primary claim's comparator) is `lr_pointwise` or `gbdt_pointwise`, whichever
+  has the higher half-B all-found@8 pooled over the five folds (ties: recall, then `lr`). It is recorded below before
+  any test-fold number is computed.
+- The test folds are read once, by the reader-free pass, after every choice above is committed.
+
+**Reader-free measures (all arms; per fold and pooled; each arm minus `fixed8`, paired 95% bootstrap by question,
+10,000 resamples).** P(all requirements in view) (`evidence_complete_rate`), requirement recall
+(`needed_hit_rate`), precision (`retrieval_precision`: the share of the shown turns that carry some requirement),
+prompt tokens (stub reader, the real 7b5fc30 prompt), forced removals, selection latency per question (one process,
+one thread, fresh score caches, BM25 search excluded), and parameter count. Sensitivity row: the same on the test
+questions that share no answer session with any training question.
+
+**Pre-registered reader claims** (Qwen2.5-7B reader with the frozen 7b5fc30 prompt, one blind Qwen 7B judge pass;
+470 answerable questions, paired by question, 95% bootstrap; margin −0.03; `configs/sweeps/exp32/report.py`).
+1. **Primary: D1 = `fixed8` minus the best classical reranker, accuracy.** Pre-declared direction: **the head
+   better** (D1 > 0). Head **better** if the lower bound is above 0; head **non-inferior** if the lower bound is
+   above −0.03; head **worse** if the upper bound is below 0; otherwise not shown. Read the other way
+   (descriptive): the baseline is "within the margin of the head" if the upper bound is below +0.03.
+2. **Secondary: D2 = `fixed8` minus `cross_encoder_zero`**, the same thresholds and wording.
+- Descriptive: every other arm minus `fixed8`; the three disjoint answer shares (an "unknown" answer judged correct
+  is flagged, `memctl/analysis/shares.py`); P(correct | answered); prompt tokens; false answers on the 30
+  unanswerable questions; the pairing check of `fixed8` against §27 (0.536) and §28 (0.534).
+
+### 32a. Training-side choices, recorded before any test-fold number (2026-10-09)
+
+**Rows** (`memctl/rerank_data.py`, code at dcdce6c; laptop CPU, peak RSS 0.35 GB per process): half A, 1,000
+question decisions and about 32,000 rows per fold (1,332–1,395 positives); half B, 200 questions per fold.
+
+**Pointwise selection on half B** (`python -m memctl.rerank_train`; `runs/exp32_rerankers/inner_selection.json`, a
+copy in `configs/sweeps/exp32/models/`; models `lr_f{k}.json`, `gbdt_f{k}.pkl` committed beside it):
+
+| fold | `lr` setting | all-found@8 | recall | `gbdt` setting (depth / leaves / rounds) | all-found@8 | recall |
+|---|---|---|---|---|---|---|
+| 0 | C 0.001 | 0.700 | 0.800 | none / 15 / 100 | 0.685 | 0.788 |
+| 1 | C 0.001 | 0.695 | 0.798 | none / 15 / 25 | 0.680 | 0.783 |
+| 2 | C 0.001 | 0.695 | 0.810 | 3 / 15 / 50 | 0.680 | 0.805 |
+| 3 | C 0.01 | 0.705 | 0.812 | 3 / 15 / 25 | 0.695 | 0.816 |
+| 4 | C 0.01, balanced | 0.680 | 0.787 | 3 / 7 / 25 | 0.685 | 0.796 |
+| pooled | | **0.695** | 0.801 | | 0.685 | 0.798 |
+
+- **The best classical reranker is `lr_pointwise`** (pooled half-B all-found@8 0.695 against 0.685), by the rule
+  fixed in §32. It is the primary claim's comparator. The margin is small (2 questions in 1,000); the rule decides.
+- `lr` chose the strongest regularisation (C = 0.001, the grid's edge) in 3 of 5 folds: the features carry little
+  that a looser fit uses. Not widened: the grid was fixed in advance.
+- Sizes: `lr` 31 parameters; `gbdt` 325–2,900 tree nodes.
+- One code fix during this step, before any result: `truncate_gbdt` set the read-only `n_iter_` and crashed on
+  fold 0 before writing anything (fixed at 7e4fca7; nothing else changed).
+
+**Cross-encoder fine-tuning dropped (decided before any test-fold run).** The run with the pre-fixed settings
+(`memctl/rerank_ce.py tune`, 25ba106) on five folds at once, 3 threads each: two folds were killed by the kernel
+for memory (about 6 GB resident each at max length 512), and the other three had not finished their **first**
+epoch after 73 minutes. The brief admits the arm only if fine-tuning takes minutes, so `cross_encoder_tuned` is
+not run, and the reader stage has six arms. No tuned model or score was produced or read.
+
+**Found while building (not fixed; reported):**
+- **The §19 head A checkpoints of folds 1 and 2 are byte-identical, and so are those of folds 3 and 4**
+  (`runs/lme_n4_head_f{k}_a/checkpoints/policy_best.pt`, sha256 2825193… and 849e524…). Cause: `memctl/splits.py`
+  deals half A and half B alternately from each fold's training list, and with k = 5 removing place 1 or place 2
+  (or 3 or 4) from the dealing order leaves the same alternate half. So half A is the same 200 questions for folds
+  1 and 2 (and for 3 and 4), and the same seeds give the same head. **This is not a leak**: half A never meets its
+  fold's test part (checked: 0 of 200 in every fold). But `fixed8` is three distinct heads, not five, and the §32
+  pointwise models of folds 1 and 2 are identical too (`lr_f1.json` = `lr_f2.json`). The half-B sets differ, so the
+  inner checks are not duplicated. Consequences: `fixed8`'s per-fold spread (0.650–0.750) comes from three heads, not
+  five, so it understates the variance of head training; the paired-by-question bootstrap is unaffected. The same
+  artefact applies to head B and to every `fixed8` number in §19–§28, which all use these checkpoints.
+- Under `keep_none` the turn just before the question is archived at the question step, after the search, so it is
+  never a candidate (all arms alike). On LongMemEval it carries a requirement for 1 question of 500 and is never the
+  only carrier: harmless.
+- A turn longer than the whole budget is deleted on arrival by `enforce_budget` (EVICT), not archived, so it can
+  never be retrieved (all arms alike): 6 of 500 `fixed8` episodes in §27 (one 7,737-token turn). Pinned by a test.
+
+### 32b. Reader-free result, split audit and the reader stage, built and rehearsed (2026-10-09/10)
+
+**Runs** (stub reader; `runs/exp32_free_f{k}`, every cell clean: at 565d1d8, the `rrf_top8` cells at 63bd7ae;
+report `configs/sweeps/exp32/free_report.py` → `runs/exp32_rerankers/free_report.md`). `fixed8` reproduces §19a
+(P(all in view) 0.700, 1,050 prompt tokens). The `rrf_top8` cells were rerun once to write their dense-similarity
+cache for the reader stage; on the 277 questions the first, interrupted run had finished, the picks were identical.
+
+**Pooled, 500 test questions** (Δ = arm minus `fixed8`, paired 95% bootstrap by question):
+
+| arm | P(all in view) | Δ | requirement recall | Δ | precision of the 8 | prompt tokens | forced removals / q | parameters |
+|---|---|---|---|---|---|---|---|---|
+| `fixed8` (§19 head) | **0.700** | — | 0.801 | — | 0.197 | 1,050 | 0.012 | 27,526 |
+| `bm25_top8` | 0.584 | −0.116 (−0.150, −0.084) | 0.713 | −0.089 (−0.113, −0.065) | 0.175 | 2,467 | 0.044 | 0 |
+| `rrf_top8` | 0.666 | −0.034 (−0.060, −0.010) | 0.780 | −0.022 (−0.041, −0.002) | 0.198 | 1,974 | 0.020 | 33.4M (bge-small) |
+| `lr_pointwise` | 0.684 | **−0.016 (−0.036, +0.002)** | 0.790 | −0.011 (−0.027, +0.004) | 0.195 | **948** | 0.012 | 31 |
+| `gbdt_pointwise` | 0.666 | −0.034 (−0.058, −0.012) | 0.780 | −0.021 (−0.040, −0.003) | 0.191 | 985 | 0.012 | 325–2,900 nodes |
+| `cross_encoder_zero` | 0.666 | −0.034 (−0.064, −0.004) | 0.786 | −0.015 (−0.036, +0.006) | 0.203 | 1,993 | 0.018 | 22.7M |
+
+- Precision is within ±0.006 of `fixed8` for every arm but BM25 (−0.022). Prompt tokens against `fixed8`: BM25
+  +1,417, RRF +924, cross-encoder +943, `lr` −102, `gbdt` −65 (all intervals exclude 0).
+- **Said plainly: the logistic regression on the head's own 30 inputs comes within 0.016 of the head reader-free,
+  and its interval includes 0,** at 31 parameters and 10% fewer prompt tokens. The head is not shown better than
+  it on evidence. Every other baseline is below the head (intervals exclude 0), and BM25, RRF and the zero-shot
+  cross-encoder also need about twice the head's prompt (they prefer long turns).
+- **Pre-registered reading of D1, reader-free:** the head is not shown better than a 31-parameter logistic regression
+  on its own 30 inputs. This is evidence only; the reader claim (fixed8 minus `lr_pointwise` on accuracy, margin
+  −0.03) has not been run.
+- So, reader-free, most of the head's gain over BM25 (+0.116) is available to a linear model on the same features
+  (+0.100); the network adds about +0.016 on top, not significant at this n.
+
+**Per fold, P(all in view):**
+
+| arm | fold 0 | fold 1 | fold 2 | fold 3 | fold 4 |
+|---|---|---|---|---|---|
+| `fixed8` | 0.650 | 0.680 | 0.700 | 0.720 | 0.750 |
+| `bm25_top8` | 0.510 | 0.580 | 0.580 | 0.620 | 0.630 |
+| `rrf_top8` | 0.610 | 0.640 | 0.670 | 0.690 | 0.720 |
+| `lr_pointwise` | 0.660 | 0.670 | 0.670 | 0.690 | 0.730 |
+| `gbdt_pointwise` | 0.630 | 0.630 | 0.650 | 0.700 | 0.720 |
+| `cross_encoder_zero` | 0.640 | 0.650 | 0.710 | 0.650 | 0.680 |
+
+**Inner split, half B (training side; descriptive except the lr/gbdt choice in §32a; `memctl/rerank_ce.py inner`):**
+all-found@8 pooled over the five folds: `fixed8` 0.704, `lr` 0.695, `gbdt` 0.685, `rrf` 0.683, cross-encoder
+0.674, BM25 0.607, the same order as on the test folds. (Half B is the same set for folds 0 and 1 and for folds 2
+and 3: the dealing artefact in §32a.)
+
+**Selection latency** (fold 0's test part, one process, one thread, fresh caches, first question dropped; the BM25
+search, about 25 ms, is common to all arms and excluded; `runs/exp32_latency`):
+
+| arm | median ms / question | p90 ms |
+|---|---|---|
+| `bm25_top8` | 0.2 | 0.2 |
+| `lr_pointwise` (features + 31 weights) | 4.8 | 5.9 |
+| `fixed8` (features + head) | 5.3 | 6.5 |
+| `gbdt_pointwise` | 5.8 | 6.9 |
+| `cross_encoder_zero` | 5,334 | 5,529 |
+| `rrf_top8` (bge-small embeddings of 32 turns) | 10,926 | 11,240 |
+
+- Building the features is most of the head's 5.3 ms; the pointwise models cost the same order. `fixed8` was timed
+  through the `rerank` controller with the head's own logit; its picks equal the deployed `rl` controller's on all
+  100 questions.
+
+**Split audit (free; `configs/sweeps/exp32/split_audit.py` → `runs/exp32_rerankers/split_audit.json`).**
+- (a) Share of a test question's filler sessions (by session id) that appear in some training question's haystack:
+  **0.317 pooled** (folds 0.328, 0.314, 0.317, 0.321, 0.304).
+- (b) Test questions sharing an answer session with a training question's answer sessions: **8 of 500** (per fold
+  1, 3, 1, 2, 1). The same count per fold has its answer session anywhere in a training haystack.
+- **Sensitivity row (the 492 questions with no shared answer session), P(all in view):** `fixed8` 0.699; `lr` −0.018
+  (−0.037, +0.000); `gbdt` −0.035 (−0.059, −0.012); RRF −0.030 (−0.055, −0.006); cross-encoder −0.037 (−0.067,
+  −0.008); BM25 −0.112 (−0.144, −0.081). Order and gaps do not change: the shared sessions do not drive the result.
+
+**Tests** (`tests/test_rerank.py`, 9 pass; full suite 257 pass, the 2 known `test_import_boundaries` failures
+unchanged):
+- question dependence: the same turn's `retrieval_score` and `observation_similarity` change with the question,
+  its question-free features do not;
+- a reranker sees the head's candidates, in the head's order, with the head's own feature rows, and retrieves its
+  k best; ties keep the BM25 order; the RRF arithmetic; the JSON logistic model equals sklearn;
+- top-k picks that do not fit are returned to the archive by `enforce_budget` (never deleted, never the question)
+  and counted as forced removals; at a budget smaller than one turn the harness deletes that turn on arrival;
+- the designated-carrier label of a fallback session (below);
+- the three answer shares are disjoint and an "unknown" judged correct is flagged (checked on §23–§28's verdict
+  files too: 0 of 19,800 rows);
+- score caches: a `cache_only` scorer replays and refuses a miss.
+
+**Finding from the label test (not fixed: it is the head's label, kept for like-for-like):** for an answer session
+with no marked turn, the evaluation accepts any of its turns, but the training label marks only the designated
+carrier (the shortest turn). The session's other turns are negatives, and when the shortest turn is not in the 32,
+that requirement has no positive at all although a carrier is in the pool. It affects the head and the pointwise
+baselines alike (instances with such sessions: 41 partly marked + 21 unmarked, of 500).
+
+**The reader stage (built, rehearsed, NOT run).** `configs/sweeps/exp32/stage.sh URL`: the §27 Qwen2.5-7B reader
+config with the frozen 7b5fc30 prompt, six arms × five folds (`configs/sweeps/exp32/exp32_qwen7b_f{k}.yaml`, three
+workers per fold), then one blind Qwen 7B judge pass (`configs/sweeps/exp32/judge.py`, cache `cache/judge_exp32`),
+then `configs/sweeps/exp32/report.py` (the pre-registered claims).
+- The cross-encoder and RRF scores are replayed from the free pass's caches (`cache/exp32_ce/{zero,dense}_f{k}.jsonl`,
+  `cache_only`; a miss is an error, and the stage refuses to start without them), so no model runs on the laptop
+  during pod time.
+- Resume: run the same command again; a new pod URL is fine. Marks `runs/_logs/exp32_{READY,ANSWERS_DONE,DONE}`;
+  it waits on its own children, no `pgrep -f`.
+- Hard stop: `DEADLINE=<unix s>` kills every step's whole process group (sweep parents and their pool workers). A
+  first version used `timeout`; the rehearsal showed that killing the script then left the sweeps running in
+  `timeout`'s own process groups, so it was replaced before any paid use.
+- **Stub rehearsal (full size, free; stub reader and judge, separate stub caches):** pass A (`http://stub-a.invalid`)
+  SIGKILLed after about 50 s (cells at 1–100 of 100); pass B (`stub-b`) stopped by a 20 s `DEADLINE` (no process left
+  behind); pass C (`stub-c`) resumed to the end and the stub judge graded 2,820 answerable answers (180 abstention
+  answers kept aside). **All 30 cells resumed, each ended with 100 distinct questions, and P(all in view) and prompt
+  tokens equal the free pass on every question.** Peak RSS **0.60 GB** per sweep process; disk about 0.94 GB per
+  fold (4.7 GB in all; 114 GB free). The report script ran on the stub verdicts. All stub output and stub caches
+  were deleted.
+
+**Price (NEEDS SPEND; from §23's measured rates on an A40 at $0.59/h).**
+- §23: 1,500 Qwen 7B answers in 10.3 min with five folds at once (0.41 s per answer); model load 3–6 min; judge
+  about 7,000 answers in 3.1 min.
+- Here: 3,000 answers (6 arms × 500) ≈ 20.6 min. The mean prompt over the six arms is about 1,570 tokens (stub count),
+  below §23's mix (about 2,200), so no slow-down is expected; allow 1.3× → about 27 min. Judge 2,820 answers ≈ 1.3
+  min. Load 3–6 min.
+- **About 30–35 min of pod time: about $0.30–0.35.** (The brief guessed $0.50–0.90; the dropped tuned arm and the
+  replayed scores make it smaller.)
+- **Hard stop: 60 min from pod create (about $0.59)**; run the stage with `DEADLINE` = create + 55 min. If it is
+  reached, the cells resume on a later approved pod; nothing is reported from a partial pass.
+- **Not approved. The user decides.**
+
+**Disclosure.** No test-fold number was computed before 565d1d8 (every choice committed before it). The split
+audit reads only session ids of the data file. The reader-free pass is the only read of test-fold evidence, as
+pre-registered.
+
+### 32c. Reader result: the head is non-inferior to every baseline, and better than none of the learned ones (2026-10-10)
+
+**Run.** Shared pod with §29 (`009mqsuixjvjyn`, 03:39:31–about 04:09:31 UTC, 0.50 h ≈ $0.30 in all; approved quote
+$0.57–0.74, stop $0.89). §32 ran 03:56:13–04:09:21: 30 of 30 cells, the judge graded 2,820 answers (180 abstention
+answers kept aside). No deadline fired. The report (`configs/sweeps/exp32/report.py` → `runs/exp32_report.md`) was
+run once.
+
+| arm | accuracy (95% CI) | unknown | P(correct \| answered) | prompt tokens |
+|---|---|---|---|---|
+| `fixed8` (the head) | 0.536 (0.491, 0.581) | 0.153 | 0.633 | 1,049 |
+| `lr_pointwise` (31 parameters) | 0.523 (0.479, 0.568) | 0.155 | 0.620 | 952 |
+| `cross_encoder_zero` | 0.523 (0.479, 0.568) | 0.217 | 0.668 | 2,001 |
+| `gbdt_pointwise` | 0.515 (0.470, 0.560) | 0.162 | 0.614 | 984 |
+| `rrf_top8` | 0.509 (0.464, 0.555) | 0.223 | 0.655 | 1,978 |
+| `bm25_top8` | 0.468 (0.423, 0.513) | 0.296 | 0.665 | 2,468 |
+
+- **Primary, `fixed8` − `lr_pointwise`:** +0.013 (−0.017, +0.043), n = 470 → **head NON-INFERIOR**, not better.
+- **Secondary, `fixed8` − `cross_encoder_zero`:** +0.013 (−0.030, +0.053) → **head NON-INFERIOR**, not better.
+- Descriptive: − BM25 +0.068 (+0.026, +0.113, better); − RRF +0.028 (−0.011, +0.068); − GBDT +0.021 (−0.015, +0.055).
+- **Reader noise floor.** `fixed8` scores 0.536 here and 0.543 in §29b on the same picks (prompt tokens equal on 470 of 470). vLLM at temperature 0 is not batch-deterministic: 35 of 470 answer texts differ between the two passes. The 7 verdict flips split into 6 from different answers and 1 from the judge on an identical answer. So two passes over the same picks differ by about ±0.007 in accuracy.
+
+**Said plainly.** On reader accuracy the §19 head is at least as good as each standard reranker (non-inferior at the
+−0.03 margin), but it is not shown better than a 31-parameter logistic regression on its own 30 inputs, nor than an
+off-the-shelf cross-encoder. Only plain BM25 order is clearly worse. The learned part that matters is the feature set
+and the evidence labels, not the network; the cross-encoder gets the same accuracy at about twice the prompt. The
+three-heads caveat (§32a) applies to `fixed8`.
+
+**Spot check (LLM second grader, human adjudication of disagreements).** 50 judged answers stratified by arm (8–9 each) and spread over question
+types, seed 32 (`configs/sweeps/exp32/spot_sample.py`): `runs/exp32_spotcheck/sample.csv` (arm and verdict hidden)
+and `key.csv`.
+- **Spot check done (2026-10-10).** The second grader was an LLM (Claude), not a person: it graded all 50 blind,
+  before reading the key (`runs/exp32_spotcheck/grader.csv`, sha256 7f4d99024041e030…, with a one-line reason each). It agreed
+  with the Qwen judge on 45 of 50. All 5 disagreements are the judge marking wrong an answer the grader accepts
+  (samples 10, 12, 26, 36, 39: arms RRF, lr ×2, GBDT, `fixed8`). The user ruled on those 5 only and called all 5
+  correct (`runs/exp32_spotcheck/adjudication.csv`, sha256 6c20be40ebd53f21…). Judge false positives were checked by the LLM
+  grader alone; it found none in the 28 judged correct.
+- **Where the strictness falls: question type, not arm.** 3 of the 5 are single-session-preference questions (30 of
+  470, rubric-style gold answers that one-line reader answers only partly match; 12 and 36 are borderline), 1 is
+  multi-session arithmetic with an accepted alternative (10), 1 an exact-match paraphrase (39). Every arm answers the
+  same 470 questions, so the paired comparisons are unaffected; the per-type preference accuracies (0.067–0.233) are
+  the least trustworthy numbers here.
+- **Magnitude.** 28 → 33 of 50 is +0.10 absolute (+18% relative). For the thesis: with a strict 7B judge, absolute
+  accuracies are understated by roughly 0.1; the paired comparisons are not affected, because the strictness falls on
+  question types, which every arm shares.
 
 ## 5. The sequential task
 
