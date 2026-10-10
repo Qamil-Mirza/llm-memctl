@@ -26,7 +26,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 from matplotlib.ticker import FuncFormatter  # noqa: E402
 
 from memctl.analysis.load import (  # noqa: E402
-    Run, condition_keys, condition_label, condition_of, condition_sort_key, load_runs, read_jsonl,
+    Run, condition_keys, condition_label, condition_of, condition_sort_key, load_runs, read_jsonl, trace_exists,
 )
 from memctl.analysis.report import BASELINES, ORACLES, REFERENCES, _sort_budget, budget_key  # noqa: E402
 from memctl.analysis.stats import oracle_gap_closed  # noqa: E402
@@ -375,7 +375,7 @@ def _detail_runs(runs: list[Run]) -> tuple[str, list[Run]]:
     grouped = _grouped(runs)
     for condition, cells in sorted(grouped.items(), key=lambda pair: condition_sort_key(pair[0])):
         budget, cell = _focus_cell(cells)
-        chosen = [run for _, run in sorted(cell.items()) if (run.folder / "steps.jsonl").exists()]
+        chosen = [run for _, run in sorted(cell.items()) if trace_exists(run.folder / "steps.jsonl")]
         if chosen:
             return f"{condition_label(condition)} · budget {budget}", chosen
     return "", []
@@ -416,7 +416,7 @@ def plot_occupancy(runs: list[Run], out: Path) -> Path | None:
 
 def plot_actions_over_time(runs: list[Run], out: Path, bins: int = 10) -> Path | None:
     title, chosen = _detail_runs(runs)
-    chosen = [run for run in chosen if (run.folder / "memory_actions.jsonl").exists()][:9]
+    chosen = [run for run in chosen if trace_exists(run.folder / "memory_actions.jsonl")][:9]
     data = []
     for run in chosen:
         rows = read_jsonl(run.folder / "memory_actions.jsonl")

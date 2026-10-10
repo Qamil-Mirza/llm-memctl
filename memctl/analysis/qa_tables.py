@@ -28,6 +28,7 @@ from pathlib import Path
 import yaml
 
 from memctl.metrics import token_f1
+from memctl.runlog import open_trace, trace_exists
 from memctl.splits import fold_indices
 
 LOCOMO_CATEGORIES = {1: "multi-hop", 2: "temporal", 3: "open-domain", 4: "single-hop", 5: "adversarial"}
@@ -92,8 +93,8 @@ def cell_rows(cell: Path) -> list[dict]:
             row = json.loads(line)
             failed.add((row["seed"], row["query_id"]))
     detail = {}
-    if (cell / "steps.jsonl").exists():
-        with open(cell / "steps.jsonl") as handle:
+    if trace_exists(cell / "steps.jsonl"):
+        with open_trace(cell / "steps.jsonl") as handle:
             for line in handle:
                 step = json.loads(line)
                 if step.get("scored"):

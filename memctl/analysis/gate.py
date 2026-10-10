@@ -17,6 +17,8 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
+from memctl.runlog import open_trace, trace_exists
+
 BASELINE = "fifo_top5"
 CANDIDATES = ("learned_floor5", "compose_floor5", "synthetic_floor5")
 
@@ -100,10 +102,10 @@ def read_tokens(sweeps: list[Path]) -> dict[tuple[str, str, str], dict[tuple[str
     for sweep in sweeps:
         for cell in sweep.iterdir():
             path = cell / "steps.jsonl"
-            if not path.exists():
+            if not trace_exists(path):
                 continue
             key = split_label(cell.name)
-            for line in path.open():
+            for line in open_trace(path):
                 step = json.loads(line)
                 if step.get("requires_response"):
                     tokens[key][(sweep.name, step["seed"])] = step["active_tokens_at_read"]

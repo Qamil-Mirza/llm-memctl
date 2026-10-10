@@ -1,0 +1,104 @@
+# Experiment 32 (§32) reader pass, NOT APPROVED (needs spend), LongMemEval fold 3: the §27 Qwen 7B reader
+# config (frozen 7b5fc30 prompt), all §32 arms. Answers only (stub judge); one blind Qwen 7B judge pass
+# follows (configs/sweeps/exp32/judge.py). The cross-encoder arms replay the free pass's scores.
+name: exp32_qwen7b_f3
+base:
+  schema_version: 1
+  seed: 0
+  episodes: 100
+  env:
+    name: longmemeval
+    path: data/longmemeval/longmemeval_s_cleaned.json
+    folds:
+      k: 5
+      fold: 3
+      part: test
+    judge:
+      backend: stub
+      style: longmemeval
+  agent:
+    name: llm
+    reasoning: true
+    labels: compact
+    max_new_tokens: 256
+    model:
+      backend: openai
+      name: qwen2.5-7b-instruct
+      base_url: POD_URL/v1
+      timeout_s: 300
+      cache_dir: cache/generations_exp32_qwen7b
+  memory:
+    allowed_operations:
+    - KEEP
+    - MOVE_TO_ARCHIVE
+    - RETRIEVE_FROM_ARCHIVE
+    - NO_OP
+    embedder: hashing
+    count_labels: true
+  logging:
+    detail_episodes: 100000
+grid:
+  controller:
+  - name: rl
+    label: fixed8
+    checkpoint: /home/qamil-mirza/Code/llm-memctl/runs/lme_n4_head_f3_a/checkpoints/policy_best.pt
+    retrieval_method: lexical
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+  - name: rerank
+    label: bm25_top8
+    retrieval_method: lexical
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    scorer:
+      kind: bm25
+  - name: rerank
+    label: rrf_top8
+    retrieval_method: lexical
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    scorer:
+      kind: rrf
+      model: BAAI/bge-small-en-v1.5
+      cache: cache/exp32_ce/dense_f3.jsonl
+      cache_only: true
+  - name: rerank
+    label: lr_pointwise
+    retrieval_method: lexical
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    scorer:
+      kind: pointwise
+      model: configs/sweeps/exp32/models/lr_f3.json
+  - name: rerank
+    label: gbdt_pointwise
+    retrieval_method: lexical
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    scorer:
+      kind: pointwise
+      model: configs/sweeps/exp32/models/gbdt_f3.pkl
+  - name: rerank
+    label: cross_encoder_zero
+    retrieval_method: lexical
+    retrieve_floor: 8
+    retrieve_candidates: 32
+    floor_head: true
+    keep_none: true
+    scorer:
+      kind: cross_encoder
+      model: cross-encoder/ms-marco-MiniLM-L-6-v2
+      cache: cache/exp32_ce/zero_f3.jsonl
+      cache_only: true
+  memory.budget.fraction:
+  - 0.05
