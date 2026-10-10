@@ -9,11 +9,7 @@ from pathlib import Path
 import yaml
 
 
-def read_jsonl(path: Path) -> list[dict]:
-    if not path.exists():
-        return []
-    with path.open() as file:
-        return [json.loads(line) for line in file if line.strip()]
+from memctl.runlog import read_jsonl, trace_exists  # noqa: E402,F401  (gz-aware; old per-step logs are compressed)
 
 
 @dataclass

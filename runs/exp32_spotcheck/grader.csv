@@ -1,0 +1,51 @@
+sample_id,grader_verdict,reason
+1,correct,20% matches
+2,correct,matches the gold answer
+3,wrong,42 vs 25
+4,wrong,unknown
+5,wrong,unknown
+6,correct,8 weeks matches
+7,wrong,unknown
+8,correct,GPS system matches
+9,correct,matches the gold answer
+10,correct,12 is the accepted alternative
+11,correct,matches the gold answer
+12,correct,names the chain and cassette
+13,correct,matches the gold answer
+14,correct,matches the gold answer
+15,wrong,generic tip; does not build on the utensil holder
+16,correct,yes matches
+17,wrong,unknown
+18,correct,matches the gold answer
+19,correct,pilsner or lager matches
+20,wrong,unknown
+21,correct,matches the gold answer
+22,correct,matches the gold answer
+23,correct,5 days matches
+24,wrong,unknown
+25,wrong,generic; does not build on Instagram accounts or tutorials
+26,correct,Premiere Pro specific
+27,correct,Kg3 matches 28. Kg3
+28,correct,7 = seven
+29,correct,same place
+30,correct,55 inches
+31,correct,matches the gold answer
+32,wrong,unknown
+33,correct,7 matches
+34,wrong,unknown
+35,wrong,"$5,250 vs $5,850"
+36,correct,varies protein sources (no quinoa named; borderline)
+37,correct,4 matches
+38,wrong,unknown
+39,correct,occupation matches; startup detail omitted
+40,correct,10% matches
+41,wrong,generic; no debate team or advanced classes
+42,wrong,unknown
+43,wrong,unknown
+44,correct,The Nightingale matches
+45,wrong,unknown
+46,correct,matches the gold answer
+47,correct,matches the gold answer
+48,correct,matches the gold answer
+49,correct,matches the gold answer
+50,correct,matches the gold answer
