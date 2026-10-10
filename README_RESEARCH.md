@@ -3,7 +3,7 @@
 How to use the framework to run the thesis experiments. Results are in
 [EXPERIMENTS.md](EXPERIMENTS.md), what can and cannot run here is in
 [INFRA_REPORT.md](INFRA_REPORT.md), and what the results do and do not show is
-in [SCIENTIFIC_VALIDITY_REPORT.md](SCIENTIFIC_VALIDITY_REPORT.md). The design
+in [SCIENTIFIC_VALIDITY_REPORT.md](docs/archive/SCIENTIFIC_VALIDITY_REPORT.md). The design
 record is [docs/superpowers/specs/2026-09-30-memctl-framework-design.md](docs/superpowers/specs/2026-09-30-memctl-framework-design.md).
 
 ## The question

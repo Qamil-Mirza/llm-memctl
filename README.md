@@ -1,5 +1,7 @@
 # memctl
 
+> **Start here (2026-10-10 reset):** [RESET_HANDOFF.md](RESET_HANDOFF.md) and [research/STATE.md](research/STATE.md).
+
 Honors thesis: how well an agent performs on long-horizon tasks under three kinds of
 memory management —
 
@@ -15,16 +17,16 @@ memory management —
 > Start with [README_RESEARCH.md](README_RESEARCH.md) (how to run things), then
 > [EXPERIMENTS.md](EXPERIMENTS.md) (results),
 > [INFRA_REPORT.md](INFRA_REPORT.md) (what is blocked here and by what) and
-> [SCIENTIFIC_VALIDITY_REPORT.md](SCIENTIFIC_VALIDITY_REPORT.md) (what the results do and do not show).
+> [SCIENTIFIC_VALIDITY_REPORT.md](docs/archive/SCIENTIFIC_VALIDITY_REPORT.md) (what the results do and do not show).
 > Research write-ups are in [docs/research/](docs/research/):
-> [one-page summary](docs/research/ONE_PAGE_RESEARCH_SUMMARY.md),
+> [one-page summary](docs/archive/ONE_PAGE_RESEARCH_SUMMARY.md),
 > [research note](docs/research/HINDSIGHT_MEMORY_RESEARCH_NOTE.md),
 > [related work](docs/research/RELATED_WORK_LITERATURE_REPORT.md) and
-> [next directions](docs/research/next_directions.html).
+> [next directions](docs/archive/next_directions.html).
 
 The three arms are three of the controllers behind one interface: `no_controller`,
 `jev` and `rl`, alongside heuristic baselines, a prompted-LLM controller and a hindsight
-oracle. [docs/restart.md](docs/restart.md) records what the earlier Phase 2 work measured and
+oracle. [docs/archive/restart.md](docs/archive/restart.md) records what the earlier Phase 2 work measured and
 why it was redesigned.
 
 ## The earlier work

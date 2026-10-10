@@ -1,3 +1,5 @@
+> **Archived 2026-10-10 (superseded).** Kept for provenance; it no longer describes the current state. Start from [research/STATE.md](../../research/STATE.md).
+
 # memctl: one-page research summary
 
 *2026-10-06. Companion to `docs/research/HINDSIGHT_MEMORY_RESEARCH_NOTE.md` (a 2026-09-30 snapshot with every source and caveat) and to `EXPERIMENTS.md`, which holds every current number. Provenance is clean: every run was reproduced from commit `ef57fc4` on 2026-10-05 (`dirty: false`; only 9 cells of Experiment 4b changed, conclusions unchanged), and every later experiment ran from a clean commit.*

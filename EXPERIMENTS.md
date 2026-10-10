@@ -645,7 +645,7 @@ Workflow task:
   besides the oracle, that is not wrong on either; on the workflow task it
   also beats the oracle, whose hindsight goes blind after the first
   divergence (Experiment 5b).
-- This is the thesis claim of `docs/research/ONE_PAGE_RESEARCH_SUMMARY.md`
+- This is the thesis claim of `docs/archive/ONE_PAGE_RESEARCH_SUMMARY.md`
   ("unlike any fixed rule, is not wrong on both"), now measured.
 
 **What it does not show**
@@ -928,7 +928,7 @@ BC start −0.004 [−0.016, +0.008]; oracle − regret policy +0.105
   rarely contains it, and the regret expert labels retrievals only inside
   that shortlist. GRPO retrieved more (17.5 against 14.3 items per episode)
   at lower precision, cutting both-missing cases but not hop-2-only ones.
-  Next steps: `docs/research/next_directions.html`.
+  Next steps: `docs/archive/next_directions.html`.
 
 ## 10. Diagnostics and the follow-the-clue search (2026-10-06)
 
@@ -944,7 +944,7 @@ python -m memctl.rl.train --config configs/rl/bridge/rl_bc_bridge_regret_s0.yaml
 python -m memctl.sweep --config configs/sweeps/bridge_eval.yaml
 ```
 
-Follows the plan in `docs/research/next_directions.html`. Everything here uses
+Follows the plan in `docs/archive/next_directions.html`. Everything here uses
 the scripted reader on the recall task (seeds 0–99), with archive and
 retrieval allowed. **Provenance: diagnostics 2–3 at `c76b5cd`, the
 follow-the-clue runs at `5b4ceea`, diagnostic 1 at `831be0f`; every run
@@ -1527,7 +1527,7 @@ prompt tokens for this reader and prompt. The effect is known:
 The controller's job is therefore to keep the prompt small and right, not to
 fill the budget. The 3k onset is measured for one reader and one prompt;
 checking another reader is the next paid step (N4 in
-docs/research/SUGGESTED_NEXT_STEPS.html).
+docs/archive/SUGGESTED_NEXT_STEPS.html).
 
 **Mechanism and limitation.**
 

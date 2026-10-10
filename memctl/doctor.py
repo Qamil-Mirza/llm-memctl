@@ -19,7 +19,7 @@ from pathlib import Path
 from memctl.sysinfo import cpu_info, git_state, gpu_info
 
 READY, LIMITED, BLOCKED = "READY", "LIMITED", "BLOCKED"
-# Measured on this project (docs/restart.md): Qwen3.5-4B needs 8.41 GB at 16-bit and 3.41 GB in
+# Measured on this project (docs/archive/restart.md): Qwen3.5-4B needs 8.41 GB at 16-bit and 3.41 GB in
 # 4-bit, and 4-bit on a 4 GB card runs out of memory above roughly 3,900 prompt tokens.
 GPU_MB_FOR_4B_16BIT = 12_000
 GPU_MB_FOR_4B_4BIT = 3_800

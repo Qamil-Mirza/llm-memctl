@@ -1,3 +1,5 @@
+> **Archived 2026-10-10 (superseded).** Kept for provenance; it no longer describes the current state. Start from [research/STATE.md](../../research/STATE.md).
+
 # Scientific validity report
 
 What the results in [EXPERIMENTS.md](EXPERIMENTS.md) can and cannot support,
