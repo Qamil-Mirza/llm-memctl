@@ -4925,6 +4925,13 @@ read from them.
 launch at 0.70/2048. Checklist: one real-shape logprob call at full concurrency in the pod's first minute. Proposed: a
 self-stop on the pod itself, so a laptop outage cannot leave it billing.
 
+**Shared-pod driver (built, dry-run passed, not run).** `configs/sweeps/exp29/exp29_32_pod.sh POD CREATE_EPOCH` runs
+the §29 reader rerun and then the §32 reader on one pod, from any cwd (it changes into each branch's worktree). It
+has a readiness gate at create + 15 min, a 32-call long-prompt pre-check, §29 triage at + 12 min, and group-kill
+deadlines at + 45 min (§29) and + 85 min (§32). Stage markers are now written only on success: `memctl.sweep` exits 0
+when cells fail, so the stages read their logs too. A STUB=1 dry run against the fake server with the real stage
+scripts finished both stages (all stub output deleted).
+
 **What is left (NEEDS SPEND).** Only the reader and the judge, on the saved heads: about 5 min load + 17–26 min reader
 (four claim arms; `evidence_rows` adds about a quarter) + 1 min judge ≈ $0.25–0.33, hard stop 40 min ($0.39). Not
 approved.
