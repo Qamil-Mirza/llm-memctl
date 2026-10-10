@@ -1,3 +1,5 @@
+> **Archived 2026-10-10 (superseded).** Kept for provenance; it no longer describes the current state. Start from [research/STATE.md](../../research/STATE.md).
+
 # Restarting: what exists, what survives, and what the new design has to decide
 
 Written 2026-09-29, when the thesis goal was restated and turned out to be wider than what

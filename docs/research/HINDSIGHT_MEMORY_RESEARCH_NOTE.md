@@ -7,7 +7,7 @@
 > dirty run folders this note cites are archived in `runs/_archive_dirty_2026-09-30/` (including
 > `_superseded/`, `exp7_*` and `locomo_4b_4bit/`, whose paths below are updated); the same paths
 > directly under `runs/` now hold the clean reruns. The current directions document is
-> [next_directions.html](next_directions.html).
+> [next_directions.html](../archive/next_directions.html).
 
 *Technical memo, 2026-09-30. Reconstructed from the repository at commit `4fe0f7c` (`main`), its run artifacts under `runs/`, and the four project reports (`README_RESEARCH.md`, `EXPERIMENTS.md`, `INFRA_REPORT.md`, `SCIENTIFIC_VALIDITY_REPORT.md`). Every quantitative claim names the run folder or file it was read from. Literature context was gathered by a scholarly search on the same day and is confined to §16–18. Status labels used throughout: **implemented**, **experimentally validated**, **partially supported**, **unsupported**, **blocked by infrastructure**.*
 
