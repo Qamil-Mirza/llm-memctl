@@ -4722,9 +4722,11 @@ LongMemEval paper's caveat in practice: a 7B model invents date ranges unless to
 **Pairing.** `fixed8` here used the same cached generations as §27's (470 of 470 answers identical); the two
 separate judge passes agree on 469 of 470 verdicts (0.534 here, 0.536 in §27).
 
-## 31. Test-time training on the 3B reader: the last route to §23's claim 1 without LoRA (2026-10-09, pre-registered, not run)
+## 31. Test-time training on the 3B reader: the last route to §23's claim 1 without LoRA (2026-10-09, pre-registered; closed, not run)
 
-**Status:** the free part is done (this section). The pod run NEEDS SPEND and is not approved. No pod was started.
+**Status: CLOSED without a pod run, at the user's decision (2026-10-10).** The free part below is kept as the record.
+No pod was started and nothing was spent. Reasons given at the decision: the third-party re-creation found almost no
+gain at small scale (+0.2 F1), and our prompts (about 1,150 tokens) are far shorter than the contexts qTTT was built for.
 
 **Why.**
 - §23's claim 1 was NOT SHOWN: Qwen 3B with `fixed8` (0.315) against Qwen 7B with FIFO + floor (0.436), −0.121
