@@ -61,6 +61,7 @@ reader)
   done; done
   wait_model $URL
   date -u +%H:%M:%S > runs/_logs/${TAG}exp29_reader_START
+  pids=(); LOGN=$(cat runs/_logs/${TAG}exp29_reader.log 2>/dev/null | wc -l)
   for k in 0 1 2 3 4; do
     OUT=runs/_sweeps/${TAG}exp29_qwen7b_f$k.yaml
     sed -e "s#POD_URL#$URL#g" -e "s#HEADS_DIR#$HEADS#g" configs/sweeps/exp29/exp29_qwen7b_f$k.yaml > $OUT
@@ -70,11 +71,16 @@ reader)
           -e "s#detail_episodes: 100000#detail_episodes: ${STUB_DETAIL:-100000}#" -e "s#part: test#part: train#" $OUT
     fi
     $GUARD $PY -m memctl.sweep --config $OUT --workers 3 >> runs/_logs/${TAG}exp29_reader.log 2>&1 &
+    pids+=($!)
   done
-  wait
+  status=0  # a marker is written only when its step succeeded (the 2026-10-09 run wrote both after a dead pod)
+  for pid in "${pids[@]}"; do wait $pid || status=1; done
+  # memctl.sweep exits 0 even when cells fail, so read this run's part of the log too
+  tail -n +$((LOGN+1)) runs/_logs/${TAG}exp29_reader.log | grep -q "cells failed" && status=1
+  [ $status = 0 ] || { echo "a fold's sweep failed; see runs/_logs/${TAG}exp29_reader.log" >&2; exit 1; }
   date -u +%H:%M:%S > runs/_logs/${TAG}exp29_reader_ANSWERS_DONE
   $GUARD $PY configs/sweeps/exp29/judge_report.py judge --base-url $URL/v1 --prefix ${TAG}exp29 \
-    --cache cache/${TAG}judge_exp29 > runs/_logs/${TAG}exp29_judge.log 2>&1
+    --cache cache/${TAG}judge_exp29 > runs/_logs/${TAG}exp29_judge.log 2>&1 || { echo "judge failed" >&2; exit 1; }
   date -u +%H:%M:%S > runs/_logs/${TAG}exp29_reader_DONE ;;
 report)
   $PY configs/sweeps/exp29/judge_report.py report --prefix ${TAG}exp29 | tee runs/${TAG}exp29_report.md ;;
