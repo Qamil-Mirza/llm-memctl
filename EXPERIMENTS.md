@@ -4722,7 +4722,10 @@ LongMemEval paper's caveat in practice: a 7B model invents date ranges unless to
 **Pairing.** `fixed8` here used the same cached generations as §27's (470 of 470 answers identical); the two
 separate judge passes agree on 469 of 470 verdicts (0.534 here, 0.536 in §27).
 
-## 30. UtilMem: does the §19 head help when the evidence is spread over many sessions among look-alike distractors? (N12; 2026-10-09, pre-registered)
+## 30. UtilMem: does the §19 head help when the evidence is spread over many sessions among look-alike distractors? (N12; 2026-10-09, pre-registered; closed, not run)
+
+**Status: CLOSED without a pod run, at the user's decision (2026-10-10).** Nothing was spent. The free part below
+(adapter, checks, stub run, price) is kept as the record; the original status line follows.
 
 **Status:** the free part is done (adapter, checks, stub run, price). The paid run **NEEDS SPEND and is not
 approved**. Nothing below was computed on the evaluation side.
