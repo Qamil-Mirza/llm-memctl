@@ -4936,6 +4936,35 @@ scripts finished both stages (all stub output deleted).
 (four claim arms; `evidence_rows` adds about a quarter) + 1 min judge ≈ $0.25–0.33, hard stop 40 min ($0.39). Not
 approved.
 
+### 29b. Result: the reader-utility signal does not beat the §19 head (2026-10-10)
+
+**Run.** The user approved the shared-pod quote ($0.57–0.74, stop $0.89; relayed 03:39 UTC). Pod `009mqsuixjvjyn`
+(A40, CA-MTL-1, $0.59/h, vLLM 0.8.5 at 0.70/2048), created 03:39:31 and deleted about 04:09:31 UTC (list-pods
+empty): 0.50 h ≈ **$0.30**, shared with §32. Driver `configs/sweeps/exp29/exp29_32_pod.sh` (fa99fcd). Ready 03:45:11
+(pre-check 32 of 32); §29 done 03:56:13: 25 of 25 cells, the judge graded 2,350 answers (150 abstention answers kept
+unjudged). No triage, no deadline. The report (`runs/exp29_report.md`) was run once.
+
+| arm | accuracy (95% CI) | unknown | P(all in view) | prompt tokens |
+|---|---|---|---|---|
+| FIFO + floor | 0.438 (0.394, 0.483) | 0.328 | 0.498 | 2,964 |
+| `fixed8` | 0.543 (0.498, 0.587) | 0.153 | 0.702 | 1,049 |
+| utility head | 0.530 (0.485, 0.574) | 0.211 | 0.666 | 1,881 |
+| blend head | 0.540 (0.496, 0.585) | 0.183 | 0.691 | 1,383 |
+| evidence-rows head (control) | 0.540 (0.496, 0.587) | 0.157 | 0.700 | 1,047 |
+
+- C1, utility head − `fixed8`: −0.013 (−0.051, +0.026) → **UNDETERMINED**.
+- C2, blend head − `fixed8` (expected ≥): −0.002 (−0.036, +0.032) → **UNDETERMINED**.
+- C3, utility head − FIFO + floor: +0.091 (+0.049, +0.134) → **BETTER**. C4, blend − FIFO + floor: +0.102 (+0.060,
+  +0.145) → **BETTER**.
+- Descriptive: evidence-rows − `fixed8` −0.002; utility − evidence-rows −0.011 (−0.047, +0.026); pairing check
+  `fixed8` − FIFO + floor +0.104 (§23 +0.102, §27 +0.100).
+
+**Said plainly.** Training the head on what the reader finds useful (the drop in the gold answer's log-probability)
+instead of on which turns hold the evidence did not help: the utility head is level with the head at best and picks
+longer turns (1,881 vs 1,049 tokens, fewer "all in view"). Mixing the two signals gives back the evidence head. Every
+learned head still beats FIFO + floor by about 0.10. The reader-side signal is closed as a negative; the evidence
+labels were already a sufficient signal at this n.
+
 ## 5. The sequential task
 
 ```bash
