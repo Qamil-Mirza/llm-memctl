@@ -63,7 +63,7 @@ results are in the main tree.
 
 ## State of the tree at handoff
 
-- Branch `reset-2026-10-10` (PR pending) holds this cleanup. `main` = `origin/main` at `62eed0d`, plus
+- Branch `reset-2026-10-10` (PR #25) holds this cleanup. `main` = `origin/main` at `62eed0d`, plus
   this PR once merged. PRs #1–#24 are merged and none are open.
 - Local branches: `main`, `reset-2026-10-10` and `phase2-locomo-baseline` (no upstream; tag
   `phase2-complete`). All other branches exist on origin only.
