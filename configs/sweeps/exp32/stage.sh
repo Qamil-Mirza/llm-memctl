@@ -37,6 +37,7 @@ if [ -n "${DEADLINE:-}" ]; then
   ( sleep "$(left)"; echo "DEADLINE reached $(date -u +%H:%M:%S)" >> runs/_logs/${TAG}exp32_reader.log; kill -TERM $$ ) &
   WATCHDOG=$!
 fi
+LOGN=$(cat runs/_logs/${TAG}exp32_reader.log 2>/dev/null | wc -l)
 for k in 0 1 2 3 4; do
   OUT=runs/_sweeps/${TAG}exp32_qwen7b_f$k.yaml
   sed "s#POD_URL#$URL#g" configs/sweeps/exp32/exp32_qwen7b_f$k.yaml > $OUT
@@ -49,6 +50,8 @@ for k in 0 1 2 3 4; do
 done
 status=0
 for pid in "${pids[@]}"; do wait $pid || status=1; done
+# memctl.sweep exits 0 even when cells fail, so read this run's part of the log too
+tail -n +$((LOGN+1)) runs/_logs/${TAG}exp32_reader.log | grep -q "cells failed" && status=1
 [ $status = 0 ] || { echo "a fold's sweep failed or hit the deadline; see runs/_logs/${TAG}exp32_reader.log" >&2; exit 1; }
 date -u +%H:%M:%S > runs/_logs/${TAG}exp32_ANSWERS_DONE
 [ "${NOJUDGE:-0}" = 1 ] && { [ -n "${WATCHDOG:-}" ] && kill $WATCHDOG 2>/dev/null; exit 0; }
