@@ -10,7 +10,8 @@ EXPERIMENTS.md wins, and this file should be fixed. Only the Advisor edits this 
 The project asked whether a learned memory controller helps a language model answer questions over long
 histories. On synthetic tasks a learned controller can beat fixed rules. On real conversations
 (LongMemEval, LoCoMo), the only thing that clearly helps is **query-aware selection at question time**.
-That means a small head that picks 8 of the 32 BM25 candidates for each question (`fixed8`, §19). It
+That means a small head that picks 8 of the 32 BM25 candidates for each question (`fixed8`, §19; 27,526 parameters,
+of which 8,705 belong to an unused value head, so about 18,800 are active). It
 beats FIFO + floor by about +0.10 accuracy at a third of the prompt tokens, and the lift holds in 10 of
 11 readers from 5 families. But the head is **not shown better than a 31-parameter logistic regression on
 its own inputs** (§32). What carries the result is the feature set and the evidence labels, not the
