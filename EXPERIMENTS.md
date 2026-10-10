@@ -73,6 +73,8 @@ commands given).
 | 26 | OpenJev (open Jev re-creation) as a controller | Arm B (selector, 8 of the head's 32 candidates): B − FIFO +0.045 (CI +0.004..+0.087), BETTER; B − `fixed8` −0.036 (CI −0.081..+0.009), not shown; B's prompts 2,373 tokens vs 1,049. Arm A (memory manager) cost only: ~94 GPU-s per question (~$15 per 1,000); accuracy not run by decision. $0.64 |
 | 27 | LRE (published query-blind scorer) as a baseline controller | LRE-slot (8 of the head's 32): 0.109, far below FIFO (−0.328) and the head (−0.428), evidence in view 0.03. LRE-native (in place of recency): +0.028 vs FIFO (CI −0.002..+0.057), non-inferior. About $0.23 shared with §28 |
 | 28 | Query rewriting for the head's 32 candidates | Rule time filter (b): NO GO at its free gate. LLM rewrite (a): training gate passed at v3 (v1 malformed, v2 invented ranges); test folds +0.006 overall (CI −0.017..+0.030) and +0.024 on temporal (n = 127, CI −0.016..+0.063), non-inferior, not better. About $0.23 shared with §27 |
+| 29 | A reader-utility training signal for the §19 head | Pod run partial (branch `reader-utility`, §29a): signal, tune and heads done; the reader did not run (vLLM out of memory at the start, then a laptop internet outage idled the pod). No claim tested; reader rerun pending approval. $0.87 |
+| 32 | The §19 head against standard rerankers of the same 32 candidates | Reader-free (§32b): logistic regression on the head's 30 inputs −0.016 (CI −0.036..+0.002) all-found vs `fixed8` 0.700, not shown worse; GBDT, RRF and the zero-shot cross-encoder −0.034 (CIs exclude 0); BM25 −0.116. `fixed8` is 3 distinct heads, not 5. Reader stage not run. $0 so far |
 
 ---
 
@@ -4849,7 +4851,9 @@ not run, and the reader stage has six arms. No tuned model or score was produced
   1 and 2 (and for 3 and 4), and the same seeds give the same head. **This is not a leak**: half A never meets its
   fold's test part (checked: 0 of 200 in every fold). But `fixed8` is three distinct heads, not five, and the §32
   pointwise models of folds 1 and 2 are identical too (`lr_f1.json` = `lr_f2.json`). The half-B sets differ, so the
-  inner checks are not duplicated.
+  inner checks are not duplicated. Consequences: `fixed8`'s per-fold spread (0.650–0.750) comes from three heads, not
+  five, so it understates the variance of head training; the paired-by-question bootstrap is unaffected. The same
+  artefact applies to head B and to every `fixed8` number in §19–§28, which all use these checkpoints.
 - Under `keep_none` the turn just before the question is archived at the question step, after the search, so it is
   never a candidate (all arms alike). On LongMemEval it carries a requirement for 1 question of 500 and is never the
   only carrier: harmless.
@@ -4880,6 +4884,9 @@ cache for the reader stage; on the 277 questions the first, interrupted run had 
   and its interval includes 0,** at 31 parameters and 10% fewer prompt tokens. The head is not shown better than
   it on evidence. Every other baseline is below the head (intervals exclude 0), and BM25, RRF and the zero-shot
   cross-encoder also need about twice the head's prompt (they prefer long turns).
+- **Pre-registered reading of D1, reader-free:** the head is not shown better than a 31-parameter logistic regression
+  on its own 30 inputs. This is evidence only; the reader claim (fixed8 minus `lr_pointwise` on accuracy, margin
+  −0.03) has not been run.
 - So, reader-free, most of the head's gain over BM25 (+0.116) is available to a linear model on the same features
   (+0.100); the network adds about +0.016 on top, not significant at this n.
 
