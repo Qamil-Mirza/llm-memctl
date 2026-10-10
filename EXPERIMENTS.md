@@ -5005,6 +5005,7 @@ run once.
 - **Primary, `fixed8` − `lr_pointwise`:** +0.013 (−0.017, +0.043), n = 470 → **head NON-INFERIOR**, not better.
 - **Secondary, `fixed8` − `cross_encoder_zero`:** +0.013 (−0.030, +0.053) → **head NON-INFERIOR**, not better.
 - Descriptive: − BM25 +0.068 (+0.026, +0.113, better); − RRF +0.028 (−0.011, +0.068); − GBDT +0.021 (−0.015, +0.055).
+- **Reader noise floor.** `fixed8` scores 0.536 here and 0.543 in §29b on the same picks (prompt tokens equal on 470 of 470). vLLM at temperature 0 is not batch-deterministic: 35 of 470 answer texts differ between the two passes. The 7 verdict flips split into 6 from different answers and 1 from the judge on an identical answer. So two passes over the same picks differ by about ±0.007 in accuracy.
 
 **Said plainly.** On reader accuracy the §19 head is at least as good as each standard reranker (non-inferior at the
 −0.03 margin), but it is not shown better than a 31-parameter logistic regression on its own 30 inputs, nor than an
