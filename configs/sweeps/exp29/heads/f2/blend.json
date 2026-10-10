@@ -1,0 +1,14 @@
+{
+  "fold": 2,
+  "signal": "blend",
+  "w": 0.25,
+  "questions": 376,
+  "epochs": 40,
+  "lr": 0.003,
+  "batch": 64,
+  "tau": 1.0,
+  "seed": 0,
+  "final_loss": 2.67024,
+  "parameters": 27526,
+  "seconds": 33.3
+}
