@@ -1,0 +1,6 @@
+sample_id,judge,llm_grader,user_ruling
+10,wrong,correct,correct
+12,wrong,correct,correct
+26,wrong,correct,correct
+36,wrong,correct,correct
+39,wrong,correct,correct

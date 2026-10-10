@@ -5013,16 +5013,23 @@ off-the-shelf cross-encoder. Only plain BM25 order is clearly worse. The learned
 and the evidence labels, not the network; the cross-encoder gets the same accuracy at about twice the prompt. The
 three-heads caveat (§32a) applies to `fixed8`.
 
-**Human spot check (prepared, not done).** 50 judged answers stratified by arm (8–9 each) and spread over question
+**Spot check (LLM second grader, human adjudication of disagreements).** 50 judged answers stratified by arm (8–9 each) and spread over question
 types, seed 32 (`configs/sweeps/exp32/spot_sample.py`): `runs/exp32_spotcheck/sample.csv` (arm and verdict hidden)
 and `key.csv`.
-- **Spot check done (2026-10-10).** A blind second grading of all 50 (by Claude, before reading the key) agreed with
-  the Qwen judge on 45 of 50. All 5 disagreements are the judge marking wrong an answer the second grader accepts
-  (samples 10, 12, 26, 36, 39: arms RRF, lr ×2, GBDT, `fixed8`). The judge never accepted an answer the second
-  grader rejected. The user then judged those 5 by hand and called **all 5 correct**. So the judge is strict: it
-  under-counts correct answers, about 5 of 28 judged-correct in this sample (judge 28 of 50, after the human calls 33
-  of 50). The misses are spread over four arms, including the head, so they lower every arm's accuracy rather than
-  favouring one; the pre-registered comparisons are kept as judged.
+- **Spot check done (2026-10-10).** The second grader was an LLM (Claude), not a person: it graded all 50 blind,
+  before reading the key (`runs/exp32_spotcheck/grader.csv`, sha256 7f4d99024041e030…, with a one-line reason each). It agreed
+  with the Qwen judge on 45 of 50. All 5 disagreements are the judge marking wrong an answer the grader accepts
+  (samples 10, 12, 26, 36, 39: arms RRF, lr ×2, GBDT, `fixed8`). The user ruled on those 5 only and called all 5
+  correct (`runs/exp32_spotcheck/adjudication.csv`, sha256 6c20be40ebd53f21…). Judge false positives were checked by the LLM
+  grader alone; it found none in the 28 judged correct.
+- **Where the strictness falls: question type, not arm.** 3 of the 5 are single-session-preference questions (30 of
+  470, rubric-style gold answers that one-line reader answers only partly match; 12 and 36 are borderline), 1 is
+  multi-session arithmetic with an accepted alternative (10), 1 an exact-match paraphrase (39). Every arm answers the
+  same 470 questions, so the paired comparisons are unaffected; the per-type preference accuracies (0.067–0.233) are
+  the least trustworthy numbers here.
+- **Magnitude.** 28 → 33 of 50 is +0.10 absolute (+18% relative). For the thesis: with a strict 7B judge, absolute
+  accuracies are understated by roughly 0.1; the paired comparisons are not affected, because the strictness falls on
+  question types, which every arm shares.
 
 ## 5. The sequential task
 
