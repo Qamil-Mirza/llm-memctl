@@ -219,3 +219,16 @@ def test_the_three_answer_shares_are_disjoint_and_an_unknown_judged_correct_is_f
     assert is_unknown("  UNKNOWN") and not is_unknown("I don't know") and not is_unknown(None)
     clean = answer_shares(rows_[:3])
     assert clean["flagged"] == [] and clean["accuracy"] == pytest.approx(clean["answered_correct"])
+
+
+def test_the_rrf_arms_dense_similarities_are_cached_and_replayed(tmp_path, monkeypatch):
+    from memctl.rerank import DenseSimilarity
+
+    cache = tmp_path / "dense.jsonl"
+    dense = DenseSimilarity("toy-dense", str(cache))
+    monkeypatch.setattr(dense, "_compute", lambda query, texts: [float(len(t)) for t in texts])
+    assert list(dense.score("q", ["a", "abc"])) == [1.0, 3.0]
+    replay = DenseSimilarity("toy-dense", str(cache), cache_only=True)
+    assert list(replay.score("q", ["abc", "a"])) == [3.0, 1.0]  # no model needed: every pair is cached
+    with pytest.raises(KeyError):
+        replay.score("q", ["new turn"])

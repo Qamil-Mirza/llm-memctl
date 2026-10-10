@@ -4724,7 +4724,7 @@ separate judge passes agree on 469 of 470 verdicts (0.534 here, 0.536 in §27).
 ## 32. The §19 head against standard rerankers of the same pool (N12; 2026-10-09, pre-registered, free stage)
 
 **Status:** the free part (code, rows, training-side selection, reader-free pass, split audit, tests, stub rehearsal)
-is done on branch `reranker-baselines`. The reader pass NEEDS SPEND and is not approved.
+is done on branch `reranker-baselines` (§32a, §32b). The reader pass NEEDS SPEND and is not approved.
 
 **Why.** As deployed (`fixed8`), the §19 head is a top-k reranker: memory keeps nothing but the current turn
 (`keep_none`), and at a question the head picks 8 of the 32 BM25 candidates by its logit
@@ -4833,7 +4833,7 @@ copy in `configs/sweeps/exp32/models/`; models `lr_f{k}.json`, `gbdt_f{k}.pkl` c
   that a looser fit uses. Not widened: the grid was fixed in advance.
 - Sizes: `lr` 31 parameters; `gbdt` 325–2,900 tree nodes.
 - One code fix during this step, before any result: `truncate_gbdt` set the read-only `n_iter_` and crashed on
-  fold 0 before writing anything (fixed in the next commit; nothing else changed).
+  fold 0 before writing anything (fixed at 7e4fca7; nothing else changed).
 
 **Cross-encoder fine-tuning dropped (decided before any test-fold run).** The run with the pre-fixed settings
 (`memctl/rerank_ce.py tune`, 25ba106) on five folds at once, 3 threads each: two folds were killed by the kernel
@@ -4855,6 +4855,129 @@ not run, and the reader stage has six arms. No tuned model or score was produced
   only carrier: harmless.
 - A turn longer than the whole budget is deleted on arrival by `enforce_budget` (EVICT), not archived, so it can
   never be retrieved (all arms alike): 6 of 500 `fixed8` episodes in §27 (one 7,737-token turn). Pinned by a test.
+
+### 32b. Reader-free result, split audit and the reader stage, built and rehearsed (2026-10-09/10)
+
+**Runs** (stub reader; `runs/exp32_free_f{k}`, every cell clean: at 565d1d8, the `rrf_top8` cells at 63bd7ae;
+report `configs/sweeps/exp32/free_report.py` → `runs/exp32_rerankers/free_report.md`). `fixed8` reproduces §19a
+(P(all in view) 0.700, 1,050 prompt tokens). The `rrf_top8` cells were rerun once to write their dense-similarity
+cache for the reader stage; on the 277 questions the first, interrupted run had finished, the picks were identical.
+
+**Pooled, 500 test questions** (Δ = arm minus `fixed8`, paired 95% bootstrap by question):
+
+| arm | P(all in view) | Δ | requirement recall | Δ | precision of the 8 | prompt tokens | forced removals / q | parameters |
+|---|---|---|---|---|---|---|---|---|
+| `fixed8` (§19 head) | **0.700** | — | 0.801 | — | 0.197 | 1,050 | 0.012 | 27,526 |
+| `bm25_top8` | 0.584 | −0.116 (−0.150, −0.084) | 0.713 | −0.089 (−0.113, −0.065) | 0.175 | 2,467 | 0.044 | 0 |
+| `rrf_top8` | 0.666 | −0.034 (−0.060, −0.010) | 0.780 | −0.022 (−0.041, −0.002) | 0.198 | 1,974 | 0.020 | 33.4M (bge-small) |
+| `lr_pointwise` | 0.684 | **−0.016 (−0.036, +0.002)** | 0.790 | −0.011 (−0.027, +0.004) | 0.195 | **948** | 0.012 | 31 |
+| `gbdt_pointwise` | 0.666 | −0.034 (−0.058, −0.012) | 0.780 | −0.021 (−0.040, −0.003) | 0.191 | 985 | 0.012 | 325–2,900 nodes |
+| `cross_encoder_zero` | 0.666 | −0.034 (−0.064, −0.004) | 0.786 | −0.015 (−0.036, +0.006) | 0.203 | 1,993 | 0.018 | 22.7M |
+
+- Precision is within ±0.006 of `fixed8` for every arm but BM25 (−0.022). Prompt tokens against `fixed8`: BM25
+  +1,417, RRF +924, cross-encoder +943, `lr` −102, `gbdt` −65 (all intervals exclude 0).
+- **Said plainly: the logistic regression on the head's own 30 inputs comes within 0.016 of the head reader-free,
+  and its interval includes 0,** at 31 parameters and 10% fewer prompt tokens. The head is not shown better than
+  it on evidence. Every other baseline is below the head (intervals exclude 0), and BM25, RRF and the zero-shot
+  cross-encoder also need about twice the head's prompt (they prefer long turns).
+- So, reader-free, most of the head's gain over BM25 (+0.116) is available to a linear model on the same features
+  (+0.100); the network adds about +0.016 on top, not significant at this n.
+
+**Per fold, P(all in view):**
+
+| arm | fold 0 | fold 1 | fold 2 | fold 3 | fold 4 |
+|---|---|---|---|---|---|
+| `fixed8` | 0.650 | 0.680 | 0.700 | 0.720 | 0.750 |
+| `bm25_top8` | 0.510 | 0.580 | 0.580 | 0.620 | 0.630 |
+| `rrf_top8` | 0.610 | 0.640 | 0.670 | 0.690 | 0.720 |
+| `lr_pointwise` | 0.660 | 0.670 | 0.670 | 0.690 | 0.730 |
+| `gbdt_pointwise` | 0.630 | 0.630 | 0.650 | 0.700 | 0.720 |
+| `cross_encoder_zero` | 0.640 | 0.650 | 0.710 | 0.650 | 0.680 |
+
+**Inner split, half B (training side; descriptive except the lr/gbdt choice in §32a; `memctl/rerank_ce.py inner`):**
+all-found@8 pooled over the five folds: `fixed8` 0.704, `lr` 0.695, `gbdt` 0.685, `rrf` 0.683, cross-encoder
+0.674, BM25 0.607, the same order as on the test folds. (Half B is the same set for folds 0 and 1 and for folds 2
+and 3: the dealing artefact in §32a.)
+
+**Selection latency** (fold 0's test part, one process, one thread, fresh caches, first question dropped; the BM25
+search, about 25 ms, is common to all arms and excluded; `runs/exp32_latency`):
+
+| arm | median ms / question | p90 ms |
+|---|---|---|
+| `bm25_top8` | 0.2 | 0.2 |
+| `lr_pointwise` (features + 31 weights) | 4.8 | 5.9 |
+| `fixed8` (features + head) | 5.3 | 6.5 |
+| `gbdt_pointwise` | 5.8 | 6.9 |
+| `cross_encoder_zero` | 5,334 | 5,529 |
+| `rrf_top8` (bge-small embeddings of 32 turns) | 10,926 | 11,240 |
+
+- Building the features is most of the head's 5.3 ms; the pointwise models cost the same order. `fixed8` was timed
+  through the `rerank` controller with the head's own logit; its picks equal the deployed `rl` controller's on all
+  100 questions.
+
+**Split audit (free; `configs/sweeps/exp32/split_audit.py` → `runs/exp32_rerankers/split_audit.json`).**
+- (a) Share of a test question's filler sessions (by session id) that appear in some training question's haystack:
+  **0.317 pooled** (folds 0.328, 0.314, 0.317, 0.321, 0.304).
+- (b) Test questions sharing an answer session with a training question's answer sessions: **8 of 500** (per fold
+  1, 3, 1, 2, 1). The same count per fold has its answer session anywhere in a training haystack.
+- **Sensitivity row (the 492 questions with no shared answer session), P(all in view):** `fixed8` 0.699; `lr` −0.018
+  (−0.037, +0.000); `gbdt` −0.035 (−0.059, −0.012); RRF −0.030 (−0.055, −0.006); cross-encoder −0.037 (−0.067,
+  −0.008); BM25 −0.112 (−0.144, −0.081). Order and gaps do not change: the shared sessions do not drive the result.
+
+**Tests** (`tests/test_rerank.py`, 9 pass; full suite 257 pass, the 2 known `test_import_boundaries` failures
+unchanged):
+- question dependence: the same turn's `retrieval_score` and `observation_similarity` change with the question,
+  its question-free features do not;
+- a reranker sees the head's candidates, in the head's order, with the head's own feature rows, and retrieves its
+  k best; ties keep the BM25 order; the RRF arithmetic; the JSON logistic model equals sklearn;
+- top-k picks that do not fit are returned to the archive by `enforce_budget` (never deleted, never the question)
+  and counted as forced removals; at a budget smaller than one turn the harness deletes that turn on arrival;
+- the designated-carrier label of a fallback session (below);
+- the three answer shares are disjoint and an "unknown" judged correct is flagged (checked on §23–§28's verdict
+  files too: 0 of 19,800 rows);
+- score caches: a `cache_only` scorer replays and refuses a miss.
+
+**Finding from the label test (not fixed: it is the head's label, kept for like-for-like):** for an answer session
+with no marked turn, the evaluation accepts any of its turns, but the training label marks only the designated
+carrier (the shortest turn). The session's other turns are negatives, and when the shortest turn is not in the 32,
+that requirement has no positive at all although a carrier is in the pool. It affects the head and the pointwise
+baselines alike (instances with such sessions: 41 partly marked + 21 unmarked, of 500).
+
+**The reader stage (built, rehearsed, NOT run).** `configs/sweeps/exp32/stage.sh URL`: the §27 Qwen2.5-7B reader
+config with the frozen 7b5fc30 prompt, six arms × five folds (`configs/sweeps/exp32/exp32_qwen7b_f{k}.yaml`, three
+workers per fold), then one blind Qwen 7B judge pass (`configs/sweeps/exp32/judge.py`, cache `cache/judge_exp32`),
+then `configs/sweeps/exp32/report.py` (the pre-registered claims).
+- The cross-encoder and RRF scores are replayed from the free pass's caches (`cache/exp32_ce/{zero,dense}_f{k}.jsonl`,
+  `cache_only`; a miss is an error, and the stage refuses to start without them), so no model runs on the laptop
+  during pod time.
+- Resume: run the same command again; a new pod URL is fine. Marks `runs/_logs/exp32_{READY,ANSWERS_DONE,DONE}`;
+  it waits on its own children, no `pgrep -f`.
+- Hard stop: `DEADLINE=<unix s>` kills every step's whole process group (sweep parents and their pool workers). A
+  first version used `timeout`; the rehearsal showed that killing the script then left the sweeps running in
+  `timeout`'s own process groups, so it was replaced before any paid use.
+- **Stub rehearsal (full size, free; stub reader and judge, separate stub caches):** pass A (`http://stub-a.invalid`)
+  SIGKILLed after about 50 s (cells at 1–100 of 100); pass B (`stub-b`) stopped by a 20 s `DEADLINE` (no process left
+  behind); pass C (`stub-c`) resumed to the end and the stub judge graded 2,820 answerable answers (180 abstention
+  answers kept aside). **All 30 cells resumed, each ended with 100 distinct questions, and P(all in view) and prompt
+  tokens equal the free pass on every question.** Peak RSS **0.60 GB** per sweep process; disk about 0.94 GB per
+  fold (4.7 GB in all; 114 GB free). The report script ran on the stub verdicts. All stub output and stub caches
+  were deleted.
+
+**Price (NEEDS SPEND; from §23's measured rates on an A40 at $0.59/h).**
+- §23: 1,500 Qwen 7B answers in 10.3 min with five folds at once (0.41 s per answer); model load 3–6 min; judge
+  about 7,000 answers in 3.1 min.
+- Here: 3,000 answers (6 arms × 500) ≈ 20.6 min. The mean prompt over the six arms is about 1,570 tokens (stub count),
+  below §23's mix (about 2,200), so no slow-down is expected; allow 1.3× → about 27 min. Judge 2,820 answers ≈ 1.3
+  min. Load 3–6 min.
+- **About 30–35 min of pod time: about $0.30–0.35.** (The brief guessed $0.50–0.90; the dropped tuned arm and the
+  replayed scores make it smaller.)
+- **Hard stop: 60 min from pod create (about $0.59)**; run the stage with `DEADLINE` = create + 55 min. If it is
+  reached, the cells resume on a later approved pod; nothing is reported from a partial pass.
+- **Not approved. The user decides.**
+
+**Disclosure.** No test-fold number was computed before 565d1d8 (every choice committed before it). The split
+audit reads only session ids of the data file. The reader-free pass is the only read of test-fold evidence, as
+pre-registered.
 
 ## 5. The sequential task
 
