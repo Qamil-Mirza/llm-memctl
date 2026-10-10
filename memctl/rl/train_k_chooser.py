@@ -19,6 +19,7 @@ from pathlib import Path
 import torch
 
 from memctl.rl.policy import KChooser, MassChooser
+from memctl.runlog import open_trace
 
 EPOCHS, LR, WEIGHT_DECAY = 400, 0.01, 1e-4
 
@@ -26,7 +27,7 @@ EPOCHS, LR, WEIGHT_DECAY = 400, 0.01, 1e-4
 def rows(cells: list[Path], field: str = "k_features") -> tuple[torch.Tensor, torch.Tensor]:
     features, labels = [], []
     for cell in cells:
-        for line in open(cell / "steps.jsonl"):
+        for line in open_trace(cell / "steps.jsonl"):
             info = json.loads(line).get("controller_info") or {}
             if "k_labels" in info:
                 features.append(info[field])

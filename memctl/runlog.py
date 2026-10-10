@@ -21,6 +21,7 @@ episode ids already in `episodes.jsonl`.
 
 from __future__ import annotations
 
+import gzip
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -40,10 +41,27 @@ DETAIL_FILES = {
 }
 
 
+def trace_path(path: Path) -> Path:
+    """`path`, or its gzipped copy `path.gz` when only that exists (old per-step logs are kept compressed)."""
+    path = Path(path)
+    gz = path.with_name(path.name + ".gz")
+    return gz if not path.exists() and gz.exists() else path
+
+
+def trace_exists(path: Path) -> bool:
+    return trace_path(path).exists()
+
+
+def open_trace(path: Path):
+    """Open a run file for reading as text, transparently from `path.gz` when the plain file was compressed."""
+    path = trace_path(path)
+    return gzip.open(path, "rt") if path.suffix == ".gz" else open(path)
+
+
 def read_jsonl(path: Path) -> list[dict]:
-    if not path.exists():
+    if not trace_exists(path):
         return []
-    with path.open() as file:
+    with open_trace(path) as file:
         return [json.loads(line) for line in file if line.strip()]
 
 
