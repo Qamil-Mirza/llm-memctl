@@ -270,3 +270,36 @@ def test_run_records_writes_resumes_and_isolates_failures(tiny_lens, tmp_path):
     failed = json.loads((tmp_path / "_failed.json").read_text())
     assert "q2" in failed and "q1" in timing
     assert s.run_records(lens, lens_model, tok, [good], tmp_path, k=5, model_id="tiny", lens_path=str(path)) == {}
+
+
+def test_eval_readout_position_before_target_and_poetry_newline(tiny):
+    _, tok = tiny
+    s = _script("jlens_eval")
+    text, pos = s.readout_position(tok, {"prompt": "The capital of France is", "target": " Paris", "intermediates": ["France"]}, "multihop")
+    assert text == "The capital of France is" and pos == len(tok(text, add_special_tokens=False).input_ids) - 1
+    text2, pos2 = s.readout_position(tok, {"prompt": "Roses are red, violets are blue\nSugar is sweet", "intermediates": ["blue"]}, "poetry")
+    ids = tok(text2, add_special_tokens=False).input_ids
+    assert "\n" in tok.decode([ids[pos2]])
+    text3, _ = s.readout_position(tok, {"prompt": [{"role": "user", "content": "hi"}], "intermediates": ["x"]}, "association")
+    assert "hi" in text3 and "<|im_start|>" in text3
+
+
+def test_pass_at_k_uses_only_the_band():
+    s = _script("jlens_eval")
+    ranks = np.array([[1, 50], [20, 50], [30, 3], [1, 1]])      # 4 layers, 2 intermediates
+    band = np.array([False, True, True, False])
+    assert s.pass_at_k(ranks, band, k=10) == pytest.approx(0.5)  # only the second intermediate hits inside the band
+    assert s.pass_at_k(ranks, np.ones(4, bool), k=10) == 1.0
+
+
+def test_score_set_scores_both_variants_and_skips_long_items(tiny_lens, monkeypatch):
+    lens, lens_model, tok, _ = tiny_lens
+    s = _script("jlens_eval")
+    items = [{"name": "a", "prompt": "The capital of France is", "target": " Paris", "intermediates": ["France", "Paris"]},
+             {"name": "b", "prompt": " ".join(["word"] * 40), "intermediates": ["word"]}]
+    out = s.score_set(lens, lens_model, tok, items, "multihop", band=(0, 4), k=10)
+    assert out["n_items"] == 2 and out["n_skipped"] == 0
+    assert set(out["pass_at_k"]) == {"jlens", "logit"} and all(0.0 <= v <= 1.0 for v in out["pass_at_k"].values())
+    monkeypatch.setattr(s, "MAX_SEQ_LEN", 20)
+    out2 = s.score_set(lens, lens_model, tok, items, "multihop", band=(0, 4), k=10)
+    assert out2["n_items"] == 1 and out2["n_skipped"] == 1
