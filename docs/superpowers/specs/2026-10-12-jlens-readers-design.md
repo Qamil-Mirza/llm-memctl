@@ -49,6 +49,8 @@ paragraphs of at least 150 words from the WikiText-103 test split
 the paper and README prescribe), 128 tokens each, `skip_first=16`, every layer below the final one as a
 source layer, target = final layer. Target `N = 128` prompts, minimum `N = 32`; fitting is checkpointed
 every prompt and **time-boxed per reader** (see §9), so the lens is usable at whatever `N` the box allows.
+The 7B is fitted first; the 3B is then fitted with `N` capped at the 7B's achieved count (same seed, so the
+same prompt prefix), so both lenses share the corpus, the settings and `N`.
 The lens file records `n_prompts`. No Qwen2.5-3B lens exists on the Hub; two community lenses exist for
 Qwen2.5-7B-Instruct (`andyx10/jacobian-lens-qwen2.5-7b-instruct`, `anicka/jlens-qwen2.5-7b-instruct`,
 loaded with `weights_only=True`). One of them is a **descriptive cross-check** of our 7B lens (top-10
@@ -69,7 +71,8 @@ continuation `Answer:` appended. From that forward:
 
 | id | position | role |
 |---|---|---|
-| `P1` (primary) | the last token (after `Answer:`), where the first answer token is predicted | the decision position; matches §33's `margin` |
+| `P1` (primary) | the last token of `Answer:` plus the gold answer's leading whitespace-only tokens (teacher-forced by id concatenation; usually none, or one bare space before a digit), so the position predicts the gold's first content token | the decision position; matches §33's `margin` definition |
+| `P1_raw` (descriptive) | the token right after `Answer:` | the same position without the whitespace fix; for a content-first gold it equals `P1` |
 | `P0` (secondary) | the last token of the generation prompt, before `Answer:` | the workspace at the end of the prompt, before any answer-format cue |
 | `E` (descriptive) | the last token of each gold evidence line | is the answer sayable where the evidence sits? |
 | `Q` (descriptive) | the last token of the question line | is it sayable once the question is read? |
