@@ -424,7 +424,10 @@ def test_report_builds_claims_from_outputs(tmp_path, monkeypatch):
     large = [(q, 0, 0.3 + 0.002 * i, 1.0 + 0.01 * i) for i, q in enumerate(qids)]
     _fake_outputs(tmp_path, "qwen3b", small); _fake_outputs(tmp_path, "qwen7b", large)
 
+    calls = []
+
     def records(reader, fold, **kw):
+        calls.append(reader)
         rs = [PromptRecord(q, 0, reader, "p", "o", "g", "single-session-user", True, ("l",), ("l",), True,
                            correct=(i % 2 == 0) if reader == "qwen3b" else True, unknown=False) for i, q in enumerate(qids)]
         return rs, {}
@@ -434,3 +437,7 @@ def test_report_builds_claims_from_outputs(tmp_path, monkeypatch):
     assert 0 <= numbers["claim2"]["qwen3b"]["auc"] <= 1
     assert numbers["ablation"]["qwen3b"]["rho"] > 0.9
     assert "Claim 1" in markdown and "qwen7b" in markdown and "folds: 0" in markdown
+    assert set(calls) == {"qwen3b", "qwen7b"}
+    calls.clear()
+    rep.build_report(("qwen3b", "qwen7b"), {0}, "l2", "k50", tmp_path, samples=300, records_from="qwen3b")
+    assert calls and all(name == "qwen3b" for name in calls)

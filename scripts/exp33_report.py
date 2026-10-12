@@ -60,13 +60,13 @@ def _fmt(stat: dict, key: str = "mean") -> str:
 
 
 def build_report(readers: tuple[str, str], folds: set[int], variant: str, k_label: str, out_root: Path,
-                 samples: int = 10000) -> tuple[str, dict]:
+                 samples: int = 10000, records_from: str | None = None) -> tuple[str, dict]:
     small, large = readers
     records_by_reader = {}
     for reader in readers:
         rows = []
         for fold in sorted(folds):
-            fold_rows, _ = load_records(reader, fold)
+            fold_rows, _ = load_records(records_from or reader, fold)
             rows.extend(fold_rows)
         records_by_reader[reader] = rows
     qids = population(records_by_reader)
@@ -154,13 +154,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--root", default="runs/exp33_jacobian")
     parser.add_argument("--out", default=None)
     parser.add_argument("--samples", type=int, default=10000)
+    parser.add_argument("--records-from", default=None,
+                        help="reader whose §23 records to use for every reader (local development with the 0.5B)")
     parser.add_argument("--confirm", action="store_true", help="allow folds outside the development set")
     args = parser.parse_args(argv)
     folds = {int(f) for f in args.folds.split(",")}
     if not folds <= DEV_FOLDS and not args.confirm:
         print(f"folds {sorted(folds - DEV_FOLDS)} are confirmation folds; pass --confirm after the pre-registration is committed")
         return 2
-    markdown, numbers = build_report((args.small, args.large), folds, args.variant, "k50", Path(args.root), args.samples)
+    markdown, numbers = build_report((args.small, args.large), folds, args.variant, "k50", Path(args.root), args.samples,
+                                   records_from=args.records_from)
     out = Path(args.out or f"runs/exp33_report_{'dev' if folds <= DEV_FOLDS else 'confirm'}.md")
     out.write_text(markdown)
     out.with_suffix(".json").write_text(json.dumps(numbers, indent=1))

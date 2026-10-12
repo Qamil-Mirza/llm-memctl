@@ -285,7 +285,7 @@ with `@term("name")` in `memctl/rewards.py`.
 Prompts come from the §23 cache; no reader is called. Local development on the 0.5B:
 
     .venv/bin/python scripts/jacobian_lens.py --reader qwen05b --records-from qwen3b --folds 0 --limit 10 --device cpu --dtype float32 --ablate
-    .venv/bin/python scripts/exp33_report.py --small qwen05b --large qwen05b --folds 0
+    .venv/bin/python scripts/exp33_report.py --small qwen05b --large qwen05b --records-from qwen3b --folds 0
 
 Paid run (one A40, user-approved): `bash scripts/exp33_pod.sh`, then copy `runs/exp33_jacobian/` back.
 Report on development folds only until the pre-registration is committed:
