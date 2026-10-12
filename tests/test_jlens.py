@@ -1,4 +1,5 @@
 import json
+import math
 from pathlib import Path
 
 import numpy as np
@@ -287,6 +288,34 @@ def test_read_record_forwards_the_teacher_forced_ids(tiny_lens, monkeypatch):
     assert payload["n_tokens"] == len(expected.input_ids) and payload["n_leading_ws"] == 1
     assert payload["positions"]["P1"] == [payload["n_tokens"] - 1] and payload["positions"]["P1_raw"] == [payload["n_tokens"] - 2]
     assert arrays["position_index"].tolist()[-1] == payload["n_tokens"] - 2
+
+
+@pytest.mark.parametrize("gold", ["Leeds", "4 hours"])
+def test_read_record_matches_lens_apply(tiny_lens, gold):
+    """read_record's single forward equals jlens's own `apply` (J-lens and logit lens) at the same positions.
+    The text for `apply` is decode(ids); the test asserts encode(decode(ids)) == ids, so `apply` sees the same ids."""
+    lens, lens_model, tok, _ = tiny_lens
+    s = _script("jlens_read")
+    from memctl.analysis.jlens_readout import ranks_of
+    record = PromptRecord("qA", 0, "fake", PROMPT, "o", gold, "t", True, LINES, (LINES[2],), True, True, False)
+    payload, arrays = s.read_record(lens, lens_model, tok, record, k=5)
+    ids = list(readout_for(tok, PROMPT, LINES, (LINES[2],), gold).input_ids)
+    text = tok.decode(ids)
+    assert tok(text, add_special_tokens=False).input_ids == ids
+    layers, flat = arrays["layers"].tolist(), arrays["position_index"].tolist()
+    tracked = [payload["tracked"][t] for t in s.TRACKED]
+    for layer in (0, 2):
+        li = layers.index(layer)
+        for pi in (0, 1, len(flat) - 1):                               # P1, P0, P1_raw
+            for variant, use_j in (("jlens", True), ("logit", False)):
+                lg, _, used = lens.apply(lens_model, text, layers=[layer], positions=[flat[pi]], max_seq_len=4096,
+                                         use_jacobian=use_j)
+                assert used[0].tolist() == ids
+                row = lg[layer].numpy()                               # [1, vocab]
+                top = arrays[f"top_ids_{variant}"][li, pi]
+                assert np.allclose(row[0, top], arrays[f"top_logits_{variant}"][li, pi], atol=1e-4)
+                assert np.allclose(np.sort(row[0])[::-1][:5], arrays[f"top_logits_{variant}"][li, pi], atol=1e-4)
+                assert ranks_of(row, tracked)[0].tolist() == arrays[f"ranks_{variant}"][li, pi].tolist()
 
 
 def test_read_record_rejects_truncated_ids(tiny_lens, monkeypatch):
@@ -874,3 +903,30 @@ def test_pod34_community_failure_is_not_fatal_and_section_33_still_runs(tmp_path
     j33 = next(i for i, c in enumerate(made) if c.startswith("scripts/jacobian_lens.py --reader qwen3b"))
     assert comm < j33
     assert "community cross-check failed" in (root / "runs" / "exp34_jlens" / "pod.log").read_text()
+
+
+def test_community_section_reads_a_synthetic_community_root(tmp_path, monkeypatch):
+    rep = _script("exp34_report")
+    qids = [f"q{i}" for i in range(10)]
+    _jlens_outputs(tmp_path / "ours", "qwen3b", [(q, 0, 50, "A") for q in qids])
+    _jlens_outputs(tmp_path / "ours", "qwen7b", [(q, 0, 5, "C") for q in qids])
+    _jlens_outputs(tmp_path / "comm", "qwen7b", [(q, 0, 4, "C") for q in qids[:8]])     # 8 of 10 read with the community lens
+    for reader in ("qwen3b", "qwen7b"):
+        _jlens_side_files(tmp_path / "ours", reader)
+    for root in (tmp_path / "ours" / "qwen7b", tmp_path / "comm" / "qwen7b"):         # top-10 ids for the Jaccard
+        for q in qids:
+            if (root / f"{q}.npz").exists():
+                z = dict(np.load(root / f"{q}.npz"))
+                z["top_ids_jlens"] = np.tile(np.arange(10, dtype=np.int32), (N_LAYERS, 4, 1))
+                np.savez(root / f"{q}.npz", **z)
+    monkeypatch.setattr(rep, "load_records", _jlens_records(qids))
+    markdown, numbers = rep.build_report(("qwen3b", "qwen7b"), {0}, "k10", tmp_path / "ours", samples=100,
+                                         community_root=tmp_path / "comm")
+    c = numbers["descriptive"]["community"]
+    assert c["n"] == 8 and c["claim1_best_logrank"]["n"] == 8
+    assert c["jaccard_top10"] == {"early": pytest.approx(1.0), "middle": pytest.approx(1.0), "late": pytest.approx(1.0)}
+    assert c["claim1_best_logrank"]["mean"] == pytest.approx(math.log10(50) - math.log10(4))
+    assert "cross-check against the community lens" in markdown
+    _jlens_outputs(tmp_path / "comm", "qwen7b", [("q0", 0, 4, "C")], sha="other")
+    with pytest.raises(rep.PromptIdentityError):
+        rep.build_report(("qwen3b", "qwen7b"), {0}, "k10", tmp_path / "ours", samples=50, community_root=tmp_path / "comm")
