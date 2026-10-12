@@ -129,10 +129,16 @@ hash. The reviewer signs the pre-registration before the paid run.
 
 ## 9. Compute, cost and controls
 
-- **Fitting cost.** `jlens.fit` costs one forward and `d_model / dim_batch` backward passes per prompt,
-  with FLOPs independent of `dim_batch`. Measured on this machine (0.5B, CPU, float32, 128 tokens, two
-  source layers): see `research/proposals/` pre-registration for the number and the A40 extrapolation.
-  Fitting the 7B is the cost driver; the 3B is about a quarter of it.
+- **Fitting cost.** `jlens.fit` costs one forward and `d_model / dim_batch` backward passes per prompt;
+  the parameters are frozen, so a backward pass costs about one forward, and the total per prompt is about
+  `d_model × forward(128 tokens)`, independent of `dim_batch`. Measured here (0.5B, CPU, float32,
+  `dim_batch` 8): 1.44 s per backward pass over 8 × 128 tokens, 161 s for one prompt with two source
+  layers. A community fit of the same recipe for Qwen2.5-7B-Instruct (100 WikiText prompts, 128 tokens,
+  `skip_first` 16, `dim_batch` 64, all 27 source layers) took 18–22 s per prompt on one H100, 34 minutes
+  in all (`andyx10/jacobian-lens-qwen2.5-7b-instruct` model card). On an A40 expect roughly 3–4× that:
+  about 1–2 hours for the 7B at `N = 100` and about 30 minutes for the 3B, so about $1.50 for both
+  lenses at $0.59/h, with the H100 (about $2.7/h, under an hour for both) as the alternative if A40
+  stock is short. Fitting the 7B is the cost driver; the 3B is about a quarter of it.
 - **Time box.** The pod script fits each reader under `--max-minutes` with checkpoints every prompt;
   the lens is saved at whatever `N ≥ 32` the box allows, and the run reports `N`. The box and the hard stop
   go into the user's approval quote. No question is asked while the pod bills.
