@@ -165,6 +165,7 @@ def main(argv: list[str] | None = None) -> int:
     markdown, numbers = build_report((args.small, args.large), folds, args.variant, "k50", Path(args.root), args.samples,
                                    records_from=args.records_from)
     out = Path(args.out or f"runs/exp33_report_{'dev' if folds <= DEV_FOLDS else 'confirm'}.md")
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(markdown)
     out.with_suffix(".json").write_text(json.dumps(numbers, indent=1))
     print(markdown)

@@ -582,3 +582,26 @@ def test_pod_script_preflight_passes_with_every_input_and_pins_transformers(tmp_
     assert done.returncode == 0, done.stderr
     assert "preflight ok: 32 files" in done.stdout
     assert f"transformers=={transformers.__version__}" in done.stdout  # the pod pin is the tested local version
+
+
+def test_report_refuses_confirmation_folds_without_confirm(tmp_path, monkeypatch):
+    from scripts import exp33_report as rep
+    work = tmp_path / "work"
+    work.mkdir()
+    monkeypatch.chdir(work)  # default outputs land under work/runs/
+    called = []
+    monkeypatch.setattr(rep, "build_report", lambda *a, **k: called.append(a) or ("x", {}))
+    assert rep.main(["--folds", "0,1,2", "--root", str(tmp_path)]) == 2
+    assert not called and list(work.rglob("*")) == []
+    assert rep.main(["--folds", "0,1,2", "--root", str(tmp_path), "--confirm"]) == 0
+    written = sorted(p.name for p in work.rglob("*") if p.is_file())
+    assert written == ["exp33_report_confirm.json", "exp33_report_confirm.md"]
+    assert called[0][1] == {0, 1, 2}
+
+
+def test_load_outputs_and_ablation_drop_other_folds(tmp_path):
+    from scripts import exp33_report as rep
+    _fake_outputs(tmp_path, "qwen3b", [("q_dev", 0, 0.2, 1.0), ("q_conf", 2, 0.3, 2.0)])
+    assert set(rep.load_outputs(tmp_path / "qwen3b", {0}, "gold")) == {"q_dev"}
+    assert rep.load_ablation(tmp_path / "qwen3b", {0}) == {"q_dev": 1.0}
+    assert set(rep.load_outputs(tmp_path / "qwen3b", {2}, "gold")) == {"q_conf"}
