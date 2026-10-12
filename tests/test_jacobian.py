@@ -328,3 +328,75 @@ def test_paired_claim_uses_shared_keys_and_gives_a_verdict():
     r = paired_claim(a, b, samples=500)
     assert r["n"] == 4 and r["mean"] == pytest.approx(0.4) and r["verdict"] == "SHOWN"
     assert paired_claim(b, a, samples=500)["verdict"] == "NOT SHOWN"
+
+
+import importlib.util, sys
+
+
+def _script():
+    spec = importlib.util.spec_from_file_location("jacobian_lens", "scripts/jacobian_lens.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_output_paths_and_resume_skip(tmp_path):
+    s = _script()
+    out = tmp_path / "o"
+    assert s.output_path(out, "q1", "gold").name == "q1.gold.json"
+    assert not s.is_done(out, "q1", ("gold", "margin"))
+    out.mkdir()
+    s.write_json(s.output_path(out, "q1", "gold"), {"ok": 1})
+    s.write_json(s.output_path(out, "q1", "margin"), {"ok": 1})
+    assert s.is_done(out, "q1", ("gold", "margin"))
+    (out / "q1.margin.json").write_text("{not json")  # a partial file from a crash
+    assert not s.is_done(out, "q1", ("gold", "margin"))
+
+
+def test_write_json_is_atomic(tmp_path):
+    s = _script()
+    path = tmp_path / "x.json"
+    s.write_json(path, {"a": 1})
+    assert json.loads(path.read_text()) == {"a": 1}
+    assert not list(tmp_path.glob("*.tmp"))
+
+
+def test_run_records_writes_measures_npz_and_ablation(tiny, tmp_path):
+    s = _script()
+    model, tok = tiny
+    record = PromptRecord("qX", 0, "fake", PROMPT, "Answer: nope", "4 hours", "single-session-user", True,
+                          LINES, (LINES[1],), True, False, False)
+    timing = s.run_records(model, tok, [record], tmp_path, targets=("gold", "margin", "own"), ablate=True, k=5, model_id="tiny")
+    assert set(p.name for p in tmp_path.glob("qX.*")) == {"qX.gold.json", "qX.gold.npz", "qX.margin.json", "qX.margin.npz",
+                                                          "qX.own.json", "qX.own.npz", "qX.ablation.json"}
+    gold = json.loads((tmp_path / "qX.gold.json").read_text())
+    assert gold["measures"]["l2"]["shares"]["evidence"] >= 0 and gold["target"] == "gold" and gold["model_id"] == "tiny"
+    assert "own_skipped" not in gold
+    arrays = np.load(tmp_path / "qX.gold.npz")
+    assert arrays["g_l2"].dtype == np.float32 and arrays["regions"].dtype == np.int8
+    ablation = json.loads((tmp_path / "qX.ablation.json").read_text())
+    assert ablation["delta"] == pytest.approx(ablation["gold_full"] - ablation["gold_ablated"])
+    assert timing["qX"] > 0
+    # a second call skips everything
+    assert s.run_records(model, tok, [record], tmp_path, targets=("gold", "margin", "own"), ablate=True, k=5, model_id="tiny") == {}
+
+
+def test_run_records_skips_own_on_empty_output_and_resumes(tiny, tmp_path):
+    s = _script()
+    model, tok = tiny
+    record = PromptRecord("qE", 0, "fake", PROMPT, "   ", "4 hours", "single-session-user", True,
+                          LINES, (LINES[1],), True, False, False)
+    timing = s.run_records(model, tok, [record], tmp_path, targets=("gold", "margin", "own"), ablate=False, k=5, model_id="tiny")
+    assert "qE" in timing
+    assert set(p.name for p in tmp_path.glob("qE.*")) == {"qE.gold.json", "qE.gold.npz", "qE.margin.json", "qE.margin.npz"}
+    assert json.loads((tmp_path / "qE.gold.json").read_text())["own_skipped"] is True
+    # resume does not wait for the own file that will never exist
+    assert s.run_records(model, tok, [record], tmp_path, targets=("gold", "margin", "own"), ablate=False, k=5, model_id="tiny") == {}
+
+
+def test_regen_check_counts_matches(tiny, tmp_path):
+    s = _script()
+    model, tok = tiny
+    record = PromptRecord("qX", 0, "fake", PROMPT, "whatever the cache said", "4 hours", "t", True, LINES, (), True, None, None)
+    result = s.regen_check(model, tok, [record], n=1, max_new_tokens=4)
+    assert result["n"] == 1 and result["matches"] in (0, 1) and len(result["pairs"]) == 1
