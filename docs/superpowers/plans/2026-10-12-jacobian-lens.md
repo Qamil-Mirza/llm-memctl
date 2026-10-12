@@ -270,7 +270,7 @@ def _instance_number(data_path: str) -> dict[str, int]:
 def evidence_item_ids(data_path: str, question_id: str) -> tuple[frozenset[str], ...]:
     """One set per evidence requirement: the marked turn, or every turn of an unmarked answer session."""
     episode, fallback = parse_instance(_instance(data_path, _instance_number(data_path)[question_id]))
-    marked = tuple(frozenset({item_id}) for item_id in episode.questions[0].evidence)
+    marked = tuple(frozenset({item_id}) for item_id in episode.questions[0].evidence_ids)
     return marked + tuple(frozenset(ids) for ids in fallback)
 
 
