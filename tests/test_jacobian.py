@@ -23,7 +23,7 @@ def test_memory_line_matches_compact_reader_format():
     assert memory_line(item) == "assistant: I was born in Leeds."
 
 
-def _write_fake_run(tmp_path, prompt_lines, evidence_ids, question="(asked on 2023/05/30 (Tue) 23:40) Where was I born?",
+def _write_fake_run(tmp_path, prompt_lines, question="(asked on 2023/05/30 (Tue) 23:40) Where was I born?",
                     output="Note\nAnswer: Leeds", qid="q_abc", complete=1.0):
     """A one-episode fixed8 run folder plus a cache folder whose prompt is rebuilt from the lines."""
     run = tmp_path / "runs" / "exp23_fake_f0" / "fixed8__fraction0.05"
@@ -53,7 +53,7 @@ def _write_fake_run(tmp_path, prompt_lines, evidence_ids, question="(asked on 20
 
 def test_load_records_rebuilds_prompt_and_marks_evidence(tmp_path, monkeypatch):
     lines = ["Hello, how are you?", "I was born in Leeds, by the way.\nSecond line of the same turn.", "Nice weather."]
-    run, cache, prompt = _write_fake_run(tmp_path, lines, evidence_ids=("s1:1",))
+    run, cache, prompt = _write_fake_run(tmp_path, lines)
     monkeypatch.setattr("memctl.jacobian_data.evidence_item_ids",
                         lambda data_path, question_id: (frozenset({"s1:1"}),))
     monkeypatch.setattr("memctl.jacobian_data.question_meta",
@@ -70,7 +70,7 @@ def test_load_records_rebuilds_prompt_and_marks_evidence(tmp_path, monkeypatch):
 
 def test_load_records_fallback_session_marks_every_in_view_turn(tmp_path, monkeypatch):
     lines = ["turn a", "turn b", "turn c"]
-    run, cache, _ = _write_fake_run(tmp_path, lines, evidence_ids=())
+    run, cache, _ = _write_fake_run(tmp_path, lines)
     # a fallback session: any one of s1:0 / s1:2 counts, so both in-view lines are evidence
     monkeypatch.setattr("memctl.jacobian_data.evidence_item_ids",
                         lambda data_path, question_id: (frozenset({"s1:0", "s1:2"}),))
@@ -81,7 +81,7 @@ def test_load_records_fallback_session_marks_every_in_view_turn(tmp_path, monkey
 
 
 def test_load_records_drops_prompt_without_cache_entry(tmp_path, monkeypatch):
-    run, cache, _ = _write_fake_run(tmp_path, ["turn a"], evidence_ids=())
+    run, cache, _ = _write_fake_run(tmp_path, ["turn a"])
     (cache / "00" / "deadbeef.json").unlink()
     monkeypatch.setattr("memctl.jacobian_data.evidence_item_ids", lambda d, q: (frozenset({"s1:0"}),))
     monkeypatch.setattr("memctl.jacobian_data.question_meta", lambda d, q: ("x", "t", True))
@@ -89,12 +89,20 @@ def test_load_records_drops_prompt_without_cache_entry(tmp_path, monkeypatch):
     assert records == [] and dropped["no_cached_prompt"] == 1
 
 
-def test_load_records_drops_prompt_whose_evidence_is_not_in_view(tmp_path, monkeypatch):
-    run, cache, _ = _write_fake_run(tmp_path, ["turn a"], evidence_ids=(), complete=0.0)
+def test_load_records_keeps_partial_view_record_with_all_in_view_false(tmp_path, monkeypatch):
+    run, cache, _ = _write_fake_run(tmp_path, ["turn a"], complete=0.0)
     monkeypatch.setattr("memctl.jacobian_data.evidence_item_ids", lambda d, q: (frozenset({"zzz:9"}),))
     monkeypatch.setattr("memctl.jacobian_data.question_meta", lambda d, q: ("x", "t", True))
     [r], dropped = load_records("fake", 0, runs_dir=str(tmp_path / "runs"), cache_dir=str(cache), data_path="unused")
     assert r.evidence_lines == () and r.all_in_view is False and dropped["evidence_not_found"] == 0
+
+
+def test_load_records_drops_complete_answerable_prompt_whose_evidence_is_missing(tmp_path, monkeypatch):
+    run, cache, _ = _write_fake_run(tmp_path, ["turn a"], complete=1.0)
+    monkeypatch.setattr("memctl.jacobian_data.evidence_item_ids", lambda d, q: (frozenset({"zzz:9"}),))
+    monkeypatch.setattr("memctl.jacobian_data.question_meta", lambda d, q: ("x", "t", True))
+    records, dropped = load_records("fake", 0, runs_dir=str(tmp_path / "runs"), cache_dir=str(cache), data_path="unused")
+    assert records == [] and dropped["evidence_not_found"] == 1 and dropped["no_cached_prompt"] == 0
 
 
 @needs_exp23
