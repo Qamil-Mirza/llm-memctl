@@ -166,3 +166,55 @@ def test_sidecar_marks_below_minimum(tmp_path):
     side = s.sidecar("qwen05b", "m", n_prompts=3, n_target=8, n_minimum=4, settings={"a": 1}, wall_s=1.0,
                      corpus_sha256="x", prompt_sha256s=["a", "b", "c"])
     assert side["below_minimum"] is True and side["n_prompts"] == 3 and side["jlens_commit"]
+
+
+def _manifest(**over):
+    m = {"model_id": "m", "seed": 0, "corpus_sha256": "c", "max_seq_len": 128, "dim_batch": 8, "source_layers": "all",
+         "skip_first": 16, "prompt_sha256s": ["a", "b"]}
+    m.update(over)
+    return m
+
+
+def _fake_ckpt(out, reader="r", next_idx=2):
+    torch.save({"jacobian_sum": {}, "n_done": next_idx, "next_idx": next_idx, "source_layers": [0], "target_layer": 1,
+                "skip_first": 16}, out / f"{reader}.ckpt.pt")
+
+
+def test_check_manifest_refuses_a_checkpoint_from_another_seed(tmp_path):
+    s = _script("jlens_fit")
+    s.check_manifest(tmp_path, "r", _manifest())                 # fresh: writes the manifest
+    _fake_ckpt(tmp_path)
+    with pytest.raises(SystemExit) as e:
+        s.check_manifest(tmp_path, "r", _manifest(seed=1))
+    assert e.value.code == 6
+    with pytest.raises(SystemExit) as e:
+        s.check_manifest(tmp_path, "r", _manifest(prompt_sha256s=["a", "x", "y"]))
+    assert e.value.code == 6
+    with pytest.raises(SystemExit) as e:                         # checkpoint already past a shorter list
+        s.check_manifest(tmp_path, "r", _manifest(prompt_sha256s=["a"]))
+    assert e.value.code == 6
+
+
+def test_check_manifest_accepts_a_longer_list_with_the_same_prefix(tmp_path):
+    s = _script("jlens_fit")
+    s.check_manifest(tmp_path, "r", _manifest())
+    _fake_ckpt(tmp_path)
+    s.check_manifest(tmp_path, "r", _manifest(prompt_sha256s=["a", "b", "c", "d"]))
+    assert json.loads((tmp_path / "r.ckpt.json").read_text())["prompt_sha256s"] == ["a", "b", "c", "d"]
+
+
+def test_check_manifest_refuses_a_checkpoint_without_a_manifest(tmp_path):
+    s = _script("jlens_fit")
+    _fake_ckpt(tmp_path)
+    with pytest.raises(SystemExit) as e:
+        s.check_manifest(tmp_path, "r", _manifest())
+    assert e.value.code == 6 and not (tmp_path / "r.ckpt.json").exists()
+
+
+def test_total_wall_adds_the_previous_sidecar(tmp_path):
+    s = _script("jlens_fit")
+    assert s.total_wall(tmp_path, "r", 5.0) == 5.0
+    (tmp_path / "r.json").write_text(json.dumps({"wall_s": 100.0, "wall_s_total": 300.0}))
+    assert s.total_wall(tmp_path, "r", 5.0) == 305.0
+    (tmp_path / "r.json").write_text(json.dumps({"wall_s": 100.0}))   # sidecar from before wall_s_total existed
+    assert s.total_wall(tmp_path, "r", 5.0) == 105.0

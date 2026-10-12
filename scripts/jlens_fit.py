@@ -62,9 +62,57 @@ def fit_under_time_box(model, prompts, *, max_minutes: float, chunk: int, checkp
     return lens, done
 
 
-def sidecar(reader, model_id, *, n_prompts, n_target, n_minimum, settings, wall_s, corpus_sha256, prompt_sha256s) -> dict:
+MANIFEST_SCALARS = ("model_id", "seed", "corpus_sha256", "max_seq_len", "dim_batch", "source_layers", "skip_first")
+CKPT_MISMATCH = 6
+
+
+def _refuse(message: str):
+    print(f"jlens_fit: {message}", file=sys.stderr, flush=True)
+    raise SystemExit(CKPT_MISMATCH)
+
+
+def check_manifest(out, reader, manifest: dict) -> None:
+    """Refuse (SystemExit 6) to resume a checkpoint fitted on other settings or another prompt list; otherwise
+    (re)write <out>/<reader>.ckpt.json. jlens itself only guards source_layers, target_layer and skip_first."""
+    out = Path(out)
+    ckpt, path = out / f"{reader}.ckpt.pt", out / f"{reader}.ckpt.json"
+    if ckpt.exists():
+        if not path.exists():
+            _refuse(f"{ckpt} exists but has no manifest {path.name}; its provenance is unknown. "
+                    f"Move the stale checkpoint aside (or use another --out) and rerun.")
+        old = json.loads(path.read_text())
+        for key in MANIFEST_SCALARS:
+            if old.get(key) != manifest[key]:
+                _refuse(f"checkpoint {ckpt} was fitted with {key}={old.get(key)!r}, this run has {key}={manifest[key]!r}. "
+                        f"Move the checkpoint aside or use another --out.")
+        old_hashes, new_hashes = old.get("prompt_sha256s", []), manifest["prompt_sha256s"]
+        if new_hashes[:len(old_hashes)] != old_hashes:
+            _refuse(f"checkpoint {ckpt} was fitted on a prompt list ({len(old_hashes)} prompts) that is not a prefix of this "
+                    f"run's ({len(new_hashes)} prompts): field prompt_sha256s differs. Move the checkpoint aside or use another --out.")
+        import torch
+
+        next_idx = int(torch.load(ckpt, map_location="cpu", weights_only=True)["next_idx"])
+        if next_idx > len(new_hashes):
+            _refuse(f"checkpoint {ckpt} has already processed {next_idx} prompts, more than this run's --n-prompts "
+                    f"{len(new_hashes)}. Raise --n-prompts or use another --out.")
+    out.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(manifest, indent=1))
+
+
+def total_wall(out, reader, wall_s: float) -> float:
+    """This run's wall time plus the previous sidecar's total (its wall_s if it predates wall_s_total)."""
+    path = Path(out) / f"{reader}.json"
+    if not path.exists():
+        return wall_s
+    previous = json.loads(path.read_text())
+    return float(previous.get("wall_s_total", previous.get("wall_s", 0.0))) + wall_s
+
+
+def sidecar(reader, model_id, *, n_prompts, n_target, n_minimum, settings, wall_s, corpus_sha256, prompt_sha256s,
+            wall_s_total=None) -> dict:
     return {"reader": reader, "model_id": model_id, "n_prompts": n_prompts, "n_target": n_target, "n_minimum": n_minimum,
-            "below_minimum": n_prompts < n_minimum, "settings": settings, "wall_s": wall_s, "jlens_commit": jlens_commit(),
+            "below_minimum": n_prompts < n_minimum, "settings": settings, "wall_s": wall_s,
+            "wall_s_total": wall_s if wall_s_total is None else wall_s_total, "jlens_commit": jlens_commit(),
             "corpus_sha256": corpus_sha256, "prompt_sha256s": prompt_sha256s}
 
 
@@ -74,7 +122,8 @@ def main(argv=None) -> int:
     p.add_argument("--model-id", default=None)
     p.add_argument("--n-prompts", type=int, default=128)
     p.add_argument("--min-prompts", type=int, default=32)
-    p.add_argument("--max-minutes", type=float, default=90.0)
+    p.add_argument("--max-minutes", type=float, default=90.0,
+                   help="time box, checked between chunks: a box of 0 still runs one chunk, and a run may overrun by up to one chunk")
     p.add_argument("--chunk", type=int, default=4)
     p.add_argument("--dim-batch", type=int, default=8)
     p.add_argument("--max-seq-len", type=int, default=128)
@@ -93,6 +142,12 @@ def main(argv=None) -> int:
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
     paragraphs = load_corpus(args.corpus)
     prompts = select_prompts(paragraphs, args.n_prompts, seed=args.seed)
+    corpus_sha256 = hashlib.sha256(Path(args.corpus).read_bytes()).hexdigest()
+    prompt_sha256s = [hashlib.sha256(x.encode()).hexdigest() for x in prompts]
+    check_manifest(out, args.reader, {"model_id": model_id, "seed": args.seed, "corpus_sha256": corpus_sha256,
+                                      "max_seq_len": args.max_seq_len, "dim_batch": args.dim_batch,
+                                      "source_layers": args.source_layers, "skip_first": args.skip_first,
+                                      "prompt_sha256s": prompt_sha256s})
     device = ("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device
     hf = transformers.AutoModelForCausalLM.from_pretrained(model_id, dtype=getattr(torch, args.dtype)).to(device)
     tok = transformers.AutoTokenizer.from_pretrained(model_id)
@@ -103,14 +158,14 @@ def main(argv=None) -> int:
                 "device": device, "dtype": args.dtype}
     print(f"{model} fitting on {len(prompts)} prompts (min {args.min_prompts}, box {args.max_minutes} min)", flush=True)
     started = time.perf_counter()
-    lens, n_done = fit_under_time_box(model, prompts, max_minutes=args.max_minutes, chunk=args.chunk,
+    lens, upto = fit_under_time_box(model, prompts, max_minutes=args.max_minutes, chunk=args.chunk,
                                       checkpoint_path=str(out / f"{args.reader}.ckpt.pt"), source_layers=source_layers,
                                       dim_batch=args.dim_batch, max_seq_len=args.max_seq_len, skip_first=args.skip_first)
     wall = time.perf_counter() - started
     lens.save(str(out / f"{args.reader}.pt"))
     side = sidecar(args.reader, model_id, n_prompts=lens.n_prompts, n_target=args.n_prompts, n_minimum=args.min_prompts,
-                   settings=settings, wall_s=wall, corpus_sha256=hashlib.sha256(Path(args.corpus).read_bytes()).hexdigest(),
-                   prompt_sha256s=[hashlib.sha256(x.encode()).hexdigest() for x in prompts[:n_done]])
+                   settings=settings, wall_s=wall, wall_s_total=total_wall(out, args.reader, wall), corpus_sha256=corpus_sha256,
+                   prompt_sha256s=prompt_sha256s[:lens.n_prompts])
     (out / f"{args.reader}.json").write_text(json.dumps(side, indent=1))
     print(json.dumps({k: v for k, v in side.items() if k != "prompt_sha256s"}), flush=True)
     return 0
