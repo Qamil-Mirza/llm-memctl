@@ -69,7 +69,7 @@ The continuation is appended as the assistant's output, after the generation pro
 | id | continuation | scalar target |
 |---|---|---|
 | `gold` (primary) | `Answer: <gold answer>` | sum of log-probabilities of the gold answer tokens |
-| `margin` (secondary) | `Answer:` | at the first answer position, logit(first gold token) minus logit(first token of ` unknown`) |
+| `margin` (secondary) | `Answer:` + the gold answer through its first content token | log-probability of the gold answer through its first content token (leading whitespace-only tokens included, since the Qwen tokenizer splits digits off a bare space on 194 of 470 golds) minus the log-probability of ` unknown` at the first answer position. For a gold whose first token is content this equals the logit margin at that position exactly. The first gold token text is stored per question |
 | `own` (descriptive) | the model's own cached output | sum of log-probabilities of the output tokens |
 
 `gold` and `margin` share one forward pass; `own` needs a second. The gradient of each target is taken
