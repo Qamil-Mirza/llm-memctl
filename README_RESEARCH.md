@@ -288,6 +288,16 @@ Prompts come from the §23 cache; no reader is called. Local development on the 
     .venv/bin/python scripts/exp33_report.py --small qwen05b --large qwen05b --records-from qwen3b --folds 0
 
 Paid run (one A40, user-approved): `bash scripts/exp33_pod.sh`, then copy `runs/exp33_jacobian/` back.
+What to copy to the pod (next to a checkout of this branch; `runpodctl send` or `rsync` both work), all
+checked by the script's preflight, which exits 3 naming the first missing path before installing anything:
+
+- `data/longmemeval/longmemeval_s_cleaned.json`
+- `runs/exp23_verdicts.json`
+- `runs/exp23_<reader>_f<fold>/fixed8__fraction0.05/items.jsonl.gz`, `steps.jsonl.gz` and `episodes.jsonl`
+  for reader `qwen3b` and `qwen7b` and fold 0 to 4 (30 files)
+- `cache/generations_exp23_qwen3b/` and `cache/generations_exp23_qwen7b/` (whole folders)
+
+The script pins `transformers==5.17.0` (the local `.venv` version) and prints the image's torch version.
 Report on development folds only until the pre-registration is committed:
 
     .venv/bin/python scripts/exp33_report.py --small qwen3b --large qwen7b --folds 0,1 --variant l2

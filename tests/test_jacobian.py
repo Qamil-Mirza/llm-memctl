@@ -537,3 +537,48 @@ def test_report_builds_claims_from_outputs(tmp_path, monkeypatch):
     calls.clear()
     rep.build_report(("qwen3b", "qwen7b"), {0}, "l2", "k50", tmp_path, samples=300, records_from="qwen3b")
     assert calls and all(name == "qwen3b" for name in calls)
+
+
+import shutil, subprocess
+
+
+def _pod_tree(tmp_path):
+    (tmp_path / "scripts").mkdir()
+    shutil.copy("scripts/exp33_pod.sh", tmp_path / "scripts" / "exp33_pod.sh")
+    (tmp_path / "data" / "longmemeval").mkdir(parents=True)
+    (tmp_path / "data" / "longmemeval" / "longmemeval_s_cleaned.json").write_text("[]")
+    (tmp_path / "runs").mkdir()
+    (tmp_path / "runs" / "exp23_verdicts.json").write_text("[]")
+    for reader in ("qwen3b", "qwen7b"):
+        for fold in range(5):
+            run = tmp_path / "runs" / f"exp23_{reader}_f{fold}" / "fixed8__fraction0.05"
+            run.mkdir(parents=True)
+            for name in ("items.jsonl.gz", "steps.jsonl.gz", "episodes.jsonl"):
+                (run / name).write_text("")
+        (tmp_path / "cache" / f"generations_exp23_{reader}" / "00").mkdir(parents=True)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "python").write_text("#!/bin/sh\necho \"fake python $*\"\n")
+    (bin_dir / "python").chmod(0o755)
+    return tmp_path, {"PATH": f"{bin_dir}:/usr/bin:/bin"}
+
+
+def test_pod_script_preflight_stops_on_a_missing_input_before_installing(tmp_path):
+    root, env = _pod_tree(tmp_path)
+    (root / "runs" / "exp23_qwen7b_f3" / "fixed8__fraction0.05" / "steps.jsonl.gz").unlink()
+    done = subprocess.run(["bash", str(root / "scripts" / "exp33_pod.sh")], env=env, capture_output=True, text=True)
+    assert done.returncode == 3
+    assert "runs/exp23_qwen7b_f3/fixed8__fraction0.05/steps.jsonl.gz" in done.stderr
+    assert "fake python" not in done.stdout  # nothing installed or run
+    shutil.rmtree(root / "cache" / "generations_exp23_qwen3b" / "00")  # an empty cache folder is missing too
+    (root / "runs" / "exp23_qwen7b_f3" / "fixed8__fraction0.05" / "steps.jsonl.gz").write_text("")
+    done = subprocess.run(["bash", str(root / "scripts" / "exp33_pod.sh")], env=env, capture_output=True, text=True)
+    assert done.returncode == 3 and "cache/generations_exp23_qwen3b" in done.stderr
+
+
+def test_pod_script_preflight_passes_with_every_input_and_pins_transformers(tmp_path):
+    root, env = _pod_tree(tmp_path)
+    done = subprocess.run(["bash", str(root / "scripts" / "exp33_pod.sh"), "0"], env=env, capture_output=True, text=True)
+    assert done.returncode == 0, done.stderr
+    assert "preflight ok: 32 files" in done.stdout
+    assert f"transformers=={transformers.__version__}" in done.stdout  # the pod pin is the tested local version
