@@ -747,8 +747,8 @@ git commit -m "§33: chat wrapping, teacher-forced targets and the input-embeddi
   # fraction of the k largest-g non-template tokens that are evidence
   def measures(result: JacobianResult, k: int = 50) -> dict
   # {"l2": {"shares": ..., "lift": ..., "topk": ...}, "gxi": {...}, "counts": ..., "target_value": ..., "n_tokens": ...}
-  def ablate_evidence(prompt: str, evidence_lines: tuple[str, ...]) -> str
-  # the prompt with each evidence line (and the newline before it) removed
+  def ablate_evidence(prompt: str, memory_lines: tuple[str, ...], evidence_lines: tuple[str, ...]) -> str
+  # the prompt with each evidence line (and the newline separating it) removed, cut on segment_prompt's exact spans; ValueError on a missing line
   ```
 
 - [ ] **Step 1: Write the failing tests**
@@ -1000,6 +1000,7 @@ git commit -m "§33: AUC, Spearman and paired-claim bootstraps"
 
 **Interfaces:**
 - Consumes: `load_records` (Task 1), `jacobian_pass`, `measures`, `ablate_evidence`, `target_value`, `wrap_chat` (Tasks 3–4).
+- Ruling (controller): when `record.output.strip()` is empty, skip the `own` target for that record and write `"own_skipped": true` into the gold json instead; an all-zero gradient would give 0/0 shares. `ablate_evidence` takes `(prompt, memory_lines, evidence_lines)` after the Task 4 review.
 - Produces files under `--out` (default `runs/exp33_jacobian/<reader>`):
   - `<question_id>.<target>.json`: `{"question_id","fold","reader","target","model_id","measures": measures(...), "elapsed_s"}`
   - `<question_id>.<target>.npz`: `g_l2`, `g_gxi` (float32), `regions` (int8 codes into `REGIONS`)
@@ -1169,7 +1170,7 @@ def run_records(model, tokenizer, records: list[PromptRecord], out: Path, target
             })
         if ablate:
             full = target_value(model, tokenizer, record.prompt, record.gold, record.output, "gold")
-            ablated = target_value(model, tokenizer, ablate_evidence(record.prompt, record.evidence_lines),
+            ablated = target_value(model, tokenizer, ablate_evidence(record.prompt, record.memory_lines, record.evidence_lines),
                                    record.gold, record.output, "gold")
             write_json(output_path(out, record.question_id, "ablation"), {
                 "question_id": record.question_id, "gold_full": full, "gold_ablated": ablated, "delta": full - ablated,
