@@ -201,11 +201,25 @@ def measures(result: JacobianResult, k: int = 50) -> dict:
     return out
 
 
-def ablate_evidence(prompt: str, evidence_lines: tuple[str, ...]) -> str:
-    """The prompt with every evidence line removed, along with the newline that separated it."""
-    for line in evidence_lines:
-        if "\n" + line in prompt:
-            prompt = prompt.replace("\n" + line, "", 1)
-        else:  # the first memory line has the header before it, not a newline
-            prompt = prompt.replace(line + "\n", "", 1)
-    return prompt
+def ablate_evidence(prompt: str, memory_lines: tuple[str, ...], evidence_lines: tuple[str, ...]) -> str:
+    """The prompt with every evidence line removed by its exact span from `segment_prompt`, together with one
+    newline separating it from a neighbour: the one before it, or the one after it when the one before is the
+    memory header's or was already cut. Every other character is kept. A line is evidence by content, so an
+    identical copy elsewhere in memory goes too. Raises ValueError for an evidence line not in memory_lines."""
+    missing = [line for line in evidence_lines if line not in memory_lines]
+    if missing:
+        raise ValueError(f"evidence line not among memory lines: {missing[0][:60]!r}")
+    spans = segment_prompt(prompt, memory_lines, evidence_lines)
+    header = spans[0][2]
+    cut: set[int] = set()
+    for (region, start, _), line in zip(spans[1:-1], memory_lines):
+        if region != "evidence":
+            continue
+        end = start + len(line)  # the span itself runs on over the separator after the line
+        if start - 1 >= header and prompt[start - 1] == "\n" and start - 1 not in cut:
+            cut.update(range(start - 1, end))
+        elif end < len(prompt) and prompt[end] == "\n":
+            cut.update(range(start, end + 1))
+        else:
+            cut.update(range(start, end))
+    return "".join(ch for n, ch in enumerate(prompt) if n not in cut)

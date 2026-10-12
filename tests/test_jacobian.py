@@ -253,8 +253,47 @@ def test_measures_bundles_both_variants():
 
 
 def test_ablate_evidence_removes_the_lines_and_keeps_the_rest_intact():
-    ablated = ablate_evidence(PROMPT, (LINES[1],))
+    ablated = ablate_evidence(PROMPT, LINES, (LINES[1],))
     assert LINES[1] not in ablated
     assert ablated == ("Use only the memory.\n\n## Memory\nuser, d1: turn a\nuser, d2: turn c\n\n## Current input\n"
                        "Question: what?\n\nNote:")
-    assert ablate_evidence(PROMPT, ()) == PROMPT
+    assert ablate_evidence(PROMPT, LINES, ()) == PROMPT
+
+
+def test_ablate_evidence_removes_the_first_memory_line_with_the_newline_after_it():
+    assert ablate_evidence(PROMPT, LINES, (LINES[0],)) == (
+        "Use only the memory.\n\n## Memory\nassistant, d1: turn b\nhas newline\nuser, d2: turn c\n\n"
+        "## Current input\nQuestion: what?\n\nNote:")
+
+
+def test_ablate_evidence_removes_two_lines_at_once():
+    expected = "Use only the memory.\n\n## Memory\nuser, d2: turn c\n\n## Current input\nQuestion: what?\n\nNote:"
+    assert ablate_evidence(PROMPT, LINES, (LINES[0], LINES[1])) == expected
+    assert ablate_evidence(PROMPT, LINES, (LINES[1], LINES[2])) == (
+        "Use only the memory.\n\n## Memory\nuser, d1: turn a\n\n## Current input\nQuestion: what?\n\nNote:")
+
+
+def _memory_prompt(lines):
+    return "Intro.\n\n## Memory\n" + "\n".join(lines) + "\n\n## Current input\nQuestion: q?\n\nNote:"
+
+
+def test_ablate_evidence_removes_only_the_exact_line_on_a_prefix_collision():
+    lines = ("user, d1: Yes, but later", "user, d1: Yes", "user, d2: other")
+    assert ablate_evidence(_memory_prompt(lines), lines, ("user, d1: Yes",)) == _memory_prompt((lines[0], lines[2]))
+    flipped = (lines[1], lines[0], lines[2])
+    assert ablate_evidence(_memory_prompt(flipped), flipped, ("user, d1: Yes",)) == _memory_prompt((lines[0], lines[2]))
+
+
+def test_ablate_evidence_treats_an_identical_copy_as_evidence_too():
+    # evidence is marked by content, so both copies of a duplicated line are evidence and both go
+    lines = ("user, d1: same", "user, d2: keep", "user, d1: same")
+    prompt = _memory_prompt(lines)
+    assert [s[0] for s in segment_prompt(prompt, lines, (lines[2],))][1:-1] == ["evidence", "distractor", "evidence"]
+    assert ablate_evidence(prompt, lines, (lines[2],)) == _memory_prompt(("user, d2: keep",))
+
+
+def test_ablate_evidence_rejects_an_evidence_line_not_in_memory():
+    with pytest.raises(ValueError):
+        ablate_evidence(PROMPT, LINES, ("user, d9: not there",))
+    with pytest.raises(ValueError):  # present in the prompt text but not passed as a memory line
+        ablate_evidence(PROMPT, LINES[:2], (LINES[2],))
