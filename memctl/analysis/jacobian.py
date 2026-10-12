@@ -115,14 +115,20 @@ class JacobianResult:
     extra: dict = field(default_factory=dict)  # target-specific facts for the output json (margin: what it scored)
 
 
-def _scalar(logits, n_prompt: int, cont: list[int], start: int, target: str, unk: int):
-    """The target from the logits of chat text + continuation. gold/own: summed teacher-forced log-probs of
-    cont[start:]. margin: the same sum over the margin continuation (gold through its first content token)
-    minus the log-prob of " unknown" at the first answer position; for a content-first gold this is the logit
-    margin (the logsumexp cancels)."""
+def _kept(cont: list[int], start: int) -> int:
+    """Logit rows the forward keeps (`logits_to_keep`): the last len(cont) - start + 1 positions, so row 0
+    predicts cont[start] and row j - start predicts cont[j]. The last row predicts nothing scored."""
+    return len(cont) - start + 1
+
+
+def _scalar(logits, cont: list[int], start: int, target: str, unk: int):
+    """The target from the kept logit rows (row j - start predicts cont[j], see `_kept`). gold/own: summed
+    teacher-forced log-probs of cont[start:]. margin: the same sum over the margin continuation (gold through
+    its first content token) minus the log-prob of " unknown" at the first answer position; for a
+    content-first gold this is the logit margin (the logsumexp cancels)."""
     import torch
 
-    logp = torch.log_softmax(logits[n_prompt + start - 1: n_prompt + len(cont) - 1].float(), -1)
+    logp = torch.log_softmax(logits[: len(cont) - start].float(), -1)
     value = logp.gather(-1, torch.tensor(cont[start:], device=logp.device)[:, None]).sum()
     if target == "margin":
         return value - logp[0, unk]
@@ -155,11 +161,11 @@ def jacobian_pass(model, tokenizer, prompt: str, memory_lines, evidence_lines, g
         cont, start = continuation_ids(tokenizer, forward, gold, output)
         full = torch.tensor([prompt_ids + cont], device=embedding.weight.device)
         embeds = embedding(full).detach().requires_grad_(True)
-        logits = model(inputs_embeds=embeds).logits[0]
+        logits = model(inputs_embeds=embeds, logits_to_keep=_kept(cont, start)).logits[0]
         x = embeds[0, :n_prompt].detach().float()
         for number, target in enumerate(group):
             t_cont, t_start = continuation_ids(tokenizer, target, gold, output)
-            value = _scalar(logits, n_prompt, t_cont, t_start, target, unk)
+            value = _scalar(logits, t_cont, t_start, target, unk)  # t_cont is a prefix of cont, t_start == start
             (grad,) = torch.autograd.grad(value, embeds, retain_graph=number < len(group) - 1)
             g = grad[0, :n_prompt].float()
             extra = margin_extra(tokenizer, gold) if target == "margin" else {}
@@ -177,8 +183,8 @@ def target_value(model, tokenizer, prompt: str, gold: str, output: str, target: 
     cont, start = continuation_ids(tokenizer, target, gold, output)
     device = model.get_input_embeddings().weight.device
     with torch.no_grad():
-        logits = model(input_ids=torch.tensor([prompt_ids + cont], device=device)).logits[0]
-        return float(_scalar(logits, len(prompt_ids), cont, start, target, unknown_id(tokenizer)))
+        logits = model(input_ids=torch.tensor([prompt_ids + cont], device=device), logits_to_keep=_kept(cont, start)).logits[0]
+        return float(_scalar(logits, cont, start, target, unknown_id(tokenizer)))
 
 
 CONTENT_REGIONS = tuple(r for r in REGIONS if r != "template")

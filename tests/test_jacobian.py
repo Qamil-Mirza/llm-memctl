@@ -435,6 +435,61 @@ def test_run_records_skips_own_on_empty_output_and_resumes(tiny, tmp_path):
     assert s.run_records(model, tok, [record], tmp_path, targets=("gold", "margin", "own"), ablate=False, k=5, model_id="tiny") == {}
 
 
+
+def test_run_records_isolates_a_failing_record_and_retries_it(tiny, tmp_path, monkeypatch):
+    s = _script()
+    model, tok = tiny
+    good = PromptRecord("qG", 0, "fake", PROMPT, "Answer: nope", "4 hours", "t", True, LINES, (LINES[1],), True, False, False)
+    bad = PromptRecord("qB", 0, "fake", PROMPT, "Answer: nope", "Leeds", "t", True, LINES, (LINES[1],), True, False, False)
+    real = s.jacobian_pass
+
+    def flaky(model, tokenizer, prompt, memory_lines, evidence_lines, gold, *args, **kwargs):
+        if flaky.fail and gold == "Leeds":
+            raise RuntimeError("CUDA out of memory (simulated)")
+        return real(model, tokenizer, prompt, memory_lines, evidence_lines, gold, *args, **kwargs)
+    flaky.fail = True
+    monkeypatch.setattr(s, "jacobian_pass", flaky)
+    timing = s.run_records(model, tok, [bad, good], tmp_path, targets=("gold", "margin"), ablate=False, k=5, model_id="tiny")
+    assert set(timing) == {"qG"}
+    failed = json.loads((tmp_path / "_failed.json").read_text())
+    assert set(failed) == {"qB"} and "out of memory" in failed["qB"]
+    assert not list(tmp_path.glob("qB.*.json"))
+    flaky.fail = False  # the next run retries the failed record and clears its entry
+    timing = s.run_records(model, tok, [bad, good], tmp_path, targets=("gold", "margin"), ablate=False, k=5, model_id="tiny")
+    assert set(timing) == {"qB"}
+    assert json.loads((tmp_path / "_failed.json").read_text()) == {}
+
+
+def test_main_with_everything_done_does_not_load_the_model(tmp_path, monkeypatch, capsys):
+    s = _script()
+    record = PromptRecord("qD", 0, "fake", PROMPT, "o", "4 hours", "t", True, LINES, (LINES[1],), True, False, False)
+    monkeypatch.setattr(s, "load_records", lambda reader, fold: ([record], {"no_cached_prompt": 0}))
+    monkeypatch.setattr(s, "load_model", lambda *a: pytest.fail("model loaded"))
+    out = tmp_path / "o"
+    out.mkdir()
+    for target in ("gold", "margin", "ablation"):
+        s.write_json(s.output_path(out, "qD", target), {"ok": 1})
+    (out / "_regen_check.json").write_text('{"kept": 1}')
+    assert s.main(["--reader", "qwen05b", "--folds", "0", "--targets", "gold,margin", "--ablate", "--regen-check", "5",
+                   "--out", str(out)]) == 0
+    assert "nothing to do" in capsys.readouterr().out
+    assert json.loads((out / "_regen_check.json").read_text()) == {"kept": 1}
+    assert not (out / "_timing.json").exists()
+
+
+def test_append_timing_keeps_a_corrupt_timing_file(tmp_path, monkeypatch):
+    s = _script()
+    s.append_timing(tmp_path, {"questions": 1})
+    s.append_timing(tmp_path, {"questions": 2})
+    assert [r["questions"] for r in json.loads((tmp_path / "_timing.json").read_text())["runs"]] == [1, 2]
+    (tmp_path / "_timing.json").write_text("{broken")
+    monkeypatch.setattr(s.time, "time", lambda: 1234.0)
+    path = s.append_timing(tmp_path, {"questions": 3})
+    assert path.name == "_timing.1234.json"
+    assert (tmp_path / "_timing.json").read_text() == "{broken"
+    assert json.loads(path.read_text())["runs"] == [{"questions": 3}]
+
+
 def test_regen_check_counts_matches(tiny, tmp_path):
     s = _script()
     model, tok = tiny

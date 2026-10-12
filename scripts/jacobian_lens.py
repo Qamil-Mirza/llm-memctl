@@ -6,7 +6,10 @@
 
 Outputs one json (measures) and one npz (per-token gradient mass) per (question, target) under
 runs/exp33_jacobian/<reader>/, plus _timing.json, _dropped.json and _regen_check.json. Resumable: existing,
-readable outputs are skipped. Never deletes anything.
+readable outputs are skipped; when every question is done the model is not loaded ("nothing to do").
+A question that raises ValueError or RuntimeError (CUDA out of memory included) is logged to _failed.json
+and skipped; nothing is written for it, so the next run retries it automatically (and drops its
+_failed.json entry once it succeeds). Never deletes anything.
 """
 
 from __future__ import annotations
@@ -62,6 +65,36 @@ def is_done(out: Path, question_id: str, targets: tuple[str, ...], ablate: bool 
     return all(_readable(p) for p in paths)
 
 
+def _read_json(path: Path) -> dict | None:
+    """The parsed file, {} when it does not exist, None when it is unreadable."""
+    try:
+        return json.loads(Path(path).read_text())
+    except FileNotFoundError:
+        return {}
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def append_timing(out: Path, summary: dict) -> Path:
+    """Append a run summary to _timing.json; a corrupt _timing.json is kept and the summary goes to
+    _timing.<unix time>.json instead. Returns the path written."""
+    path = Path(out) / "_timing.json"
+    existing = _read_json(path)
+    if existing is None:
+        existing, path = {}, Path(out) / f"_timing.{int(time.time())}.json"
+    existing.setdefault("runs", []).append(summary)
+    write_json(path, existing)
+    return path
+
+
+def targets_for(record: PromptRecord, targets: tuple[str, ...]) -> tuple[tuple[str, ...], bool]:
+    """The targets to compute for a record, and whether own was skipped. An empty cached output has no own
+    continuation to differentiate (0/0 shares): skip that target and flag it in the other targets' json, so
+    resume does not wait for an own file."""
+    own_skipped = "own" in targets and not record.output.strip()
+    return tuple(t for t in targets if not (own_skipped and t == "own")), own_skipped
+
+
 def peak_rss_mb() -> float:
     return resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
 
@@ -71,41 +104,66 @@ def run_records(model, tokenizer, records: list[PromptRecord], out: Path, target
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     timing: dict[str, float] = {}
+    failed_path = out / "_failed.json"
+    failed = _read_json(failed_path) or {}
     for number, record in enumerate(records):
-        # An empty cached output has no own continuation to differentiate (0/0 shares): skip that target
-        # and flag it in the other targets' json, so resume does not wait for an own file.
-        own_skipped = "own" in targets and not record.output.strip()
-        record_targets = tuple(t for t in targets if not (own_skipped and t == "own"))
+        record_targets, own_skipped = targets_for(record, targets)
         if is_done(out, record.question_id, record_targets, ablate):
             continue
         started = time.perf_counter()
-        results = jacobian_pass(model, tokenizer, record.prompt, record.memory_lines, record.evidence_lines,
-                                record.gold, record.output, targets=record_targets) if record_targets else {}
-        for target, result in results.items():
-            np.savez_compressed(output_path(out, record.question_id, target).with_suffix(".npz"),
-                                g_l2=result.g_l2.astype(np.float32), g_gxi=result.g_gxi.astype(np.float32),
-                                regions=np.array([REGION_CODE[r] for r in result.regions], dtype=np.int8))
-            payload = {
-                "question_id": record.question_id, "fold": record.fold, "reader": record.reader, "target": target,
-                "model_id": model_id, "measures": measures(result, k=k), "elapsed_s": time.perf_counter() - started,
-            }
-            payload.update(result.extra)
-            if own_skipped:
-                payload["own_skipped"] = True
-            write_json(output_path(out, record.question_id, target), payload)
-        if ablate:
-            full = target_value(model, tokenizer, record.prompt, record.gold, record.output, "gold")
-            ablated = target_value(model, tokenizer, ablate_evidence(record.prompt, record.memory_lines, record.evidence_lines),
-                                   record.gold, record.output, "gold")
-            write_json(output_path(out, record.question_id, "ablation"), {
-                "question_id": record.question_id, "gold_full": full, "gold_ablated": ablated, "delta": full - ablated,
-                "n_evidence_lines": len(record.evidence_lines),
-            })
+        try:
+            _run_one(model, tokenizer, record, out, record_targets, own_skipped, ablate, k, model_id, started)
+        except (ValueError, RuntimeError) as error:
+            # Nothing partial stays: an npz may be written before the error, but its json never is, and resume
+            # keys on the json. The record is retried on the next run.
+            failed[record.question_id] = repr(error)
+            write_json(failed_path, failed)
+            print(f"[{number + 1}/{len(records)}] {record.question_id} FAILED: {error!r}", flush=True)
+            _empty_cuda_cache()
+            continue
+        if failed.pop(record.question_id, None) is not None:
+            write_json(failed_path, failed)
         timing[record.question_id] = time.perf_counter() - started
         print(f"[{number + 1}/{len(records)}] {record.question_id} {timing[record.question_id]:.1f}s "
               f"rss {peak_rss_mb():.0f} MB", flush=True)
     return timing
 
+
+def _empty_cuda_cache() -> None:
+    import torch
+
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+
+
+def _run_one(model, tokenizer, record: PromptRecord, out: Path, record_targets: tuple[str, ...], own_skipped: bool,
+             ablate: bool, k: int, model_id: str, started: float) -> None:
+    """All outputs for one question: everything is computed first (gradients, then the ablation values), so an
+    error leaves no json for the question; then per target an npz then its json, then the ablation json."""
+    results = jacobian_pass(model, tokenizer, record.prompt, record.memory_lines, record.evidence_lines,
+                            record.gold, record.output, targets=record_targets) if record_targets else {}
+    gradient_s = time.perf_counter() - started
+    if ablate:
+        full = target_value(model, tokenizer, record.prompt, record.gold, record.output, "gold")
+        ablated = target_value(model, tokenizer, ablate_evidence(record.prompt, record.memory_lines, record.evidence_lines),
+                               record.gold, record.output, "gold")
+    for target, result in results.items():
+        np.savez_compressed(output_path(out, record.question_id, target).with_suffix(".npz"),
+                            g_l2=result.g_l2.astype(np.float32), g_gxi=result.g_gxi.astype(np.float32),
+                            regions=np.array([REGION_CODE[r] for r in result.regions], dtype=np.int8))
+        payload = {
+            "question_id": record.question_id, "fold": record.fold, "reader": record.reader, "target": target,
+            "model_id": model_id, "measures": measures(result, k=k), "elapsed_s": gradient_s,
+        }
+        payload.update(result.extra)
+        if own_skipped:
+            payload["own_skipped"] = True
+        write_json(output_path(out, record.question_id, target), payload)
+    if ablate:
+        write_json(output_path(out, record.question_id, "ablation"), {
+            "question_id": record.question_id, "gold_full": full, "gold_ablated": ablated, "delta": full - ablated,
+            "n_evidence_lines": len(record.evidence_lines),
+        })
 
 def regen_check(model, tokenizer, records: list[PromptRecord], n: int, max_new_tokens: int = 256) -> dict:
     """Greedy regeneration of the first n prompts against the cached vLLM outputs."""
@@ -166,6 +224,11 @@ def main(argv: list[str] | None = None) -> int:
     write_json(out / "_dropped.json", dropped)
     print(f"{len(records)} records, dropped {dropped}; model {model_id}", flush=True)
 
+    pending = [r for r in records if not is_done(out, r.question_id, targets_for(r, targets)[0], args.ablate)]
+    if not pending:
+        print("nothing to do: every question is done", flush=True)
+        return 0
+    print(f"{len(pending)} of {len(records)} questions to do", flush=True)
     model, tokenizer, device = load_model(model_id, args.device, args.dtype)
     if args.regen_check:
         check = regen_check(model, tokenizer, records, args.regen_check)
@@ -179,9 +242,7 @@ def main(argv: list[str] | None = None) -> int:
     summary = {"model_id": model_id, "device": device, "dtype": args.dtype, "questions": len(timing),
                "seconds_per_question": (sum(timing.values()) / len(timing)) if timing else None,
                "wall_s": time.perf_counter() - started, "peak_rss_mb": peak_rss_mb(), "per_question": timing}
-    existing = json.loads((out / "_timing.json").read_text()) if (out / "_timing.json").exists() else {}
-    existing.setdefault("runs", []).append(summary)
-    write_json(out / "_timing.json", existing)
+    append_timing(out, summary)
     print(json.dumps({k: v for k, v in summary.items() if k != "per_question"}), flush=True)
     return 0
 
