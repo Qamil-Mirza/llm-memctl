@@ -79,3 +79,47 @@ def test_readout_on_a_real_cached_prompt(tiny):
     assert len(r.input_ids) > 512                                   # longer than apply's default truncation
     assert len(r.positions["E"]) == len(record.evidence_lines)
     assert all(0 <= p < len(r.input_ids) for ps in r.positions.values() for p in ps)
+
+
+from memctl.analysis.jlens_readout import (OUTCOMES, best_rank, emergence_depth, outcome, question_measures,
+                                           rank_table, ranks_of, topk_table)
+
+
+def test_ranks_of_counts_strictly_greater_plus_one():
+    logits = np.array([[0.1, 0.9, 0.9, 0.5], [3.0, 2.0, 1.0, 0.0]])
+    assert ranks_of(logits, [1, 3, 0]).tolist() == [[1, 3, 4], [2, 4, 1]]
+
+
+def test_rank_table_takes_the_final_layer_from_model_logits():
+    vocab = 6
+    lens = {0: np.zeros((1, vocab)), 2: np.zeros((1, vocab))}
+    lens[0][0, 4] = 5.0           # gold top at layer 0
+    model = np.zeros((1, vocab)); model[0, 1] = 9.0; model[0, 4] = 1.0   # at the final layer, token 1 is top, gold second
+    ranks, layers = rank_table(lens, model, n_layers=4, token_ids=[4, 1])
+    assert layers == [0, 2, 3] and ranks.shape == (3, 1, 2)
+    assert ranks[0, 0].tolist() == [1, 2] and ranks[2, 0].tolist() == [2, 1]
+    ids, lg, layers2 = topk_table(lens, model, n_layers=4, k=2)
+    assert layers2 == layers and ids.shape == (3, 1, 2) and ids[2, 0, 0] == 1 and lg.dtype == np.float32
+
+
+def test_outcome_and_depth_rules():
+    assert outcome(np.array([50, 5, 3, 40]), k=10) == "B"
+    assert outcome(np.array([50, 5, 3, 7]), k=10) == "C"
+    assert outcome(np.array([50, 30, 20, 40]), k=10) == "A"
+    assert outcome(np.array([1, 1, 1, 1]), k=10) == "C"          # always-top token is C, never B (review focus 1)
+    assert best_rank(np.array([50, 5, 3, 40])) == 3
+    assert emergence_depth(np.array([50, 5, 3, 40]), layers=[0, 8, 16, 23], n_layers=24, k=10) == pytest.approx(8 / 24)
+    assert emergence_depth(np.array([50, 30, 20, 40]), layers=[0, 8, 16, 23], n_layers=24, k=10) is None
+    assert set(OUTCOMES) == {"A", "B", "C"}
+
+
+def test_question_measures_shapes_every_position():
+    layers = [0, 1, 2, 3]
+    ranks = np.full((4, 4, 3), 99)             # 4 layers, 4 positions (P1, P0, E, Q), 3 tracked
+    ranks[1:, 0, 0] = [4, 2, 50]               # gold at P1: emerges at layer 1, lost at the end -> B
+    ranks[:, 0, 1] = [99, 99, 3, 1]            # " unknown" at P1 reaches top-1 at the last layer
+    m = question_measures(ranks, layers, n_layers=4, tracked_names=["gold", "unknown_sp", "unknown"],
+                          position_names={"P1": [0], "P0": [1], "E": [2], "Q": [3]}, k=10)
+    assert m["k"] == 10 and m["P1"]["gold"] == {"best_rank": 2, "final_rank": 50, "emergence_depth": pytest.approx(0.25), "outcome": "B"}
+    assert m["P1"]["unknown_sp"]["first_top1_depth"] == pytest.approx(0.75)
+    assert m["P0"]["gold"]["outcome"] == "A" and len(m["E"]) == 1 and m["Q"]["gold"]["best_rank"] == 99
