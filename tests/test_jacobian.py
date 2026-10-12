@@ -400,3 +400,37 @@ def test_regen_check_counts_matches(tiny, tmp_path):
     record = PromptRecord("qX", 0, "fake", PROMPT, "whatever the cache said", "4 hours", "t", True, LINES, (), True, None, None)
     result = s.regen_check(model, tok, [record], n=1, max_new_tokens=4)
     assert result["n"] == 1 and result["matches"] in (0, 1) and len(result["pairs"]) == 1
+
+
+def _fake_outputs(root, reader, rows, folds=(0,), target="gold"):
+    """rows: list of (question_id, fold, evidence_share, delta)."""
+    d = root / reader
+    d.mkdir(parents=True, exist_ok=True)
+    for qid, fold, share, delta in rows:
+        m = {"l2": {"shares": {"instruction": 0.2, "evidence": share, "distractor": 0.7 - share, "question": 0.1},
+                    "lift": share / 0.2, "topk": share},
+             "gxi": {"shares": {"instruction": 0.2, "evidence": share / 2, "distractor": 0.7 - share / 2, "question": 0.1},
+                     "lift": share / 0.4, "topk": share / 2},
+             "counts": {"evidence": 20, "distractor": 60, "instruction": 15, "question": 5}, "target_value": -3.0, "n_tokens": 100}
+        (d / f"{qid}.{target}.json").write_text(json.dumps({"question_id": qid, "fold": fold, "reader": reader, "target": target,
+                                                            "model_id": "x", "measures": m}))
+        (d / f"{qid}.ablation.json").write_text(json.dumps({"question_id": qid, "gold_full": 0.0, "gold_ablated": -delta, "delta": delta}))
+
+
+def test_report_builds_claims_from_outputs(tmp_path, monkeypatch):
+    from scripts import exp33_report as rep
+    qids = [f"q{i}" for i in range(40)]
+    small = [(q, 0, 0.1 + 0.002 * i, 0.5 + 0.01 * i) for i, q in enumerate(qids)]
+    large = [(q, 0, 0.3 + 0.002 * i, 1.0 + 0.01 * i) for i, q in enumerate(qids)]
+    _fake_outputs(tmp_path, "qwen3b", small); _fake_outputs(tmp_path, "qwen7b", large)
+
+    def records(reader, fold, **kw):
+        rs = [PromptRecord(q, 0, reader, "p", "o", "g", "single-session-user", True, ("l",), ("l",), True,
+                           correct=(i % 2 == 0) if reader == "qwen3b" else True, unknown=False) for i, q in enumerate(qids)]
+        return rs, {}
+    monkeypatch.setattr(rep, "load_records", records)
+    markdown, numbers = rep.build_report(("qwen3b", "qwen7b"), {0}, "l2", "k50", tmp_path, samples=300)
+    assert numbers["claim1"]["gold"]["verdict"] == "SHOWN" and numbers["claim1"]["gold"]["n"] == 40
+    assert 0 <= numbers["claim2"]["qwen3b"]["auc"] <= 1
+    assert numbers["ablation"]["qwen3b"]["rho"] > 0.9
+    assert "Claim 1" in markdown and "qwen7b" in markdown and "folds: 0" in markdown
