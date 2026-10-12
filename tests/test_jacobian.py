@@ -151,3 +151,73 @@ def test_token_regions_assigns_by_token_start_and_marks_template():
     regions = token_regions(offsets, prompt_start=3, prompt_len=12, segments=segments)
     assert regions == ["template", "instruction", "instruction", "evidence", "evidence", "question", "template"]
     assert set(regions) <= set(REGIONS)
+
+
+import numpy as np
+
+torch = pytest.importorskip("torch")
+transformers = pytest.importorskip("transformers")
+
+from memctl.analysis.jacobian import (JacobianResult, TARGETS, continuation_ids, jacobian_pass, target_value,
+                                      unknown_id, wrap_chat)
+
+
+@pytest.fixture(scope="module")
+def tiny():
+    """The Qwen2.5 tokenizer (chat template) with a 2-layer random Qwen2 model of the same vocabulary."""
+    try:
+        tok = transformers.AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct")
+    except Exception as error:  # offline
+        pytest.skip(f"tokenizer unavailable: {error}")
+    config = transformers.Qwen2Config(vocab_size=len(tok), hidden_size=32, intermediate_size=64, num_hidden_layers=2,
+                                      num_attention_heads=4, num_key_value_heads=2, max_position_embeddings=4096)
+    torch.manual_seed(0)
+    model = transformers.Qwen2ForCausalLM(config).eval()
+    return model, tok
+
+
+def test_wrap_chat_contains_prompt_verbatim_and_generation_prompt(tiny):
+    model, tok = tiny
+    text = wrap_chat(tok, PROMPT)
+    assert PROMPT in text
+    assert text.rstrip().endswith("<|im_start|>assistant")
+
+
+def test_continuation_ids_gold_scores_exactly_the_gold_tokens(tiny):
+    _, tok = tiny
+    ids, start = continuation_ids(tok, "gold", gold="4 hours", output="")
+    assert ids[:start] == tok("Answer:", add_special_tokens=False).input_ids
+    assert ids[start:] == tok(" 4 hours", add_special_tokens=False).input_ids
+    m_ids, m_start = continuation_ids(tok, "margin", gold="4 hours", output="")
+    assert m_ids == ids[: start + 1] and m_start == start
+    o_ids, o_start = continuation_ids(tok, "own", gold="", output="Note\nAnswer: unknown")
+    assert o_ids == tok("Note\nAnswer: unknown", add_special_tokens=False).input_ids and o_start == 0
+    assert unknown_id(tok) == tok(" unknown", add_special_tokens=False).input_ids[0]
+
+
+def test_jacobian_pass_shapes_and_target_values(tiny):
+    model, tok = tiny
+    out = jacobian_pass(model, tok, PROMPT, LINES, (LINES[1],), gold="4 hours", output="Answer: nope", targets=TARGETS)
+    assert set(out) == set(TARGETS)
+    for result in out.values():
+        assert isinstance(result, JacobianResult)
+        assert len(result.regions) == result.n_tokens == len(result.g_l2) == len(result.g_gxi)
+        assert np.isfinite(result.g_l2).all() and (result.g_l2 >= 0).all()
+        assert "evidence" in result.regions and "template" in result.regions
+    # the gold target equals a direct teacher-forced log-prob sum
+    text = wrap_chat(tok, PROMPT)
+    ids, start = continuation_ids(tok, "gold", "4 hours", "")
+    full = tok(text, add_special_tokens=False).input_ids + ids
+    with torch.no_grad():
+        logits = model(input_ids=torch.tensor([full])).logits[0].float()
+    logp = torch.log_softmax(logits, -1)
+    n = len(full) - len(ids)
+    expected = sum(logp[n + j - 1, ids[j]].item() for j in range(start, len(ids)))
+    assert out["gold"].target_value == pytest.approx(expected, rel=1e-4, abs=1e-4)
+    assert target_value(model, tok, PROMPT, "4 hours", "", "gold") == pytest.approx(expected, rel=1e-4, abs=1e-4)
+
+
+def test_gradient_is_nonzero_only_where_it_should_be(tiny):
+    model, tok = tiny
+    out = jacobian_pass(model, tok, PROMPT, LINES, (LINES[1],), gold="4 hours", output="", targets=("gold",))
+    assert out["gold"].g_l2.sum() > 0
