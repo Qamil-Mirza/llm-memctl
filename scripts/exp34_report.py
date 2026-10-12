@@ -311,11 +311,18 @@ def descriptive_unknown_types(readers, outputs, by_q, qids, desc) -> list[str]:
     return lines + [""]
 
 
-def top_jaccard(ours: Path, theirs: Path, k: int = 10) -> list[float]:
-    """Per layer, the Jaccard overlap of the two lenses' top-k token sets at P1."""
-    with np.load(ours) as a, np.load(theirs) as b:
-        x, y = a["top_ids_jlens"][:, 0, :k], b["top_ids_jlens"][:, 0, :k]
-    return [len(set(p) & set(q)) / len(set(p) | set(q)) for p, q in zip(x.tolist(), y.tolist())]
+def _band_topk(npz_path: Path, band: tuple[int, int], k: int) -> dict[int, set[int]]:
+    with np.load(npz_path) as z:
+        pairs = zip(z["layers"].tolist(), z["top_ids_jlens"][:, 0, :k].tolist())
+        return {layer: set(ids) for layer, ids in pairs if band[0] <= layer < band[1]}
+
+
+def top_jaccard(ours: Path, theirs: Path, band: tuple[int, int], k: int = 10) -> float | None:
+    """Mean over the layers whose layer number lies in [band) of the Jaccard overlap of the two lenses'
+    top-k token sets at P1 (layers matched by value, so lenses fitted on a subset of layers work)."""
+    x, y = _band_topk(ours, band, k), _band_topk(theirs, band, k)
+    shared = sorted(set(x) & set(y))
+    return mean(len(x[l] & y[l]) / len(x[l] | y[l]) for l in shared) if shared else None
 
 
 def community_section(small, large, outputs, qids, root, community_root, folds, samples, desc) -> list[str]:
@@ -326,13 +333,14 @@ def community_section(small, large, outputs, qids, root, community_root, folds, 
                                   + "\n  ".join(problems))
     both = [q for q in qids if q in outputs[large] and q in theirs
             and (root / large / f"{q}.npz").exists() and (community_root / large / f"{q}.npz").exists()]
-    per_layer = [top_jaccard(root / large / f"{q}.npz", community_root / large / f"{q}.npz") for q in both]
     bands = {}
-    if per_layer:
-        lo, hi = layer_band(outputs[large][both[0]]["measures"]["jlens"]["layers"])
-        n = len(per_layer[0])
-        for name, (s, e) in (("early", (0, lo)), ("middle", (lo, hi)), ("late", (hi, n))):
-            bands[name] = mean(mean(row[s:e]) for row in per_layer) if e > s else None
+    if both:
+        layers = outputs[large][both[0]]["measures"]["jlens"]["layers"]
+        lo, hi = layer_band(layers)
+        for name, band in (("early", (0, lo)), ("middle", (lo, hi)), ("late", (hi, int(layers[-1]) + 1))):
+            values = [top_jaccard(root / large / f"{q}.npz", community_root / large / f"{q}.npz", band) for q in both]
+            values = [v for v in values if v is not None]
+            bands[name] = mean(values) if values else None
     pair = [q for q in qids if q in outputs[small] and q in theirs]
     c1 = paired_claim({q: best_logrank(outputs[small][q], "jlens") for q in pair},
                       {q: best_logrank(theirs[q], "jlens") for q in pair}, samples=samples)
@@ -344,18 +352,19 @@ def community_section(small, large, outputs, qids, root, community_root, folds, 
             f"{_fmt(c1)} | {c1['verdict']} |", ""]
 
 
-def bookkeeping_section(readers, dropped, records_by_reader, outputs, root, qids, records_from) -> list[str]:
+def bookkeeping_section(readers, dropped, records_by_reader, outputs, root, qids, records_from, numbers) -> list[str]:
     lines = ["## Dropped and failed" + (f" (records from {records_from})" if records_from else ""), "",
              "| reader | fold | no cached prompt | evidence not found |", "|---|---|---|---|"]
     for reader in readers:
         for fold, counts in dropped[reader].items():
             lines.append(f"| {reader} | {fold} | {counts.get('no_cached_prompt')} | {counts.get('evidence_not_found')} |")
-    lines += ["", "| reader | records in folds | failed reads (_failed.json) | in-view questions without an output |",
-              "|---|---|---|---|"]
+    lines += ["", "| reader | records in folds | failed reads (_failed.json) | in-view questions without an output | "
+              "paired questions without a correct/unknown label |", "|---|---|---|---|---|"]
     for reader in readers:
         ids = {r.question_id for r in records_by_reader[reader]}
         failed = read_json(root / reader / "_failed.json") or {}
-        lines.append(f"| {reader} | {len(ids)} | {len(set(failed) & ids)} | {sum(q not in outputs[reader] for q in qids)} |")
+        lines.append(f"| {reader} | {len(ids)} | {len(set(failed) & ids)} | {numbers['paired']['missing'][reader]} | "
+                     f"{numbers['dropped_unlabelled'][reader]} |")
     return lines + [""]
 
 
@@ -377,27 +386,30 @@ def build_report(readers: tuple[str, str], folds: set[int], k_label: str, root: 
     if problems:
         raise PromptIdentityError(f"{len(problems)} question(s) cannot be paired: the {small} and {large} outputs "
                                   "do not carry the same prompt_sha256:\n  " + "\n  ".join(problems))
-    paired = sum(q in outputs[small] and q in outputs[large] for q in qids)
-    numbers: dict = {"folds": sorted(folds), "k_label": k_label, "population": len(qids), "paired": paired,
+    both = [q for q in qids if q in outputs[small] and q in outputs[large]]  # spec §6: present for both readers
+    paired = len(both)
+    numbers: dict = {"folds": sorted(folds), "k_label": k_label, "population": len(qids),
+                     "paired": {"n": paired, "missing": {r: sum(q not in outputs[r] for q in qids) for r in readers}},
+                     "dropped_unlabelled": {r: sum(by_q[r][q].correct is None for q in both) for r in readers},
                      "dropped": dropped, "gate": {}, "claim1": {}, "claim2": {}, "decomposition": {},
                      "descriptive": {"emergence": {}, "positions": {}, "unknown_on_refusals": {}, "question_type": {}}}
     lines = [f"# §34 J-lens report ({small} vs {large}; folds: {', '.join(map(str, sorted(folds)))}; "
              f"population {len(qids)} in-view answerable questions; {paired} paired)", "",
              f"Prompt identity: all {paired} questions with outputs for both readers carry the same prompt_sha256.", ""]
-    lines += gate_section(readers, outputs, qids, root, samples, numbers)
+    lines += gate_section(readers, outputs, both, root, samples, numbers)
     failed_gate = [r for r in readers if numbers["gate"][r]["verdict"] != "PASS"]
     reader_variants = {r: VARIANTS if r in failed_gate else ("jlens",) for r in readers}
     if failed_gate:
         lines += [f"**Gate failed for {', '.join(failed_gate)}**: claims are also shown with the logit lens (spec §3).", ""]
-    lines += claim1_section(small, large, outputs, qids, samples, VARIANTS if failed_gate else ("jlens",), numbers)
-    lines += claim2_section(readers, outputs, by_q, qids, samples, reader_variants, numbers)
-    lines += decomposition_section(readers, outputs, by_q, qids, samples, reader_variants, numbers)
+    lines += claim1_section(small, large, outputs, both, samples, VARIANTS if failed_gate else ("jlens",), numbers)
+    lines += claim2_section(readers, outputs, by_q, both, samples, reader_variants, numbers)
+    lines += decomposition_section(readers, outputs, by_q, both, samples, reader_variants, numbers)
     desc = numbers["descriptive"]
-    lines += descriptive_depth_positions(readers, outputs, qids, desc)
-    lines += descriptive_unknown_types(readers, outputs, by_q, qids, desc)
+    lines += descriptive_depth_positions(readers, outputs, both, desc)
+    lines += descriptive_unknown_types(readers, outputs, by_q, both, desc)
     if community_root is not None:
-        lines += community_section(small, large, outputs, qids, root, Path(community_root), folds, samples, desc)
-    lines += bookkeeping_section(readers, dropped, records_by_reader, outputs, root, qids, records_from)
+        lines += community_section(small, large, outputs, both, root, Path(community_root), folds, samples, desc)
+    lines += bookkeeping_section(readers, dropped, records_by_reader, outputs, root, qids, records_from, numbers)
     lines += [f"Top-k label: {k_label}. Verdict rules: gate (a) PASS if the lower bound is above 0, (b) PASS if J-lens >= logit "
               f"on the mean over sets; Claim 1 SHOWN if the lower bound is above 0; Claim 2 SHOWN if the AUC lower bound is "
               f"above {AUC_BAR}. Correct/unknown labels are the §23 single-judge verdicts (STATE.md caveat 3)."]

@@ -472,3 +472,49 @@ def test_report_exit_4_on_prompt_mismatch(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     assert rep.main(["--folds", "0", "--root", str(tmp_path), "--samples", "50", "--out", str(tmp_path / "r.md")]) == 4
     assert not (tmp_path / "r.md").exists() and not (tmp_path / "r.json").exists()
+
+
+def test_report_uses_only_questions_present_for_both_readers(tmp_path, monkeypatch):
+    rep = _script("exp34_report")
+    qids = [f"q{i}" for i in range(40)]
+    _jlens_outputs(tmp_path, "qwen3b", [(q, 0, 50 + i, "A" if i % 3 else "B") for i, q in enumerate(qids)])
+    _jlens_outputs(tmp_path, "qwen7b", [(q, 0, 3, "C") for q in qids if q not in ("q3", "q8")])  # 3b has two extra
+    for reader in ("qwen3b", "qwen7b"):
+        _jlens_side_files(tmp_path, reader)
+    base = _jlens_records(qids)
+
+    def records(reader, fold, **kw):
+        rs, d = base(reader, fold)
+        return [r if r.question_id != "q6" else PromptRecord(*[*r.__dict__.values()][:11], None, None) for r in rs], d
+    monkeypatch.setattr(rep, "load_records", records)
+    markdown, numbers = rep.build_report(("qwen3b", "qwen7b"), {0}, "k10", tmp_path, samples=100)
+    assert numbers["paired"] == {"n": 38, "missing": {"qwen3b": 0, "qwen7b": 2}}
+    assert numbers["dropped_unlabelled"] == {"qwen3b": 1, "qwen7b": 1}
+    c2 = numbers["claim2"]
+    assert c2["qwen3b"]["n_pos"] + c2["qwen3b"]["n_neg"] == c2["qwen7b"]["n_pos"] + c2["qwen7b"]["n_neg"] == 37
+    d = numbers["decomposition"]
+    for reader in ("qwen3b", "qwen7b"):   # each reader's own labels: the classes cover the 37 paired, labelled questions
+        assert sum(d[reader][c]["A"]["n"] for c in ("refusal", "answered wrong", "success") if c in d[reader]) == 37
+    _, same = rep.build_report(("qwen3b", "qwen7b"), {0}, "k10", tmp_path, samples=100, records_from="qwen3b")
+    d = same["decomposition"]           # the same labels for both readers: identical class sizes
+    assert set(d["qwen3b"]) == set(d["qwen7b"])
+    for cls in d["qwen3b"]:
+        assert d["qwen3b"][cls]["A"]["n"] == d["qwen7b"][cls]["A"]["n"], cls
+    assert numbers["gate"]["qwen3b"]["a"]["n"] == numbers["gate"]["qwen7b"]["a"]["n"] == 38
+    assert numbers["descriptive"]["emergence"]["qwen3b"]["n_read"] == 38
+    assert "label" in markdown
+
+
+def test_top_jaccard_matches_layers_by_value(tmp_path):
+    rep = _script("exp34_report")
+    layers = np.array([4, 6, 8, 10, 12], np.int32)          # a lens fitted on a subset of layers
+    ours = np.zeros((5, 1, 10), np.int32); theirs = np.zeros((5, 1, 10), np.int32)
+    for i in range(5):
+        ours[i, 0] = np.arange(10)
+        theirs[i, 0] = np.arange(10) if layers[i] < 8 else np.arange(100, 110)
+    np.savez(tmp_path / "a.npz", top_ids_jlens=ours, layers=layers)
+    np.savez(tmp_path / "b.npz", top_ids_jlens=theirs, layers=layers)
+    assert rep.top_jaccard(tmp_path / "a.npz", tmp_path / "b.npz", (0, 8)) == pytest.approx(1.0)   # layers 4, 6
+    assert rep.top_jaccard(tmp_path / "a.npz", tmp_path / "b.npz", (8, 16)) == pytest.approx(0.0)  # layers 8, 10, 12
+    assert rep.top_jaccard(tmp_path / "a.npz", tmp_path / "b.npz", (5, 7)) == pytest.approx(1.0)   # layer 6 only
+    assert rep.top_jaccard(tmp_path / "a.npz", tmp_path / "b.npz", (0, 4)) is None
