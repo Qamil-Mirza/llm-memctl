@@ -7,7 +7,7 @@ instruction, the evidence memory lines, the distractor memory lines and the ques
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
@@ -75,9 +75,19 @@ def unknown_id(tokenizer) -> int:
     return _ids(tokenizer, " unknown")[0]
 
 
+def _margin_length(tokenizer, answer: list[int]) -> int:
+    """How many gold tokens the margin scores: through the first content token, leading whitespace-only
+    tokens included (Qwen splits digits off, so " 4 hours" starts with a bare-space token)."""
+    for index, token in enumerate(answer):
+        if tokenizer.decode([token]).strip():
+            return index + 1
+    return len(answer)
+
+
 def continuation_ids(tokenizer, target: str, gold: str, output: str) -> tuple[list[int], int]:
     """Ids appended after the chat text, and the index into them where scoring starts. The gold answer is
-    tokenised on its own (" " + gold) so the scored ids are exactly the gold's, whatever "Answer:" merges into."""
+    tokenised on its own (" " + gold) so the scored ids are exactly the gold's, whatever "Answer:" merges into.
+    The margin continuation is the gold one cut after its first content token (a prefix of it)."""
     if target == "own":
         return _ids(tokenizer, output), 0
     prefix = _ids(tokenizer, ANSWER_PREFIX)
@@ -85,8 +95,14 @@ def continuation_ids(tokenizer, target: str, gold: str, output: str) -> tuple[li
     if target == "gold":
         return prefix + answer, len(prefix)
     if target == "margin":
-        return prefix + answer[:1], len(prefix)
+        return prefix + answer[: _margin_length(tokenizer, answer)], len(prefix)
     raise ValueError(f"unknown target {target!r} (known: {TARGETS})")
+
+
+def margin_extra(tokenizer, gold: str) -> dict:
+    """What the margin scored, for the output json: the first gold token's text and the number of gold tokens."""
+    answer = _ids(tokenizer, " " + gold)
+    return {"first_gold_token": tokenizer.decode(answer[:1]), "margin_tokens_scored": _margin_length(tokenizer, answer)}
 
 
 @dataclass
@@ -96,18 +112,21 @@ class JacobianResult:
     g_gxi: np.ndarray  # per-token |gradient . embedding|
     target_value: float
     n_tokens: int
+    extra: dict = field(default_factory=dict)  # target-specific facts for the output json (margin: what it scored)
 
 
 def _scalar(logits, n_prompt: int, cont: list[int], start: int, target: str, unk: int):
     """The target from the logits of chat text + continuation. gold/own: summed teacher-forced log-probs of
-    cont[start:]. margin: logit of the first gold token minus the logit of " unknown", at the position predicting it."""
+    cont[start:]. margin: the same sum over the margin continuation (gold through its first content token)
+    minus the log-prob of " unknown" at the first answer position; for a content-first gold this is the logit
+    margin (the logsumexp cancels)."""
     import torch
 
-    if target == "margin":
-        row = logits[n_prompt + start - 1].float()
-        return row[cont[start]] - row[unk]
     logp = torch.log_softmax(logits[n_prompt + start - 1: n_prompt + len(cont) - 1].float(), -1)
-    return logp.gather(-1, torch.tensor(cont[start:], device=logp.device)[:, None]).sum()
+    value = logp.gather(-1, torch.tensor(cont[start:], device=logp.device)[:, None]).sum()
+    if target == "margin":
+        return value - logp[0, unk]
+    return value
 
 
 def jacobian_pass(model, tokenizer, prompt: str, memory_lines, evidence_lines, gold: str, output: str,
@@ -143,8 +162,9 @@ def jacobian_pass(model, tokenizer, prompt: str, memory_lines, evidence_lines, g
             value = _scalar(logits, n_prompt, t_cont, t_start, target, unk)
             (grad,) = torch.autograd.grad(value, embeds, retain_graph=number < len(group) - 1)
             g = grad[0, :n_prompt].float()
+            extra = margin_extra(tokenizer, gold) if target == "margin" else {}
             results[target] = JacobianResult(regions, g.norm(dim=-1).cpu().numpy(),
-                                             (g * x).sum(-1).abs().cpu().numpy(), float(value.detach()), n_prompt)
+                                             (g * x).sum(-1).abs().cpu().numpy(), float(value.detach()), n_prompt, extra)
         del logits, embeds
     return results
 

@@ -89,6 +89,7 @@ def run_records(model, tokenizer, records: list[PromptRecord], out: Path, target
                 "question_id": record.question_id, "fold": record.fold, "reader": record.reader, "target": target,
                 "model_id": model_id, "measures": measures(result, k=k), "elapsed_s": time.perf_counter() - started,
             }
+            payload.update(result.extra)
             if own_skipped:
                 payload["own_skipped"] = True
             write_json(output_path(out, record.question_id, target), payload)

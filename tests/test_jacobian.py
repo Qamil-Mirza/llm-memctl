@@ -189,7 +189,7 @@ def test_continuation_ids_gold_scores_exactly_the_gold_tokens(tiny):
     assert ids[:start] == tok("Answer:", add_special_tokens=False).input_ids
     assert ids[start:] == tok(" 4 hours", add_special_tokens=False).input_ids
     m_ids, m_start = continuation_ids(tok, "margin", gold="4 hours", output="")
-    assert m_ids == ids[: start + 1] and m_start == start
+    assert m_ids == ids[: start + 2] and m_start == start  # bare space, then "4"
     o_ids, o_start = continuation_ids(tok, "own", gold="", output="Note\nAnswer: unknown")
     assert o_ids == tok("Note\nAnswer: unknown", add_special_tokens=False).input_ids and o_start == 0
     assert unknown_id(tok) == tok(" unknown", add_special_tokens=False).input_ids[0]
@@ -215,6 +215,45 @@ def test_jacobian_pass_shapes_and_target_values(tiny):
     expected = sum(logp[n + j - 1, ids[j]].item() for j in range(start, len(ids)))
     assert out["gold"].target_value == pytest.approx(expected, rel=1e-4, abs=1e-4)
     assert target_value(model, tok, PROMPT, "4 hours", "", "gold") == pytest.approx(expected, rel=1e-4, abs=1e-4)
+
+
+
+def _full_logp(model, tok, prompt, cont):
+    full = tok(wrap_chat(tok, prompt), add_special_tokens=False).input_ids + cont
+    with torch.no_grad():
+        logits = model(input_ids=torch.tensor([full])).logits[0].float()
+    return logits, torch.log_softmax(logits, -1), len(full) - len(cont)
+
+
+def test_margin_on_content_first_gold_equals_the_old_logit_margin(tiny):
+    model, tok = tiny
+    prefix = tok("Answer:", add_special_tokens=False).input_ids
+    leeds = tok(" Leeds", add_special_tokens=False).input_ids
+    assert tok.decode(leeds[:1]).strip() != ""  # content-first gold
+    cont, start = continuation_ids(tok, "margin", gold="Leeds", output="")
+    assert cont == prefix + leeds[:1] and start == len(prefix)
+    logits, _, n = _full_logp(model, tok, PROMPT, cont)
+    p = n + start - 1
+    old = (logits[p, leeds[0]] - logits[p, unknown_id(tok)]).item()
+    out = jacobian_pass(model, tok, PROMPT, LINES, (LINES[1],), gold="Leeds", output="", targets=("margin",))
+    assert out["margin"].target_value == pytest.approx(old, rel=1e-4, abs=1e-4)
+    assert target_value(model, tok, PROMPT, "Leeds", "", "margin") == pytest.approx(old, rel=1e-4, abs=1e-4)
+
+
+def test_margin_scores_through_the_first_content_token_after_a_bare_space(tiny):
+    model, tok = tiny
+    prefix = tok("Answer:", add_special_tokens=False).input_ids
+    cont, start = continuation_ids(tok, "margin", gold="4 hours", output="")
+    four = tok("4", add_special_tokens=False).input_ids[0]
+    assert cont == prefix + [220, four] and start == len(prefix)
+    assert tok.decode(cont[start:start + 1]) == " " and tok.decode(cont[start + 1:]) == "4"
+    _, logp, n = _full_logp(model, tok, PROMPT, cont)
+    p = n + start - 1
+    expected = (logp[p, 220] + logp[p + 1, four] - logp[p, unknown_id(tok)]).item()
+    out = jacobian_pass(model, tok, PROMPT, LINES, (LINES[1],), gold="4 hours", output="", targets=("gold", "margin"))
+    assert out["margin"].target_value == pytest.approx(expected, rel=1e-4, abs=1e-4)
+    assert out["margin"].extra == {"first_gold_token": " ", "margin_tokens_scored": 2}
+    assert target_value(model, tok, PROMPT, "4 hours", "", "margin") == pytest.approx(expected, rel=1e-4, abs=1e-4)
 
 
 def test_gradient_is_nonzero_only_where_it_should_be(tiny):
@@ -372,6 +411,8 @@ def test_run_records_writes_measures_npz_and_ablation(tiny, tmp_path):
     gold = json.loads((tmp_path / "qX.gold.json").read_text())
     assert gold["measures"]["l2"]["shares"]["evidence"] >= 0 and gold["target"] == "gold" and gold["model_id"] == "tiny"
     assert "own_skipped" not in gold
+    margin = json.loads((tmp_path / "qX.margin.json").read_text())
+    assert margin["first_gold_token"] == " " and margin["margin_tokens_scored"] == 2
     arrays = np.load(tmp_path / "qX.gold.npz")
     assert arrays["g_l2"].dtype == np.float32 and arrays["regions"].dtype == np.int8
     ablation = json.loads((tmp_path / "qX.ablation.json").read_text())
