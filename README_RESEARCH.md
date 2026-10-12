@@ -333,9 +333,11 @@ and prints torch, transformers and the jlens commit); fit `qwen3b` then `qwen7b`
 read both readers on folds 0 to 4; lens-quality eval for both; the community 7B cross-check; then
 `bash scripts/exp33_pod.sh` (the §33 secondary). Each stage prints its elapsed time (also in
 `runs/exp34_jlens/pod.log`). Rerun the same command to continue: a fit resumes from its checkpoint (a complete
-lens is not refitted), reads skip finished questions, an eval newer than its lens is skipped, and the community
-lens is downloaded once. Exit codes: 3 = preflight found a missing input (named) before installing anything;
-5 = a fitted lens has `below_minimum: true` in its sidecar, so nothing is read with it (rerun with a longer box
+lens is not refitted), reads skip questions already read with the same lens (each `<qid>.json` stores the
+lens file's `lens_sha256`, so a resumed or refitted fit automatically triggers re-reads of every question), an
+eval newer than its lens is skipped, and the community lens is downloaded once. Exit codes: 3 = preflight found
+a missing input (named) before installing anything; 5 = a fitted lens's sidecar does not say
+`"below_minimum": false` (true, key missing, or truncated), so nothing is read with it (rerun with a longer box
 to resume the fit); 6 (from `jlens_fit.py`) = the settings or corpus differ from an existing checkpoint.
 
 The community cross-check downloads `andyx10/jacobian-lens-qwen2.5-7b-instruct` / `qwen7b_lens.pt` with

@@ -265,11 +265,44 @@ def test_run_records_writes_resumes_and_isolates_failures(tiny_lens, tmp_path):
     s = _script("jlens_read")
     good = PromptRecord("q1", 0, "fake", PROMPT, "o", "Leeds", "t", True, LINES, (LINES[2],), True, True, False)
     bad = PromptRecord("q2", 0, "fake", PROMPT, "o", "Leeds", "t", True, LINES, ("not a memory line",), True, True, False)
-    timing = s.run_records(lens, lens_model, tok, [good, bad], tmp_path, k=5, model_id="tiny", lens_path=str(path))
+    timing = s.run_records(lens, lens_model, tok, [good, bad], tmp_path, k=5, model_id="tiny", lens_path=str(path),
+                           lens_sha256="h1")
     assert set(p.name for p in tmp_path.glob("q1.*")) == {"q1.npz", "q1.json"} and not list(tmp_path.glob("q2.*"))
     failed = json.loads((tmp_path / "_failed.json").read_text())
     assert "q2" in failed and "q1" in timing
-    assert s.run_records(lens, lens_model, tok, [good], tmp_path, k=5, model_id="tiny", lens_path=str(path)) == {}
+    assert json.loads((tmp_path / "q1.json").read_text())["lens_sha256"] == "h1"
+    assert s.is_done(tmp_path, "q1", "h1") and not s.is_done(tmp_path, "q1", "h2")
+    assert s.run_records(lens, lens_model, tok, [good], tmp_path, k=5, model_id="tiny", lens_path=str(path),
+                         lens_sha256="h1") == {}
+
+
+def test_run_records_redoes_a_question_read_with_another_lens(tiny_lens, tmp_path):
+    lens, lens_model, tok, path = tiny_lens
+    s = _script("jlens_read")
+    good = PromptRecord("q1", 0, "fake", PROMPT, "o", "Leeds", "t", True, LINES, (LINES[2],), True, True, False)
+    (tmp_path / "q1.json").write_text(json.dumps({"question_id": "q1", "lens_sha256": "old"}))
+    (tmp_path / "q3.json").write_text(json.dumps({"question_id": "q3"}))          # no hash: an older output
+    current = s.lens_sha256(path)
+    assert len(current) == 64 and current != "old"
+    assert not s.is_done(tmp_path, "q1", current) and not s.is_done(tmp_path, "q3", current)
+    timing = s.run_records(lens, lens_model, tok, [good], tmp_path, k=5, model_id="tiny", lens_path=str(path),
+                           lens_sha256=current)
+    assert "q1" in timing                                                          # redone with the current lens
+    assert json.loads((tmp_path / "q1.json").read_text())["lens_sha256"] == current
+    assert s.is_done(tmp_path, "q1", current)
+
+
+def test_main_hashes_the_lens_before_deciding_nothing_is_left(tmp_path, monkeypatch, capsys):
+    s = _script("jlens_read")
+    lens = tmp_path / "l.pt"
+    lens.write_bytes(b"new lens")
+    rec = PromptRecord("q1", 0, "fake", PROMPT, "o", "Leeds", "t", True, LINES, (LINES[2],), True, True, False)
+    monkeypatch.setattr(s, "load_records", lambda reader, fold: ([rec], 0))
+    out = tmp_path / "out"
+    out.mkdir()
+    (out / "q1.json").write_text(json.dumps({"question_id": "q1", "lens_sha256": s.lens_sha256(lens)}))
+    assert s.main(["--reader", "qwen05b", "--lens", str(lens), "--folds", "0", "--out", str(out)]) == 0
+    assert "nothing to do" in capsys.readouterr().out
 
 
 def test_eval_readout_position_before_target_and_poetry_newline(tiny):
@@ -530,8 +563,12 @@ if [ "$1" = "scripts/jlens_fit.py" ]; then
   reader=""; prev=""
   for a in "$@"; do [ "$prev" = "--reader" ] && reader="$a"; prev="$a"; done
   mkdir -p runs/exp34_jlens/lenses
-  printf '{\\n "reader": "%s",\\n "n_prompts": 3,\\n "n_target": 128,\\n "n_minimum": 32,\\n "below_minimum": %s\\n}\\n' \\
-    "$reader" "$POD_BELOW" > "runs/exp34_jlens/lenses/$reader.json"
+  if [ "$POD_BELOW" = MISSING ]; then
+    printf '{\\n "reader": "%s",\\n "n_prompts": 3\\n}\\n' "$reader" > "runs/exp34_jlens/lenses/$reader.json"
+  else
+    printf '{\\n "reader": "%s",\\n "n_prompts": 3,\\n "n_target": 128,\\n "n_minimum": 32,\\n "below_minimum": %s\\n}\\n' \\
+      "$reader" "$POD_BELOW" > "runs/exp34_jlens/lenses/$reader.json"
+  fi
 fi
 """
 
@@ -591,8 +628,9 @@ def test_pod34_preflight_counts_an_empty_cache_folder_as_missing(tmp_path):
     assert _calls(calls) == []
 
 
-def test_pod34_stops_with_exit_5_when_a_lens_is_below_the_minimum(tmp_path):
-    root, env, calls = _pod34_tree(tmp_path, below="true")
+@pytest.mark.parametrize("below", ["true", "MISSING"])
+def test_pod34_stops_with_exit_5_when_a_lens_is_below_the_minimum(tmp_path, below):
+    root, env, calls = _pod34_tree(tmp_path, below=below)     # MISSING: the stub writes a sidecar without the key
     done = _run_pod34(root, env)
     assert done.returncode == 5, done.stdout + done.stderr
     assert "below_minimum" in done.stdout + done.stderr

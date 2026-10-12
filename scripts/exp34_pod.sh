@@ -59,9 +59,10 @@ for PAIR in "qwen3b:$M3" "qwen7b:$M7"; do
     python scripts/jlens_fit.py --reader "$READER" --n-prompts "$N" --min-prompts "$MIN_PROMPTS" --max-minutes "$MINUTES" \
       --dim-batch 32 --device cuda --dtype bfloat16 --out "$LENSES" 2>&1 | tee -a "$OUT/${READER}_fit.log"
   fi
-  test -e "$SIDE" || { echo "fit: no sidecar $SIDE" >&2; exit 5; }
-  if grep -Eq '"below_minimum":[[:space:]]*true' "$SIDE"; then
-    echo "fit: $READER below_minimum is true ($(grep -E '"n_prompts"' "$SIDE" | tr -d ' ,')); not reading with it." \
+  # Only an explicit "below_minimum": false passes; true, a missing key, a truncated or absent sidecar all stop.
+  if ! grep -Eq '"below_minimum":[[:space:]]*false' "$SIDE" 2>/dev/null; then
+    echo "fit: $READER sidecar $SIDE does not say below_minimum false" \
+         "($(grep -E '"(n_prompts|below_minimum)"' "$SIDE" 2>/dev/null | tr -d ' ,\n' || true)); not reading with it." \
          "Rerun with a longer time box to resume the fit." | tee -a "$OUT/pod.log" >&2
     exit 5
   fi

@@ -6,8 +6,9 @@ question positions of every cached §23 prompt. One forward per question; resuma
     python scripts/jlens_read.py --reader qwen3b --lens runs/exp34_jlens/lenses/qwen3b.pt --folds 0,1,2,3,4 --device cuda
 
 Outputs under runs/exp34_jlens/<reader>/: <qid>.npz (ranks and top-k for both variants), <qid>.json
-(positions, tracked ids, measures), _timing.json, _failed.json (retried next run), _dropped.json.
-Never deletes anything.
+(positions, tracked ids, measures, lens_sha256), _timing.json, _failed.json (retried next run), _dropped.json.
+A question counts as done only if its json carries the current lens's sha256, so a lens refitted or resumed
+since is re-read automatically (the older outputs are overwritten). Never deletes anything else.
 """
 
 from __future__ import annotations
@@ -47,8 +48,23 @@ def _readable(path: Path) -> bool:
         return False
 
 
-def is_done(out: Path, question_id: str) -> bool:
-    return _readable(out / f"{question_id}.json")
+def lens_sha256(path) -> str:
+    """sha256 of the lens file's bytes (streamed; a 7B lens is ~700 MB)."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1 << 24), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def is_done(out: Path, question_id: str, lens_hash: str) -> bool:
+    """Done = a readable <qid>.json read with this exact lens. An output from another lens (e.g. a fit that
+    was resumed to more prompts since), or one without a hash, is not done and is overwritten."""
+    try:
+        payload = json.loads((out / f"{question_id}.json").read_text())
+    except (FileNotFoundError, json.JSONDecodeError):
+        return False
+    return isinstance(payload, dict) and payload.get("lens_sha256") == lens_hash
 
 
 def append_timing(out: Path, summary: dict) -> Path:
@@ -121,7 +137,8 @@ def read_record(lens, lens_model, tokenizer, record: PromptRecord, k: int = 10) 
     return payload, arrays
 
 
-def run_records(lens, lens_model, tokenizer, records, out: Path, *, k: int, model_id: str, lens_path: str) -> dict[str, float]:
+def run_records(lens, lens_model, tokenizer, records, out: Path, *, k: int, model_id: str, lens_path: str,
+                lens_sha256: str) -> dict[str, float]:
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     failed_path = out / "_failed.json"
@@ -130,7 +147,7 @@ def run_records(lens, lens_model, tokenizer, records, out: Path, *, k: int, mode
     failed = json.loads(failed_path.read_text()) if failed_path.exists() else {}
     timing = {}
     for number, record in enumerate(records):
-        if is_done(out, record.question_id):
+        if is_done(out, record.question_id, lens_sha256):
             continue
         try:
             payload, arrays = read_record(lens, lens_model, tokenizer, record, k=k)
@@ -139,7 +156,8 @@ def run_records(lens, lens_model, tokenizer, records, out: Path, *, k: int, mode
             write_json(failed_path, failed)
             print(f"[{number + 1}/{len(records)}] {record.question_id} FAILED {error!r}", flush=True)
             continue
-        payload.update({"model_id": model_id, "lens_path": lens_path, "lens_n_prompts": getattr(lens, "n_prompts", None)})
+        payload.update({"model_id": model_id, "lens_path": lens_path, "lens_sha256": lens_sha256,
+                        "lens_n_prompts": getattr(lens, "n_prompts", None)})
         np.savez_compressed(out / f"{record.question_id}.npz", **arrays)        # npz first: json marks done
         write_json(out / f"{record.question_id}.json", payload)
         if record.question_id in failed:
@@ -174,7 +192,8 @@ def main(argv=None) -> int:
         records.extend(rs[: args.limit] if args.limit else rs)
         dropped[str(fold)] = d
     write_json(out / "_dropped.json", dropped)
-    pending = [r for r in records if not is_done(out, r.question_id)]
+    lens_hash = lens_sha256(args.lens)                          # outputs from another lens are redone
+    pending = [r for r in records if not is_done(out, r.question_id, lens_hash)]
     if not pending:
         print("nothing to do", flush=True)
         return 0
@@ -191,8 +210,9 @@ def main(argv=None) -> int:
     lens = jlens.JacobianLens.load(args.lens)
     lens_to(lens, device)
     started = time.perf_counter()
-    timing = run_records(lens, lens_model, tok, records, out, k=args.k, model_id=model_id, lens_path=args.lens)
-    summary = {"model_id": model_id, "lens": args.lens, "device": device, "dtype": args.dtype, "questions": len(timing),
+    timing = run_records(lens, lens_model, tok, records, out, k=args.k, model_id=model_id, lens_path=args.lens,
+                         lens_sha256=lens_hash)
+    summary = {"model_id": model_id, "lens": args.lens, "lens_sha256": lens_hash, "device": device, "dtype": args.dtype, "questions": len(timing),
                "seconds_per_question": (sum(timing.values()) / len(timing)) if timing else None,
                "wall_s": time.perf_counter() - started,
                "peak_rss_mb": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024}
