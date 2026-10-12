@@ -12,6 +12,7 @@ does), " unknown" and "unknown". ``jlens`` and ``torch`` are imported only insid
 
 from __future__ import annotations
 
+import hashlib
 from dataclasses import dataclass
 from typing import Sequence
 
@@ -23,6 +24,15 @@ ANSWER_PREFIX = "Answer:"
 POSITION_NAMES = ("P1", "P0", "E", "Q", "P1_raw")   # array layout order; P1_raw last
 QUESTION_MARK = "Question:"
 NOTE_SUFFIX = "\n\nNote:"
+
+
+def file_sha256(path) -> str:
+    """sha256 of a file's bytes, streamed (a 7B lens is ~700 MB). Reads and evals key on it."""
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1 << 24), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
 
 @dataclass(frozen=True)

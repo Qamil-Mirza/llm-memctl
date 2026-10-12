@@ -332,7 +332,7 @@ def test_run_records_redoes_a_question_read_with_another_lens(tiny_lens, tmp_pat
     good = PromptRecord("q1", 0, "fake", PROMPT, "o", "Leeds", "t", True, LINES, (LINES[2],), True, True, False)
     (tmp_path / "q1.json").write_text(json.dumps({"question_id": "q1", "lens_sha256": "old"}))
     (tmp_path / "q3.json").write_text(json.dumps({"question_id": "q3"}))          # no hash: an older output
-    current = s.lens_sha256(path)
+    current = s.file_sha256(path)
     assert len(current) == 64 and current != "old"
     assert not s.is_done(tmp_path, "q1", current) and not s.is_done(tmp_path, "q3", current)
     timing = s.run_records(lens, lens_model, tok, [good], tmp_path, k=5, model_id="tiny", lens_path=str(path),
@@ -350,7 +350,7 @@ def test_main_hashes_the_lens_before_deciding_nothing_is_left(tmp_path, monkeypa
     monkeypatch.setattr(s, "load_records", lambda reader, fold: ([rec], 0))
     out = tmp_path / "out"
     out.mkdir()
-    (out / "q1.json").write_text(json.dumps({"question_id": "q1", "lens_sha256": s.lens_sha256(lens)}))
+    (out / "q1.json").write_text(json.dumps({"question_id": "q1", "lens_sha256": s.file_sha256(lens)}))
     assert s.main(["--reader", "qwen05b", "--lens", str(lens), "--folds", "0", "--out", str(out)]) == 0
     assert "nothing to do" in capsys.readouterr().out
 
@@ -405,6 +405,17 @@ def test_eval_readout_position_before_target_and_poetry_newline(tiny):
     assert "hi" in text3 and "<|im_start|>" in text3
     text4, _ = s.readout_position(tok, {"prompt": [{"role": "user", "content": "hi  "}], "intermediates": ["x"]}, "association")
     assert text4 == text3                                           # last turn's trailing space stripped
+
+
+def test_eval_main_stores_the_lens_hash_and_limit(tiny_lens, tmp_path, monkeypatch):
+    _, lens_model, tok, path = tiny_lens
+    s = _script("jlens_eval")
+    monkeypatch.setattr(s, "load_model", lambda model_id, device, dtype: (lens_model, tok))
+    out = tmp_path / "eval"
+    assert s.main(["--reader", "qwen05b", "--lens", str(path), "--sets", "multihop", "--limit", "2", "--device", "cpu",
+                   "--out", str(out)]) == 0
+    payload = json.loads((out / "qwen05b.json").read_text())
+    assert payload["lens_sha256"] == s.file_sha256(path) and payload["limit"] == 2
 
 
 def test_pass_at_k_uses_only_the_band():
@@ -465,6 +476,7 @@ def _jlens_outputs(root, reader, rows, sha="h0", logit_scale=10):
     for qid, fold, best, outcome in rows:
         depth = None if outcome == "A" else 0.5
         entry = {"question_id": qid, "fold": fold, "reader": reader, "model_id": "x", "lens_path": "l.pt", "lens_n_prompts": 128,
+                 "lens_sha256": f"lens-{reader}",
                  "n_tokens": 100, "positions": {"P1": [99], "P0": [97], "E": [40], "Q": [90]},
                  "tracked": {"gold": 1, "unknown_sp": 2, "unknown": 3}, "gold_token_text": "x",
                  "measures": {"jlens": _measure(best, outcome, depth), "logit": _measure(max(1, int(best * logit_scale)), outcome, depth)}}
@@ -478,14 +490,15 @@ def _jlens_outputs(root, reader, rows, sha="h0", logit_scale=10):
         (d / f"{qid}.json").write_text(json.dumps(entry))
 
 
-def _jlens_side_files(root, reader, jlens_pass=0.3, logit_pass=0.1):
+def _jlens_side_files(root, reader, jlens_pass=0.3, logit_pass=0.1, **eval_extra):
     (root / "eval").mkdir(exist_ok=True)
     (root / "lenses").mkdir(exist_ok=True)
     sets = {name: {"n_items": 20, "n_skipped": 0, "pass_at_k": {"jlens": jlens_pass, "logit": logit_pass},
                    "pass_at_k_all": {"jlens": jlens_pass, "logit": logit_pass}} for name in ("multihop", "association")}
     (root / "eval" / f"{reader}.json").write_text(json.dumps({
         "reader": reader, "k": 10, "band": [8, 16], "sets": sets, "mean_pass_at_k": {"jlens": jlens_pass, "logit": logit_pass},
-        "mean_pass_at_k_all": {"jlens": jlens_pass, "logit": logit_pass}}))
+        "mean_pass_at_k_all": {"jlens": jlens_pass, "logit": logit_pass}, "lens_sha256": f"lens-{reader}", "limit": None,
+        **eval_extra}))
     (root / "lenses" / f"{reader}.json").write_text(json.dumps({"reader": reader, "n_prompts": 128, "n_target": 128,
                                                                  "n_minimum": 32, "below_minimum": False}))
 
@@ -574,6 +587,33 @@ def test_main_confirm_passes_the_development_folds_for_the_gate(tmp_path, monkey
     assert called[0]["gate_folds"] == {0, 1}
     assert rep.main(["--folds", "0,1", "--root", str(tmp_path)]) == 0
     assert called[1]["gate_folds"] is None
+
+
+def test_report_flags_an_eval_from_another_lens_or_with_a_limit(tmp_path, monkeypatch):
+    rep = _script("exp34_report")
+    qids = [f"q{i}" for i in range(8)]
+    for reader in ("qwen3b", "qwen7b"):
+        _jlens_outputs(tmp_path, reader, [(q, 0, 5, "C") for q in qids])
+    _jlens_side_files(tmp_path, "qwen3b")
+    _jlens_side_files(tmp_path, "qwen7b", lens_sha256="stale", limit=20)
+    monkeypatch.setattr(rep, "load_records", _jlens_records(qids))
+    markdown, numbers = rep.build_report(("qwen3b", "qwen7b"), {0}, "k10", tmp_path, samples=50)
+    assert numbers["gate"]["qwen3b"]["eval_warnings"] == []
+    warnings = numbers["gate"]["qwen7b"]["eval_warnings"]
+    assert len(warnings) == 2 and any("lens_sha256" in w for w in warnings) and any("limit 20" in w for w in warnings)
+    assert "limit 20" in markdown
+    _jlens_side_files(tmp_path, "qwen3b", lens_sha256=None)          # an eval json from before the hash was stored
+    _, numbers = rep.build_report(("qwen3b", "qwen7b"), {0}, "k10", tmp_path, samples=50)
+    assert any("lens_sha256" in w for w in numbers["gate"]["qwen3b"]["eval_warnings"])
+
+
+def test_file_sha256_is_shared_by_read_and_eval(tmp_path):
+    import hashlib
+    from memctl.analysis.jlens_readout import file_sha256
+    path = tmp_path / "x.pt"
+    path.write_bytes(b"abc" * 1000)
+    assert file_sha256(path) == hashlib.sha256(b"abc" * 1000).hexdigest()
+    assert _script("jlens_read").file_sha256 is _script("jlens_eval").file_sha256 is file_sha256
 
 
 def test_band_best_logrank_reads_only_the_band(tmp_path):

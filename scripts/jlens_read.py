@@ -27,7 +27,8 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from memctl.analysis.jlens_readout import POSITION_NAMES, question_measures, rank_table, readout_for, topk_table  # noqa: E402
+from memctl.analysis.jlens_readout import (POSITION_NAMES, file_sha256, question_measures, rank_table,  # noqa: E402
+                                           readout_for, topk_table)
 from memctl.jacobian_data import PromptRecord, load_records  # noqa: E402
 
 MODEL_IDS = {"qwen05b": "Qwen/Qwen2.5-0.5B-Instruct", "qwen3b": "Qwen/Qwen2.5-3B-Instruct", "qwen7b": "Qwen/Qwen2.5-7B-Instruct"}
@@ -48,15 +49,6 @@ def _readable(path: Path) -> bool:
         return True
     except (FileNotFoundError, json.JSONDecodeError):
         return False
-
-
-def lens_sha256(path) -> str:
-    """sha256 of the lens file's bytes (streamed; a 7B lens is ~700 MB)."""
-    digest = hashlib.sha256()
-    with open(path, "rb") as handle:
-        for block in iter(lambda: handle.read(1 << 24), b""):
-            digest.update(block)
-    return digest.hexdigest()
 
 
 def is_done(out: Path, question_id: str, lens_hash: str) -> bool:
@@ -223,7 +215,7 @@ def main(argv=None) -> int:
         records.extend(rs[: args.limit] if args.limit else rs)
         dropped[str(fold)] = d
     write_json(out / "_dropped.json", dropped)
-    lens_hash = lens_sha256(args.lens)                          # outputs from another lens are redone
+    lens_hash = file_sha256(args.lens)                          # outputs from another lens are redone
     pending = [r for r in records if not is_done(out, r.question_id, lens_hash)]
     if not pending:
         print("nothing to do", flush=True)

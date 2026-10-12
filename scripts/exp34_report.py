@@ -124,6 +124,23 @@ def _num(value, digits: int = 3) -> str:
 
 # --- sections --------------------------------------------------------------------------------------
 
+def eval_warnings(ev: dict | None, read_hashes: set) -> list[str]:
+    """Why the lens-eval result may not describe the lens the reads used: another lens's hash, or a --limit run."""
+    if ev is None:
+        return []
+    out = []
+    reads = sorted(h for h in read_hashes if h)
+    if len(reads) > 1:
+        out.append(f"the reads use {len(reads)} different lens_sha256 values")
+    if not ev.get("lens_sha256"):
+        out.append("eval json has no lens_sha256")
+    elif reads and ev["lens_sha256"] not in reads:
+        out.append(f"eval lens_sha256 {ev['lens_sha256'][:12]} differs from the reads' {', '.join(h[:12] for h in reads)}")
+    if ev.get("limit") is not None:
+        out.append(f"eval was run with limit {ev['limit']} (not the full sets)")
+    return out
+
+
 def gate_for(reader: str, outputs: dict[str, dict], qids: list[str], root: Path, samples: int) -> dict:
     jl, lg, band, missing = {}, {}, None, 0
     for q in qids:
@@ -139,6 +156,7 @@ def gate_for(reader: str, outputs: dict[str, dict], qids: list[str], root: Path,
     a["verdict"] = "PASS" if a["ci_low"] is not None and a["ci_low"] > 0 else "FAIL"
     a["n_missing_npz"] = missing
     ev = read_json(root / "eval" / f"{reader}.json")
+    warnings = eval_warnings(ev, {outputs[q].get("lens_sha256") for q in qids if q in outputs})
     if ev is None:
         b = {"verdict": "MISSING"}
     else:
@@ -147,7 +165,7 @@ def gate_for(reader: str, outputs: dict[str, dict], qids: list[str], root: Path,
              "band": ev.get("band"), "verdict": "PASS" if m["jlens"] >= m["logit"] else "FAIL"}
     side = read_json(root / "lenses" / f"{reader}.json") or {}
     return {"a": a, "b": b, "band": list(band) if band else None, "n_prompts": side.get("n_prompts"),
-            "below_minimum": side.get("below_minimum"),
+            "below_minimum": side.get("below_minimum"), "eval_warnings": warnings,
             "verdict": "PASS" if a["verdict"] == "PASS" and b["verdict"] == "PASS" else "FAIL"}
 
 
@@ -157,8 +175,8 @@ def gate_section(readers, outputs, qids, root, samples, numbers, label: str | No
              "(a) gold at P1, log10(best rank over the middle-third band), logit lens minus J-lens, paired; PASS if the "
              "lower bound is above 0. (b) lens-eval pass@k over the band, mean over sets; PASS if J-lens >= logit.", "",
              "| reader | lens prompts | below minimum | band | n | (a) logit minus J-lens (95% CI) | (a) | "
-             f"(b) mean pass@k J-lens / logit | (b) all layers J-lens / logit | (b) | {where} |",
-             "|---|---|---|---|---|---|---|---|---|---|---|"]
+             f"(b) mean pass@k J-lens / logit | (b) all layers J-lens / logit | (b) | {where} | eval warnings |",
+             "|---|---|---|---|---|---|---|---|---|---|---|---|"]
     for reader in readers:
         g = gate_for(reader, outputs[reader], qids, root, samples)
         numbers["gate"][reader] = g
@@ -167,7 +185,8 @@ def gate_section(readers, outputs, qids, root, samples, numbers, label: str | No
         ma = b.get("mean_pass_at_k_all") or {}
         lines.append(f"| {reader} | {g['n_prompts']} | {g['below_minimum']} | {g['band']} | {g['a']['n']} | {_fmt(g['a'])} | "
                      f"{g['a']['verdict']} | {_num(mb.get('jlens'))} / {_num(mb.get('logit'))} | "
-                     f"{_num(ma.get('jlens'))} / {_num(ma.get('logit'))} | {b['verdict']} | **{g['verdict']}** |")
+                     f"{_num(ma.get('jlens'))} / {_num(ma.get('logit'))} | {b['verdict']} | **{g['verdict']}** | "
+                     f"{'; '.join(g['eval_warnings']) or '-'} |")
     lines += ["", "| reader | eval set | items | skipped | pass@k J-lens | pass@k logit | all layers J-lens | all layers logit |",
               "|---|---|---|---|---|---|---|---|"]
     for reader in readers:

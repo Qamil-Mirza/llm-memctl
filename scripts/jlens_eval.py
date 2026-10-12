@@ -18,7 +18,8 @@ Conventions (external/jacobian-lens/data/evaluations/README.md, as fixed by the 
   Deviation: the README's order-ops synonym expansion is not applied (the data holds only the keys).
 - Items whose readout text exceeds MAX_SEQ_LEN tokens are skipped and counted.
 
-Output: runs/exp34_jlens/eval/<reader>.json. Never deletes anything.
+Output: runs/exp34_jlens/eval/<reader>.json, with the lens file's lens_sha256 and the --limit used (the report
+flags an eval whose hash differs from the reads' or whose limit is not null). Never deletes anything.
 """
 
 from __future__ import annotations
@@ -34,7 +35,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from memctl.analysis.jlens_readout import _token_at_char, rank_table, tracked_token_ids  # noqa: E402
+from memctl.analysis.jlens_readout import _token_at_char, file_sha256, rank_table, tracked_token_ids  # noqa: E402
 
 MODEL_IDS = {"qwen05b": "Qwen/Qwen2.5-0.5B-Instruct", "qwen3b": "Qwen/Qwen2.5-3B-Instruct", "qwen7b": "Qwen/Qwen2.5-7B-Instruct"}
 SETS = ("association", "multihop", "multilingual", "order-ops", "poetry", "typo")
@@ -113,6 +114,18 @@ def score_set(lens, lens_model, tokenizer, items: list[dict], set_name: str, ban
             "pass_at_k_all": {v: mean[f"{v}_all"] for v in ("jlens", "logit")}}
 
 
+def load_model(model_id: str, device: str, dtype: str):
+    """(jlens LensModel, tokenizer) for a Hugging Face model id."""
+    import jlens
+    import torch
+    import transformers
+
+    hf = transformers.AutoModelForCausalLM.from_pretrained(model_id, dtype=getattr(torch, dtype)).to(device)
+    hf.eval()
+    tok = transformers.AutoTokenizer.from_pretrained(model_id)
+    return jlens.from_hf(hf, tok), tok
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--reader", required=True, choices=sorted(MODEL_IDS))
@@ -132,14 +145,10 @@ def main(argv=None) -> int:
         p.error(f"unknown sets: {unknown}")
     import jlens
     import torch
-    import transformers
 
     model_id = args.model_id or MODEL_IDS[args.reader]
     device = ("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device
-    hf = transformers.AutoModelForCausalLM.from_pretrained(model_id, dtype=getattr(torch, args.dtype)).to(device)
-    hf.eval()
-    tok = transformers.AutoTokenizer.from_pretrained(model_id)
-    lens_model = jlens.from_hf(hf, tok)
+    lens_model, tok = load_model(model_id, device, args.dtype)
     lens = jlens.JacobianLens.load(args.lens)
     lens_to(lens, device)
     n = lens_model.n_layers
@@ -152,7 +161,7 @@ def main(argv=None) -> int:
         print(name, json.dumps(sets[name]), flush=True)
     mean, mean_all = ({v: float(np.mean([s[key][v] for s in sets.values() if s[key][v] is not None]))
                        for v in ("jlens", "logit")} for key in ("pass_at_k", "pass_at_k_all"))
-    payload = {"reader": args.reader, "lens": args.lens, "k": args.k, "band": list(band), "sets": sets,
+    payload = {"reader": args.reader, "lens": args.lens, "lens_sha256": file_sha256(args.lens), "k": args.k, "band": list(band), "sets": sets,
                "mean_pass_at_k": mean, "mean_pass_at_k_all": mean_all, "model_id": model_id, "device": device, "dtype": args.dtype,
                "limit": args.limit, "wall_s": time.perf_counter() - started}
     out = Path(args.out)
