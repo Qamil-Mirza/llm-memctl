@@ -218,3 +218,55 @@ def test_total_wall_adds_the_previous_sidecar(tmp_path):
     assert s.total_wall(tmp_path, "r", 5.0) == 305.0
     (tmp_path / "r.json").write_text(json.dumps({"wall_s": 100.0}))   # sidecar from before wall_s_total existed
     assert s.total_wall(tmp_path, "r", 5.0) == 105.0
+
+
+# --- Task 4: the read script ---------------------------------------------------------------------
+from memctl.jacobian_data import PromptRecord  # noqa: E402
+
+
+@pytest.fixture(scope="module")
+def tiny_lens(tiny, tmp_path_factory):
+    jlens = pytest.importorskip("jlens")
+    model, tok = tiny
+    lens_model = jlens.from_hf(model, tok)
+    prompts = [" ".join(f"w{i}" for i in range(200))] * 2
+    lens = jlens.fit(lens_model, prompts, source_layers=[0, 1, 2], dim_batch=8, max_seq_len=64, skip_first=4)
+    path = tmp_path_factory.mktemp("lens") / "tiny.pt"
+    lens.save(str(path))
+    return lens, lens_model, tok, path
+
+
+def test_read_record_produces_both_variants_from_one_forward(tiny_lens):
+    lens, lens_model, tok, _ = tiny_lens
+    s = _script("jlens_read")
+    record = PromptRecord("qX", 0, "fake", PROMPT, "Answer: Leeds", "Leeds", "single-session-user", True, LINES, (LINES[2],), True, True, False)
+    payload, arrays = s.read_record(lens, lens_model, tok, record, k=5)
+    L, P, T = arrays["ranks_jlens"].shape
+    assert arrays["layers"].tolist() == [0, 1, 2, 3] and P == 4 and T == 3
+    assert arrays["ranks_logit"].shape == (L, P, T)
+    assert (arrays["ranks_jlens"][-1] == arrays["ranks_logit"][-1]).all()          # final layer identical (model logits)
+    assert arrays["top_ids_jlens"].shape == (L, P, 5)
+    assert payload["measures"]["jlens"]["P1"]["gold"]["outcome"] in ("A", "B", "C")
+    assert payload["positions"]["P1"] == [payload["n_tokens"] - 1] and payload["gold_token_text"] == " Leeds"
+    assert len(payload["prompt_sha256"]) == 64
+
+
+def test_read_record_rejects_truncated_ids(tiny_lens, monkeypatch):
+    lens, lens_model, tok, _ = tiny_lens
+    s = _script("jlens_read")
+    record = PromptRecord("qX", 0, "fake", PROMPT, "o", "Leeds", "t", True, LINES, (LINES[2],), True, True, False)
+    monkeypatch.setattr(s, "MAX_SEQ_LEN", 8)                      # simulate apply-style truncation
+    with pytest.raises(ValueError):
+        s.read_record(lens, lens_model, tok, record, k=5)
+
+
+def test_run_records_writes_resumes_and_isolates_failures(tiny_lens, tmp_path):
+    lens, lens_model, tok, path = tiny_lens
+    s = _script("jlens_read")
+    good = PromptRecord("q1", 0, "fake", PROMPT, "o", "Leeds", "t", True, LINES, (LINES[2],), True, True, False)
+    bad = PromptRecord("q2", 0, "fake", PROMPT, "o", "Leeds", "t", True, LINES, ("not a memory line",), True, True, False)
+    timing = s.run_records(lens, lens_model, tok, [good, bad], tmp_path, k=5, model_id="tiny", lens_path=str(path))
+    assert set(p.name for p in tmp_path.glob("q1.*")) == {"q1.npz", "q1.json"} and not list(tmp_path.glob("q2.*"))
+    failed = json.loads((tmp_path / "_failed.json").read_text())
+    assert "q2" in failed and "q1" in timing
+    assert s.run_records(lens, lens_model, tok, [good], tmp_path, k=5, model_id="tiny", lens_path=str(path)) == {}
