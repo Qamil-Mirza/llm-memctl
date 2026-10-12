@@ -297,3 +297,34 @@ def test_ablate_evidence_rejects_an_evidence_line_not_in_memory():
         ablate_evidence(PROMPT, LINES, ("user, d9: not there",))
     with pytest.raises(ValueError):  # present in the prompt text but not passed as a memory line
         ablate_evidence(PROMPT, LINES[:2], (LINES[2],))
+
+
+from memctl.analysis.jacobian_stats import auc, bootstrap_auc, bootstrap_spearman, paired_claim
+
+
+def test_auc_is_mann_whitney_with_half_credit_for_ties():
+    assert auc([3.0, 4.0], [1.0, 2.0]) == 1.0
+    assert auc([1.0, 2.0], [3.0, 4.0]) == 0.0
+    assert auc([1.0, 2.0], [1.0, 2.0]) == 0.5
+
+
+def test_bootstrap_auc_interval_covers_point_and_is_in_unit_range():
+    rng = np.random.default_rng(0)
+    pos = list(rng.normal(1.0, 1.0, 60)); neg = list(rng.normal(0.0, 1.0, 60))
+    r = bootstrap_auc(pos, neg, samples=500)
+    assert r["n_pos"] == 60 and r["n_neg"] == 60
+    assert 0 <= r["ci_low"] <= r["auc"] <= r["ci_high"] <= 1 and r["ci_low"] > 0.5
+
+
+def test_bootstrap_spearman_detects_a_monotone_relation():
+    x = list(range(50)); y = [v ** 2 + (1 if v % 2 else -1) for v in x]
+    r = bootstrap_spearman(x, y, samples=500)
+    assert r["n"] == 50 and r["rho"] > 0.9 and r["ci_low"] > 0.5
+
+
+def test_paired_claim_uses_shared_keys_and_gives_a_verdict():
+    a = {"q1": 0.5, "q2": 0.6, "q3": 0.7, "q4": 0.8, "zz": 9.0}
+    b = {"q1": 0.1, "q2": 0.2, "q3": 0.3, "q4": 0.4}
+    r = paired_claim(a, b, samples=500)
+    assert r["n"] == 4 and r["mean"] == pytest.approx(0.4) and r["verdict"] == "SHOWN"
+    assert paired_claim(b, a, samples=500)["verdict"] == "NOT SHOWN"
