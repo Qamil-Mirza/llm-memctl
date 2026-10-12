@@ -113,3 +113,41 @@ def test_real_fold0_qwen3b_records_all_match():
     in_view = [r for r in records if r.all_in_view and r.answerable]
     assert all(r.evidence_lines for r in in_view)
     assert all(line in r.prompt for r in records for line in r.memory_lines)
+
+
+from memctl.analysis.jacobian import REGIONS, segment_prompt, token_regions
+
+PROMPT = ("Use only the memory.\n\n## Memory\nuser, d1: turn a\nassistant, d1: turn b\nhas newline\n"
+          "user, d2: turn c\n\n## Current input\nQuestion: what?\n\nNote:")
+LINES = ("user, d1: turn a", "assistant, d1: turn b\nhas newline", "user, d2: turn c")
+
+
+def test_segment_prompt_tiles_the_prompt_in_order():
+    segments = segment_prompt(PROMPT, LINES, evidence_lines=(LINES[1],))
+    assert segments[0][1] == 0 and segments[-1][2] == len(PROMPT)
+    assert all(a[2] == b[1] for a, b in zip(segments, segments[1:]))
+    assert [s[0] for s in segments] == ["instruction", "distractor", "evidence", "distractor", "question"]
+    region_text = {s[0]: PROMPT[s[1]:s[2]] for s in segments}
+    assert region_text["evidence"].startswith("assistant, d1: turn b\nhas newline")
+    assert region_text["question"].startswith("\n\n## Current input")
+    assert region_text["instruction"] == "Use only the memory.\n\n## Memory\n"
+
+
+def test_segment_prompt_handles_a_line_with_a_newline_by_exact_search():
+    # a naive split on "\n" would see four memory lines; exact search sees three
+    segments = segment_prompt(PROMPT, LINES, evidence_lines=())
+    assert sum(1 for s in segments if s[0] == "distractor") == 3
+
+
+def test_segment_prompt_rejects_missing_line():
+    with pytest.raises(ValueError):
+        segment_prompt(PROMPT, LINES + ("user, d9: not there",), evidence_lines=())
+
+
+def test_token_regions_assigns_by_token_start_and_marks_template():
+    segments = [("instruction", 0, 5), ("evidence", 5, 9), ("question", 9, 12)]
+    # chat text = "<s>" + prompt(12 chars) + "<e>"; offsets in chat-text coordinates
+    offsets = [(0, 3), (3, 5), (5, 8), (8, 10), (10, 14), (14, 15), (15, 18)]
+    regions = token_regions(offsets, prompt_start=3, prompt_len=12, segments=segments)
+    assert regions == ["template", "instruction", "instruction", "evidence", "evidence", "question", "template"]
+    assert set(regions) <= set(REGIONS)
