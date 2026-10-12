@@ -518,3 +518,120 @@ def test_top_jaccard_matches_layers_by_value(tmp_path):
     assert rep.top_jaccard(tmp_path / "a.npz", tmp_path / "b.npz", (8, 16)) == pytest.approx(0.0)  # layers 8, 10, 12
     assert rep.top_jaccard(tmp_path / "a.npz", tmp_path / "b.npz", (5, 7)) == pytest.approx(1.0)   # layer 6 only
     assert rep.top_jaccard(tmp_path / "a.npz", tmp_path / "b.npz", (0, 4)) is None
+
+
+# --- §34 pod runbook (python stubbed on a temp PATH, as in the §33 pod-script tests) ---
+import shutil, subprocess  # noqa: E402
+
+_POD_STUB = """#!/bin/sh
+echo "fake python $*" >> "$POD_CALLS"
+echo "fake python $*"
+if [ "$1" = "scripts/jlens_fit.py" ]; then
+  reader=""; prev=""
+  for a in "$@"; do [ "$prev" = "--reader" ] && reader="$a"; prev="$a"; done
+  mkdir -p runs/exp34_jlens/lenses
+  printf '{\\n "reader": "%s",\\n "n_prompts": 3,\\n "n_target": 128,\\n "n_minimum": 32,\\n "below_minimum": %s\\n}\\n' \\
+    "$reader" "$POD_BELOW" > "runs/exp34_jlens/lenses/$reader.json"
+fi
+"""
+
+
+def _pod34_tree(tmp_path, below="false"):
+    (tmp_path / "scripts").mkdir()
+    for name in ("exp34_pod.sh", "exp33_pod.sh"):
+        shutil.copy(f"scripts/{name}", tmp_path / "scripts" / name)
+    (tmp_path / "data" / "longmemeval").mkdir(parents=True)
+    (tmp_path / "data" / "longmemeval" / "longmemeval_s_cleaned.json").write_text("[]")
+    (tmp_path / "data" / "jlens_corpus").mkdir()
+    (tmp_path / "data" / "jlens_corpus" / "wikitext-103-raw-v1-test.parquet").write_text("")
+    (tmp_path / "external" / "jacobian-lens").mkdir(parents=True)
+    (tmp_path / "external" / "jacobian-lens" / "pyproject.toml").write_text("")
+    (tmp_path / "runs").mkdir()
+    (tmp_path / "runs" / "exp23_verdicts.json").write_text("[]")
+    for reader in ("qwen3b", "qwen7b"):
+        for fold in range(5):
+            run = tmp_path / "runs" / f"exp23_{reader}_f{fold}" / "fixed8__fraction0.05"
+            run.mkdir(parents=True)
+            for name in ("items.jsonl.gz", "steps.jsonl.gz", "episodes.jsonl"):
+                (run / name).write_text("")
+        (tmp_path / "cache" / f"generations_exp23_{reader}" / "00").mkdir(parents=True)
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    (bin_dir / "python").write_text(_POD_STUB)
+    (bin_dir / "python").chmod(0o755)
+    calls = tmp_path / "calls.log"
+    return tmp_path, {"PATH": f"{bin_dir}:/usr/bin:/bin", "POD_CALLS": str(calls), "POD_BELOW": below}, calls
+
+
+def _run_pod34(root, env, *args):
+    return subprocess.run(["bash", str(root / "scripts" / "exp34_pod.sh"), *args], env=env, capture_output=True, text=True)
+
+
+def _calls(path):
+    return path.read_text().splitlines() if path.exists() else []
+
+
+@pytest.mark.parametrize("gone", ["data/jlens_corpus/wikitext-103-raw-v1-test.parquet",
+                                  "external/jacobian-lens/pyproject.toml",
+                                  "runs/exp23_qwen7b_f3/fixed8__fraction0.05/steps.jsonl.gz"])
+def test_pod34_preflight_exits_3_naming_the_missing_path_before_any_python(tmp_path, gone):
+    root, env, calls = _pod34_tree(tmp_path)
+    (root / gone).unlink()
+    done = _run_pod34(root, env)
+    assert done.returncode == 3, done.stdout + done.stderr
+    assert gone in done.stderr
+    assert _calls(calls) == []                                    # nothing installed, downloaded or run
+
+
+def test_pod34_preflight_counts_an_empty_cache_folder_as_missing(tmp_path):
+    root, env, calls = _pod34_tree(tmp_path)
+    shutil.rmtree(root / "cache" / "generations_exp23_qwen7b" / "00")
+    done = _run_pod34(root, env)
+    assert done.returncode == 3 and "cache/generations_exp23_qwen7b" in done.stderr
+    assert _calls(calls) == []
+
+
+def test_pod34_stops_with_exit_5_when_a_lens_is_below_the_minimum(tmp_path):
+    root, env, calls = _pod34_tree(tmp_path, below="true")
+    done = _run_pod34(root, env)
+    assert done.returncode == 5, done.stdout + done.stderr
+    assert "below_minimum" in done.stdout + done.stderr
+    made = _calls(calls)
+    assert any("scripts/jlens_fit.py --reader qwen3b" in c for c in made)
+    assert not any("jlens_read.py" in c or "jlens_eval.py" in c for c in made)   # never read with a thin lens
+    assert not any("jlens_fit.py --reader qwen7b" in c for c in made)
+
+
+def test_pod34_runs_every_stage_in_order_with_the_brief_settings(tmp_path):
+    root, env, calls = _pod34_tree(tmp_path)
+    done = _run_pod34(root, env, "90", "40", "128")
+    assert done.returncode == 0, done.stdout + done.stderr
+    made = [c.removeprefix("fake python ") for c in _calls(calls)]
+    fit3 = next(i for i, c in enumerate(made) if c.startswith("scripts/jlens_fit.py --reader qwen3b"))
+    fit7 = next(i for i, c in enumerate(made) if c.startswith("scripts/jlens_fit.py --reader qwen7b"))
+    read3 = next(i for i, c in enumerate(made) if c.startswith("scripts/jlens_read.py --reader qwen3b"))
+    read7 = next(i for i, c in enumerate(made) if c.startswith("scripts/jlens_read.py --reader qwen7b")
+                 and "community" not in c)
+    eval3 = next(i for i, c in enumerate(made) if c.startswith("scripts/jlens_eval.py --reader qwen3b"))
+    eval7 = next(i for i, c in enumerate(made) if c.startswith("scripts/jlens_eval.py --reader qwen7b"))
+    hub = next(i for i, c in enumerate(made) if "andyx10/jacobian-lens-qwen2.5-7b-instruct" in c)
+    comm = next(i for i, c in enumerate(made) if c.startswith("scripts/jlens_read.py") and "community_qwen7b.pt" in c)
+    j33 = next(i for i, c in enumerate(made) if c.startswith("scripts/jacobian_lens.py --reader qwen3b"))
+    assert fit3 < fit7 < read3 < read7 < eval3 < eval7 < hub < comm < j33
+    assert "--n-prompts 128 --min-prompts 32 --max-minutes 40 --dim-batch 32 --device cuda" in made[fit3]
+    assert "--n-prompts 128 --min-prompts 32 --max-minutes 90 --dim-batch 32 --device cuda" in made[fit7]
+    assert "--lens runs/exp34_jlens/lenses/qwen3b.pt --folds 0,1,2,3,4 --device cuda" in made[read3]
+    assert "--lens runs/exp34_jlens/lenses/qwen7b.pt" in made[eval7]
+    assert "--folds 0,1 " in made[comm] + " " and "--out runs/exp34_jlens/community_qwen7b/qwen7b" in made[comm]
+    assert "shutil.copyfile" in made[hub] and "runs/exp34_jlens/lenses/community_qwen7b.pt" in made[hub]
+    assert "preflight ok" in done.stdout and "elapsed" in done.stdout
+
+
+def test_pod34_pins_the_local_transformers_and_installs_the_vendored_jlens(tmp_path):
+    root, env, calls = _pod34_tree(tmp_path)
+    done = _run_pod34(root, env)
+    assert done.returncode == 0, done.stdout + done.stderr
+    install = next(c for c in _calls(calls) if "pip install" in c)
+    assert f"transformers=={transformers.__version__}" in install    # the pod pin is the tested local version
+    assert "-e external/jacobian-lens" in install
+    assert Path("scripts/exp34_pod.sh").stat().st_mode & 0o111      # executable

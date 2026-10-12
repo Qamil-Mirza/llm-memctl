@@ -304,3 +304,59 @@ Report on development folds only until the pre-registration is committed:
     .venv/bin/python scripts/exp33_report.py --small qwen3b --large qwen7b --folds 2,3,4 --variant l2 --confirm
 
 Local 0.5B CPU reference: 18.2 s/question, peak RSS 6,681 MB (10-question stub, fold 0, float32, with `--ablate`, `logits_to_keep`; `runs/exp33_jacobian/_stub2_qwen05b/_timing.json`; before `logits_to_keep`: 22.6 s and 9,364 MB in `_stub_qwen05b`).
+
+## §34 J-lens on small readers (how to run)
+
+Pin: `external/jacobian-lens@581d398 (jlens 0.1.0, Apache-2.0)`. Locally it is installed into `.venv`; on
+the pod the runbook runs `pip install -e external/jacobian-lens`. The fit corpus is
+`data/jlens_corpus/wikitext-103-raw-v1-test.parquet`. Prompts come from the §23 cache; no reader generates.
+
+Local development chain on the 0.5B (CPU, float32; a 4-prompt dev lens, then 10 questions of fold 0):
+
+    .venv/bin/python scripts/jlens_fit.py --reader qwen05b --n-prompts 4 --min-prompts 2 --max-minutes 30 --chunk 2 --device cpu --dtype float32
+    .venv/bin/python scripts/jlens_read.py --reader qwen05b --records-from qwen3b --lens runs/exp34_jlens/lenses/qwen05b.pt --folds 0 --limit 10 --device cpu --dtype float32
+    .venv/bin/python scripts/jlens_eval.py --reader qwen05b --lens runs/exp34_jlens/lenses/qwen05b.pt --sets multihop,association --limit 20 --device cpu --dtype float32
+    .venv/bin/python scripts/exp34_report.py --small qwen3b --large qwen7b --records-from qwen3b --folds 0 --root runs/exp34_jlens/local_report_root
+
+The report expects `<root>/<reader>/`, `<root>/eval/<reader>.json` and `<root>/lenses/<reader>.json` for both
+readers, so the local root points both names at the 0.5B outputs. To recreate it:
+
+    mkdir -p runs/exp34_jlens/local_report_root/eval runs/exp34_jlens/local_report_root/lenses
+    cd runs/exp34_jlens/local_report_root
+    ln -s ../qwen05b qwen3b && ln -s ../qwen05b qwen7b
+    ln -s ../../eval/qwen05b.json eval/qwen3b.json && ln -s ../../eval/qwen05b.json eval/qwen7b.json
+    ln -s ../../lenses/qwen05b.json lenses/qwen3b.json && ln -s ../../lenses/qwen05b.json lenses/qwen7b.json
+
+Paid run (one GPU, user-approved quote first): `bash scripts/exp34_pod.sh [max_minutes_7b=90] [max_minutes_3b=40] [n_prompts=128]`.
+It runs, in order: install (pins `transformers==5.17.0`, the local `.venv` version, plus `-e external/jacobian-lens`,
+and prints torch, transformers and the jlens commit); fit `qwen3b` then `qwen7b` (`--min-prompts 32 --dim-batch 32`);
+read both readers on folds 0 to 4; lens-quality eval for both; the community 7B cross-check; then
+`bash scripts/exp33_pod.sh` (the §33 secondary). Each stage prints its elapsed time (also in
+`runs/exp34_jlens/pod.log`). Rerun the same command to continue: a fit resumes from its checkpoint (a complete
+lens is not refitted), reads skip finished questions, an eval newer than its lens is skipped, and the community
+lens is downloaded once. Exit codes: 3 = preflight found a missing input (named) before installing anything;
+5 = a fitted lens has `below_minimum: true` in its sidecar, so nothing is read with it (rerun with a longer box
+to resume the fit); 6 (from `jlens_fit.py`) = the settings or corpus differ from an existing checkpoint.
+
+The community cross-check downloads `andyx10/jacobian-lens-qwen2.5-7b-instruct` / `qwen7b_lens.pt` with
+`huggingface_hub.hf_hub_download`, copies it (never moves it out of the HF cache) to
+`runs/exp34_jlens/lenses/community_qwen7b.pt`, and reads the development folds 0,1 only into
+`runs/exp34_jlens/community_qwen7b/qwen7b/`, so the report takes `--community-root runs/exp34_jlens/community_qwen7b`.
+
+What to copy to the pod (next to a checkout of this branch), all checked by the preflight:
+
+- the §33 list above: `data/longmemeval/longmemeval_s_cleaned.json`, `runs/exp23_verdicts.json`, the 30
+  `runs/exp23_<reader>_f<fold>/fixed8__fraction0.05/` files, and `cache/generations_exp23_qwen3b/` and
+  `cache/generations_exp23_qwen7b/` (whole folders)
+- `data/jlens_corpus/wikitext-103-raw-v1-test.parquet`
+- `external/jacobian-lens/` (whole folder; the preflight checks `external/jacobian-lens/pyproject.toml`)
+
+Copy back `runs/exp34_jlens/` and `runs/exp33_jacobian/`; check each sidecar's `n_prompts` and `below_minimum`
+and any `_failed.json`.
+
+Fold rule: folds 0,1 are development (lens gate, k, the band and thresholds are fixed there, then the
+pre-registration is committed); folds 2,3,4 are confirmation, read only by the report with `--confirm` after
+that commit:
+
+    .venv/bin/python scripts/exp34_report.py --small qwen3b --large qwen7b --folds 0,1 --community-root runs/exp34_jlens/community_qwen7b
+    .venv/bin/python scripts/exp34_report.py --small qwen3b --large qwen7b --folds 2,3,4 --confirm
