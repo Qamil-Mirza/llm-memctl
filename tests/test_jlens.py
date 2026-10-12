@@ -123,3 +123,46 @@ def test_question_measures_shapes_every_position():
     assert m["k"] == 10 and m["P1"]["gold"] == {"best_rank": 2, "final_rank": 50, "emergence_depth": pytest.approx(0.25), "outcome": "B"}
     assert m["P1"]["unknown_sp"]["first_top1_depth"] == pytest.approx(0.75)
     assert m["P0"]["gold"]["outcome"] == "A" and len(m["E"]) == 1 and m["Q"]["gold"]["best_rank"] == 99
+
+
+import importlib.util, time
+
+
+def _script(name):
+    spec = importlib.util.spec_from_file_location(name, f"scripts/{name}.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_select_prompts_is_deterministic_and_filters_short_paragraphs(tmp_path):
+    s = _script("jlens_fit")
+    import pyarrow as pa, pyarrow.parquet as pq
+    rows = ["short one", " ".join(["word"] * 160), " ".join(["other"] * 200), " ".join(["third"] * 151)]
+    pq.write_table(pa.table({"text": rows}), tmp_path / "c.parquet")
+    paragraphs = s.load_corpus(tmp_path / "c.parquet", min_words=150)
+    assert len(paragraphs) == 3
+    a = s.select_prompts(paragraphs, 2, seed=0); b = s.select_prompts(paragraphs, 2, seed=0)
+    assert a == b and len(a) == 2 and all(len(x.split()) >= 150 for x in a)
+
+
+def test_fit_under_time_box_stops_early_and_resumes(tiny, tmp_path):
+    jlens = pytest.importorskip("jlens")
+    s = _script("jlens_fit")
+    model, tok = tiny
+    lens_model = jlens.from_hf(model, tok)
+    prompts = [" ".join(f"w{i}" for i in range(200))] * 6
+    ckpt = tmp_path / "ckpt.pt"
+    lens, n = s.fit_under_time_box(lens_model, prompts, max_minutes=0.0, chunk=2, checkpoint_path=str(ckpt),
+                                   source_layers=[1, 2], dim_batch=8, max_seq_len=64, skip_first=4)
+    assert n == 2 and lens.n_prompts == 2                        # one chunk, then the box is over
+    lens2, n2 = s.fit_under_time_box(lens_model, prompts, max_minutes=10.0, chunk=2, checkpoint_path=str(ckpt),
+                                     source_layers=[1, 2], dim_batch=8, max_seq_len=64, skip_first=4)
+    assert n2 == 6 and lens2.n_prompts == 6                      # resumed from the checkpoint, finished the list
+
+
+def test_sidecar_marks_below_minimum(tmp_path):
+    s = _script("jlens_fit")
+    side = s.sidecar("qwen05b", "m", n_prompts=3, n_target=8, n_minimum=4, settings={"a": 1}, wall_s=1.0,
+                     corpus_sha256="x", prompt_sha256s=["a", "b", "c"])
+    assert side["below_minimum"] is True and side["n_prompts"] == 3 and side["jlens_commit"]
