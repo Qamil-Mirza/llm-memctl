@@ -159,3 +159,53 @@ def target_value(model, tokenizer, prompt: str, gold: str, output: str, target: 
     with torch.no_grad():
         logits = model(input_ids=torch.tensor([prompt_ids + cont], device=device)).logits[0]
         return float(_scalar(logits, len(prompt_ids), cont, start, target, unknown_id(tokenizer)))
+
+
+CONTENT_REGIONS = tuple(r for r in REGIONS if r != "template")
+
+
+def region_counts(regions: list[str]) -> dict[str, int]:
+    return {name: sum(1 for r in regions if r == name) for name in REGIONS if name in regions}
+
+
+def region_shares(g: np.ndarray, regions: list[str]) -> dict[str, float]:
+    mask = np.array([r != "template" for r in regions])
+    total = float(g[mask].sum())
+    shares = {}
+    for name in CONTENT_REGIONS:
+        chosen = np.array([r == name for r in regions])
+        shares[name] = float(g[chosen].sum()) / total if total > 0 and chosen.any() else 0.0
+    return shares
+
+
+def evidence_lift(shares: dict[str, float], counts: dict[str, int]) -> float | None:
+    evidence = counts.get("evidence", 0)
+    content = sum(n for name, n in counts.items() if name != "template")
+    if evidence == 0 or content == 0:
+        return None
+    return shares.get("evidence", 0.0) / (evidence / content)
+
+
+def topk_fraction(g: np.ndarray, regions: list[str], k: int = 50) -> float:
+    content = [i for i, r in enumerate(regions) if r != "template"]
+    top = sorted(content, key=lambda i: -float(g[i]))[: min(k, len(content))]
+    return sum(1 for i in top if regions[i] == "evidence") / len(top) if top else 0.0
+
+
+def measures(result: JacobianResult, k: int = 50) -> dict:
+    counts = region_counts(result.regions)
+    out = {"counts": counts, "target_value": result.target_value, "n_tokens": result.n_tokens, "k": k}
+    for name, g in (("l2", result.g_l2), ("gxi", result.g_gxi)):
+        shares = region_shares(g, result.regions)
+        out[name] = {"shares": shares, "lift": evidence_lift(shares, counts), "topk": topk_fraction(g, result.regions, k)}
+    return out
+
+
+def ablate_evidence(prompt: str, evidence_lines: tuple[str, ...]) -> str:
+    """The prompt with every evidence line removed, along with the newline that separated it."""
+    for line in evidence_lines:
+        if "\n" + line in prompt:
+            prompt = prompt.replace("\n" + line, "", 1)
+        else:  # the first memory line has the header before it, not a newline
+            prompt = prompt.replace(line + "\n", "", 1)
+    return prompt

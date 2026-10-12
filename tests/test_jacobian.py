@@ -221,3 +221,40 @@ def test_gradient_is_nonzero_only_where_it_should_be(tiny):
     model, tok = tiny
     out = jacobian_pass(model, tok, PROMPT, LINES, (LINES[1],), gold="4 hours", output="", targets=("gold",))
     assert out["gold"].g_l2.sum() > 0
+
+
+from memctl.analysis.jacobian import ablate_evidence, evidence_lift, measures, region_counts, region_shares, topk_fraction
+
+
+def test_region_shares_sum_to_one_and_ignore_template():
+    regions = ["template", "instruction", "evidence", "evidence", "distractor", "question", "template"]
+    g = np.array([100.0, 1.0, 2.0, 2.0, 4.0, 1.0, 100.0])
+    shares = region_shares(g, regions)
+    assert shares == pytest.approx({"instruction": 0.1, "evidence": 0.4, "distractor": 0.4, "question": 0.1})
+    assert region_counts(regions) == {"template": 2, "instruction": 1, "evidence": 2, "distractor": 1, "question": 1}
+    assert evidence_lift(shares, region_counts(regions)) == pytest.approx(0.4 / (2 / 5))
+    assert evidence_lift({"evidence": 0.0}, {"evidence": 0, "instruction": 3}) is None
+
+
+def test_topk_fraction_counts_evidence_among_largest():
+    regions = ["template", "instruction", "evidence", "evidence", "distractor", "question"]
+    g = np.array([9.0, 1.0, 5.0, 4.0, 3.0, 0.5])
+    assert topk_fraction(g, regions, k=2) == 1.0
+    assert topk_fraction(g, regions, k=4) == 0.5
+    assert topk_fraction(g, regions, k=50) == pytest.approx(2 / 5)
+
+
+def test_measures_bundles_both_variants():
+    result = JacobianResult(["template", "evidence", "distractor"], np.array([1.0, 3.0, 1.0]), np.array([1.0, 1.0, 3.0]), -2.5, 3)
+    m = measures(result, k=1)
+    assert m["l2"]["shares"]["evidence"] == 0.75 and m["gxi"]["shares"]["evidence"] == 0.25
+    assert m["l2"]["topk"] == 1.0 and m["gxi"]["topk"] == 0.0
+    assert m["target_value"] == -2.5 and m["n_tokens"] == 3 and m["counts"]["evidence"] == 1
+
+
+def test_ablate_evidence_removes_the_lines_and_keeps_the_rest_intact():
+    ablated = ablate_evidence(PROMPT, (LINES[1],))
+    assert LINES[1] not in ablated
+    assert ablated == ("Use only the memory.\n\n## Memory\nuser, d1: turn a\nuser, d2: turn c\n\n## Current input\n"
+                       "Question: what?\n\nNote:")
+    assert ablate_evidence(PROMPT, ()) == PROMPT
