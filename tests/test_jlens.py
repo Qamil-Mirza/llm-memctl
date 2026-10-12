@@ -609,6 +609,10 @@ import shutil, subprocess  # noqa: E402
 _POD_STUB = """#!/bin/sh
 echo "fake python $*" >> "$POD_CALLS"
 echo "fake python $*"
+case "$*" in *hf_hub_download*) mkdir -p runs/exp34_jlens/lenses; touch runs/exp34_jlens/lenses/community_qwen7b.pt.tmp;; esac
+if [ "$1" = "scripts/jlens_read.py" ] && [ "$POD_FAIL_COMMUNITY" = 1 ]; then
+  case "$*" in *community_qwen7b.pt*) echo "community read boom" >&2; exit 1;; esac
+fi
 if [ "$1" = "scripts/jlens_fit.py" ]; then
   reader=""; prev=""
   for a in "$@"; do [ "$prev" = "--reader" ] && reader="$a"; prev="$a"; done
@@ -748,3 +752,15 @@ def test_pod34_caps_the_3b_fit_at_the_7b_prompt_count(tmp_path):
     fit3 = next(c for c in made if c.startswith("scripts/jlens_fit.py --reader qwen3b"))
     assert "--n-prompts 128 --min-prompts 32 --max-minutes 90" in fit7
     assert "--n-prompts 77 --min-prompts 32 --max-minutes 40" in fit3
+
+
+def test_pod34_community_failure_is_not_fatal_and_section_33_still_runs(tmp_path):
+    root, env, calls = _pod34_tree(tmp_path)
+    done = _run_pod34(root, {**env, "POD_FAIL_COMMUNITY": "1"})
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert "community cross-check failed; continuing" in done.stdout + done.stderr
+    made = [c.removeprefix("fake python ") for c in _calls(calls)]
+    comm = next(i for i, c in enumerate(made) if c.startswith("scripts/jlens_read.py") and "community_qwen7b.pt" in c)
+    j33 = next(i for i, c in enumerate(made) if c.startswith("scripts/jacobian_lens.py --reader qwen3b"))
+    assert comm < j33
+    assert "community cross-check failed" in (root / "runs" / "exp34_jlens" / "pod.log").read_text()

@@ -101,13 +101,23 @@ for READER in qwen3b qwen7b; do
 done
 
 # Community 7B lens cross-check, development folds only. Copy out of the HF cache; never move or delete it.
-if ! test -e "$COMMUNITY_LENS"; then
-  python -c "import shutil, huggingface_hub; shutil.copyfile(huggingface_hub.hf_hub_download('andyx10/jacobian-lens-qwen2.5-7b-instruct', 'qwen7b_lens.pt'), '$COMMUNITY_LENS.tmp')"
-  test -e "$COMMUNITY_LENS.tmp" && mv "$COMMUNITY_LENS.tmp" "$COMMUNITY_LENS"
+# Non-fatal: a failed download or read is logged and the §33 secondary still runs.
+community_check() {
+  if ! test -e "$COMMUNITY_LENS"; then
+    python -c "import shutil, huggingface_hub; shutil.copyfile(huggingface_hub.hf_hub_download('andyx10/jacobian-lens-qwen2.5-7b-instruct', 'qwen7b_lens.pt'), '$COMMUNITY_LENS.tmp')" \
+      || return 1
+    test -e "$COMMUNITY_LENS.tmp" || return 1
+    mv "$COMMUNITY_LENS.tmp" "$COMMUNITY_LENS" || return 1
+  fi
+  python scripts/jlens_read.py --reader qwen7b --lens "$COMMUNITY_LENS" --out "$COMMUNITY_OUT" --folds 0,1 --device cuda \
+    --dtype bfloat16 2>&1 | tee -a "$OUT/community_qwen7b_read.log" || return 1
+}
+if community_check; then
+  stage_done "community cross-check"
+else
+  echo "community cross-check failed; continuing" | tee -a "$OUT/pod.log" >&2
+  stage_done "community cross-check (failed)"
 fi
-python scripts/jlens_read.py --reader qwen7b --lens "$COMMUNITY_LENS" --out "$COMMUNITY_OUT" --folds 0,1 --device cuda \
-  --dtype bfloat16 2>&1 | tee -a "$OUT/community_qwen7b_read.log"
-stage_done "community cross-check"
 
 # §33 secondary (its own preflight and pins).
 bash scripts/exp33_pod.sh

@@ -332,7 +332,8 @@ It runs, in order: install (pins `transformers==5.17.0`, the local `.venv` versi
 and prints torch, transformers and the jlens commit); fit `qwen7b` first (`--n-prompts N --min-prompts 32 --dim-batch 32`),
 read its sidecar's `n_prompts` = N7, then fit `qwen3b` with `--n-prompts N7 --min-prompts 32` (same seed, so the same
 prompt prefix: both lenses average the same prompts); read both readers on folds 0 to 4; lens-quality eval for both;
-the community 7B cross-check; then `bash scripts/exp33_pod.sh` (the §33 secondary). Each stage prints its elapsed time (also in
+the community 7B cross-check (non-fatal: a failed download or read logs "community cross-check failed; continuing");
+then `bash scripts/exp33_pod.sh` (the §33 secondary). Each stage prints its elapsed time (also in
 `runs/exp34_jlens/pod.log`). Rerun the same command to continue: a lens whose sidecar says `"below_minimum": false`
 is final and is not refitted, even if its time box stopped it short of its target (`REFIT=1 bash scripts/exp34_pod.sh ...`
 resumes it from its checkpoint instead); reads skip questions already read with the same lens (each `<qid>.json` stores the
