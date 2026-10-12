@@ -4,15 +4,17 @@
     .venv/bin/python scripts/jlens_eval.py --reader qwen05b --lens runs/exp34_jlens/lenses/qwen05b.pt --sets multihop,association --limit 20 --device cpu --dtype float32
 
 Conventions (external/jacobian-lens/data/evaluations/README.md, as fixed by the §34 plan):
-- Readout is at one position across all layers. multihop/multilingual/association/typo/order-ops: the token
-  immediately preceding `target` when `target` is present (the prompt is the text, position
-  len(ids(prompt)) - 1), else the last prompt token. poetry: the last newline token (end of line 1).
+- Readout is at one position across all layers. multihop/multilingual/association/typo/order-ops: trailing
+  whitespace is stripped from the prompt (from the last turn's content for a chat list), so the position
+  len(ids(text)) - 1 is the last word token, the token immediately preceding `target` under natural
+  tokenisation (the space joins the target word). poetry: the last newline token (end of line 1), unstripped.
 - A chat-list prompt ([{"role","content"}]) is rendered with the tokenizer's chat template, no generation prompt.
 - An intermediate's token id is the first content token of " " + intermediate (the gold rule of
   memctl.analysis.jlens_readout.tracked_token_ids). `target` is never scored.
 - pass@k per item = fraction of intermediates whose min rank over the band of layers is <= k; a set's
   pass@k is the mean over items. The band is [n_layers//3, 2*n_layers//3) by default (--band a:b overrides),
   taken over the lens layers plus the final layer (the final layer is outside the default band).
+  pass_at_k_all is the README's metric: min over every one of those layers, final included.
   Deviation: the README's order-ops synonym expansion is not applied (the data holds only the keys).
 - Items whose readout text exceeds MAX_SEQ_LEN tokens are skipped and counted.
 
@@ -45,15 +47,17 @@ def _ids(tokenizer, text: str) -> list[int]:
 
 
 def readout_position(tokenizer, item: dict, set_name: str) -> tuple[str, int]:
-    prompt = item["prompt"]
+    prompt, strip = item["prompt"], set_name != "poetry"
     if isinstance(prompt, list):
+        if strip:
+            prompt = prompt[:-1] + [{**prompt[-1], "content": prompt[-1]["content"].rstrip()}]
         text = tokenizer.apply_chat_template(prompt, tokenize=False, add_generation_prompt=False)
     else:
-        text = prompt
+        text = prompt.rstrip() if strip else prompt
     if set_name == "poetry":
         offsets = [tuple(o) for o in tokenizer(text, add_special_tokens=False, return_offsets_mapping=True)["offset_mapping"]]
         return text, _token_at_char(offsets, text.rindex("\n"))
-    return text, len(_ids(tokenizer, text)) - 1          # the token before `target` (or the last token)
+    return text, len(_ids(tokenizer, text)) - 1          # the last word token: the space joins `target` naturally
 
 
 def pass_at_k(ranks_by_layer: np.ndarray, band_mask: np.ndarray, k: int) -> float:
@@ -90,7 +94,7 @@ def logits_at(lens, lens_model, text: str, position: int):
 
 
 def score_set(lens, lens_model, tokenizer, items: list[dict], set_name: str, band: tuple[int, int], k: int) -> dict:
-    scores, skipped = {"jlens": [], "logit": []}, 0
+    scores, skipped = {f"{v}{m}": [] for v in ("jlens", "logit") for m in ("", "_all")}, 0
     for item in items:
         text, position = readout_position(tokenizer, item, set_name)
         if len(_ids(tokenizer, text)) > MAX_SEQ_LEN:
@@ -102,8 +106,11 @@ def score_set(lens, lens_model, tokenizer, items: list[dict], set_name: str, ban
             ranks, layers = rank_table({l: v[None] for l, v in logits.items()}, model_logits[None], lens_model.n_layers, token_ids)
             mask = np.array([band[0] <= l < band[1] for l in layers])
             scores[variant].append(pass_at_k(ranks[:, 0, :], mask, k))
+            scores[f"{variant}_all"].append(pass_at_k(ranks[:, 0, :], np.ones(len(layers), bool), k))   # README metric
+    mean = {key: (float(np.mean(s)) if s else None) for key, s in scores.items()}
     return {"n_items": len(scores["jlens"]), "n_skipped": skipped,
-            "pass_at_k": {v: (float(np.mean(s)) if s else None) for v, s in scores.items()}}
+            "pass_at_k": {v: mean[v] for v in ("jlens", "logit")},
+            "pass_at_k_all": {v: mean[f"{v}_all"] for v in ("jlens", "logit")}}
 
 
 def main(argv=None) -> int:
@@ -143,10 +150,10 @@ def main(argv=None) -> int:
         items = json.loads((DATA / f"lens-eval-{name}.json").read_text())["items"]
         sets[name] = score_set(lens, lens_model, tok, items[: args.limit] if args.limit else items, name, band, args.k)
         print(name, json.dumps(sets[name]), flush=True)
-    mean = {v: float(np.mean([s["pass_at_k"][v] for s in sets.values() if s["pass_at_k"][v] is not None]))
-            for v in ("jlens", "logit")}
+    mean, mean_all = ({v: float(np.mean([s[key][v] for s in sets.values() if s[key][v] is not None]))
+                       for v in ("jlens", "logit")} for key in ("pass_at_k", "pass_at_k_all"))
     payload = {"reader": args.reader, "lens": args.lens, "k": args.k, "band": list(band), "sets": sets,
-               "mean_pass_at_k": mean, "model_id": model_id, "device": device, "dtype": args.dtype,
+               "mean_pass_at_k": mean, "mean_pass_at_k_all": mean_all, "model_id": model_id, "device": device, "dtype": args.dtype,
                "limit": args.limit, "wall_s": time.perf_counter() - started}
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
@@ -156,7 +163,7 @@ def main(argv=None) -> int:
     tmp = path.with_suffix(".json.tmp")
     tmp.write_text(json.dumps(payload, indent=1))
     os.replace(tmp, path)
-    print(json.dumps({"out": str(path), "band": list(band), "mean_pass_at_k": mean}), flush=True)
+    print(json.dumps({"out": str(path), "band": list(band), "mean_pass_at_k": mean, "mean_pass_at_k_all": mean_all}), flush=True)
     return 0
 
 

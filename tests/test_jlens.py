@@ -275,13 +275,19 @@ def test_run_records_writes_resumes_and_isolates_failures(tiny_lens, tmp_path):
 def test_eval_readout_position_before_target_and_poetry_newline(tiny):
     _, tok = tiny
     s = _script("jlens_eval")
-    text, pos = s.readout_position(tok, {"prompt": "The capital of France is", "target": " Paris", "intermediates": ["France"]}, "multihop")
-    assert text == "The capital of France is" and pos == len(tok(text, add_special_tokens=False).input_ids) - 1
+    item = {"prompt": "The capital of France is ", "target": "Paris", "intermediates": ["France"]}
+    text, pos = s.readout_position(tok, item, "multihop")
+    ids0 = tok(text, add_special_tokens=False).input_ids
+    assert text == "The capital of France is" and pos == len(ids0) - 1 and tok.decode([ids0[pos]]) == " is"
+    natural = tok(text + " " + item["target"].lstrip(), add_special_tokens=False).input_ids
+    assert natural[:len(ids0)] == ids0                              # the space joins the target, not the prompt
     text2, pos2 = s.readout_position(tok, {"prompt": "Roses are red, violets are blue\nSugar is sweet", "intermediates": ["blue"]}, "poetry")
     ids = tok(text2, add_special_tokens=False).input_ids
     assert "\n" in tok.decode([ids[pos2]])
     text3, _ = s.readout_position(tok, {"prompt": [{"role": "user", "content": "hi"}], "intermediates": ["x"]}, "association")
     assert "hi" in text3 and "<|im_start|>" in text3
+    text4, _ = s.readout_position(tok, {"prompt": [{"role": "user", "content": "hi  "}], "intermediates": ["x"]}, "association")
+    assert text4 == text3                                           # last turn's trailing space stripped
 
 
 def test_pass_at_k_uses_only_the_band():
@@ -292,6 +298,22 @@ def test_pass_at_k_uses_only_the_band():
     assert s.pass_at_k(ranks, np.ones(4, bool), k=10) == 1.0
 
 
+def test_score_set_all_layers_metric_matches_an_all_true_mask(tiny_lens, monkeypatch):
+    lens, lens_model, tok, _ = tiny_lens
+    s = _script("jlens_eval")
+    item = {"name": "a", "prompt": "The capital of France is ", "target": "Paris", "intermediates": ["France", "Paris"]}
+    text, pos = s.readout_position(tok, item, "multihop")
+    from memctl.analysis.jlens_readout import rank_table
+    ids = [tracked_token_ids(tok, w)[0]["gold"] for w in item["intermediates"]]
+    expected = {}
+    for v, lg in zip(("jlens", "logit"), s.logits_at(lens, lens_model, text, pos)[:2]):
+        ranks, layers = rank_table({l: x[None] for l, x in lg.items()}, s.logits_at(lens, lens_model, text, pos)[2][None], 4, ids)
+        expected[v] = s.pass_at_k(ranks[:, 0, :], np.ones(len(layers), bool), k=50)
+    out = s.score_set(lens, lens_model, tok, [item], "multihop", band=(1, 2), k=50)
+    assert out["pass_at_k_all"] == pytest.approx(expected)
+    assert out["pass_at_k_all"]["jlens"] >= out["pass_at_k"]["jlens"]
+
+
 def test_score_set_scores_both_variants_and_skips_long_items(tiny_lens, monkeypatch):
     lens, lens_model, tok, _ = tiny_lens
     s = _script("jlens_eval")
@@ -299,7 +321,8 @@ def test_score_set_scores_both_variants_and_skips_long_items(tiny_lens, monkeypa
              {"name": "b", "prompt": " ".join(["word"] * 40), "intermediates": ["word"]}]
     out = s.score_set(lens, lens_model, tok, items, "multihop", band=(0, 4), k=10)
     assert out["n_items"] == 2 and out["n_skipped"] == 0
-    assert set(out["pass_at_k"]) == {"jlens", "logit"} and all(0.0 <= v <= 1.0 for v in out["pass_at_k"].values())
+    assert set(out["pass_at_k"]) == set(out["pass_at_k_all"]) == {"jlens", "logit"}
+    assert all(0.0 <= v <= 1.0 for v in [*out["pass_at_k"].values(), *out["pass_at_k_all"].values()])
     monkeypatch.setattr(s, "MAX_SEQ_LEN", 20)
     out2 = s.score_set(lens, lens_model, tok, items, "multihop", band=(0, 4), k=10)
     assert out2["n_items"] == 1 and out2["n_skipped"] == 1
