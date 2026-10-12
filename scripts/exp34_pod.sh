@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
-# §34 on one GPU: fit J-lenses for both Qwen readers (7B first, 3B capped at the 7B's prompt count), read the §23 prompts, lens-quality eval, community 7B
-# cross-check, then the §33 secondary. Resumable; rerun to continue (a fit resumes from its checkpoint).
+# §34 on one GPU: fit J-lenses for both Qwen readers (7B first, 3B capped at the 7B's prompt count), read the §23
+# prompts, lens-quality eval, community 7B cross-check (non-fatal), then the §33 secondary. Resumable; rerun to
+# continue (a below_minimum false lens is final; REFIT=1 resumes its fit from the checkpoint).
 #   bash scripts/exp34_pod.sh [max_minutes_7b=90] [max_minutes_3b=40] [n_prompts=128]
 # Exit 3: an input is missing (preflight, before anything is installed). Exit 5: a lens is below the minimum.
+# Exit 6 (jlens_fit.py): checkpoint settings differ. Exit 7/8 (jlens_read.py): lens does not fit the model / every read failed.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 M7="${1:-90}"
