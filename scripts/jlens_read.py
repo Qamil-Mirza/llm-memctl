@@ -7,6 +7,7 @@ question positions of every cached §23 prompt. One forward per question; resuma
 
 Outputs under runs/exp34_jlens/<reader>/: <qid>.npz (ranks and top-k for both variants), <qid>.json
 (positions, tracked ids, measures, lens_sha256), _timing.json, _failed.json (retried next run), _dropped.json.
+Exit 7: the lens does not fit the model (width or layers). Exit 8: this run read nothing and _failed.json is non-empty.
 A question counts as done only if its json carries the current lens's sha256, so a lens refitted or resumed
 since is re-read automatically (the older outputs are overwritten). Never deletes anything else.
 """
@@ -175,6 +176,32 @@ def run_records(lens, lens_model, tokenizer, records, out: Path, *, k: int, mode
     return timing
 
 
+LENS_MISMATCH = 7
+ALL_FAILED = 8
+
+
+def load_model(model_id: str, device: str, dtype: str):
+    """(jlens LensModel, tokenizer) for a Hugging Face model id."""
+    import jlens
+    import torch
+    import transformers
+
+    hf = transformers.AutoModelForCausalLM.from_pretrained(model_id, dtype=getattr(torch, dtype)).to(device)
+    hf.eval()
+    tok = transformers.AutoTokenizer.from_pretrained(model_id)
+    return jlens.from_hf(hf, tok), tok
+
+
+def lens_mismatch(lens, lens_model) -> str | None:
+    """Why the lens cannot be read on this model (width from a Jacobian's shape, layers in range), or None."""
+    widths = {tuple(J.shape) for J in lens.jacobians.values()}
+    if widths != {(lens_model.d_model, lens_model.d_model)}:
+        return f"Jacobian shapes {sorted(widths)} do not match the model's d_model {lens_model.d_model}"
+    if not lens.source_layers or max(lens.source_layers) >= lens_model.n_layers:
+        return f"source layer {max(lens.source_layers, default=None)} is not below the model's n_layers {lens_model.n_layers}"
+    return None
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--reader", required=True, choices=sorted(MODEL_IDS))
@@ -203,15 +230,15 @@ def main(argv=None) -> int:
         return 0
     import jlens
     import torch
-    import transformers
 
     model_id = args.model_id or MODEL_IDS[args.reader]
     device = ("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device
-    hf = transformers.AutoModelForCausalLM.from_pretrained(model_id, dtype=getattr(torch, args.dtype)).to(device)
-    hf.eval()
-    tok = transformers.AutoTokenizer.from_pretrained(model_id)
-    lens_model = jlens.from_hf(hf, tok)
+    lens_model, tok = load_model(model_id, device, args.dtype)
     lens = jlens.JacobianLens.load(args.lens)
+    problem = lens_mismatch(lens, lens_model)
+    if problem:
+        print(f"jlens_read: {args.lens} does not fit {model_id}: {problem}", file=sys.stderr, flush=True)
+        return LENS_MISMATCH
     lens_to(lens, device)
     started = time.perf_counter()
     timing = run_records(lens, lens_model, tok, records, out, k=args.k, model_id=model_id, lens_path=args.lens,
@@ -222,6 +249,11 @@ def main(argv=None) -> int:
                "peak_rss_mb": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024}
     append_timing(out, summary)
     print(json.dumps(summary), flush=True)
+    failed = json.loads((out / "_failed.json").read_text()) if _readable(out / "_failed.json") else {}
+    if not timing and failed:
+        print(f"jlens_read: this run read nothing and {len(failed)} failed (see {out / '_failed.json'})",
+              file=sys.stderr, flush=True)
+        return ALL_FAILED
     return 0
 
 

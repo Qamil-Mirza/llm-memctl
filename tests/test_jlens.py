@@ -355,6 +355,40 @@ def test_main_hashes_the_lens_before_deciding_nothing_is_left(tmp_path, monkeypa
     assert "nothing to do" in capsys.readouterr().out
 
 
+def _main_with_tiny(s, monkeypatch, tiny_lens, records):
+    _, lens_model, tok, _ = tiny_lens
+    monkeypatch.setattr(s, "load_records", lambda reader, fold: (records, 0))
+    monkeypatch.setattr(s, "load_model", lambda model_id, device, dtype: (lens_model, tok))
+
+
+@pytest.mark.parametrize("bad", ["d_model", "layers"])
+def test_main_exits_7_when_the_lens_does_not_fit_the_model(tiny_lens, tmp_path, monkeypatch, capsys, bad):
+    jlens = pytest.importorskip("jlens")
+    s = _script("jlens_read")
+    rec = PromptRecord("q1", 0, "fake", PROMPT, "o", "Leeds", "t", True, LINES, (LINES[2],), True, True, False)
+    _main_with_tiny(s, monkeypatch, tiny_lens, [rec])
+    jac = {0: torch.zeros(16, 16)} if bad == "d_model" else {9: torch.zeros(32, 32)}   # tiny: d_model 32, 4 layers
+    path = tmp_path / "wrong.pt"
+    jlens.JacobianLens(jac, n_prompts=1, d_model=16 if bad == "d_model" else 32).save(str(path))
+    out = tmp_path / "out"
+    assert s.main(["--reader", "qwen05b", "--lens", str(path), "--folds", "0", "--out", str(out), "--device", "cpu"]) == 7
+    assert ("d_model" if bad == "d_model" else "layer") in capsys.readouterr().err
+    assert not list(out.glob("q1.*"))
+
+
+def test_main_exits_8_when_every_pending_read_failed(tiny_lens, tmp_path, monkeypatch, capsys):
+    s = _script("jlens_read")
+    _, _, _, path = tiny_lens
+    bad = PromptRecord("q2", 0, "fake", PROMPT, "o", "Leeds", "t", True, LINES, ("not a memory line",), True, True, False)
+    _main_with_tiny(s, monkeypatch, tiny_lens, [bad])
+    out = tmp_path / "out"
+    assert s.main(["--reader", "qwen05b", "--lens", str(path), "--folds", "0", "--out", str(out), "--device", "cpu"]) == 8
+    assert "1 failed" in capsys.readouterr().err
+    good = PromptRecord("q1", 0, "fake", PROMPT, "o", "Leeds", "t", True, LINES, (LINES[2],), True, True, False)
+    _main_with_tiny(s, monkeypatch, tiny_lens, [good, bad])
+    assert s.main(["--reader", "qwen05b", "--lens", str(path), "--folds", "0", "--out", str(out), "--device", "cpu"]) == 0
+
+
 def test_eval_readout_position_before_target_and_poetry_newline(tiny):
     _, tok = tiny
     s = _script("jlens_eval")
