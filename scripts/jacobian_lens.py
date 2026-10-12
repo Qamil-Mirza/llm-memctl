@@ -120,8 +120,8 @@ def run_records(model, tokenizer, records: list[PromptRecord], out: Path, target
         try:
             _run_one(model, tokenizer, record, out, record_targets, own_skipped, ablate, k, model_id, started)
         except (ValueError, RuntimeError) as error:
-            # Nothing partial stays: an npz may be written before the error, but its json never is, and resume
-            # keys on the json. The record is retried on the next run.
+            # Nothing partial stays: _run_one computes everything before it writes anything, so no json exists
+            # for this question and resume (which keys on the json) retries it on the next run.
             failed[record.question_id] = repr(error)
             write_json(failed_path, failed)
             print(f"[{number + 1}/{len(records)}] {record.question_id} FAILED: {error!r}", flush=True)
@@ -168,9 +168,10 @@ def _run_one(model, tokenizer, record: PromptRecord, out: Path, record_targets: 
         write_json(output_path(out, record.question_id, target), payload)
     if ablate:
         write_json(output_path(out, record.question_id, "ablation"), {
-            "question_id": record.question_id, "prompt_sha256": prompt_hash, "gold_full": full, "gold_ablated": ablated, "delta": full - ablated,
-            "n_evidence_lines": len(record.evidence_lines),
+            "question_id": record.question_id, "prompt_sha256": prompt_hash, "gold_full": full, "gold_ablated": ablated,
+            "delta": full - ablated, "n_evidence_lines": len(record.evidence_lines),
         })
+
 
 def regen_check(model, tokenizer, records: list[PromptRecord], n: int, max_new_tokens: int = 256) -> dict:
     """Greedy regeneration of the first n prompts against the cached vLLM outputs."""
