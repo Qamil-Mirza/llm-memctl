@@ -613,11 +613,12 @@ if [ "$1" = "scripts/jlens_fit.py" ]; then
   reader=""; prev=""
   for a in "$@"; do [ "$prev" = "--reader" ] && reader="$a"; prev="$a"; done
   mkdir -p runs/exp34_jlens/lenses
+  touch "runs/exp34_jlens/lenses/$reader.pt"
   if [ "$POD_BELOW" = MISSING ]; then
-    printf '{\\n "reader": "%s",\\n "n_prompts": 3\\n}\\n' "$reader" > "runs/exp34_jlens/lenses/$reader.json"
+    printf '{\\n "reader": "%s",\\n "n_prompts": %s\\n}\\n' "$reader" "${POD_NP:-3}" > "runs/exp34_jlens/lenses/$reader.json"
   else
-    printf '{\\n "reader": "%s",\\n "n_prompts": 3,\\n "n_target": 128,\\n "n_minimum": 32,\\n "below_minimum": %s\\n}\\n' \\
-      "$reader" "$POD_BELOW" > "runs/exp34_jlens/lenses/$reader.json"
+    printf '{\\n "reader": "%s",\\n "n_prompts": %s,\\n "n_target": 128,\\n "n_minimum": 32,\\n "below_minimum": %s\\n}\\n' \\
+      "$reader" "${POD_NP:-3}" "$POD_BELOW" > "runs/exp34_jlens/lenses/$reader.json"
   fi
 fi
 """
@@ -723,3 +724,16 @@ def test_pod34_pins_the_local_transformers_and_installs_the_vendored_jlens(tmp_p
     assert f"transformers=={transformers.__version__}" in install    # the pod pin is the tested local version
     assert "-e external/jacobian-lens" in install
     assert Path("scripts/exp34_pod.sh").stat().st_mode & 0o111      # executable
+
+
+def test_pod34_does_not_refit_a_final_lens_on_rerun(tmp_path):
+    root, env, calls = _pod34_tree(tmp_path)          # stub sidecars: n_prompts 3 < N 128, below_minimum false
+    assert _run_pod34(root, env).returncode == 0
+    calls.write_text("")
+    done = _run_pod34(root, env)
+    assert done.returncode == 0, done.stdout + done.stderr
+    assert not any("jlens_fit.py" in c for c in _calls(calls))       # a below_minimum false sidecar is final
+    assert "not refitted" in done.stdout
+    calls.write_text("")
+    assert _run_pod34(root, {**env, "REFIT": "1"}).returncode == 0
+    assert sum("jlens_fit.py" in c for c in _calls(calls)) == 2         # REFIT=1 refits both

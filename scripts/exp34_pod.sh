@@ -48,13 +48,14 @@ export TOKENIZERS_PARALLELISM=false
 mkdir -p "$LENSES"
 stage_done install
 
-# Fit. A complete lens (n_prompts == n_target == N) is not refitted; an incomplete one resumes from its checkpoint.
+# Fit. A lens whose sidecar says "below_minimum": false is final and is not refitted on a rerun (even if the time
+# box stopped it short of N prompts); set REFIT=1 to resume such a fit from its checkpoint.
 for PAIR in "qwen3b:$M3" "qwen7b:$M7"; do
   READER="${PAIR%%:*}"; MINUTES="${PAIR#*:}"
   SIDE="$LENSES/$READER.json"
-  if test -e "$LENSES/$READER.pt" && grep -Eq "\"n_prompts\": $N," "$SIDE" 2>/dev/null \
-     && grep -Eq "\"n_target\": $N," "$SIDE"; then
-    echo "$READER lens complete ($N prompts), not refitted"
+  if test -e "$LENSES/$READER.pt" && grep -Eq '"below_minimum":[[:space:]]*false' "$SIDE" 2>/dev/null \
+     && test "${REFIT:-0}" != 1; then
+    echo "$READER lens final ($(grep -Eo '"n_prompts":[[:space:]]*[0-9]+' "$SIDE" | tr -d ' ')), not refitted (REFIT=1 to refit)"
   else
     python scripts/jlens_fit.py --reader "$READER" --n-prompts "$N" --min-prompts "$MIN_PROMPTS" --max-minutes "$MINUTES" \
       --dim-batch 32 --device cuda --dtype bfloat16 --out "$LENSES" 2>&1 | tee -a "$OUT/${READER}_fit.log"
