@@ -15,6 +15,7 @@ _failed.json entry once it succeeds). Never deletes anything.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import resource
@@ -35,6 +36,11 @@ MODEL_IDS = {
     "qwen7b": "Qwen/Qwen2.5-7B-Instruct",
 }
 REGION_CODE = {name: code for code, name in enumerate(REGIONS)}
+
+
+def prompt_sha256(prompt: str) -> str:
+    """The identity of the prompt text a question was run on; the report checks both readers saw the same one."""
+    return hashlib.sha256(prompt.encode("utf-8")).hexdigest()
 
 
 def output_path(out: Path, question_id: str, target: str) -> Path:
@@ -143,6 +149,7 @@ def _run_one(model, tokenizer, record: PromptRecord, out: Path, record_targets: 
     results = jacobian_pass(model, tokenizer, record.prompt, record.memory_lines, record.evidence_lines,
                             record.gold, record.output, targets=record_targets) if record_targets else {}
     gradient_s = time.perf_counter() - started
+    prompt_hash = prompt_sha256(record.prompt)
     if ablate:
         full = target_value(model, tokenizer, record.prompt, record.gold, record.output, "gold")
         ablated = target_value(model, tokenizer, ablate_evidence(record.prompt, record.memory_lines, record.evidence_lines),
@@ -153,7 +160,7 @@ def _run_one(model, tokenizer, record: PromptRecord, out: Path, record_targets: 
                             regions=np.array([REGION_CODE[r] for r in result.regions], dtype=np.int8))
         payload = {
             "question_id": record.question_id, "fold": record.fold, "reader": record.reader, "target": target,
-            "model_id": model_id, "measures": measures(result, k=k), "elapsed_s": gradient_s,
+            "model_id": model_id, "prompt_sha256": prompt_hash, "measures": measures(result, k=k), "elapsed_s": gradient_s,
         }
         payload.update(result.extra)
         if own_skipped:
@@ -161,7 +168,7 @@ def _run_one(model, tokenizer, record: PromptRecord, out: Path, record_targets: 
         write_json(output_path(out, record.question_id, target), payload)
     if ablate:
         write_json(output_path(out, record.question_id, "ablation"), {
-            "question_id": record.question_id, "gold_full": full, "gold_ablated": ablated, "delta": full - ablated,
+            "question_id": record.question_id, "prompt_sha256": prompt_hash, "gold_full": full, "gold_ablated": ablated, "delta": full - ablated,
             "n_evidence_lines": len(record.evidence_lines),
         })
 

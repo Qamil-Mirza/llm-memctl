@@ -1,4 +1,5 @@
 import gzip, json
+from statistics import mean
 from pathlib import Path
 
 import pytest
@@ -411,6 +412,8 @@ def test_run_records_writes_measures_npz_and_ablation(tiny, tmp_path):
     gold = json.loads((tmp_path / "qX.gold.json").read_text())
     assert gold["measures"]["l2"]["shares"]["evidence"] >= 0 and gold["target"] == "gold" and gold["model_id"] == "tiny"
     assert "own_skipped" not in gold
+    import hashlib
+    assert gold["prompt_sha256"] == hashlib.sha256(PROMPT.encode()).hexdigest()
     margin = json.loads((tmp_path / "qX.margin.json").read_text())
     assert margin["first_gold_token"] == " " and margin["margin_tokens_scored"] == 2
     arrays = np.load(tmp_path / "qX.gold.npz")
@@ -498,8 +501,8 @@ def test_regen_check_counts_matches(tiny, tmp_path):
     assert result["n"] == 1 and result["matches"] in (0, 1) and len(result["pairs"]) == 1
 
 
-def _fake_outputs(root, reader, rows, folds=(0,), target="gold"):
-    """rows: list of (question_id, fold, evidence_share, delta)."""
+def _fake_outputs(root, reader, rows, folds=(0,), target="gold", sha="h0"):
+    """rows: list of (question_id, fold, evidence_share, delta). sha=None leaves prompt_sha256 out."""
     d = root / reader
     d.mkdir(parents=True, exist_ok=True)
     for qid, fold, share, delta in rows:
@@ -508,8 +511,10 @@ def _fake_outputs(root, reader, rows, folds=(0,), target="gold"):
              "gxi": {"shares": {"instruction": 0.2, "evidence": share / 2, "distractor": 0.7 - share / 2, "question": 0.1},
                      "lift": share / 0.4, "topk": share / 2},
              "counts": {"evidence": 20, "distractor": 60, "instruction": 15, "question": 5}, "target_value": -3.0, "n_tokens": 100}
-        (d / f"{qid}.{target}.json").write_text(json.dumps({"question_id": qid, "fold": fold, "reader": reader, "target": target,
-                                                            "model_id": "x", "measures": m}))
+        entry = {"question_id": qid, "fold": fold, "reader": reader, "target": target, "model_id": "x", "measures": m}
+        if sha is not None:
+            entry["prompt_sha256"] = sha
+        (d / f"{qid}.{target}.json").write_text(json.dumps(entry))
         (d / f"{qid}.ablation.json").write_text(json.dumps({"question_id": qid, "gold_full": 0.0, "gold_ablated": -delta, "delta": delta}))
 
 
@@ -519,19 +524,29 @@ def test_report_builds_claims_from_outputs(tmp_path, monkeypatch):
     small = [(q, 0, 0.1 + 0.002 * i, 0.5 + 0.01 * i) for i, q in enumerate(qids)]
     large = [(q, 0, 0.3 + 0.002 * i, 1.0 + 0.01 * i) for i, q in enumerate(qids)]
     _fake_outputs(tmp_path, "qwen3b", small); _fake_outputs(tmp_path, "qwen7b", large)
+    _fake_outputs(tmp_path, "qwen3b", small, target="own"); _fake_outputs(tmp_path, "qwen7b", large, target="own")
 
     calls = []
 
     def records(reader, fold, **kw):
         calls.append(reader)
         rs = [PromptRecord(q, 0, reader, "p", "o", "g", "single-session-user", True, ("l",), ("l",), True,
-                           correct=(i % 2 == 0) if reader == "qwen3b" else True, unknown=False) for i, q in enumerate(qids)]
-        return rs, {}
+                           correct=(i % 2 == 0) if reader == "qwen3b" else True,
+                           unknown=(i % 4 == 1) if reader == "qwen3b" else False) for i, q in enumerate(qids)]
+        return rs, {"no_cached_prompt": 0, "evidence_not_found": 3 if reader == "qwen7b" else 1}
     monkeypatch.setattr(rep, "load_records", records)
     markdown, numbers = rep.build_report(("qwen3b", "qwen7b"), {0}, "l2", "k50", tmp_path, samples=300)
     assert numbers["claim1"]["gold"]["verdict"] == "SHOWN" and numbers["claim1"]["gold"]["n"] == 40
-    assert 0 <= numbers["claim2"]["qwen3b"]["auc"] <= 1
-    assert numbers["ablation"]["qwen3b"]["rho"] > 0.9
+    claim2 = numbers["claim2"]["qwen3b"]
+    assert 0 <= claim2["auc"] <= 1 and claim2["verdict"] == ("SHOWN" if claim2["ci_low"] > 0.5 else "NOT SHOWN")
+    assert claim2["difference"]["mean"] == pytest.approx(0.002 * (mean(range(0, 40, 2)) - mean(range(1, 40, 2))))
+    assert claim2["difference"]["ci_low"] <= claim2["difference"]["mean"] <= claim2["difference"]["ci_high"]
+    assert numbers["claim2"]["qwen7b"]["verdict"] == "NOT SHOWN"  # no wrong answers: no AUC
+    assert numbers["ablation"]["qwen3b"]["rho"] > 0.9 and numbers["ablation"]["qwen3b"]["verdict"] == "PASS"
+    assert numbers["dropped"] == {"qwen3b": {"0": {"no_cached_prompt": 0, "evidence_not_found": 1}},
+                                  "qwen7b": {"0": {"no_cached_prompt": 0, "evidence_not_found": 3}}}
+    assert numbers["shares"]["qwen3b/own (refusals)"]["n"] == 10 and "qwen7b/own (refusals)" not in numbers["shares"]
+    assert "own (refusals)" in markdown and "Dropped" in markdown and "| PASS |" in markdown
     assert "Claim 1" in markdown and "qwen7b" in markdown and "folds: 0" in markdown
     assert set(calls) == {"qwen3b", "qwen7b"}
     calls.clear()
@@ -605,3 +620,38 @@ def test_load_outputs_and_ablation_drop_other_folds(tmp_path):
     assert set(rep.load_outputs(tmp_path / "qwen3b", {0}, "gold")) == {"q_dev"}
     assert rep.load_ablation(tmp_path / "qwen3b", {0}) == {"q_dev": 1.0}
     assert set(rep.load_outputs(tmp_path / "qwen3b", {2}, "gold")) == {"q_conf"}
+
+
+
+def test_report_refuses_to_pair_questions_whose_prompts_differ(tmp_path, monkeypatch):
+    from scripts import exp33_report as rep
+    qids = [f"q{i}" for i in range(6)]
+    _fake_outputs(tmp_path, "qwen3b", [(q, 0, 0.2, 1.0) for q in qids])
+    _fake_outputs(tmp_path, "qwen7b", [(q, 0, 0.3, 1.0) for q in qids[:5]])
+    _fake_outputs(tmp_path, "qwen7b", [("q5", 0, 0.3, 1.0)], sha="other")
+    monkeypatch.setattr(rep, "load_records", lambda reader, fold, **kw: (
+        [PromptRecord(q, 0, reader, "p", "o", "g", "t", True, ("l",), ("l",), True, True, False) for q in qids], {}))
+    with pytest.raises(rep.PromptIdentityError, match="q5"):
+        rep.build_report(("qwen3b", "qwen7b"), {0}, "l2", "k50", tmp_path, samples=50)
+    _fake_outputs(tmp_path, "qwen7b", [("q5", 0, 0.3, 1.0)], sha=None)  # a json from before the hash was stored
+    with pytest.raises(rep.PromptIdentityError, match="q5.*missing"):
+        rep.build_report(("qwen3b", "qwen7b"), {0}, "l2", "k50", tmp_path, samples=50)
+    monkeypatch.chdir(tmp_path)
+    assert rep.main(["--folds", "0", "--root", str(tmp_path), "--samples", "50", "--out", str(tmp_path / "r.md")]) == 4
+    assert not (tmp_path / "r.md").exists()
+
+
+from memctl.analysis.jacobian_stats import bootstrap_mean_difference
+
+
+def test_bootstrap_mean_difference_resamples_each_side():
+    rng = np.random.default_rng(1)
+    a = list(rng.normal(1.0, 1.0, 50)); b = list(rng.normal(0.0, 1.0, 30))
+    r = bootstrap_mean_difference(a, b, samples=500, seed=0)
+    assert r["n_a"] == 50 and r["n_b"] == 30
+    assert r["mean"] == pytest.approx(mean(a) - mean(b))
+    assert 0 < r["ci_low"] <= r["mean"] <= r["ci_high"]
+    assert bootstrap_mean_difference(a, b, samples=500, seed=0) == r
+    flipped = bootstrap_mean_difference(b, a, samples=500, seed=0)
+    assert flipped["ci_high"] < 0
+    assert bootstrap_mean_difference([], b, samples=10)["mean"] is None

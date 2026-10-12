@@ -1,5 +1,6 @@
-"""Statistics for the §33 claims: paired region-share differences, an AUC for within-reader
-separation, and a rank correlation for the ablation check. Bootstraps resample questions."""
+"""Statistics for the §33 claims: paired region-share differences, an AUC and an unpaired difference of
+means for within-reader separation, and a rank correlation for the ablation check. Bootstraps resample
+questions."""
 
 from __future__ import annotations
 
@@ -32,6 +33,17 @@ def bootstrap_auc(positives: list[float], negatives: list[float], samples: int =
     low, high = _interval(draws)
     return {"n_pos": len(positives), "n_neg": len(negatives), "auc": auc(positives, negatives), "ci_low": low, "ci_high": high}
 
+
+
+def bootstrap_mean_difference(a: list[float], b: list[float], samples: int = 10000, seed: int = 0) -> dict:
+    """mean(a) - mean(b) for two independent groups, with a 95% percentile interval from resampling each
+    group on its own (the groups are not paired)."""
+    if not a or not b:
+        return {"n_a": len(a), "n_b": len(b), "mean": None, "ci_low": None, "ci_high": None}
+    rng = random.Random(seed)
+    draws = [sum(rng.choices(a, k=len(a))) / len(a) - sum(rng.choices(b, k=len(b))) / len(b) for _ in range(samples)]
+    low, high = _interval(draws)
+    return {"n_a": len(a), "n_b": len(b), "mean": sum(a) / len(a) - sum(b) / len(b), "ci_low": low, "ci_high": high}
 
 def bootstrap_spearman(x: list[float], y: list[float], samples: int = 10000, seed: int = 0) -> dict:
     rng = random.Random(seed)
