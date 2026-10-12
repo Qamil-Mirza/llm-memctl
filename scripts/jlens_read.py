@@ -32,6 +32,7 @@ from memctl.jacobian_data import PromptRecord, load_records  # noqa: E402
 MODEL_IDS = {"qwen05b": "Qwen/Qwen2.5-0.5B-Instruct", "qwen3b": "Qwen/Qwen2.5-3B-Instruct", "qwen7b": "Qwen/Qwen2.5-7B-Instruct"}
 MAX_SEQ_LEN = 4096
 TRACKED = ("gold", "unknown_sp", "unknown")
+DEV_FOLDS = {0, 1}
 
 
 def write_json(path: Path, payload: dict) -> None:
@@ -165,10 +166,12 @@ def run_records(lens, lens_model, tokenizer, records, out: Path, *, k: int, mode
             failed.pop(record.question_id)
             write_json(failed_path, failed)
         timing[record.question_id] = payload["elapsed_s"]
-        m = payload["measures"]
-        print(f"[{number + 1}/{len(records)}] {record.question_id} {payload['elapsed_s']:.1f}s n_tokens={payload['n_tokens']} "
-              f"P1 gold jlens={m['jlens']['P1']['gold']['outcome']} logit={m['logit']['P1']['gold']['outcome']} "
-              f"final_rank={m['jlens']['P1']['gold']['final_rank']}", flush=True)
+        line = f"[{number + 1}/{len(records)}] {record.question_id} {payload['elapsed_s']:.1f}s n_tokens={payload['n_tokens']}"
+        if record.fold in DEV_FOLDS:                    # confirmation-fold outcomes never reach the log
+            m = payload["measures"]
+            line += (f" P1 gold jlens={m['jlens']['P1']['gold']['outcome']} logit={m['logit']['P1']['gold']['outcome']} "
+                     f"final_rank={m['jlens']['P1']['gold']['final_rank']}")
+        print(line, flush=True)
     return timing
 
 

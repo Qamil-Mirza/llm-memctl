@@ -314,6 +314,18 @@ def test_run_records_writes_resumes_and_isolates_failures(tiny_lens, tmp_path):
                          lens_sha256="h1") == {}
 
 
+def test_run_records_prints_outcomes_only_for_development_folds(tiny_lens, tmp_path, capsys):
+    lens, lens_model, tok, path = tiny_lens
+    s = _script("jlens_read")
+    dev = PromptRecord("qd", 1, "fake", PROMPT, "o", "Leeds", "t", True, LINES, (LINES[2],), True, True, False)
+    conf = PromptRecord("qc", 2, "fake", PROMPT, "o", "Leeds", "t", True, LINES, (LINES[2],), True, True, False)
+    s.run_records(lens, lens_model, tok, [dev, conf], tmp_path, k=5, model_id="tiny", lens_path=str(path), lens_sha256="h")
+    lines = capsys.readouterr().out.splitlines()
+    dev_line = next(l for l in lines if " qd " in l); conf_line = next(l for l in lines if " qc " in l)
+    assert "final_rank" in dev_line and "jlens=" in dev_line
+    assert "n_tokens=" in conf_line and not any(w in conf_line for w in ("final_rank", "jlens=", "logit=", "P1", "rank"))
+
+
 def test_run_records_redoes_a_question_read_with_another_lens(tiny_lens, tmp_path):
     lens, lens_model, tok, path = tiny_lens
     s = _script("jlens_read")
