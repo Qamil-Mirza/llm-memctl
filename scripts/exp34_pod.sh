@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# §34 on one GPU: fit J-lenses for both Qwen readers, read the §23 prompts, lens-quality eval, community 7B
+# §34 on one GPU: fit J-lenses for both Qwen readers (7B first, 3B capped at the 7B's prompt count), read the §23 prompts, lens-quality eval, community 7B
 # cross-check, then the §33 secondary. Resumable; rerun to continue (a fit resumes from its checkpoint).
 #   bash scripts/exp34_pod.sh [max_minutes_7b=90] [max_minutes_3b=40] [n_prompts=128]
 # Exit 3: an input is missing (preflight, before anything is installed). Exit 5: a lens is below the minimum.
@@ -48,16 +48,17 @@ export TOKENIZERS_PARALLELISM=false
 mkdir -p "$LENSES"
 stage_done install
 
-# Fit. A lens whose sidecar says "below_minimum": false is final and is not refitted on a rerun (even if the time
-# box stopped it short of N prompts); set REFIT=1 to resume such a fit from its checkpoint.
-for PAIR in "qwen3b:$M3" "qwen7b:$M7"; do
-  READER="${PAIR%%:*}"; MINUTES="${PAIR#*:}"
-  SIDE="$LENSES/$READER.json"
+# Fit, 7B first. A lens whose sidecar says "below_minimum": false is final and is not refitted on a rerun (even if
+# the time box stopped it short of its target); set REFIT=1 to resume such a fit from its checkpoint. The 3B is then
+# fitted on the 7B's prompt count N7 (same seed, so the same prompt prefix), so both lenses average the same prompts.
+n_prompts_of() { grep -Eo '"n_prompts":[[:space:]]*[0-9]+' "$1" 2>/dev/null | grep -Eo '[0-9]+$' || true; }
+fit_reader() {
+  local READER="$1" MINUTES="$2" NP="$3" SIDE="$LENSES/$1.json"
   if test -e "$LENSES/$READER.pt" && grep -Eq '"below_minimum":[[:space:]]*false' "$SIDE" 2>/dev/null \
      && test "${REFIT:-0}" != 1; then
-    echo "$READER lens final ($(grep -Eo '"n_prompts":[[:space:]]*[0-9]+' "$SIDE" | tr -d ' ')), not refitted (REFIT=1 to refit)"
+    echo "$READER lens final (n_prompts $(n_prompts_of "$SIDE")), not refitted (REFIT=1 to refit)"
   else
-    python scripts/jlens_fit.py --reader "$READER" --n-prompts "$N" --min-prompts "$MIN_PROMPTS" --max-minutes "$MINUTES" \
+    python scripts/jlens_fit.py --reader "$READER" --n-prompts "$NP" --min-prompts "$MIN_PROMPTS" --max-minutes "$MINUTES" \
       --dim-batch 32 --device cuda --dtype bfloat16 --out "$LENSES" 2>&1 | tee -a "$OUT/${READER}_fit.log"
   fi
   # Only an explicit "below_minimum": false passes; true, a missing key, a truncated or absent sidecar all stop.
@@ -68,7 +69,18 @@ for PAIR in "qwen3b:$M3" "qwen7b:$M7"; do
     exit 5
   fi
   stage_done "fit $READER"
-done
+}
+fit_reader qwen7b "$M7" "$N"
+N7=$(n_prompts_of "$LENSES/qwen7b.json")
+if test -z "$N7"; then
+  echo "fit: no n_prompts in $LENSES/qwen7b.json; cannot cap the 3B fit" | tee -a "$OUT/pod.log" >&2
+  exit 5
+fi
+echo "qwen7b lens averages $N7 prompts; fitting qwen3b on the same $N7" | tee -a "$OUT/pod.log"
+fit_reader qwen3b "$M3" "$N7"
+N3=$(n_prompts_of "$LENSES/qwen3b.json")
+test "$N3" = "$N7" || echo "warning: qwen3b lens averages $N3 prompts, qwen7b $N7 (a final lens is kept; REFIT=1 to refit)" \
+  | tee -a "$OUT/pod.log" >&2
 
 # Read every fold (resumable per question).
 for READER in qwen3b qwen7b; do

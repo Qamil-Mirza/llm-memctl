@@ -686,9 +686,9 @@ def test_pod34_stops_with_exit_5_when_a_lens_is_below_the_minimum(tmp_path, belo
     assert done.returncode == 5, done.stdout + done.stderr
     assert "below_minimum" in done.stdout + done.stderr
     made = _calls(calls)
-    assert any("scripts/jlens_fit.py --reader qwen3b" in c for c in made)
+    assert any("scripts/jlens_fit.py --reader qwen7b" in c for c in made)        # the 7B is fitted first
     assert not any("jlens_read.py" in c or "jlens_eval.py" in c for c in made)   # never read with a thin lens
-    assert not any("jlens_fit.py --reader qwen7b" in c for c in made)
+    assert not any("jlens_fit.py --reader qwen3b" in c for c in made)
 
 
 def test_pod34_runs_every_stage_in_order_with_the_brief_settings(tmp_path):
@@ -706,8 +706,8 @@ def test_pod34_runs_every_stage_in_order_with_the_brief_settings(tmp_path):
     hub = next(i for i, c in enumerate(made) if "andyx10/jacobian-lens-qwen2.5-7b-instruct" in c)
     comm = next(i for i, c in enumerate(made) if c.startswith("scripts/jlens_read.py") and "community_qwen7b.pt" in c)
     j33 = next(i for i, c in enumerate(made) if c.startswith("scripts/jacobian_lens.py --reader qwen3b"))
-    assert fit3 < fit7 < read3 < read7 < eval3 < eval7 < hub < comm < j33
-    assert "--n-prompts 128 --min-prompts 32 --max-minutes 40 --dim-batch 32 --device cuda" in made[fit3]
+    assert fit7 < fit3 < read3 < read7 < eval3 < eval7 < hub < comm < j33
+    assert "--n-prompts 3 --min-prompts 32 --max-minutes 40 --dim-batch 32 --device cuda" in made[fit3]   # N7 = 3 (stub)
     assert "--n-prompts 128 --min-prompts 32 --max-minutes 90 --dim-batch 32 --device cuda" in made[fit7]
     assert "--lens runs/exp34_jlens/lenses/qwen3b.pt --folds 0,1,2,3,4 --device cuda" in made[read3]
     assert "--lens runs/exp34_jlens/lenses/qwen7b.pt" in made[eval7]
@@ -737,3 +737,14 @@ def test_pod34_does_not_refit_a_final_lens_on_rerun(tmp_path):
     calls.write_text("")
     assert _run_pod34(root, {**env, "REFIT": "1"}).returncode == 0
     assert sum("jlens_fit.py" in c for c in _calls(calls)) == 2         # REFIT=1 refits both
+
+
+def test_pod34_caps_the_3b_fit_at_the_7b_prompt_count(tmp_path):
+    root, env, calls = _pod34_tree(tmp_path)
+    done = _run_pod34(root, {**env, "POD_NP": "77"}, "90", "40", "128")   # the 7B sidecar reports 77 prompts
+    assert done.returncode == 0, done.stdout + done.stderr
+    made = [c.removeprefix("fake python ") for c in _calls(calls)]
+    fit7 = next(c for c in made if c.startswith("scripts/jlens_fit.py --reader qwen7b"))
+    fit3 = next(c for c in made if c.startswith("scripts/jlens_fit.py --reader qwen3b"))
+    assert "--n-prompts 128 --min-prompts 32 --max-minutes 90" in fit7
+    assert "--n-prompts 77 --min-prompts 32 --max-minutes 40" in fit3

@@ -329,11 +329,13 @@ readers, so the local root points both names at the 0.5B outputs. To recreate it
 
 Paid run (one GPU, user-approved quote first): `bash scripts/exp34_pod.sh [max_minutes_7b=90] [max_minutes_3b=40] [n_prompts=128]`.
 It runs, in order: install (pins `transformers==5.17.0`, the local `.venv` version, plus `-e external/jacobian-lens`,
-and prints torch, transformers and the jlens commit); fit `qwen3b` then `qwen7b` (`--min-prompts 32 --dim-batch 32`);
-read both readers on folds 0 to 4; lens-quality eval for both; the community 7B cross-check; then
-`bash scripts/exp33_pod.sh` (the §33 secondary). Each stage prints its elapsed time (also in
-`runs/exp34_jlens/pod.log`). Rerun the same command to continue: a fit resumes from its checkpoint (a complete
-lens is not refitted), reads skip questions already read with the same lens (each `<qid>.json` stores the
+and prints torch, transformers and the jlens commit); fit `qwen7b` first (`--n-prompts N --min-prompts 32 --dim-batch 32`),
+read its sidecar's `n_prompts` = N7, then fit `qwen3b` with `--n-prompts N7 --min-prompts 32` (same seed, so the same
+prompt prefix: both lenses average the same prompts); read both readers on folds 0 to 4; lens-quality eval for both;
+the community 7B cross-check; then `bash scripts/exp33_pod.sh` (the §33 secondary). Each stage prints its elapsed time (also in
+`runs/exp34_jlens/pod.log`). Rerun the same command to continue: a lens whose sidecar says `"below_minimum": false`
+is final and is not refitted, even if its time box stopped it short of its target (`REFIT=1 bash scripts/exp34_pod.sh ...`
+resumes it from its checkpoint instead); reads skip questions already read with the same lens (each `<qid>.json` stores the
 lens file's `lens_sha256`, so a resumed or refitted fit automatically triggers re-reads of every question), an
 eval newer than its lens is skipped, and the community lens is downloaded once. Exit codes: 3 = preflight found
 a missing input (named) before installing anything; 5 = a fitted lens's sidecar does not say
