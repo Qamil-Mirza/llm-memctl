@@ -41,13 +41,33 @@ def test_readout_positions_land_on_the_right_tokens(tiny):
     r = readout_for(tok, PROMPT, LINES, (LINES[2],), gold="Leeds")
     assert isinstance(r, Readout) and r.text.endswith(ANSWER_PREFIX)
     ids = list(r.input_ids)
-    assert ids == tok(r.text, add_special_tokens=False).input_ids
+    assert ids[:r.n_chat] == tok(r.chat_text, add_special_tokens=False).input_ids     # the chat text, then "Answer:"
+    assert ids[r.n_chat:] == tok(ANSWER_PREFIX, add_special_tokens=False).input_ids and r.n_leading_ws == 0
     (p1,) = r.positions["P1"]; (p0,) = r.positions["P0"]; (e,) = r.positions["E"]; (q,) = r.positions["Q"]
-    assert p1 == len(ids) - 1 and p0 < p1
+    assert p1 == len(ids) - 1 and p0 < p1 and r.positions["P1_raw"] == (p1,)          # content-first gold: P1 == P1_raw
     assert tok.decode(ids[p0 + 1:p1 + 1]) == ANSWER_PREFIX          # P0 is the token right before "Answer:"
     assert tok.decode(ids[e]).strip().endswith(".") and "Leeds" in tok.decode(ids[e - 3:e + 1])
     assert tok.decode(ids[q]).strip().endswith("?")
     assert r.tracked["gold"] == tracked_token_ids(tok, "Leeds")[0]["gold"] and r.gold_token_text == " Leeds"
+
+
+def test_readout_teacher_forces_the_leading_space_of_a_numeric_gold(tiny):
+    _, tok = tiny
+    r = readout_for(tok, PROMPT, LINES, (LINES[2],), gold="4 hours")
+    ids = list(r.input_ids)
+    (p1,) = r.positions["P1"]; (p1_raw,) = r.positions["P1_raw"]
+    assert tok.decode([ids[-1]]) == " " and r.n_leading_ws == 1        # the bare space is teacher-forced
+    assert p1 == len(ids) - 1 and p1_raw == p1 - 1                     # P1 predicts the digit; P1_raw follows "Answer:"
+    assert tok.decode(ids[p1_raw - 1:p1_raw + 1]).endswith(ANSWER_PREFIX)
+    assert tok.decode([r.tracked["gold"]]) == "4" and r.gold_token_text == "4"
+    leeds = readout_for(tok, PROMPT, LINES, (LINES[2],), gold="Leeds")
+    assert r.positions["P0"] == leeds.positions["P0"] and r.positions["E"] == leeds.positions["E"]
+    assert r.positions["Q"] == leeds.positions["Q"] and ids[:-1] == list(leeds.input_ids)
+
+
+def test_position_names_end_with_p1_raw():
+    from memctl.analysis.jlens_readout import POSITION_NAMES
+    assert POSITION_NAMES == ("P1", "P0", "E", "Q", "P1_raw")
 
 
 def test_readout_with_two_evidence_lines_and_no_note(tiny):
@@ -115,11 +135,13 @@ def test_outcome_and_depth_rules():
 
 def test_question_measures_shapes_every_position():
     layers = [0, 1, 2, 3]
-    ranks = np.full((4, 4, 3), 99)             # 4 layers, 4 positions (P1, P0, E, Q), 3 tracked
+    ranks = np.full((4, 5, 3), 99)             # 4 layers, 5 positions (P1, P0, E, Q, P1_raw), 3 tracked
     ranks[1:, 0, 0] = [4, 2, 50]               # gold at P1: emerges at layer 1, lost at the end -> B
     ranks[:, 0, 1] = [99, 99, 3, 1]            # " unknown" at P1 reaches top-1 at the last layer
+    ranks[:, 4, 0] = [7, 7, 7, 7]              # gold at P1_raw: present throughout -> C
     m = question_measures(ranks, layers, n_layers=4, tracked_names=["gold", "unknown_sp", "unknown"],
-                          position_names={"P1": [0], "P0": [1], "E": [2], "Q": [3]}, k=10)
+                          position_names={"P1": [0], "P0": [1], "E": [2], "Q": [3], "P1_raw": [4]}, k=10)
+    assert m["P1_raw"]["gold"]["outcome"] == "C" and m["P1_raw"]["gold"]["final_rank"] == 7
     assert m["k"] == 10 and m["P1"]["gold"] == {"best_rank": 2, "final_rank": 50, "emergence_depth": pytest.approx(0.25), "outcome": "B"}
     assert m["P1"]["unknown_sp"]["first_top1_depth"] == pytest.approx(0.75)
     assert m["P0"]["gold"]["outcome"] == "A" and len(m["E"]) == 1 and m["Q"]["gold"]["best_rank"] == 99
@@ -242,13 +264,29 @@ def test_read_record_produces_both_variants_from_one_forward(tiny_lens):
     record = PromptRecord("qX", 0, "fake", PROMPT, "Answer: Leeds", "Leeds", "single-session-user", True, LINES, (LINES[2],), True, True, False)
     payload, arrays = s.read_record(lens, lens_model, tok, record, k=5)
     L, P, T = arrays["ranks_jlens"].shape
-    assert arrays["layers"].tolist() == [0, 1, 2, 3] and P == 4 and T == 3
+    assert arrays["layers"].tolist() == [0, 1, 2, 3] and P == 5 and T == 3
     assert arrays["ranks_logit"].shape == (L, P, T)
     assert (arrays["ranks_jlens"][-1] == arrays["ranks_logit"][-1]).all()          # final layer identical (model logits)
     assert arrays["top_ids_jlens"].shape == (L, P, 5)
     assert payload["measures"]["jlens"]["P1"]["gold"]["outcome"] in ("A", "B", "C")
     assert payload["positions"]["P1"] == [payload["n_tokens"] - 1] and payload["gold_token_text"] == " Leeds"
     assert len(payload["prompt_sha256"]) == 64
+    assert payload["positions"]["P1_raw"] == payload["positions"]["P1"] and payload["n_leading_ws"] == 0
+
+
+def test_read_record_forwards_the_teacher_forced_ids(tiny_lens, monkeypatch):
+    lens, lens_model, tok, _ = tiny_lens
+    s = _script("jlens_read")
+    record = PromptRecord("qN", 0, "fake", PROMPT, "o", "4 hours", "t", True, LINES, (LINES[2],), True, True, False)
+    seen = []
+    original = lens_model.forward
+    monkeypatch.setattr(lens_model, "forward", lambda ids: seen.append(ids[0].tolist()) or original(ids))
+    payload, arrays = s.read_record(lens, lens_model, tok, record, k=5)
+    expected = readout_for(tok, PROMPT, LINES, (LINES[2],), "4 hours")
+    assert seen == [list(expected.input_ids)] and tok.decode([seen[0][-1]]) == " "
+    assert payload["n_tokens"] == len(expected.input_ids) and payload["n_leading_ws"] == 1
+    assert payload["positions"]["P1"] == [payload["n_tokens"] - 1] and payload["positions"]["P1_raw"] == [payload["n_tokens"] - 2]
+    assert arrays["position_index"].tolist()[-1] == payload["n_tokens"] - 2
 
 
 def test_read_record_rejects_truncated_ids(tiny_lens, monkeypatch):

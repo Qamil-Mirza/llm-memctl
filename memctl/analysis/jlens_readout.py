@@ -1,11 +1,13 @@
 """§34: reading a Jacobian lens at chosen positions of a cached reader prompt.
 
-Positions (indices into the chat text plus ``Answer:``): P1 the last token (the first answer token is
-predicted here), P0 the last token of the generation prompt, E the last token of each gold evidence
-line, Q the last token of the question line. Tracked tokens: the gold answer's first content token
-(leading whitespace-only tokens skipped, as the §33 margin does), " unknown" and "unknown".
-The rank/outcome arithmetic over lens logits lives further down (Task 2). ``jlens`` and ``torch`` are
-imported only inside the functions that need them.
+The read sequence is built by id concatenation, never by re-tokenising a joined string:
+ids(chat text) + ids("Answer:") + the gold's leading whitespace-only tokens (teacher-forced; Qwen splits
+" 4 hours" into a bare-space token and "4", so the digit is predicted one position after "Answer:").
+Positions: P1 the last token (it predicts the gold's first content token), P0 the last token of the
+generation prompt, E the last token of each gold evidence line, Q the last token of the question line, and
+P1_raw the token right after "Answer:" (equal to P1 when the gold starts with a content token). Tracked
+tokens: the gold answer's first content token (leading whitespace-only tokens skipped, as the §33 margin
+does), " unknown" and "unknown". ``jlens`` and ``torch`` are imported only inside the functions that need them.
 """
 
 from __future__ import annotations
@@ -18,18 +20,21 @@ import numpy as np
 from memctl.analysis.jacobian import _ids, _margin_length, segment_prompt, unknown_id, wrap_chat
 
 ANSWER_PREFIX = "Answer:"
-POSITION_NAMES = ("P1", "P0", "E", "Q")
+POSITION_NAMES = ("P1", "P0", "E", "Q", "P1_raw")   # array layout order; P1_raw last
 QUESTION_MARK = "Question:"
 NOTE_SUFFIX = "\n\nNote:"
 
 
 @dataclass(frozen=True)
 class Readout:
-    text: str
+    text: str                      # for display only; the authoritative sequence is input_ids
     input_ids: tuple[int, ...]
     positions: dict[str, tuple[int, ...]]
     tracked: dict[str, int]
     gold_token_text: str
+    chat_text: str = ""
+    n_chat: int = 0                # input_ids[:n_chat] are the chat text's ids
+    n_leading_ws: int = 0          # teacher-forced whitespace-only gold tokens at the end of input_ids
 
 
 def tracked_token_ids(tokenizer, gold: str) -> tuple[dict[str, int], str]:
@@ -55,13 +60,17 @@ def readout_for(tokenizer, prompt: str, memory_lines: tuple[str, ...], evidence_
     if missing:
         raise ValueError(f"evidence line not among the memory lines: {missing[0][:60]!r}")
     chat = wrap_chat(tokenizer, prompt)
-    text = chat + ANSWER_PREFIX
-    encoded = tokenizer(text, add_special_tokens=False, return_offsets_mapping=True)
-    ids = list(encoded["input_ids"])
+    encoded = tokenizer(chat, add_special_tokens=False, return_offsets_mapping=True)
+    chat_ids = list(encoded["input_ids"])
     offsets = [tuple(o) for o in encoded["offset_mapping"]]
-    prompt_start = text.index(prompt)
+    answer = _ids(tokenizer, " " + gold)
+    leading = answer[:_margin_length(tokenizer, answer) - 1]            # whitespace-only gold tokens, usually [Ġ] or []
+    ids = chat_ids + _ids(tokenizer, ANSWER_PREFIX) + leading
+    text = chat + ANSWER_PREFIX + tokenizer.decode(leading)
+    prompt_start = chat.index(prompt)
     p0 = _token_at_char(offsets, len(chat) - 1)          # the token holding the chat text's last char, robust to merges
-    p1 = len(ids) - 1
+    p1 = len(ids) - 1                                    # predicts the gold's first content token
+    p1_raw = p1 - len(leading)                           # the token right after "Answer:"
     evidence_positions = []
     for region, start, end in segment_prompt(prompt, memory_lines, evidence_lines):
         if region != "evidence":
@@ -72,8 +81,9 @@ def readout_for(tokenizer, prompt: str, memory_lines: tuple[str, ...], evidence_
     q_end = prompt.index(NOTE_SUFFIX, q_start) if NOTE_SUFFIX in prompt[q_start:] else len(prompt)
     q_position = _token_at_char(offsets, prompt_start + q_end - 1)
     tracked, gold_text = tracked_token_ids(tokenizer, gold)
-    return Readout(text, tuple(ids), {"P1": (p1,), "P0": (p0,), "E": tuple(evidence_positions), "Q": (q_position,)},
-                   tracked, gold_text)
+    positions = {"P1": (p1,), "P0": (p0,), "E": tuple(evidence_positions), "Q": (q_position,), "P1_raw": (p1_raw,)}
+    return Readout(text, tuple(ids), positions, tracked, gold_text, chat_text=chat, n_chat=len(chat_ids),
+                   n_leading_ws=len(leading))
 
 
 OUTCOMES = ("A", "B", "C")

@@ -100,10 +100,11 @@ def read_record(lens, lens_model, tokenizer, record: PromptRecord, k: int = 10) 
 
     started = time.perf_counter()
     readout = readout_for(tokenizer, record.prompt, record.memory_lines, record.evidence_lines, record.gold)
-    input_ids = lens_model.encode(readout.text, max_length=MAX_SEQ_LEN)
-    if input_ids.shape[1] != len(readout.input_ids) or input_ids[0].tolist() != list(readout.input_ids):
-        raise ValueError(f"{record.question_id}: lens encode ({input_ids.shape[1]} ids) differs from the "
-                         f"readout ids ({len(readout.input_ids)}); truncated or retokenised")
+    chat_ids = lens_model.encode(readout.chat_text, max_length=MAX_SEQ_LEN)       # truncation guard only
+    if chat_ids[0].tolist() != list(readout.input_ids[:readout.n_chat]) or len(readout.input_ids) > MAX_SEQ_LEN:
+        raise ValueError(f"{record.question_id}: lens encode of the chat text ({chat_ids.shape[1]} ids) differs from the "
+                         f"readout's chat ids ({readout.n_chat}) or the sequence exceeds {MAX_SEQ_LEN}; truncated or retokenised")
+    input_ids = torch.tensor([list(readout.input_ids)], dtype=torch.long, device=lens_model.input_device)
     final = lens_model.n_layers - 1
     layers = sorted(set(lens.source_layers) | {final})
     flat, index = _flat_positions(readout)
@@ -129,7 +130,7 @@ def read_record(lens, lens_model, tokenizer, record: PromptRecord, k: int = 10) 
     measures = {variant: question_measures(arrays[f"ranks_{variant}"], layer_list, lens_model.n_layers, TRACKED, index, k)
                 for variant in ("jlens", "logit")}
     payload = {"question_id": record.question_id, "fold": record.fold, "reader": record.reader,
-               "n_tokens": len(readout.input_ids),
+               "n_tokens": len(readout.input_ids), "n_leading_ws": readout.n_leading_ws,
                "prompt_sha256": hashlib.sha256(record.prompt.encode()).hexdigest(),
                "positions": {name: list(readout.positions[name]) for name in POSITION_NAMES},
                "tracked": dict(readout.tracked), "gold_token_text": readout.gold_token_text,
