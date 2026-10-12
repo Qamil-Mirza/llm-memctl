@@ -303,4 +303,4 @@ Report on development folds only until the pre-registration is committed:
     .venv/bin/python scripts/exp33_report.py --small qwen3b --large qwen7b --folds 0,1 --variant l2
     .venv/bin/python scripts/exp33_report.py --small qwen3b --large qwen7b --folds 2,3,4 --variant l2 --confirm
 
-Local 0.5B CPU reference: 22.6 s/question, peak RSS 9,364 MB (10-question stub, fold 0, float32, with `--ablate`; `runs/exp33_jacobian/_stub_qwen05b/_timing.json`).
+Local 0.5B CPU reference: 18.2 s/question, peak RSS 6,681 MB (10-question stub, fold 0, float32, with `--ablate`, `logits_to_keep`; `runs/exp33_jacobian/_stub2_qwen05b/_timing.json`; before `logits_to_keep`: 22.6 s and 9,364 MB in `_stub_qwen05b`).
