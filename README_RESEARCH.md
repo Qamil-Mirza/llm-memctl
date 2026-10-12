@@ -279,3 +279,18 @@ with `@term("name")` in `memctl/rewards.py`.
 6. **The oracle is a reference, not always a bound.** `oracle_exact` is optimal
    for delete-only action sets. `oracle_approx` is not optimal when item sizes
    differ, and neither compacts or consolidates.
+
+## §33 Jacobian lens (how to run)
+
+Prompts come from the §23 cache; no reader is called. Local development on the 0.5B:
+
+    .venv/bin/python scripts/jacobian_lens.py --reader qwen05b --records-from qwen3b --folds 0 --limit 10 --device cpu --dtype float32 --ablate
+    .venv/bin/python scripts/exp33_report.py --small qwen05b --large qwen05b --folds 0
+
+Paid run (one A40, user-approved): `bash scripts/exp33_pod.sh`, then copy `runs/exp33_jacobian/` back.
+Report on development folds only until the pre-registration is committed:
+
+    .venv/bin/python scripts/exp33_report.py --small qwen3b --large qwen7b --folds 0,1 --variant l2
+    .venv/bin/python scripts/exp33_report.py --small qwen3b --large qwen7b --folds 2,3,4 --variant l2 --confirm
+
+Local 0.5B CPU reference: 22.6 s/question, peak RSS 9,364 MB (10-question stub, fold 0, float32, with `--ablate`; `runs/exp33_jacobian/_stub_qwen05b/_timing.json`).
