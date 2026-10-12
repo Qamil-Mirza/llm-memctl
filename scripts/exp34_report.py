@@ -7,6 +7,8 @@ pre-registration is committed; the script refuses them unless --confirm is passe
 Questions are paired across readers only when both readers' <qid>.json carry the same prompt_sha256;
 otherwise the report stops (exit 4, nothing written) and lists the mismatched or missing hashes.
 
+With --confirm the lens gate is computed on the development folds 0,1 (their outputs are on disk) and labelled
+"gate (development folds 0,1)"; the fallback below uses that gate.
 Spec §3: if the lens gate fails for a reader, that reader's claims are also reported with the logit lens
 (rows marked `logit (gate fallback)`); the J-lens rows stay in the report."""
 
@@ -149,12 +151,13 @@ def gate_for(reader: str, outputs: dict[str, dict], qids: list[str], root: Path,
             "verdict": "PASS" if a["verdict"] == "PASS" and b["verdict"] == "PASS" else "FAIL"}
 
 
-def gate_section(readers, outputs, qids, root, samples, numbers) -> list[str]:
-    lines = ["## Lens gate (spec §3): J-lens must beat the logit lens", "",
+def gate_section(readers, outputs, qids, root, samples, numbers, label: str | None = None) -> list[str]:
+    where = f"gate ({label})" if label else "gate"
+    lines = [f"## Lens gate (spec §3): J-lens must beat the logit lens" + (f"; {where}, fixed before the confirmation folds" if label else ""), "",
              "(a) gold at P1, log10(best rank over the middle-third band), logit lens minus J-lens, paired; PASS if the "
              "lower bound is above 0. (b) lens-eval pass@k over the band, mean over sets; PASS if J-lens >= logit.", "",
              "| reader | lens prompts | below minimum | band | n | (a) logit minus J-lens (95% CI) | (a) | "
-             "(b) mean pass@k J-lens / logit | (b) all layers J-lens / logit | (b) | gate |",
+             f"(b) mean pass@k J-lens / logit | (b) all layers J-lens / logit | (b) | {where} |",
              "|---|---|---|---|---|---|---|---|---|---|---|"]
     for reader in readers:
         g = gate_for(reader, outputs[reader], qids, root, samples)
@@ -368,10 +371,9 @@ def bookkeeping_section(readers, dropped, records_by_reader, outputs, root, qids
     return lines + [""]
 
 
-def build_report(readers: tuple[str, str], folds: set[int], k_label: str, root: Path, samples: int = 10000,
-                 records_from: str | None = None, community_root: Path | None = None) -> tuple[str, dict]:
+def _paired_outputs(readers, folds, root, records_from):
+    """Records, dropped counts, population, outputs and the questions present for both readers, for `folds`."""
     small, large = readers
-    root = Path(root)
     records_by_reader, dropped = {}, {}
     for reader in readers:
         rows, dropped[reader] = [], {}
@@ -380,15 +382,32 @@ def build_report(readers: tuple[str, str], folds: set[int], k_label: str, root: 
             rows.extend(fold_rows)
         records_by_reader[reader] = rows
     qids = population(records_by_reader)
-    by_q = {reader: {r.question_id: r for r in rows} for reader, rows in records_by_reader.items()}
     outputs = {reader: load_outputs(root / reader, folds) for reader in readers}
     problems = prompt_mismatches(qids, outputs[small], outputs[large])
     if problems:
         raise PromptIdentityError(f"{len(problems)} question(s) cannot be paired: the {small} and {large} outputs "
                                   "do not carry the same prompt_sha256:\n  " + "\n  ".join(problems))
     both = [q for q in qids if q in outputs[small] and q in outputs[large]]  # spec §6: present for both readers
+    return records_by_reader, dropped, qids, outputs, both
+
+
+def build_report(readers: tuple[str, str], folds: set[int], k_label: str, root: Path, samples: int = 10000,
+                 records_from: str | None = None, community_root: Path | None = None,
+                 gate_folds: set[int] | None = None) -> tuple[str, dict]:
+    """`gate_folds`: compute the lens gate (and so the logit fallback) on these folds' outputs instead of `folds`
+    (the confirmation report fixes the gate on the development folds 0,1)."""
+    small, large = readers
+    root = Path(root)
+    records_by_reader, dropped, qids, outputs, both = _paired_outputs(readers, folds, root, records_from)
+    by_q = {reader: {r.question_id: r for r in rows} for reader, rows in records_by_reader.items()}
+    if gate_folds is None or set(gate_folds) == set(folds):
+        gate_outputs, gate_both, gate_label = outputs, both, None
+    else:
+        _, _, _, gate_outputs, gate_both = _paired_outputs(readers, gate_folds, root, records_from)
+        gate_label = f"development folds {','.join(map(str, sorted(gate_folds)))}"
     paired = len(both)
-    numbers: dict = {"folds": sorted(folds), "k_label": k_label, "population": len(qids),
+    numbers: dict = {"folds": sorted(folds), "gate_folds": sorted(gate_folds) if gate_label else sorted(folds),
+                     "k_label": k_label, "population": len(qids),
                      "paired": {"n": paired, "missing": {r: sum(q not in outputs[r] for q in qids) for r in readers}},
                      "dropped_unlabelled": {r: sum(by_q[r][q].correct is None for q in both) for r in readers},
                      "dropped": dropped, "gate": {}, "claim1": {}, "claim2": {}, "decomposition": {},
@@ -396,7 +415,7 @@ def build_report(readers: tuple[str, str], folds: set[int], k_label: str, root: 
     lines = [f"# §34 J-lens report ({small} vs {large}; folds: {', '.join(map(str, sorted(folds)))}; "
              f"population {len(qids)} in-view answerable questions; {paired} paired)", "",
              f"Prompt identity: all {paired} questions with outputs for both readers carry the same prompt_sha256.", ""]
-    lines += gate_section(readers, outputs, both, root, samples, numbers)
+    lines += gate_section(readers, gate_outputs, gate_both, root, samples, numbers, gate_label)
     failed_gate = [r for r in readers if numbers["gate"][r]["verdict"] != "PASS"]
     reader_variants = {r: VARIANTS if r in failed_gate else ("jlens",) for r in readers}
     if failed_gate:
@@ -437,7 +456,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         markdown, numbers = build_report((args.small, args.large), folds, "k10", Path(args.root), args.samples,
                                          records_from=args.records_from,
-                                         community_root=Path(args.community_root) if args.community_root else None)
+                                         community_root=Path(args.community_root) if args.community_root else None,
+                                         gate_folds=DEV_FOLDS if not folds <= DEV_FOLDS else None)
     except PromptIdentityError as error:
         print(f"REFUSED: {error}")
         return 4

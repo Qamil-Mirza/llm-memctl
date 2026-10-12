@@ -458,8 +458,8 @@ def _measure(best, outcome, depth):
     return {"k": 10, "layers": list(range(N_LAYERS)), "P1": pos, "P0": pos, "E": [pos], "Q": pos}
 
 
-def _jlens_outputs(root, reader, rows, sha="h0"):
-    """rows: (question_id, fold, J-lens gold best rank at P1, outcome). The logit lens is ten times worse."""
+def _jlens_outputs(root, reader, rows, sha="h0", logit_scale=10):
+    """rows: (question_id, fold, J-lens gold best rank at P1, outcome). The logit lens is `logit_scale` times worse."""
     d = root / reader
     d.mkdir(parents=True, exist_ok=True)
     for qid, fold, best, outcome in rows:
@@ -467,12 +467,12 @@ def _jlens_outputs(root, reader, rows, sha="h0"):
         entry = {"question_id": qid, "fold": fold, "reader": reader, "model_id": "x", "lens_path": "l.pt", "lens_n_prompts": 128,
                  "n_tokens": 100, "positions": {"P1": [99], "P0": [97], "E": [40], "Q": [90]},
                  "tracked": {"gold": 1, "unknown_sp": 2, "unknown": 3}, "gold_token_text": "x",
-                 "measures": {"jlens": _measure(best, outcome, depth), "logit": _measure(best * 10, outcome, depth)}}
+                 "measures": {"jlens": _measure(best, outcome, depth), "logit": _measure(max(1, int(best * logit_scale)), outcome, depth)}}
         if sha is not None:
             entry["prompt_sha256"] = sha
         ranks = np.full((N_LAYERS, 4, 3), 1000, np.int32)
         ranks_logit = ranks.copy()
-        ranks[:, 0, 0], ranks_logit[:, 0, 0] = best, best * 10
+        ranks[:, 0, 0], ranks_logit[:, 0, 0] = best, max(1, int(best * logit_scale))
         np.savez(d / f"{qid}.npz", ranks_jlens=ranks, ranks_logit=ranks_logit, layers=np.arange(N_LAYERS, dtype=np.int32),
                  position_index=np.array([99, 97, 40, 90], np.int32))
         (d / f"{qid}.json").write_text(json.dumps(entry))
@@ -538,6 +538,42 @@ def test_report_gate_fails_when_the_logit_lens_wins(tmp_path, monkeypatch):
     _, numbers = rep.build_report(("qwen3b", "qwen7b"), {0}, "k10", tmp_path, samples=100)
     assert numbers["gate"]["qwen3b"]["verdict"] == "PASS" and numbers["gate"]["qwen7b"]["verdict"] == "FAIL"
     assert numbers["gate"]["qwen7b"]["b"]["verdict"] == "FAIL"
+
+
+def test_confirm_report_fixes_the_gate_on_the_development_folds(tmp_path, monkeypatch):
+    rep = _script("exp34_report")
+    dev, conf = [f"d{i}" for i in range(12)], [f"c{i}" for i in range(12)]
+    _jlens_outputs(tmp_path, "qwen3b", [(q, 0, 50, "A") for q in dev] + [(q, 2, 50, "A") for q in conf])
+    _jlens_outputs(tmp_path, "qwen7b", [(q, 0, 50, "C") for q in dev], logit_scale=0.1)    # dev: the logit lens wins
+    _jlens_outputs(tmp_path, "qwen7b", [(q, 2, 50, "C") for q in conf])                   # confirmation: J-lens wins
+    for reader in ("qwen3b", "qwen7b"):
+        _jlens_side_files(tmp_path, reader)
+    by_fold = {0: _jlens_records(dev), 2: _jlens_records(conf)}
+
+    def records(reader, fold, **kw):
+        if fold not in by_fold:
+            return [], {"no_cached_prompt": 0, "evidence_not_found": 0}
+        rs, d = by_fold[fold](reader, fold)
+        return [PromptRecord(r.question_id, fold, *[*r.__dict__.values()][2:]) for r in rs], d
+    monkeypatch.setattr(rep, "load_records", records)
+    markdown, numbers = rep.build_report(("qwen3b", "qwen7b"), {2, 3, 4}, "k10", tmp_path, samples=100, gate_folds={0, 1})
+    assert numbers["gate"]["qwen3b"]["verdict"] == "PASS" and numbers["gate"]["qwen7b"]["verdict"] == "FAIL"
+    assert numbers["gate"]["qwen7b"]["a"]["n"] == 12 and numbers["gate_folds"] == [0, 1]
+    assert "qwen7b/logit" in numbers["claim2"] and "qwen3b/logit" not in numbers["claim2"]   # fallback on folds 2-4
+    assert numbers["claim1"]["best_logrank"]["n"] == 12 and "gate (development folds 0,1)" in markdown
+    _, same = rep.build_report(("qwen3b", "qwen7b"), {2, 3, 4}, "k10", tmp_path, samples=100)
+    assert same["gate"]["qwen7b"]["verdict"] == "PASS"            # without gate_folds the confirmation folds decide
+
+
+def test_main_confirm_passes_the_development_folds_for_the_gate(tmp_path, monkeypatch):
+    rep = _script("exp34_report")
+    monkeypatch.chdir(tmp_path)
+    called = []
+    monkeypatch.setattr(rep, "build_report", lambda *a, **k: called.append(k) or ("x", {}))
+    assert rep.main(["--folds", "2,3,4", "--root", str(tmp_path), "--confirm"]) == 0
+    assert called[0]["gate_folds"] == {0, 1}
+    assert rep.main(["--folds", "0,1", "--root", str(tmp_path)]) == 0
+    assert called[1]["gate_folds"] is None
 
 
 def test_band_best_logrank_reads_only_the_band(tmp_path):
