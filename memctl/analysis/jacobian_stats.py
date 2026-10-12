@@ -64,3 +64,14 @@ def paired_claim(a: dict[str, float], b: dict[str, float], samples: int = 10000,
     result = paired_bootstrap([a[k] - b[k] for k in keys], samples=samples, seed=seed)
     result["verdict"] = "SHOWN" if result["ci_low"] is not None and result["ci_low"] > 0 else "NOT SHOWN"
     return result
+
+
+def bootstrap_proportion(flags: list[bool], samples: int = 10000, seed: int = 0) -> dict:
+    """Share of True flags with a 95% percentile interval from resampling the flags."""
+    n = len(flags)
+    if n == 0:
+        return {"n": 0, "p": None, "ci_low": None, "ci_high": None}
+    values = [1.0 if f else 0.0 for f in flags]
+    rng = random.Random(seed)
+    low, high = _interval([sum(rng.choices(values, k=n)) / n for _ in range(samples)])
+    return {"n": n, "p": sum(values) / n, "ci_low": low, "ci_high": high}

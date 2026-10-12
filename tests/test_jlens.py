@@ -326,3 +326,149 @@ def test_score_set_scores_both_variants_and_skips_long_items(tiny_lens, monkeypa
     monkeypatch.setattr(s, "MAX_SEQ_LEN", 20)
     out2 = s.score_set(lens, lens_model, tok, items, "multihop", band=(0, 4), k=10)
     assert out2["n_items"] == 1 and out2["n_skipped"] == 1
+
+
+# --- Task 6: the report --------------------------------------------------------------------------
+from memctl.analysis.jacobian_stats import bootstrap_proportion  # noqa: E402
+
+N_LAYERS = 24
+
+
+def _measure(best, outcome, depth):
+    gold = {"best_rank": best, "final_rank": best if outcome == "C" else best * 20, "emergence_depth": depth, "outcome": outcome}
+    unk = {"best_rank": 5, "final_rank": 5, "first_top1_depth": None}
+    pos = {"gold": gold, "unknown_sp": dict(unk), "unknown": dict(unk)}
+    return {"k": 10, "layers": list(range(N_LAYERS)), "P1": pos, "P0": pos, "E": [pos], "Q": pos}
+
+
+def _jlens_outputs(root, reader, rows, sha="h0"):
+    """rows: (question_id, fold, J-lens gold best rank at P1, outcome). The logit lens is ten times worse."""
+    d = root / reader
+    d.mkdir(parents=True, exist_ok=True)
+    for qid, fold, best, outcome in rows:
+        depth = None if outcome == "A" else 0.5
+        entry = {"question_id": qid, "fold": fold, "reader": reader, "model_id": "x", "lens_path": "l.pt", "lens_n_prompts": 128,
+                 "n_tokens": 100, "positions": {"P1": [99], "P0": [97], "E": [40], "Q": [90]},
+                 "tracked": {"gold": 1, "unknown_sp": 2, "unknown": 3}, "gold_token_text": "x",
+                 "measures": {"jlens": _measure(best, outcome, depth), "logit": _measure(best * 10, outcome, depth)}}
+        if sha is not None:
+            entry["prompt_sha256"] = sha
+        ranks = np.full((N_LAYERS, 4, 3), 1000, np.int32)
+        ranks_logit = ranks.copy()
+        ranks[:, 0, 0], ranks_logit[:, 0, 0] = best, best * 10
+        np.savez(d / f"{qid}.npz", ranks_jlens=ranks, ranks_logit=ranks_logit, layers=np.arange(N_LAYERS, dtype=np.int32),
+                 position_index=np.array([99, 97, 40, 90], np.int32))
+        (d / f"{qid}.json").write_text(json.dumps(entry))
+
+
+def _jlens_side_files(root, reader, jlens_pass=0.3, logit_pass=0.1):
+    (root / "eval").mkdir(exist_ok=True)
+    (root / "lenses").mkdir(exist_ok=True)
+    sets = {name: {"n_items": 20, "n_skipped": 0, "pass_at_k": {"jlens": jlens_pass, "logit": logit_pass},
+                   "pass_at_k_all": {"jlens": jlens_pass, "logit": logit_pass}} for name in ("multihop", "association")}
+    (root / "eval" / f"{reader}.json").write_text(json.dumps({
+        "reader": reader, "k": 10, "band": [8, 16], "sets": sets, "mean_pass_at_k": {"jlens": jlens_pass, "logit": logit_pass},
+        "mean_pass_at_k_all": {"jlens": jlens_pass, "logit": logit_pass}}))
+    (root / "lenses" / f"{reader}.json").write_text(json.dumps({"reader": reader, "n_prompts": 128, "n_target": 128,
+                                                                 "n_minimum": 32, "below_minimum": False}))
+
+
+def _jlens_records(qids):
+    def records(reader, fold, **kw):
+        rs = [PromptRecord(q, 0, reader, "p", "o", "g", "multi-session" if i % 2 else "single-session-user", True, ("l",),
+                           ("l",), True,
+                           correct=(i % 2 == 0) if reader == "qwen3b" else (i % 5 != 0),
+                           unknown=(i % 4 == 1) if reader == "qwen3b" else (i % 10 == 5)) for i, q in enumerate(qids)]
+        return rs, {"no_cached_prompt": 0, "evidence_not_found": 2}
+    return records
+
+
+def test_report_builds_gate_claims_and_decomposition(tmp_path, monkeypatch):
+    rep = _script("exp34_report")
+    qids = [f"q{i}" for i in range(40)]
+    small = [(q, 0, 50 + i + (200 if i % 2 else 0), "A" if i % 3 else "B") for i, q in enumerate(qids)]
+    large = [(q, 0, 2 + i % 7 + (5 if i % 5 == 0 else 0), "C" if i % 4 else "A") for i, q in enumerate(qids)]
+    _jlens_outputs(tmp_path, "qwen3b", small); _jlens_outputs(tmp_path, "qwen7b", large)
+    for reader in ("qwen3b", "qwen7b"):
+        _jlens_side_files(tmp_path, reader)
+    monkeypatch.setattr(rep, "load_records", _jlens_records(qids))
+    markdown, numbers = rep.build_report(("qwen3b", "qwen7b"), {0}, "k10", tmp_path, samples=300)
+    for reader in ("qwen3b", "qwen7b"):
+        gate = numbers["gate"][reader]
+        assert gate["verdict"] == "PASS" and gate["a"]["mean"] == pytest.approx(1.0) and gate["b"]["verdict"] == "PASS"
+        assert gate["band"] == [8, 16] and gate["n_prompts"] == 128 and gate["below_minimum"] is False
+    assert numbers["claim1"]["best_logrank"]["verdict"] == "SHOWN" and numbers["claim1"]["best_logrank"]["n"] == 40
+    assert numbers["claim1"]["outcome_A"]["mean"] > 0
+    assert numbers["claim2"]["qwen3b"]["auc"] > 0.5 and numbers["claim2"]["qwen3b"]["verdict"] == "SHOWN"
+    for reader in ("qwen3b", "qwen7b"):
+        for cls, shares in numbers["decomposition"][reader].items():
+            assert sum(shares[o]["p"] for o in "ABC") == pytest.approx(1.0), (reader, cls)
+    assert numbers["decomposition"]["qwen3b"]["refusal"]["A"]["n"] == 10
+    assert numbers["descriptive"]["question_type"]["qwen3b"]["multi-session"]["n"] == 20
+    assert numbers["dropped"]["qwen7b"] == {"0": {"no_cached_prompt": 0, "evidence_not_found": 2}}
+    for heading in ("Lens gate", "Claim 1", "Claim 2", "Decomposition", "Descriptive", "Dropped"):
+        assert heading in markdown
+    assert "folds: 0" in markdown and "community" not in numbers["descriptive"]
+    json.dumps(numbers)  # the numbers file must serialise
+
+
+def test_report_gate_fails_when_the_logit_lens_wins(tmp_path, monkeypatch):
+    rep = _script("exp34_report")
+    qids = [f"q{i}" for i in range(10)]
+    _jlens_outputs(tmp_path, "qwen3b", [(q, 0, 5, "C") for q in qids]); _jlens_outputs(tmp_path, "qwen7b", [(q, 0, 5, "C") for q in qids])
+    _jlens_side_files(tmp_path, "qwen3b"); _jlens_side_files(tmp_path, "qwen7b", jlens_pass=0.0, logit_pass=0.2)
+    monkeypatch.setattr(rep, "load_records", _jlens_records(qids))
+    _, numbers = rep.build_report(("qwen3b", "qwen7b"), {0}, "k10", tmp_path, samples=100)
+    assert numbers["gate"]["qwen3b"]["verdict"] == "PASS" and numbers["gate"]["qwen7b"]["verdict"] == "FAIL"
+    assert numbers["gate"]["qwen7b"]["b"]["verdict"] == "FAIL"
+
+
+def test_band_best_logrank_reads_only_the_band(tmp_path):
+    rep = _script("exp34_report")
+    ranks = np.full((24, 2, 3), 100, np.int32)
+    ranks[2, 0, 0] = 1           # outside the band: ignored
+    ranks[10, 0, 0] = 10
+    np.savez(tmp_path / "q.npz", ranks_jlens=ranks, ranks_logit=ranks, layers=np.arange(24, dtype=np.int32))
+    assert rep.band_best_logrank(tmp_path / "q.npz", "jlens", 0, 0, (8, 16)) == pytest.approx(1.0)
+    assert rep.layer_band(np.arange(24)) == (8, 16) and rep.layer_band(np.arange(36)) == (12, 24)
+
+
+def test_bootstrap_proportion_interval_contains_p():
+    flags = [True] * 30 + [False] * 70
+    r = bootstrap_proportion(flags, samples=500, seed=0)
+    assert r["n"] == 100 and r["p"] == pytest.approx(0.3) and r["ci_low"] <= 0.3 <= r["ci_high"] and r["ci_low"] < r["ci_high"]
+    assert bootstrap_proportion([], samples=10) == {"n": 0, "p": None, "ci_low": None, "ci_high": None}
+
+
+def test_report_refuses_confirmation_folds_without_confirm(tmp_path, monkeypatch):
+    rep = _script("exp34_report")
+    work = tmp_path / "work"
+    work.mkdir()
+    monkeypatch.chdir(work)
+    called = []
+    monkeypatch.setattr(rep, "build_report", lambda *a, **k: called.append(a) or ("x", {}))
+    assert rep.main(["--folds", "0,1,2", "--root", str(tmp_path)]) == 2
+    assert not called and list(work.rglob("*")) == []
+    assert rep.main(["--folds", "0,1,2", "--root", str(tmp_path), "--confirm"]) == 0
+    written = sorted(p.name for p in work.rglob("*") if p.is_file())
+    assert written == ["exp34_report_confirm.json", "exp34_report_confirm.md"]
+    assert called[0][1] == {0, 1, 2}
+
+
+def test_report_exit_4_on_prompt_mismatch(tmp_path, monkeypatch):
+    rep = _script("exp34_report")
+    qids = [f"q{i}" for i in range(6)]
+    _jlens_outputs(tmp_path, "qwen3b", [(q, 0, 5, "C") for q in qids])
+    _jlens_outputs(tmp_path, "qwen7b", [(q, 0, 5, "C") for q in qids[:5]])
+    _jlens_outputs(tmp_path, "qwen7b", [("q5", 0, 5, "C")], sha="other")
+    for reader in ("qwen3b", "qwen7b"):
+        _jlens_side_files(tmp_path, reader)
+    monkeypatch.setattr(rep, "load_records", _jlens_records(qids))
+    with pytest.raises(rep.PromptIdentityError, match="q5"):
+        rep.build_report(("qwen3b", "qwen7b"), {0}, "k10", tmp_path, samples=50)
+    _jlens_outputs(tmp_path, "qwen7b", [("q5", 0, 5, "C")], sha=None)
+    with pytest.raises(rep.PromptIdentityError, match="q5.*missing"):
+        rep.build_report(("qwen3b", "qwen7b"), {0}, "k10", tmp_path, samples=50)
+    monkeypatch.chdir(tmp_path)
+    assert rep.main(["--folds", "0", "--root", str(tmp_path), "--samples", "50", "--out", str(tmp_path / "r.md")]) == 4
+    assert not (tmp_path / "r.md").exists() and not (tmp_path / "r.json").exists()
