@@ -111,6 +111,26 @@ def test_ranks_of_counts_strictly_greater_plus_one():
     assert ranks_of(logits, [1, 3, 0]).tolist() == [[1, 3, 4], [2, 4, 1]]
 
 
+def test_ranks_of_refuses_non_finite_logits():
+    logits = np.array([[0.1, 0.9, 0.5], [3.0, 2.0, 1.0]])
+    bad_row = logits.copy(); bad_row[1, 2] = np.nan                # an untracked logit in the row
+    bad_tracked = logits.copy(); bad_tracked[0, 1] = np.inf         # a tracked logit
+    for bad in (bad_row, bad_tracked):
+        with pytest.raises(ValueError):
+            ranks_of(bad, [1, 0])
+
+
+def test_topk_table_matches_a_full_argsort():
+    rng = np.random.default_rng(0)
+    lens = {0: rng.normal(size=(3, 500)), 1: rng.normal(size=(3, 500))}
+    model = rng.normal(size=(3, 500))
+    ids, values, layers = topk_table(lens, model, n_layers=3, k=10)
+    for i, lg in enumerate([lens[0], lens[1], model]):
+        expected = np.argsort(-lg, axis=-1)[:, :10]
+        assert (ids[i] == expected).all()
+        assert np.allclose(values[i], np.take_along_axis(lg, expected, axis=-1))
+
+
 def test_rank_table_takes_the_final_layer_from_model_logits():
     vocab = 6
     lens = {0: np.zeros((1, vocab)), 2: np.zeros((1, vocab))}
@@ -148,7 +168,7 @@ def test_question_measures_shapes_every_position():
     assert m["P0"]["gold"]["outcome"] == "A" and len(m["E"]) == 1 and m["Q"]["gold"]["best_rank"] == 99
 
 
-import importlib.util, time
+import importlib.util
 
 
 def _script(name):
@@ -182,6 +202,29 @@ def test_fit_under_time_box_stops_early_and_resumes(tiny, tmp_path):
     lens2, n2 = s.fit_under_time_box(lens_model, prompts, max_minutes=10.0, chunk=2, checkpoint_path=str(ckpt),
                                      source_layers=[1, 2], dim_batch=8, max_seq_len=64, skip_first=4)
     assert n2 == 6 and lens2.n_prompts == 6                      # resumed from the checkpoint, finished the list
+
+
+def test_fit_under_time_box_starts_above_the_checkpoint(tmp_path, monkeypatch):
+    jlens = pytest.importorskip("jlens")
+    s = _script("jlens_fit")
+    _fake_ckpt(tmp_path, reader="r", next_idx=2)
+    seen = []
+
+    class Lens:
+        n_prompts = 0
+    monkeypatch.setattr(jlens, "fit", lambda model, prompts, **kw: seen.append(len(prompts)) or Lens())
+    lens, n = s.fit_under_time_box(None, [f"p{i}" for i in range(6)], max_minutes=10.0, chunk=2,
+                                   checkpoint_path=str(tmp_path / "r.ckpt.pt"))
+    assert seen == [4, 6] and n == 6                              # no no-op load+save at prefix 2
+    seen.clear()
+    s.fit_under_time_box(None, [f"p{i}" for i in range(6)], max_minutes=10.0, chunk=4,
+                         checkpoint_path=str(tmp_path / "none.ckpt.pt"))
+    assert seen == [4, 6]                                          # no checkpoint: from the first chunk
+    _fake_ckpt(tmp_path, reader="full", next_idx=6)
+    seen.clear()
+    s.fit_under_time_box(None, [f"p{i}" for i in range(6)], max_minutes=10.0, chunk=2,
+                         checkpoint_path=str(tmp_path / "full.ckpt.pt"))
+    assert seen == [6]                                             # finished checkpoint: one call returns the lens
 
 
 def test_sidecar_marks_below_minimum(tmp_path):
@@ -243,7 +286,7 @@ def test_total_wall_adds_the_previous_sidecar(tmp_path):
     assert s.total_wall(tmp_path, "r", 5.0) == 105.0
 
 
-# --- Task 4: the read script ---------------------------------------------------------------------
+# --- the read script ------------------------------------------------------------------------------
 from memctl.jacobian_data import PromptRecord  # noqa: E402
 
 
@@ -485,7 +528,7 @@ def test_score_set_scores_both_variants_and_skips_long_items(tiny_lens, monkeypa
     assert out2["n_items"] == 1 and out2["n_skipped"] == 1
 
 
-# --- Task 6: the report --------------------------------------------------------------------------
+# --- the report -----------------------------------------------------------------------------------
 from memctl.analysis.jacobian_stats import bootstrap_proportion  # noqa: E402
 
 N_LAYERS = 24
@@ -643,6 +686,23 @@ def test_file_sha256_is_shared_by_read_and_eval(tmp_path):
     path.write_bytes(b"abc" * 1000)
     assert file_sha256(path) == hashlib.sha256(b"abc" * 1000).hexdigest()
     assert _script("jlens_read").file_sha256 is _script("jlens_eval").file_sha256 is file_sha256
+
+
+def test_gate_b_tie_fails_and_claim2_large_reader_is_descriptive(tmp_path, monkeypatch):
+    rep = _script("exp34_report")
+    qids = [f"q{i}" for i in range(40)]
+    _jlens_outputs(tmp_path, "qwen3b", [(q, 0, 50 + i, "A") for i, q in enumerate(qids)])
+    _jlens_outputs(tmp_path, "qwen7b", [(q, 0, 2 + i % 7, "C") for i, q in enumerate(qids)])
+    _jlens_side_files(tmp_path, "qwen3b"); _jlens_side_files(tmp_path, "qwen7b", jlens_pass=0.0, logit_pass=0.0)
+    monkeypatch.setattr(rep, "load_records", _jlens_records(qids))
+    markdown, numbers = rep.build_report(("qwen3b", "qwen7b"), {0}, "k10", tmp_path, samples=200)
+    assert numbers["gate"]["qwen7b"]["b"]["verdict"] == "FAIL"           # a tie at 0.0 is not a pass
+    assert "PASS if J-lens > logit" in markdown and "a tie (e.g. both 0.0) is FAIL" in markdown
+    assert numbers["claim2"]["qwen3b"]["verdict"] in ("SHOWN", "NOT SHOWN")
+    assert numbers["claim2"]["qwen7b"]["verdict"] is None and numbers["claim2"]["qwen7b"]["role"] == "descriptive"
+    row = next(l for l in markdown.splitlines() if l.startswith("| qwen7b | J-lens |") and "descriptive" in l)
+    auc = numbers["claim2"]["qwen3b"]["auc"]
+    assert f"{auc:.3f} (" in markdown and f"+{auc:.3f}" not in markdown and "SHOWN" not in row
 
 
 def test_band_best_logrank_reads_only_the_band(tmp_path):

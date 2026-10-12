@@ -100,7 +100,11 @@ OUTCOMES = ("A", "B", "C")
 
 
 def ranks_of(logits: np.ndarray, token_ids: Sequence[int]) -> np.ndarray:
+    """1 + the number of logits strictly greater than each tracked token's, per position. A NaN would compare
+    false everywhere and give a silently wrong rank, so non-finite logits are refused."""
     chosen = logits[:, list(token_ids)]                       # [n_pos, n_tracked]
+    if not np.isfinite(logits).all():
+        raise ValueError(f"non-finite logits ({int((~np.isfinite(logits)).sum())} entries); ranks would be meaningless")
     return (logits[:, None, :] > chosen[:, :, None]).sum(-1) + 1
 
 
@@ -119,7 +123,10 @@ def topk_table(lens_logits, model_logits, n_layers: int, k: int = 10):
     layers, per_layer = _layer_logits(lens_logits, model_logits, n_layers)
     ids, values = [], []
     for lg in per_layer:
-        top = np.argsort(-lg, axis=-1)[:, :k]
+        k = min(k, lg.shape[-1])
+        part = np.argpartition(-lg, k - 1, axis=-1)[:, :k]          # the k largest, unordered (O(vocab))
+        order = np.argsort(-np.take_along_axis(lg, part, axis=-1), axis=-1, kind="stable")
+        top = np.take_along_axis(part, order, axis=-1)
         ids.append(top)
         values.append(np.take_along_axis(lg, top, axis=-1))
     return np.stack(ids).astype(np.int32), np.stack(values).astype(np.float32), layers

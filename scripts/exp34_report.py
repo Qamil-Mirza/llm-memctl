@@ -112,6 +112,13 @@ def _fmt(stat: dict, key: str = "mean") -> str:
     return f"{stat[key]:+.3f} ({stat['ci_low']:+.3f}, {stat['ci_high']:+.3f})"
 
 
+def _unsigned(stat: dict, key: str) -> str:
+    """A value that is never negative (an AUC), printed without a sign."""
+    if stat.get("ci_low") is None:
+        return f"{stat.get(key)}"
+    return f"{stat[key]:.3f} ({stat['ci_low']:.3f}, {stat['ci_high']:.3f})"
+
+
 def _prop(stat: dict) -> str:
     if stat["p"] is None:
         return "-"
@@ -162,7 +169,7 @@ def gate_for(reader: str, outputs: dict[str, dict], qids: list[str], root: Path,
     else:
         m = ev["mean_pass_at_k"]
         b = {"sets": ev["sets"], "mean_pass_at_k": m, "mean_pass_at_k_all": ev.get("mean_pass_at_k_all"),
-             "band": ev.get("band"), "verdict": "PASS" if m["jlens"] >= m["logit"] else "FAIL"}
+             "band": ev.get("band"), "verdict": "PASS" if m["jlens"] > m["logit"] else "FAIL"}
     side = read_json(root / "lenses" / f"{reader}.json") or {}
     return {"a": a, "b": b, "band": list(band) if band else None, "n_prompts": side.get("n_prompts"),
             "below_minimum": side.get("below_minimum"), "eval_warnings": warnings,
@@ -173,7 +180,7 @@ def gate_section(readers, outputs, qids, root, samples, numbers, label: str | No
     where = f"gate ({label})" if label else "gate"
     lines = [f"## Lens gate (spec §3): J-lens must beat the logit lens" + (f"; {where}, fixed before the confirmation folds" if label else ""), "",
              "(a) gold at P1, log10(best rank over the middle-third band), logit lens minus J-lens, paired; PASS if the "
-             "lower bound is above 0. (b) lens-eval pass@k over the band, mean over sets; PASS if J-lens >= logit.", "",
+             "lower bound is above 0. (b) lens-eval pass@k over the band, mean over sets; PASS if J-lens > logit (strict).", "",
              "| reader | lens prompts | below minimum | band | n | (a) logit minus J-lens (95% CI) | (a) | "
              f"(b) mean pass@k J-lens / logit | (b) all layers J-lens / logit | (b) | {where} | eval warnings |",
              "|---|---|---|---|---|---|---|---|---|---|---|---|"]
@@ -239,9 +246,12 @@ def claim2_section(readers, outputs, by_q, qids, samples, reader_variants, numbe
     for reader in readers:
         for variant in reader_variants[reader]:
             stat = claim2_for(outputs[reader], by_q[reader], qids, variant, samples)
+            if reader != readers[0]:                     # pre-registered for the small reader only
+                stat.update(verdict=None, role="descriptive")
             numbers["claim2"][reader if variant == "jlens" else f"{reader}/logit"] = stat
-            lines.append(f"| {reader} | {_label(variant)} | {stat['n_pos']} | {stat['n_neg']} | {_fmt(stat, 'auc')} | "
-                         f"{_num(stat['mean_wrong'])} | {_num(stat['mean_right'])} | {_fmt(stat['difference'])} | {stat['verdict']} |")
+            lines.append(f"| {reader} | {_label(variant)} | {stat['n_pos']} | {stat['n_neg']} | {_unsigned(stat, 'auc')} | "
+                         f"{_num(stat['mean_wrong'])} | {_num(stat['mean_right'])} | {_fmt(stat['difference'])} | "
+                         f"{stat['verdict'] or 'descriptive (no verdict)'} |")
     return lines + [""]
 
 
@@ -448,9 +458,9 @@ def build_report(readers: tuple[str, str], folds: set[int], k_label: str, root: 
     if community_root is not None:
         lines += community_section(small, large, outputs, both, root, Path(community_root), folds, samples, desc)
     lines += bookkeeping_section(readers, dropped, records_by_reader, outputs, root, qids, records_from, numbers)
-    lines += [f"Top-k label: {k_label}. Verdict rules: gate (a) PASS if the lower bound is above 0, (b) PASS if J-lens >= logit "
-              f"on the mean over sets; Claim 1 SHOWN if the lower bound is above 0; Claim 2 SHOWN if the AUC lower bound is "
-              f"above {AUC_BAR}. Correct/unknown labels are the §23 single-judge verdicts (STATE.md caveat 3)."]
+    lines += [f"Top-k label: {k_label}. Verdict rules: gate (a) PASS if the lower bound is above 0, (b) PASS if J-lens > logit "
+              f"on the mean over sets (strict: a tie (e.g. both 0.0) is FAIL); Claim 1 SHOWN if the lower bound is above 0; Claim 2 SHOWN if the AUC lower bound is "
+              f"above {AUC_BAR} (pre-registered for {small}; the {large} row is descriptive, no verdict). Correct/unknown labels are the §23 single-judge verdicts (STATE.md caveat 3)."]
     return "\n".join(lines) + "\n", numbers
 
 

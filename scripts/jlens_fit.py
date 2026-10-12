@@ -46,6 +46,15 @@ def jlens_commit() -> str:
         return "unknown"
 
 
+def checkpoint_next_idx(checkpoint_path) -> int:
+    """How many prompts an existing jlens checkpoint has processed (0 if there is none)."""
+    if not Path(checkpoint_path).exists():
+        return 0
+    import torch
+
+    return int(torch.load(checkpoint_path, map_location="cpu", weights_only=True)["next_idx"])
+
+
 def fit_under_time_box(model, prompts, *, max_minutes: float, chunk: int, checkpoint_path: str, **fit_kwargs):
     """Call jlens.fit on growing prefixes of ``prompts`` (resume processes only the new ones) until the
     time box is spent or the list is done. Returns (lens, n_prompts_processed)."""
@@ -53,7 +62,8 @@ def fit_under_time_box(model, prompts, *, max_minutes: float, chunk: int, checkp
 
     started = time.perf_counter()
     lens, done = None, 0
-    for upto in range(chunk, len(prompts) + chunk, chunk):
+    first = (checkpoint_next_idx(checkpoint_path) // chunk + 1) * chunk     # skip prefixes the checkpoint already covers
+    for upto in range(min(first, len(prompts)), len(prompts) + chunk, chunk):
         upto = min(upto, len(prompts))
         lens = jlens.fit(model, prompts[:upto], checkpoint_path=checkpoint_path, checkpoint_every=1, resume=True, **fit_kwargs)
         done = upto
@@ -89,9 +99,7 @@ def check_manifest(out, reader, manifest: dict) -> None:
         if new_hashes[:len(old_hashes)] != old_hashes:
             _refuse(f"checkpoint {ckpt} was fitted on a prompt list ({len(old_hashes)} prompts) that is not a prefix of this "
                     f"run's ({len(new_hashes)} prompts): field prompt_sha256s differs. Move the checkpoint aside or use another --out.")
-        import torch
-
-        next_idx = int(torch.load(ckpt, map_location="cpu", weights_only=True)["next_idx"])
+        next_idx = checkpoint_next_idx(ckpt)
         if next_idx > len(new_hashes):
             _refuse(f"checkpoint {ckpt} has already processed {next_idx} prompts, more than this run's --n-prompts "
                     f"{len(new_hashes)}. Raise --n-prompts or use another --out.")
