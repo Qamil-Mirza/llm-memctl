@@ -117,8 +117,10 @@ closed with the result written up, and the Jacobian is not used for the pivot.
 ## 9. Split and leak rules
 
 Folds 0 and 1 are development: every method choice (gradient-mass variant, `k`, the ablation bar, any
-filter) is fixed there and written into the pre-registration. Folds 2 to 4 are not computed until the
-pre-registration is committed with a hash. The reviewer signs the pre-registration before the paid
+filter) is fixed there and written into the pre-registration. The paid run computes all five folds in one
+pass (raw per-token gradients for both mass variants, so every method choice can be made later), but no
+table, figure or number is produced from folds 2 to 4 until the pre-registration is committed with a hash;
+the report tool refuses those folds without an explicit flag. The reviewer signs the pre-registration before the paid
 run. The §23 verdicts are existing data and are read for both halves; no new generations are made.
 
 ## 10. Compute, cost and controls
