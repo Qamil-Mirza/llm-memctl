@@ -73,3 +73,24 @@ is "unaffected" hides that it is not a gap in extraction.
 
 Not required: the 0.25 = 0.64 × 0.39 arithmetic is valid on the same 127 failures. The plausibility table, the claim
 verdicts and the spend are correct as written.
+
+## Round 2 (62fbb88)
+
+**Verdict: ACCEPT.** I checked `git diff 86197fa..62fbb88 -- EXPERIMENTS.md scripts/exp34_alignment_audit.py` against
+the five changes from round 1:
+1. Applied. There is a new bullet: "§34a Claim 1 is a ranking difference that exists without the evidence". Its numbers
+   match mine: the gap is +0.473 (+0.361, +0.584) against +0.486, and the lift difference is −0.013 (−0.126, +0.097).
+   The J-lens numbers also match: the gap goes from +0.535 to +0.466, and the lift difference is −0.069 (−0.187, +0.045).
+   The "What this changes" sentence and the §34a "Size" caveat now point to it. I grepped for other places that quote
+   Claim 1. research/STATE.md does not mention §34a. The docs report copies are generated tables. The Claim 1 in
+   THESIS_RESULTS_OUTLINE.md is a different claim (§23). So nothing else needs changing.
+2. Applied: the drop is about 0.24 absolute, a relative drop of 0.34 for the 3B and 0.25 for the 7B.
+3. Applied, in both places: "two fifths (0.25 of 0.64; 32 of 127)".
+4. Applied. The ranking sentence is gone. The paired intervals are in: 3B +0.054 (+0.010, +0.103) and 7B +0.451
+   (+0.382, +0.520). The note "58% vs 32% (65 of 204)" is there, and the text keeps "a descriptive contrast at a forced
+   position, not an intervention".
+5. Applied. The text now gives the split of the 25 (temporal 6, multi-session 5, knowledge-update 5, preference 5,
+   other 4), and other 4 = single-session-user 3 + single-session-assistant 1. I re-ran the audit script and it now
+   prints the split of the 25, with the same values.
+
+No remaining changes.
