@@ -5982,6 +5982,86 @@ timer was armed at 58 min as approved (60 min, $0.59); the ledger's pod-creation
 default "$4.00" text, corrected in a later ledger entry. Terminated 20:52 UTC by DELETE (list-pods empty). About 0.3 h
 ≈ $0.18 against the approved $0.59 hard stop. All experiments ≈ $16.90.
 
+### 34c. Does "present at the answer position" depend on the evidence? Partly: the evidence matters, and more than half of the 3B's "present" failures are present without it (pre-registered 2026-10-13, run and confirmed the same day)
+
+**Status: RUN and CONFIRMED on folds 2, 3, 4; both pre-registered claims SHOWN; the plausibility share, the number the
+experiment exists for, is about 0.6 among the 3B's failures.** Pre-registration
+`research/proposals/2026-10-13-exp34c-evidence-ablation.md` (ce9910c, before the pod; reviewed at the result stage);
+code `--position-mode ablated` in `scripts/jlens_read.py` (ae62ffc; exact-span removal by
+`memctl.analysis.jacobian.ablate_evidence`), `scripts/exp34c_pod.sh`, `scripts/exp34c_report.py`. Reports
+`runs/exp34c_report_{dev,confirm,allfolds}.md`, copies `docs/research/exp34c_evidence_ablation_report_*.md`. Reads
+`runs/exp34_jlens_ablated/<reader>/` (499 of 500 per reader, the same one failed read on fold 2 as §34), each carrying
+the intact read's prompt hash.
+
+**Why.** Reviewer questions 2 and 4 on §34a: a gold token in the final-layer top-10 may be there because it is
+plausible for the question ("2" for a counting question) rather than because the reader extracted it from the evidence
+in view. §34c reads every in-view question at the same forced position on a prompt with every evidence line cut out
+and nothing else changed, and asks how much of "present" survives.
+
+**Claims (3B, deciding logit row, folds 2–4, 204 questions; all folds, 330, in brackets).**
+
+| claim | with evidence | without | intact − ablated, paired (95% CI) | verdict |
+|---|---|---|---|---|
+| A: gold ever enters the top-10 | 0.701 | 0.466 | +0.235 (+0.176, +0.294) [+0.236 (+0.191, +0.282)] | **SHOWN** |
+| B: gold in the final-layer top-10 (outcome C; model logits, lens-free) | 0.672 | 0.431 | +0.240 (+0.181, +0.299) [+0.242 (+0.197, +0.288)] | **SHOWN** |
+| evidence lift, log10 best rank intact − ablated (descriptive) | | | +0.631 (+0.507, +0.763), about 4× in rank | |
+
+Development folds: +0.238 (+0.167, +0.317) and +0.246 (+0.175, +0.325), SHOWN; the J-lens rows agree throughout. The
+7B (descriptive, J-lens): presence 0.931 → 0.696 (+0.235 (+0.172, +0.294)); C 0.887 → 0.627 (+0.260 (+0.191, +0.328));
+lift +0.597 (+0.473, +0.730). Cutting the evidence removes about a quarter of "present" in both readers.
+
+**The plausibility share (3B, logit, folds 2–4): among questions that are C with the evidence, the share still C
+without it.**
+
+| class | n C with evidence | still C without (95% CI) | n ever-emerges with | still emerges without |
+|---|---|---|---|---|
+| refusals | 37 | 0.568 (0.405, 0.730) | 39 | 0.590 (0.436, 0.744) |
+| answered wrong | 44 | 0.636 (0.500, 0.773) | 44 | 0.636 (0.500, 0.773) |
+| all failures | 81 | **0.605 (0.494, 0.716)** | 83 | 0.614 (0.506, 0.723) |
+| successes | 56 | 0.696 (0.571, 0.804) | 60 | 0.717 (0.600, 0.833) |
+| all questions | 137 | 0.642 (0.562, 0.723) | 143 | 0.657 (0.580, 0.734) |
+| strict gold token (number, name) | 116 | 0.707 (0.621, 0.784) | 121 | 0.702 (0.620, 0.785) |
+| function-word gold token | 21 | 0.286 (0.095, 0.476) | 22 | 0.409 (0.227, 0.636) |
+
+All folds: failures 0.630 (0.551, 0.709), successes 0.656, strict 0.702, function-word 0.281. The 7B's shares are of
+the same size: failures 0.745 (0.617, 0.851), successes 0.657 (0.575, 0.739) on folds 2–4.
+
+**The ` unknown` token without evidence (descriptive, the calibration check).** At the forced position, ` unknown`
+reaches top-1 at some layer on 0.578 of questions for the 3B with the evidence and 0.632 without it (118 → 129 of
+204, logit). For the 7B: 0.078 with and 0.529 without (16 → 108, J-lens). All folds: 3B 0.582 → 0.624; 7B 0.082 → 0.558.
+
+**Reading it.**
+- *The readout does measure evidence use.* Both claims are SHOWN with intervals far from zero, in both readers, on
+  both lenses: cutting the evidence takes the gold out of the top-10 on about a quarter of questions and worsens its
+  rank about 4×. "Present" is not only plausibility.
+- *But "present at the end" overstates extraction by a lot.* About 0.6 of the 3B's C-failures, and 0.7 of its
+  C-successes, keep the gold in the final-layer top-10 with no evidence in the prompt. The strict-token subset is the
+  worst (0.71): small numbers and common names are plausible for their questions whether or not anything was read. The
+  function-word subset is the only one where C mostly depends on the evidence (0.29). §34a's decomposition therefore
+  has to be read with this discount: of the 0.64 "present at the end" among the 3B's failures, only about 0.25 (= 0.64
+  × 0.39) is present *because of the evidence*; the rest would be there anyway. The same discount applies to the 7B,
+  so the paired 3B-vs-7B gap of §34a Claim 1 is unaffected, and the evidence lift is the cleaner per-question measure.
+- *The 3B's refusal signal does not respond to the evidence; the 7B's does.* ` unknown` reaches top-1 on 58% of
+  questions for the 3B whether the evidence is there or not (+0.05 without), while for the 7B it goes from 8% to 53%
+  when the evidence is cut. At the forced position the 7B's disposition to say "unknown" tracks whether the evidence is
+  in front of it; the 3B's is close to a constant. This is the clearest single description of the 3B's failure in the
+  whole series, and it is a readout at a forced position, not an intervention.
+- *What this changes in §34a.* Outcome C is "present", not "extracted"; the interpretive sentence becomes: the 3B's
+  answer token is in reach at the end in two thirds of failures, about a third of which is evidence-driven, and the 3B
+  says "unknown" at a rate that barely moves with the evidence. The C-over-B picture stands (B is rare with or without
+  evidence); the size claims stand (paired); the "late emergence" descriptive is unchanged.
+
+**Caveats.** Forced position only (the own position of §34b cannot be used: the cached note was written with the
+evidence and would carry it). Cutting the evidence lines changes the prompt length and the positions of P0 and Q, so
+the intact and ablated reads pair by question id, not prompt hash; the intact hash is stored and checked. The 3B's
+J-lens failed its gate (§34), so the deciding rows are logit rows; the J-lens rows agree. Plausibility shares are
+descriptive proportions with wide intervals on the smaller classes (refusals n 37). Labels are the §23 single-judge
+verdicts; a false negative moves a success into the failure rows and carries its (higher) plausibility share with it.
+
+**Run and spend.** One A40 secure pod (CA-MTL-1, $0.59/h), 2026-10-13 21:29–21:40 UTC, chain on the first attempt:
+install 31 s, ablated reads 238 s (3B) and 272 s (7B) with the §34 lenses. About 0.18 h ≈ $0.11 against the approved
+$0.59 hard stop. All experiments ≈ $17.00.
+
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
 **Status: STOPPED at the regeneration sanity check; no gradient was computed.** Secondary to §34 (the J-lens
