@@ -402,7 +402,7 @@ def bookkeeping_section(readers, dropped, records_by_reader, outputs, root, qids
     return lines + [""]
 
 
-def _paired_outputs(readers, folds, root, records_from):
+def _paired_outputs(readers, folds, root, records_from, only_qids=None):
     """Records, dropped counts, population, outputs and the questions present for both readers, for `folds`."""
     small, large = readers
     records_by_reader, dropped = {}, {}
@@ -413,6 +413,8 @@ def _paired_outputs(readers, folds, root, records_from):
             rows.extend(fold_rows)
         records_by_reader[reader] = rows
     qids = population(records_by_reader)
+    if only_qids is not None:
+        qids = [q for q in qids if q in only_qids]
     outputs = {reader: load_outputs(root / reader, folds) for reader in readers}
     problems = prompt_mismatches(qids, outputs[small], outputs[large])
     if problems:
@@ -424,19 +426,22 @@ def _paired_outputs(readers, folds, root, records_from):
 
 def build_report(readers: tuple[str, str], folds: set[int], k_label: str, root: Path, samples: int = 10000,
                  records_from: str | None = None, community_root: Path | None = None,
-                 gate_folds: set[int] | None = None, logit_rows_for: tuple[str, ...] = ()) -> tuple[str, dict]:
+                 gate_folds: set[int] | None = None, logit_rows_for: tuple[str, ...] = (),
+                 only_qids: set[str] | None = None, subset_label: str = "") -> tuple[str, dict]:
     """`gate_folds`: compute the lens gate (and so the logit fallback) on these folds' outputs instead of `folds`
     (the confirmation report fixes the gate on the development folds 0,1).
     `logit_rows_for`: readers whose logit-lens rows are printed beside their J-lens rows even though their gate
-    passed (label `logit (shown beside)`); presentational only, verdict rules and the gate are unchanged."""
+    passed (label `logit (shown beside)`); presentational only, verdict rules and the gate are unchanged.
+    `only_qids`: restrict the population to these question ids (exploratory subset reports; the gate is computed on
+    the same subset). `subset_label` names the subset in the title."""
     small, large = readers
     root = Path(root)
-    records_by_reader, dropped, qids, outputs, both = _paired_outputs(readers, folds, root, records_from)
+    records_by_reader, dropped, qids, outputs, both = _paired_outputs(readers, folds, root, records_from, only_qids)
     by_q = {reader: {r.question_id: r for r in rows} for reader, rows in records_by_reader.items()}
     if gate_folds is None or set(gate_folds) == set(folds):
         gate_outputs, gate_both, gate_label = outputs, both, None
     else:
-        _, _, _, gate_outputs, gate_both = _paired_outputs(readers, gate_folds, root, records_from)
+        _, _, _, gate_outputs, gate_both = _paired_outputs(readers, gate_folds, root, records_from, only_qids)
         gate_label = f"development folds {','.join(map(str, sorted(gate_folds)))}"
     paired = len(both)
     numbers: dict = {"folds": sorted(folds), "gate_folds": sorted(gate_folds) if gate_label else sorted(folds),
@@ -445,8 +450,9 @@ def build_report(readers: tuple[str, str], folds: set[int], k_label: str, root: 
                      "dropped_unlabelled": {r: sum(by_q[r][q].correct is None for q in both) for r in readers},
                      "dropped": dropped, "gate": {}, "claim1": {}, "claim2": {}, "decomposition": {},
                      "descriptive": {"emergence": {}, "positions": {}, "unknown_on_refusals": {}, "question_type": {}}}
+    subset = f"; SUBSET {subset_label}, exploratory, not pre-registered" if only_qids is not None else ""
     lines = [f"# §34 J-lens report ({small} vs {large}; folds: {', '.join(map(str, sorted(folds)))}; "
-             f"population {len(qids)} in-view answerable questions; {paired} paired)", "",
+             f"population {len(qids)} in-view answerable questions; {paired} paired{subset})", "",
              f"Prompt identity: all {paired} questions with outputs for both readers carry the same prompt_sha256.", ""]
     lines += gate_section(readers, gate_outputs, gate_both, root, samples, numbers, gate_label)
     failed_gate = [r for r in readers if numbers["gate"][r]["verdict"] != "PASS"]
@@ -486,6 +492,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--community-root", default=None,
                         help="root holding <large>/<qid>.{json,npz} read with a community lens (descriptive cross-check)")
     parser.add_argument("--confirm", action="store_true", help="allow folds outside the development set")
+    parser.add_argument("--only-qids", default=None,
+                        help="file with one question id per line: exploratory subset report (title says so)")
     parser.add_argument("--logit-rows-for", default="",
                         help="comma-separated readers whose logit-lens rows are printed beside their J-lens rows "
                              "even though their gate passed (presentational; no verdict changes)")
@@ -499,7 +507,9 @@ def main(argv: list[str] | None = None) -> int:
                                          records_from=args.records_from,
                                          community_root=Path(args.community_root) if args.community_root else None,
                                          gate_folds=DEV_FOLDS if not folds <= DEV_FOLDS else None,
-                                         logit_rows_for=tuple(r for r in args.logit_rows_for.split(",") if r))
+                                         logit_rows_for=tuple(r for r in args.logit_rows_for.split(",") if r),
+                                         only_qids=(set(Path(args.only_qids).read_text().split()) if args.only_qids else None),
+                                         subset_label=Path(args.only_qids).stem if args.only_qids else "")
     except PromptIdentityError as error:
         print(f"REFUSED: {error}")
         return 4
