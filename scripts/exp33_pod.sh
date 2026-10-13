@@ -2,6 +2,7 @@
 # §33 on one A40: both Qwen readers, all folds, with the ablation check. Resumable; rerun to continue.
 #   bash scripts/exp33_pod.sh [folds]      default folds 0,1,2,3,4
 set -euo pipefail
+export PIP_BREAK_SYSTEM_PACKAGES=1  # RunPod PyTorch images mark system Python externally managed (PEP 668)
 cd "$(dirname "$0")/.."
 FOLDS="${1:-0,1,2,3,4}"
 # transformers pinned to the local .venv version the branch was tested with; torch comes with the image.

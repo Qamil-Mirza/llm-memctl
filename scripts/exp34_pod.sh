@@ -6,6 +6,7 @@
 # Exit 3: an input is missing (preflight, before anything is installed). Exit 5: a lens is below the minimum.
 # Exit 6 (jlens_fit.py): checkpoint settings differ. Exit 7/8 (jlens_read.py): lens does not fit the model / every read failed.
 set -euo pipefail
+export PIP_BREAK_SYSTEM_PACKAGES=1  # RunPod PyTorch images mark system Python externally managed (PEP 668)
 cd "$(dirname "$0")/.."
 M7="${1:-90}"
 M3="${2:-40}"
