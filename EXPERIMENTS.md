@@ -5865,6 +5865,76 @@ from another project running on the same laptop against the same RunPod account;
 six together (none lived over 41 s); the broker is now disabled. The billing API shows $2.64 for the main pod at the time
 of writing against $2.95 by uptime × price (billing lags).
 
+### 34b. Is the late, often absent emergence an artefact of the forced answer position? No. (pre-registered 2026-10-13, run and confirmed the same day)
+
+**Status: RUN and CONFIRMED on folds 2, 3, 4; both pre-registered claims NOT SHOWN, which is the informative outcome.**
+Pre-registration `research/proposals/2026-10-13-exp34b-own-position.md` (59d8b0d, before the pod; not reviewed before
+the run, the reviewer signs the result section); code `--position-mode own` in `scripts/jlens_read.py` (8ed915f),
+`scripts/exp34b_pod.sh`, `scripts/exp34b_report.py` (14a958d). Reports `runs/exp34b_report_{dev,confirm,allfolds}.md`,
+copies `docs/research/exp34b_own_position_report_*.md`. Reads `runs/exp34_jlens_own/<reader>/` (499 of 500 per reader,
+one failed read each on fold 2, as in §34).
+
+**Why.** §34a reads every question at a forced immediate answer (`Answer:` right after the prompt), but the cached 3B
+outputs write a note first and answer later. The exploratory analysis 1 (`scripts/exp34_depth.py`, ledger) had shown
+that within the 3B emergence depth is the same on failures and successes (both late) and that what separates failures
+is whether the gold ever enters the top-10. If forcing was the cause of the lateness and the absence, reading at the
+reader's own answer position, after its own reasoning, should move both.
+
+**What was read.** The same prompts, lenses, tracked tokens, labels and population as §34; the cached output is
+teacher-forced up to and including its last `Answer:`, then the gold's leading-whitespace tokens, and P1 is read there.
+Outputs without the marker (3B: 39 of 204 on the confirmation folds, 26 of 126 on the development folds; 7B: none) are
+read at their first token and reported separately. P0, E and Q are unchanged, so each question pairs with its §34 read
+by prompt hash. Verdict rows as in §34 (3B on the logit lens, J-lens beside; 7B on the J-lens, logit beside).
+
+**Claims (3B, deciding logit row, folds 2–4, 204 questions; all folds, 330, in brackets).**
+
+| claim | measure | own vs forced | verdict |
+|---|---|---|---|
+| A (presence) | share of questions where the gold ever enters the top-10: forced 0.701, own 0.711 | +0.010 (−0.049, +0.069) [+0.012 (−0.033, +0.058)] | **NOT SHOWN** |
+| B (depth) | emergence depth among the 124 questions emerged in both modes, forced − own: medians 0.917 vs 0.917 | +0.015 (−0.001, +0.033) [+0.011 (−0.001, +0.024)] | **NOT SHOWN** |
+
+The J-lens rows say the same or lean the other way: presence +0.000 (−0.059, +0.059); depth −0.163 (−0.209, −0.118),
+that is *later* at the own position (medians 0.889 forced, 0.917 own). Development folds: presence +0.016 (−0.056,
++0.087), depth +0.005 (−0.014, +0.019), both NOT SHOWN, so the result did not move between development and
+confirmation.
+
+**Decomposition at the own position (3B, logit, folds 2–4).** Failures (127): A 0.323, B 0.047, C 0.630 against
+0.346 / 0.016 / 0.638 forced; refusals (65): A 0.308, B 0.062, C 0.631 against 0.400 / 0.031 / 0.569; successes (77):
+A 0.234, B 0.039, C 0.727 against 0.221 / 0.052 / 0.727. Nothing moves beyond noise. Refusal order at the own position
+(J-lens, 65): gold never enters the top-10 while ` unknown` reaches top-1 in 23 (0.35); gold enters and ` unknown`
+never reaches top-1 in 20 (0.31); ` unknown` top-1 before the gold enters in 15 (0.23); same layer 5; gold first 1.
+Final-layer rank on refusals: gold median 6, ` unknown` 1. The same shape as at the forced position.
+
+**The 7B (descriptive).** Presence 0.931 forced, 0.907 own (−0.025 (−0.059, +0.010)); J-lens depth medians 0.429
+forced, 0.536 own (−0.020 (−0.042, +0.002)); its logit-lens depth is later at the own position by 0.057 (0.028, 0.091).
+Reading after the reader's own reasoning does not make the gold earlier or more present in the 7B either.
+
+**Marker-less outputs (3B, 39 on folds 2–4, 23 of them judged correct).** Read at their first token, the gold emerges
+on 17 (0.44). These outputs answer in their own words from the first token ("user has been collecting…" for a gold of
+"three months"), so this cell mostly measures the paraphrase floor of §34a and is not used for the claims.
+
+**Reading it.** The late and often absent emergence of the gold in the 3B is a property of the model at its answer
+position, not of the forced format: after the 3B has written its own note, the gold is no more readable at the moment
+it answers than it was with no note at all. The 3B's reasoning text does not make the answer available to the lens;
+the share where the gold never enters the top-10 (about 0.30 of all questions, 0.32–0.37 of failures) is the same with
+or without it. This closes the forced-position caveat of §34a in §34a's favour and removes the simplest alternative
+explanation of its C-over-B picture. It does not say what the reasoning text does do (the judge-correct answers are
+mostly C either way), and it is still a readout, not an intervention.
+
+**Caveats.** The 3B's J-lens failed its gate (§34), so the deciding rows are logit-lens rows; the J-lens rows agree on
+presence and disagree on depth in the direction that strengthens the conclusion. Emergence depth with k = 10 likely
+carries a token-frequency component (analysis 1 found the 7B's failures emerging *earlier* than its successes), so depth
+comparisons across readers are descriptive; the within-question paired comparison here is not affected. Labels are the
+§23 single-judge verdicts. Teacher-forcing the cached output assumes the model would reproduce it; §33's regeneration
+check found it does not always (10 of 20 exact), so the own position is the cached answer's position under the cached
+text, which is what the judge scored.
+
+**Run and spend.** One A40 secure pod (EU-SE-1, $0.59/h), 2026-10-13 20:34–20:52 UTC: install 8 s, own-position reads
+294 s (3B) and 323 s (7B) with the §34 lenses, no fitting. Two false starts before the chain ran: the code bundle from
+`git archive` omitted the untracked `external/jacobian-lens` (preflight exit 3, fixed by copying it), and the model
+download hit Hugging Face's unauthenticated rate limit (fixed by placing the HF token on the pod). About 0.3 h ≈ $0.18
+against the approved $0.59 hard stop. All experiments ≈ $16.90.
+
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
 **Status: STOPPED at the regeneration sanity check; no gradient was computed.** Secondary to §34 (the J-lens
