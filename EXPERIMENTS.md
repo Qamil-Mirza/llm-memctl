@@ -5697,6 +5697,219 @@ LoRA. But the expected result is NOT SHOWN: the paper's gains come at 8k–128k 
 independent re-creation found almost no qTTT gain at 0.6B. To pass the margin, B would need about 0.46 (the 7B's
 0.436 plus about +0.02, given an interval about ±0.05 wide): B − A of about +0.14.
 
+## 34. Where does the 3B lose the answer? A Jacobian-lens readout of the Qwen 2.5 3B and 7B readers on the §23 in-view questions (2026-10-12, pre-registered; run 2026-10-13)
+
+**Status: RUN and CONFIRMED on folds 2, 3, 4.** Spec `docs/superpowers/specs/2026-10-12-jlens-readers-design.md`
+(d094acb); pre-registration `research/proposals/2026-10-13-exp34-jlens.md` (be32b33, reviewer ACCEPT at b42ba90,
+`research/reviews/2026-10-13-exp34-prereg.md`); code `memctl/analysis/jlens_readout.py`, `scripts/jlens_fit.py`,
+`scripts/jlens_read.py`, `scripts/jlens_eval.py`, `scripts/exp34_report.py`, `scripts/exp34_pod.sh`; lens library
+`external/jacobian-lens` at 581d398 (Anthropic's J-lens, `jlens` 0.1.0, Apache-2.0). Reports:
+`runs/exp34_report_confirm.md` (folds 2–4, the one quoted below), `runs/exp34_report_allfolds.md` (all five folds),
+`runs/exp34_report_dev.md` (folds 0–1); copies under `docs/research/`.
+
+**Why.** §23 found that with all evidence in view under `fixed8` the 3B answers correctly on 0.397 of questions and the
+7B on 0.667, and that the 3B says "unknown" on 0.372 of answerable questions. The controller does its job; the reader
+does not read. §34 asks *where* inside the 3B the gold answer gets lost, using a probe that reads, at every layer, which
+token the residual stream is disposed to make the model say.
+
+**The instrument.** Anthropic's Jacobian lens: `lens_l(h) = unembed(J_l · h)` with `J_l` the expected Jacobian of the
+final residual with respect to layer `l`'s residual, averaged over 56 WikiText-103 paragraphs (target 128; the 7B's
+90-minute box stopped at 56 and the 3B was then fitted on the same 56, so the two lenses average identical prompts).
+The logit lens `unembed(h)` is the baseline and the fallback. Every cached §23 prompt (`fixed8`, fraction 0.05) is
+rebuilt byte-exactly from the cache (sha256 identity checked per question) and run once through the reader; at the
+position **P1**, the token right before the gold's first content token after `Answer:` (leading whitespace tokens
+teacher-forced), the rank of the gold's first content token is read at every layer with both lenses. With k = 10 each
+question is **A** (gold never in the top-10 at any layer), **B** (in the top-10 at some layer but not at the final
+layer: extracted, then overridden) or **C** (in the top-10 at the final layer: available at the output). Positions P0
+(last prompt token), E (end of each evidence line) and Q (end of the question) are read too. Population: answerable
+questions with all evidence in view, present for both readers with a §23 judge label, paired by prompt hash.
+
+**The lens gate (spec §3), fixed on the development folds 0–1 before the confirmation folds were read.** A reader's
+J-lens carries its claims only if (a) it ranks the gold better than the logit lens over the middle third of the layers
+(paired log10 best rank, lower bound above 0) and (b) it beats the logit lens on the lens library's six evaluation sets
+(mean pass@10 over the band, strictly). On 126 development questions:
+
+| reader | lens prompts | band | (a) logit − J-lens (95% CI) | (a) | (b) mean pass@10 J-lens / logit | (b) | gate |
+|---|---|---|---|---|---|---|---|
+| qwen3b | 56 | [12, 24) | +1.219 (+0.907, +1.531) | PASS | 0.014 / 0.039 | FAIL | **FAIL** → the `logit (gate fallback)` rows decide |
+| qwen7b | 56 | [9, 18) | +1.685 (+1.476, +1.896) | PASS | 0.022 / 0.018 | PASS | **PASS** on (a); (b) is noise-sized (0.004, about two items of 550) |
+
+Both lenses do what a J-lens should at the answer position (the gold sits 15–50× higher in the J-lens ranking than in
+the logit ranking across the middle band). The 3B lens fails the library's own `typo` set (0.052 against 0.229) and so
+fails the gate as pre-registered; its claims are decided on the logit-lens rows, with the J-lens rows beside them. The
+7B's logit rows are shown beside its J-lens rows (`logit (shown beside)`, no verdict role) because its gate rests on
+(a) alone. Fifty-six prompts is a weak lens by the library's standard (the community 7B lens uses 100); the
+cross-check against that community lens is in the descriptives.
+
+**Prediction, recorded in the spec before any data.** "The 3B's refusals are mostly B: the gold rises into the top-k in
+the middle third and ` unknown` overtakes it in the last third. The 7B shows C on the same questions. The 3B's wrong
+answers look more like A. Emergence is at a similar fractional depth in both readers." **Falsified**, see below.
+
+### 34a. Results (confirmation folds 2, 3, 4; 204 paired questions; all-folds rows, 330 questions, in brackets)
+
+**Claim 1 (size), SHOWN.** At P1 the 7B ranks the gold higher than the 3B, paired by question. On the deciding
+logit-lens row the 3B's log10 best rank is worse by +0.486 (+0.376, +0.600) [all folds +0.473 (+0.388, +0.560)], about
+3× in rank; the 3B's share of outcome A exceeds the 7B's by +0.201 (+0.137, +0.265) [+0.188 (+0.142, +0.236)]. The
+J-lens rows agree: +0.535 (+0.435, +0.641) and +0.255 (+0.191, +0.319).
+
+| measure | lens | n | 3B minus 7B (95% CI) | verdict |
+|---|---|---|---|---|
+| log10 best rank of gold | J-lens | 204 | +0.535 (+0.435, +0.641) | SHOWN |
+| share of outcome A (secondary) | J-lens | 204 | +0.255 (+0.191, +0.319) | SHOWN |
+| log10 best rank of gold | logit (gate fallback), **decides** | 204 | +0.486 (+0.376, +0.600) | SHOWN |
+| share of outcome A (secondary) | logit (gate fallback), **decides** | 204 | +0.201 (+0.137, +0.265) | SHOWN |
+
+**Claim 2 (within the 3B), SHOWN, clear of the noise edge.** The 3B's gold rank at P1 is worse on the questions it
+gets wrong than on those it gets right: AUC 0.654 (0.576, 0.727) on the deciding logit row [0.632 (0.571, 0.689)];
+0.629 (0.547, 0.707) with the J-lens. On the development folds the lower bounds had straddled 0.5 (0.499 J-lens,
+0.502 logit); the confirmation folds settle it. The 7B's descriptive row is 0.646 (0.571, 0.721) J-lens, 0.692 (0.617,
+0.766) logit.
+
+| reader | lens | n wrong | n right | AUC (95% CI) | mean log10 rank, wrong | right | verdict |
+|---|---|---|---|---|---|---|---|
+| qwen3b | J-lens | 127 | 77 | 0.629 (0.547, 0.707) | 0.897 | 0.603 | SHOWN |
+| qwen3b | logit (gate fallback), **decides** | 127 | 77 | 0.654 (0.576, 0.727) | 0.915 | 0.495 | SHOWN |
+| qwen7b | J-lens | 63 | 141 | 0.646 (0.571, 0.721) | 0.406 | 0.182 | descriptive |
+| qwen7b | logit (shown beside) | 63 | 141 | 0.692 (0.617, 0.766) | 0.512 | 0.162 | descriptive |
+
+**The decomposition (the interpretive result; no directional claim).** Among the 3B's 127 in-view failures, on the
+deciding logit row: **A 0.346 (0.268, 0.433), B 0.016 (0.000, 0.039), C 0.638 (0.551, 0.717)**. Split: refusals (65)
+A 0.400, B 0.031, C 0.569; answered wrong (62) A 0.290, B 0.000, C 0.710. The J-lens row gives the same picture (A
+0.362, B 0.000, C 0.638). The 7B's 63 failures: A 0.127, B 0.127, C 0.746 with the J-lens; A 0.222, B 0.032, C 0.746
+with the logit lens (the 7B's B share depends on the lens and is not quoted as a property of the model).
+
+| reader | lens | class | n | A (95% CI) | B (95% CI) | C (95% CI) |
+|---|---|---|---|---|---|---|
+| qwen3b | logit (gate fallback) | refusal | 65 | 0.400 (0.277, 0.523) | 0.031 (0.000, 0.077) | 0.569 (0.446, 0.692) |
+| qwen3b | logit (gate fallback) | answered wrong | 62 | 0.290 (0.177, 0.403) | 0.000 (0.000, 0.000) | 0.710 (0.597, 0.823) |
+| qwen3b | logit (gate fallback) | all failures | 127 | 0.346 (0.268, 0.433) | 0.016 (0.000, 0.039) | 0.638 (0.551, 0.717) |
+| qwen3b | logit (gate fallback) | success | 77 | 0.221 (0.130, 0.312) | 0.052 (0.013, 0.104) | 0.727 (0.623, 0.818) |
+| qwen3b | J-lens | all failures | 127 | 0.362 (0.283, 0.449) | 0.000 (0.000, 0.000) | 0.638 (0.551, 0.717) |
+| qwen3b | J-lens | success | 77 | 0.260 (0.169, 0.364) | 0.013 (0.000, 0.039) | 0.727 (0.623, 0.818) |
+| qwen7b | J-lens | all failures | 63 | 0.127 (0.048, 0.206) | 0.127 (0.048, 0.222) | 0.746 (0.635, 0.841) |
+| qwen7b | logit (shown beside) | all failures | 63 | 0.222 (0.127, 0.333) | 0.032 (0.000, 0.079) | 0.746 (0.635, 0.841) |
+| qwen7b | J-lens | success | 141 | 0.043 (0.014, 0.078) | 0.007 (0.000, 0.021) | 0.950 (0.915, 0.986) |
+
+**Reading it.** The prediction was B; the answer is **C, with a floor of A**.
+- **B does not happen.** The "extract mid-stack, then override late" failure is 0–4% of the 3B's failures with either
+  lens. Nothing is found and then lost.
+- **C is the 3B's failure mode: the answer is there at the output and is not produced.** In 0.64 of its in-view
+  failures the gold's first token is inside the final-layer top-10 at the answer position, and the model still refuses
+  or says something else. On 47 of the 65 refusals the ` unknown` token reaches top-1 (mean first top-1 depth 0.90 of
+  the stack, the last three or four layers), while the gold sits a few ranks below it. The 3B's median best rank of
+  the gold at P1 is 3; the 7B's is 1 (share of questions with best rank ≤ 10: 0.676 against 0.931). The decision to
+  say "unknown" is made at the very end, with the answer in hand.
+- **A has a paraphrase floor.** A is 0.35 of failures, but 0.22–0.26 of the 3B's *successes* are also A: a correct
+  answer that does not begin with the gold's first content token (a paraphrase, a unit, a sentence) counts as A at P1.
+  The 7B's success-A is 0.04. So the "never extracted" share net of that floor is about 0.1 of failures. The clean
+  signal is the paired Claim 1 gap and the success/failure contrast, not the raw A share.
+- **Emergence is late in the 3B, not similar.** Where the gold enters the top-10 at all, the 3B's median fractional
+  depth is 0.889 (q1 0.590, q3 0.944; 138 of 204 emerge) against 0.464 for the 7B (q1 0.250, q3 0.857; 190 of 204)
+  [all folds 0.889 vs 0.464]. The 7B has the answer by mid-stack; the 3B finds it in the last tenth of its layers, in
+  the same layers where ` unknown` is winning. This rests on the J-lens (the only lens with an emergence row) and, for
+  the 3B, on a lens that failed its gate; it is descriptive.
+- **The answer is not readable at the evidence or question positions, in either reader.** Median best rank of the gold
+  over the evidence-line ends (E) is 398 for the 3B and 640 for the 7B; at the question end (Q) 394 and 330; at the
+  last prompt token (P0) 209 and 316. The gold becomes sayable only once the model is asked to answer. This is the
+  same for both readers and says nothing about size.
+- **By question type (J-lens, all 204).** The 3B's A share is highest on single-session-preference (0.889 of 9) and
+  knowledge-update (0.400 of 35), lowest on multi-session (0.194 of 36); the 7B is below 0.12 everywhere except the
+  same preference set, where its outcome is mostly B (0.778 of 9): a small, odd cell.
+- **Community cross-check (development folds only, 126 questions; no community reads exist on folds 2–4, so that row
+  in the confirmation report is empty, not negative).** Against the public 100-prompt 7B lens, the top-10 overlap at
+  P1 is 0.408 / 0.538 / 0.704 by layer third, and Claim 1 recomputed with the community lens is +0.465 (+0.353,
+  +0.584), SHOWN. Our 56-prompt 7B lens and the public one agree where it matters.
+
+**What this changes.** §23's "the 3B ignores evidence in view" was an input-side story; the readout says the loss is
+output-side. The 3B does extract the answer (C in two-thirds of failures, late emergence rather than no emergence), and
+then a late refusal/decision mechanism emits "unknown" or a wrong continuation with the gold a few ranks below. That
+points away from more or better-placed evidence (what a controller can change) and toward the reader's final layers:
+calibration of the refusal rule, or an intervention at the emergence layer. The spec's stage 2 (add the lens-transported
+gold direction or suppress the ` unknown` direction at the emergence layer, to test whether the late loss is causal)
+would be the test; **it is not opened by this run**, because its pre-registered gate requires both readers' lenses to
+pass and the 3B's did not. A stage-2 spec would need a better 3B lens first (more prompts, or the logit lens as the
+instrument, since the logit rows carry the same picture).
+
+**Caveats.**
+- Labels are the §23 single-judge verdicts (STATE.md caveat 3). Judge errors are false negatives (about 0.1): some
+  correct answers are counted as wrong or as refusals, which dilutes Claim 2 and pushes the failure decomposition
+  toward C. The direction of the main result (C over B) survives this, since false negatives would show up as C
+  anyway; the size of C is an upper bound.
+- The 3B J-lens failed its gate; everything with a verdict is decided on the logit lens, and the J-lens rows agree.
+  The emergence-depth and position tables exist only for the J-lens and are descriptive.
+- Both lenses average 56 prompts, not the 128 planned (7B time box). The 7B gate (b) margin is noise-sized; gate (a)
+  carries it. Lens hashes are recorded in every read and eval file.
+- The A share carries the paraphrase floor described above; P1 tracks the gold's first content token only.
+- The 7B's B share is lens-dependent (0.127 J-lens, 0.032 logit) and is not a finding.
+- Process: spec §8 asked for the reviewer's signature before the paid run; it came after (the `--confirm` guard and
+  dev-only pod logs protected the confirmation folds, as the reviewer verified). Stated in the pre-registration.
+- The spec's descriptive "§33 evidence share against the §34 outcome" is dropped: §33 stopped at its sanity check.
+
+**Run and spend.** One A40 secure pod (CA-MTL-1, $0.59/h, `runpod/pytorch` 2.8 image), 2026-10-13 02:31–07:31 UTC:
+install 29 s, 7B lens 5,419 s (56 prompts), 3B lens 1,931 s, reads 277 s + 297 s (499 of 500 questions per reader; one
+read failed per reader on fold 2), evals 84 s + 101 s, community cross-check 130 s, §33 stage about 5 min; the chain
+ended at about 05:00 UTC and the pod then sat idle about 2.5 h because the monitor's process check matched its own
+command line (the same self-match bug as Exp 26). 5.0 h × $0.59 ≈ $2.95, of which about $1.47 idle. All experiments
+≈ $16.70. Earlier on 2026-10-12/13 six pods were created and deleted within a minute of starting by a compute broker
+from another project running on the same laptop against the same RunPod account; $0 billed; the broker is now disabled.
+
+## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
+
+**Status: STOPPED at the regeneration sanity check; no gradient was computed.** Secondary to §34 (the J-lens
+readout), which ran to completion on the same pod. Spec: `docs/superpowers/specs/2026-10-12-jacobian-lens-design.md`;
+code `scripts/jacobian_lens.py`, `memctl/analysis/jacobian.py`; pod script `scripts/exp33_pod.sh`.
+
+**Why.** §23's reader-side number (P(correct | all evidence in view) 0.397 at 3B against 0.667 at 7B) says the 3B
+ignores evidence that is in front of it. §33 was to measure, for every cached §23 prompt, how much of the gradient of
+the teacher-forced answer (the gold's first content token, the margin to ` unknown`, and the reader's own output) lands
+on the evidence lines against the template, instruction, distractor and question regions, and whether the share rises
+with the reader size; with an exact-span evidence ablation as the causal check.
+
+**The sanity check and why it stops the run (spec §33, "regeneration sanity check").** The targets are teacher-forced
+on the cached vLLM outputs, so the transformers model must reproduce those outputs: 20 prompts per model are
+regenerated greedily (bf16, 256 new tokens) and at least 15 must match the cached text exactly; fewer stops the run.
+
+**What happened (pod 5eiga0da36l6o9, A40, 2026-10-13 ≈ 04:55–05:00 UTC).** Qwen2.5-3B-Instruct in bf16 reproduced
+**10 of 20** cached outputs exactly, so the run stopped before any gradient. The pairs are in
+`runs/exp33_jacobian/qwen3b/_regen_check.json`; summary (recomputed from that file):
+
+| question | cached chars | exact match | common prefix chars | same final answer |
+|---|---|---|---|---|
+| 00ca467f | 231 | no | 139 | yes |
+| 06db6396 | 79 | yes | 79 | yes |
+| 07b6f563 | 205 | no | 191 | no |
+| 0977f2af | 93 | no | 48 | yes |
+| 0a995998 | 166 | no | 156 | yes |
+| 0bb5a684 | 248 | yes | 248 | yes |
+| 0db4c65d | 326 | yes | 326 | yes |
+| 15745da0 | 90 | yes | 90 | yes |
+| 15745da0_abs | 97 | yes | 97 | yes |
+| 1a1907b4 | 93 | no | 56 | yes |
+| 1a8a66a6 | 303 | yes | 303 | yes |
+| 1b9b7252 | 150 | yes | 150 | yes |
+| 21d02d0d | 327 | no | 65 | no |
+| 22d2cb42 | 132 | no | 98 | yes |
+| 2698e78f | 456 | yes | 456 | yes |
+| 2698e78f_abs | 134 | no | 43 | yes |
+| 28dc39ac | 845 | no | 64 | no |
+| 37f165cf | 23 | yes | 23 | yes |
+| 3a704032 | 257 | yes | 257 | yes |
+| 3fe836c9 | 170 | no | 66 | no |
+
+Exact match 10/20 (15 required); the final answer line (text after the last `Answer:`) agrees on 16/20. Every
+mismatch is a divergence part-way through a long chain-of-thought output (common prefix 43–191 characters), the
+expected shape of bf16 transformers against vLLM's fp16/bf16 kernels on long greedy generations: once one token
+differs, the rest of the text differs.
+
+**What this means for §33.** The spec's check is doing its job: teacher-forcing a gradient target on text the model
+would not itself produce measures a hypothetical. Two honest ways forward, neither taken here because each is a design
+change after seeing data: (i) teacher-force only up to the first content token of the gold (the P1 target of §34,
+which does not depend on the cached chain of thought) and drop the "own output" target; (ii) regenerate the outputs
+with transformers and use those as the targets, which breaks the identity with the §23 answers the judge scored. Both
+need a new pod (about 30–45 min on an A40, under $0.50) and the user's approval. The 7B was never loaded for §33.
+
+**Spend.** None beyond the §34 pod (the §33 stage took about five minutes of it).
+
 ## 5. The sequential task
 
 ```bash
