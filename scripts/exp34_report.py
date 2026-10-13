@@ -204,11 +204,13 @@ def gate_section(readers, outputs, qids, root, samples, numbers, label: str | No
     return lines + [""]
 
 
-def _label(variant: str) -> str:
-    return "J-lens" if variant == "jlens" else "logit (gate fallback)"
+def _label(variant: str, fallback: bool = True) -> str:
+    """Row label. `fallback` False marks logit rows shown beside a reader whose gate PASSED (presentational,
+    `--logit-rows-for`); such rows carry no verdict role."""
+    return "J-lens" if variant == "jlens" else ("logit (gate fallback)" if fallback else "logit (shown beside)")
 
 
-def claim1_section(small, large, outputs, qids, samples, variants, numbers) -> list[str]:
+def claim1_section(small, large, outputs, qids, samples, variants, numbers, fallback: bool = True) -> list[str]:
     lines = [f"## Claim 1: at P1, {small} minus {large} (positive = {large} better), paired by question", "",
              "| measure | lens | n | mean difference (95% CI) | verdict |", "|---|---|---|---|---|"]
     both = [q for q in qids if q in outputs[small] and q in outputs[large]]
@@ -221,7 +223,7 @@ def claim1_section(small, large, outputs, qids, samples, variants, numbers) -> l
             stat = paired_claim(a, b, samples=samples)
             numbers["claim1"][key + suffix] = stat
             name = "log10 best rank of gold" if key == "best_logrank" else "share of outcome A (secondary)"
-            lines.append(f"| {name} | {_label(variant)} | {stat['n']} | {_fmt(stat)} | {stat['verdict']} |")
+            lines.append(f"| {name} | {_label(variant, fallback)} | {stat['n']} | {_fmt(stat)} | {stat['verdict']} |")
     return lines + [""]
 
 
@@ -239,7 +241,7 @@ def claim2_for(entries: dict[str, dict], by_q: dict[str, PromptRecord], qids, va
     return stat
 
 
-def claim2_section(readers, outputs, by_q, qids, samples, reader_variants, numbers) -> list[str]:
+def claim2_section(readers, outputs, by_q, qids, samples, reader_variants, numbers, failed_gate=()) -> list[str]:
     lines = ["## Claim 2: within each reader, log10 best rank at P1 on wrong vs right answers (AUC > 0.5: failures rank worse)", "",
              "| reader | lens | n wrong | n right | AUC (95% CI) | mean wrong | mean right | wrong minus right (95% CI) | verdict |",
              "|---|---|---|---|---|---|---|---|---|"]
@@ -249,7 +251,7 @@ def claim2_section(readers, outputs, by_q, qids, samples, reader_variants, numbe
             if reader != readers[0]:                     # pre-registered for the small reader only
                 stat.update(verdict=None, role="descriptive")
             numbers["claim2"][reader if variant == "jlens" else f"{reader}/logit"] = stat
-            lines.append(f"| {reader} | {_label(variant)} | {stat['n_pos']} | {stat['n_neg']} | {_unsigned(stat, 'auc')} | "
+            lines.append(f"| {reader} | {_label(variant, reader in failed_gate)} | {stat['n_pos']} | {stat['n_neg']} | {_unsigned(stat, 'auc')} | "
                          f"{_num(stat['mean_wrong'])} | {_num(stat['mean_right'])} | {_fmt(stat['difference'])} | "
                          f"{stat['verdict'] or 'descriptive (no verdict)'} |")
     return lines + [""]
@@ -263,7 +265,7 @@ def classes_of(by_q: dict[str, PromptRecord], qids: list[str]) -> dict[str, list
             "success": [q for q in qids if by_q[q].correct is True]}
 
 
-def decomposition_section(readers, outputs, by_q, qids, samples, reader_variants, numbers) -> list[str]:
+def decomposition_section(readers, outputs, by_q, qids, samples, reader_variants, numbers, failed_gate=()) -> list[str]:
     lines = ["## Decomposition: share of outcomes A (never present), B (present then lost), C (present to the end) at P1", "",
              "| reader | lens | class | n | A (95% CI) | B (95% CI) | C (95% CI) |", "|---|---|---|---|---|---|---|"]
     for reader in readers:
@@ -275,7 +277,7 @@ def decomposition_section(readers, outputs, by_q, qids, samples, reader_variants
                 if found:
                     table[cls] = {o: bootstrap_proportion([x == o for x in found], samples=samples) for o in OUTCOMES}
                 cells = [_prop(table[cls][o]) if found else "-" for o in OUTCOMES]
-                lines.append(f"| {reader} | {_label(variant)} | {cls} | {len(found)} | " + " | ".join(cells) + " |")
+                lines.append(f"| {reader} | {_label(variant, reader in failed_gate)} | {cls} | {len(found)} | " + " | ".join(cells) + " |")
             numbers["decomposition"][reader if variant == "jlens" else f"{reader}/logit"] = table
     return lines + ["", "Refusal = the §23 judge marked the answer `unknown`; answered wrong = any other incorrect answer.", ""]
 
@@ -422,9 +424,11 @@ def _paired_outputs(readers, folds, root, records_from):
 
 def build_report(readers: tuple[str, str], folds: set[int], k_label: str, root: Path, samples: int = 10000,
                  records_from: str | None = None, community_root: Path | None = None,
-                 gate_folds: set[int] | None = None) -> tuple[str, dict]:
+                 gate_folds: set[int] | None = None, logit_rows_for: tuple[str, ...] = ()) -> tuple[str, dict]:
     """`gate_folds`: compute the lens gate (and so the logit fallback) on these folds' outputs instead of `folds`
-    (the confirmation report fixes the gate on the development folds 0,1)."""
+    (the confirmation report fixes the gate on the development folds 0,1).
+    `logit_rows_for`: readers whose logit-lens rows are printed beside their J-lens rows even though their gate
+    passed (label `logit (shown beside)`); presentational only, verdict rules and the gate are unchanged."""
     small, large = readers
     root = Path(root)
     records_by_reader, dropped, qids, outputs, both = _paired_outputs(readers, folds, root, records_from)
@@ -446,12 +450,17 @@ def build_report(readers: tuple[str, str], folds: set[int], k_label: str, root: 
              f"Prompt identity: all {paired} questions with outputs for both readers carry the same prompt_sha256.", ""]
     lines += gate_section(readers, gate_outputs, gate_both, root, samples, numbers, gate_label)
     failed_gate = [r for r in readers if numbers["gate"][r]["verdict"] != "PASS"]
-    reader_variants = {r: VARIANTS if r in failed_gate else ("jlens",) for r in readers}
+    reader_variants = {r: VARIANTS if (r in failed_gate or r in logit_rows_for) else ("jlens",) for r in readers}
     if failed_gate:
         lines += [f"**Gate failed for {', '.join(failed_gate)}**: claims are also shown with the logit lens (spec §3).", ""]
-    lines += claim1_section(small, large, outputs, both, samples, VARIANTS if failed_gate else ("jlens",), numbers)
-    lines += claim2_section(readers, outputs, by_q, both, samples, reader_variants, numbers)
-    lines += decomposition_section(readers, outputs, by_q, both, samples, reader_variants, numbers)
+    beside = [r for r in logit_rows_for if r not in failed_gate]
+    if beside:
+        lines += [f"Logit-lens rows are also shown beside the J-lens rows for {', '.join(beside)} (gate passed; "
+                  "`logit (shown beside)` rows carry no verdict role).", ""]
+    lines += claim1_section(small, large, outputs, both, samples, VARIANTS if (failed_gate or beside) else ("jlens",),
+                            numbers, fallback=bool(failed_gate))
+    lines += claim2_section(readers, outputs, by_q, both, samples, reader_variants, numbers, failed_gate)
+    lines += decomposition_section(readers, outputs, by_q, both, samples, reader_variants, numbers, failed_gate)
     desc = numbers["descriptive"]
     lines += descriptive_depth_positions(readers, outputs, both, desc)
     lines += descriptive_unknown_types(readers, outputs, by_q, both, desc)
@@ -477,6 +486,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--community-root", default=None,
                         help="root holding <large>/<qid>.{json,npz} read with a community lens (descriptive cross-check)")
     parser.add_argument("--confirm", action="store_true", help="allow folds outside the development set")
+    parser.add_argument("--logit-rows-for", default="",
+                        help="comma-separated readers whose logit-lens rows are printed beside their J-lens rows "
+                             "even though their gate passed (presentational; no verdict changes)")
     args = parser.parse_args(argv)
     folds = {int(f) for f in args.folds.split(",")}
     if not folds <= DEV_FOLDS and not args.confirm:
@@ -486,7 +498,8 @@ def main(argv: list[str] | None = None) -> int:
         markdown, numbers = build_report((args.small, args.large), folds, "k10", Path(args.root), args.samples,
                                          records_from=args.records_from,
                                          community_root=Path(args.community_root) if args.community_root else None,
-                                         gate_folds=DEV_FOLDS if not folds <= DEV_FOLDS else None)
+                                         gate_folds=DEV_FOLDS if not folds <= DEV_FOLDS else None,
+                                         logit_rows_for=tuple(r for r in args.logit_rows_for.split(",") if r))
     except PromptIdentityError as error:
         print(f"REFUSED: {error}")
         return 4
