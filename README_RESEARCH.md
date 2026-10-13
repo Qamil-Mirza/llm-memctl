@@ -328,6 +328,12 @@ readers, so the local root points both names at the 0.5B outputs. To recreate it
     ln -s ../../lenses/qwen05b.json lenses/qwen3b.json && ln -s ../../lenses/qwen05b.json lenses/qwen7b.json
 
 Paid run (one GPU, user-approved quote first): `bash scripts/exp34_pod.sh [max_minutes_7b=90] [max_minutes_3b=40] [n_prompts=128]`.
+On exit (success or any failure) the script writes `runs/exp34_pod.done` (`exit=<rc> at <time>`; `scripts/exp33_pod.sh`
+writes `runs/exp33_pod.done`). Watch the chain from the laptop with
+`bash scripts/pod_watch.sh HOST PORT /workspace/llm-memctl/runs/exp34_pod.done /workspace/llm-memctl/runs/exp34_pod_main.log`
+(polls every 5 min, exit 0 when the sentinel appears, 3 when SSH fails three times in a row, 4 after 72 polls), then
+copy the outputs back and terminate the pod. Never watch by searching for a process name: in the §34 run a process search
+matched its own command line and the pod idled 2.5 h after the chain had ended.
 It runs, in order: install (pins `transformers==5.17.0`, the local `.venv` version, plus `-e external/jacobian-lens`,
 and prints torch, transformers and the jlens commit); fit `qwen7b` first (`--n-prompts N --min-prompts 32 --dim-batch 32`),
 read its sidecar's `n_prompts` = N7, then fit `qwen3b` with `--n-prompts N7 --min-prompts 32` (same seed, so the same

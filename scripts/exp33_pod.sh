@@ -4,6 +4,11 @@
 set -euo pipefail
 export PIP_BREAK_SYSTEM_PACKAGES=1  # RunPod PyTorch images mark system Python externally managed (PEP 668)
 cd "$(dirname "$0")/.."
+# Chain sentinel for scripts/pod_watch.sh: written on EVERY exit (success or failure) so a watcher never has to
+# grep for a process name (a process search matched its own command line and idled a pod 2.5 h in §34).
+DONE_FILE=runs/exp33_pod.done
+rm -f "$DONE_FILE"
+trap 'rc=$?; mkdir -p "$(dirname "$DONE_FILE")"; echo "exit=$rc at $(date -u +%FT%TZ)" > "$DONE_FILE"' EXIT
 FOLDS="${1:-0,1,2,3,4}"
 # transformers pinned to the local .venv version the branch was tested with; torch comes with the image.
 TRANSFORMERS_VERSION=5.17.0
