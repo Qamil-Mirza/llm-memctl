@@ -13,8 +13,13 @@ The cached 3B outputs almost always write a note first and `Answer:` later (200 
 late and often absent emergence of the gold an artefact of forcing? §34b reads the same questions at the reader's **own
 answer position**: the cached output teacher-forced up to and including its last `Answer:` marker, then the gold's
 leading-whitespace tokens, P1 as before. Outputs without a marker are read from their first token and flagged
-(`answer_marker: false`; on the development folds 26 of 126 for the 3B, 0 for the 7B). P0, E and Q are prompt positions
+(`answer_marker: false`; on the development folds 26 of 126 for the 3B, 0 for the 7B).
+P0, E and Q are prompt positions
 and are identical in both modes, so every question pairs with its §34 read by `prompt_sha256`.
+
+*Correction after the run (2026-10-13):* the sentence above says 200 of 204 confirmation-fold outputs carry the marker;
+the count in the read files is 165 of 204. The claims were evaluated as written (pooled); the marker split is exploratory
+(EXPERIMENTS.md §34b).
 
 ## 2. Fixed
 

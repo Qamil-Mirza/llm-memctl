@@ -5865,9 +5865,9 @@ from another project running on the same laptop against the same RunPod account;
 six together (none lived over 41 s); the broker is now disabled. The billing API shows $2.64 for the main pod at the time
 of writing against $2.95 by uptime × price (billing lags).
 
-### 34b. Is the late, often absent emergence an artefact of the forced answer position? No. (pre-registered 2026-10-13, run and confirmed the same day)
+### 34b. Is the late, often absent emergence an artefact of the forced answer position? Not as pre-registered; partly, on presence, among outputs that have an answer marker (exploratory). (pre-registered 2026-10-13, run and confirmed the same day)
 
-**Status: RUN and CONFIRMED on folds 2, 3, 4; both pre-registered claims NOT SHOWN, which is the informative outcome.**
+**Status: RUN and CONFIRMED on folds 2, 3, 4; both pre-registered claims NOT SHOWN on the pooled population; an exploratory split by answer marker shows a presence gain on the marked outputs.**
 Pre-registration `research/proposals/2026-10-13-exp34b-own-position.md` (59d8b0d, before the pod; not reviewed before
 the run, the reviewer signs the result section); code `--position-mode own` in `scripts/jlens_read.py` (8ed915f),
 `scripts/exp34b_pod.sh`, `scripts/exp34b_report.py` (14a958d). Reports `runs/exp34b_report_{dev,confirm,allfolds}.md`,
@@ -5900,29 +5900,48 @@ confirmation.
 
 **Decomposition at the own position (3B, logit, folds 2–4).** Failures (127): A 0.323, B 0.047, C 0.630 against
 0.346 / 0.016 / 0.638 forced; refusals (65): A 0.308, B 0.062, C 0.631 against 0.400 / 0.031 / 0.569; successes (77):
-A 0.234, B 0.039, C 0.727 against 0.221 / 0.052 / 0.727. Nothing moves beyond noise. Refusal order at the own position
+A 0.234, B 0.039, C 0.727 against 0.221 / 0.052 / 0.727. No class moves by more than 0.10 (the refusals' A share
+moves most, 0.400 to 0.308); no intervals were computed on these cells, and they mix marker and marker-less rows. Refusal
+order at the own position
 (J-lens, 65): gold never enters the top-10 while ` unknown` reaches top-1 in 23 (0.35); gold enters and ` unknown`
-never reaches top-1 in 20 (0.31); ` unknown` top-1 before the gold enters in 15 (0.23); same layer 5; gold first 1.
-Final-layer rank on refusals: gold median 6, ` unknown` 1. The same shape as at the forced position.
+never reaches top-1 in 20 (0.31); ` unknown` top-1 before the gold enters in 15 (0.23); same layer 5; neither 1; gold first 1.
+Final-layer rank on refusals: gold median 4, ` unknown` 1. The same shape as at the forced position.
 
 **The 7B (descriptive).** Presence 0.931 forced, 0.907 own (−0.025 (−0.059, +0.010)); J-lens depth medians 0.429
 forced, 0.536 own (−0.020 (−0.042, +0.002)); its logit-lens depth is later at the own position by 0.057 (0.028, 0.091).
-Reading after the reader's own reasoning does not make the gold earlier or more present in the 7B either.
+Reading after the reader's own reasoning does not make the gold earlier or more present in the 7B either; on its
+failures the J-lens A share (gold never in the top-10) goes from 0.127 forced to 0.254 own, so the gold is *less* present
+there at the own position.
 
-**Marker-less outputs (3B, 39 on folds 2–4, 23 of them judged correct).** Read at their first token, the gold emerges
-on 17 (0.44). These outputs answer in their own words from the first token ("user has been collecting…" for a gold of
-"three months"), so this cell mostly measures the paraphrase floor of §34a and is not used for the claims.
+**Exploratory split by answer marker (not pre-registered; found by the reviewer, recomputed here).** The pooled null
+mixes two groups that move in opposite directions.
+- *Outputs with an `Answer:` marker* (165 of 204; the only ones actually read at an answer position): the gold's presence
+  goes **up** at the own position, 0.685 to 0.776 on the logit row, paired +0.091 (+0.030, +0.152); J-lens 0.661 to
+  0.733, +0.073 (+0.012, +0.133). Development folds: logit +0.110 (+0.050, +0.170), J-lens +0.070 (+0.020, +0.120).
+  Logit depth among those emerged in both modes: +0.021 (+0.003, +0.041), a small shift earlier.
+- *Outputs without the marker* (39 of 204, 23 of them judged correct): read at their first token, the gold emerges on 30
+  at the forced position but on 17 at the own position. These outputs answer in their own words from the first token
+  ("user has been collecting…" for a gold of "three months"), so their own-position read is the paraphrase floor of
+  §34a, not an answer position.
+- The loss of 13 on the marker-less rows cancels the gain of about 15 on the marked rows, which is why the
+  pre-registered pooled Claim A is a null. The pre-registration also stated "200 of 204" outputs carry the marker; the
+  count is 165 (the 200 came from a reviewer's note on a different check and was not verified before the run).
 
-**Reading it.** The late and often absent emergence of the gold in the 3B is a property of the model at its answer
-position, not of the forced format: after the 3B has written its own note, the gold is no more readable at the moment
-it answers than it was with no note at all. The 3B's reasoning text does not make the answer available to the lens;
-the share where the gold never enters the top-10 (about 0.30 of all questions, 0.32–0.37 of failures) is the same with
-or without it. This closes the forced-position caveat of §34a in §34a's favour and removes the simplest alternative
-explanation of its C-over-B picture. It does not say what the reasoning text does do (the judge-correct answers are
-mostly C either way), and it is still a readout, not an intervention.
+**Reading it.** The pooled, pre-registered test rules out only large effects of the answer position: a presence shift
+above about 0.07 and a depth shift above about 0.03. Within that, two things can be said. The *lateness* of emergence
+belongs to the model: where the gold emerges in both modes its depth is the same (median 0.917 either way; +0.015
+(−0.001, +0.033) on the deciding row), and the 7B does not get earlier either. Part of the *absence* is due to the
+forced format: on the outputs the 3B actually answered after a note, the gold is present at the own position on 0.78
+against 0.69 forced (exploratory, both lenses, both fold sets), so the share where the gold never enters the top-10
+falls from 0.315 to 0.224 on those rows. The §34a caveat is therefore narrowed, not closed: §34a's A shares are
+overstated by roughly 0.09 on the marked outputs, its C-over-B picture and its depth numbers stand, and the within-3B
+result of analysis 1 (presence, not timing, separates failures) is unchanged in kind. The own-position decomposition
+of failures (A 0.32, B 0.05, C 0.63) is the one to quote from here on. It is still a readout, not an intervention.
 
-**Caveats.** The 3B's J-lens failed its gate (§34), so the deciding rows are logit-lens rows; the J-lens rows agree on
-presence and disagree on depth in the direction that strengthens the conclusion. Emergence depth with k = 10 likely
+**Caveats.** 19% of the 3B's outputs (39 of 204) carry no `Answer:` marker; they are read at their first token, which is
+not an answer position, and they are included in the pooled claims as pre-registered. The 3B's J-lens failed its gate
+(§34), so the deciding rows are logit-lens rows; the J-lens rows agree on presence and on the marker split, and on depth
+they lean later at the own position (−0.163 (−0.209, −0.118)), which does not change the reading. Emergence depth with k = 10 likely
 carries a token-frequency component (analysis 1 found the 7B's failures emerging *earlier* than its successes), so depth
 comparisons across readers are descriptive; the within-question paired comparison here is not affected. Labels are the
 §23 single-judge verdicts. Teacher-forcing the cached output assumes the model would reproduce it; §33's regeneration
@@ -5932,8 +5951,10 @@ text, which is what the judge scored.
 **Run and spend.** One A40 secure pod (EU-SE-1, $0.59/h), 2026-10-13 20:34–20:52 UTC: install 8 s, own-position reads
 294 s (3B) and 323 s (7B) with the §34 lenses, no fitting. Two false starts before the chain ran: the code bundle from
 `git archive` omitted the untracked `external/jacobian-lens` (preflight exit 3, fixed by copying it), and the model
-download hit Hugging Face's unauthenticated rate limit (fixed by placing the HF token on the pod). About 0.3 h ≈ $0.18
-against the approved $0.59 hard stop. All experiments ≈ $16.90.
+download hit Hugging Face's unauthenticated rate limit (fixed by placing the HF token on the pod). The local hard-stop
+timer was armed at 58 min as approved (60 min, $0.59); the ledger's pod-creation line carries the creation script's
+default "$4.00" text, corrected in a later ledger entry. Terminated 20:52 UTC by DELETE (list-pods empty). About 0.3 h
+≈ $0.18 against the approved $0.59 hard stop. All experiments ≈ $16.90.
 
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
