@@ -62,7 +62,9 @@ def main(argv=None) -> int:
     print(f"{small} refusals: {len(ref)}; {large} correct on them: {sum(1 for q in ref if lg[q].correct is True)}; "
           f"{large} also refused: {sum(1 for q in ref if lg[q].unknown is True)}; "
           f"{large} wrong, not a refusal: {sum(1 for q in ref if lg[q].correct is False and lg[q].unknown is not True)}")
-    print("by question type:", dict(Counter(recs[small][q].question_type for q in ref).most_common()))
+    print("by question type (all refusals):", dict(Counter(recs[small][q].question_type for q in ref).most_common()))
+    missed = [q for q in ref if lg[q].correct is not True]
+    print(f"by question type ({len(missed)} the large reader also missed):", dict(Counter(recs[small][q].question_type for q in missed).most_common()))
     return 0
 
 

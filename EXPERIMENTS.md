@@ -5871,12 +5871,15 @@ model's own reasoning-then-answer format.
     token-frequency component (the 7B's failures emerge *earlier* than its successes). Outcome C uses the final layer,
     the model's own logits, so the C share does not depend on any lens; only the A/B split does.
   - *Erroneous refusal or sensible abstention?* On the 65 questions the 3B refused (folds 2–4), the 7B answered 40
-    correctly, refused 6 and got 19 wrong. About 0.6 are answerable by a model one size up; the rest, temporal reasoning
-    most of all, may be hard or arguable. The claim is "refusals on questions a 7B answers correctly", not "on easy
-    questions"; a human pass on the 25 the 7B also missed would settle the remainder.
+    correctly, refused 6 and got 19 wrong. About 0.6 are answerable by a model one size up; the remaining 25 are spread
+    across types (temporal 6, multi-session 5, knowledge-update 5, preference 5, other 4) and may be hard or arguable.
+    The claim is "refusals on questions a 7B answers correctly", not "on easy questions"; a human pass on those 25
+    would settle the remainder.
   - *Size, or something else?* This is a two-model comparison inside one family (Qwen2.5-Instruct, same tokenizer and,
     as far as is public, the same recipe scaled), not a scaling law. A third point (the 14B, already at 0.77 in-view
-    accuracy in §23) would make it a trend; it costs a lens fit, about two hours on an A40.
+    accuracy in §23) would make it a trend; it costs a lens fit, about two hours on an A40. §34c adds that Claim 1's
+    rank gap is the same with the evidence cut out (+0.473 vs +0.486), so it is a difference in how the two readers
+    rank the gold at the answer position, not in how much they extract from the evidence.
 
 **Run and spend.** One A40 secure pod (CA-MTL-1, $0.59/h, `runpod/pytorch` 2.8 image), 2026-10-13 02:31–07:31 UTC:
 install 29 s, 7B lens 5,419 s (56 prompts), 3B lens 1,931 s, reads 277 s + 297 s (499 of 500 questions per reader; one
@@ -6008,7 +6011,8 @@ and nothing else changed, and asks how much of "present" survives.
 
 Development folds: +0.238 (+0.167, +0.317) and +0.246 (+0.175, +0.325), SHOWN; the J-lens rows agree throughout. The
 7B (descriptive, J-lens): presence 0.931 → 0.696 (+0.235 (+0.172, +0.294)); C 0.887 → 0.627 (+0.260 (+0.191, +0.328));
-lift +0.597 (+0.473, +0.730). Cutting the evidence removes about a quarter of "present" in both readers.
+lift +0.597 (+0.473, +0.730). Cutting the evidence lowers presence by about 0.24 (absolute) in both readers, a
+relative drop of 0.34 for the 3B and 0.25 for the 7B.
 
 **The plausibility share (3B, logit, folds 2–4): among questions that are C with the evidence, the share still C
 without it.**
@@ -6039,17 +6043,24 @@ reaches top-1 at some layer on 0.578 of questions for the 3B with the evidence a
   worst (0.71): small numbers and common names are plausible for their questions whether or not anything was read. The
   function-word subset is the only one where C mostly depends on the evidence (0.29). §34a's decomposition therefore
   has to be read with this discount: of the 0.64 "present at the end" among the 3B's failures, only about 0.25 (= 0.64
-  × 0.39) is present *because of the evidence*; the rest would be there anyway. The same discount applies to the 7B,
-  so the paired 3B-vs-7B gap of §34a Claim 1 is unaffected, and the evidence lift is the cleaner per-question measure.
-- *The 3B's refusal signal does not respond to the evidence; the 7B's does.* ` unknown` reaches top-1 on 58% of
-  questions for the 3B whether the evidence is there or not (+0.05 without), while for the 7B it goes from 8% to 53%
-  when the evidence is cut. At the forced position the 7B's disposition to say "unknown" tracks whether the evidence is
-  in front of it; the 3B's is close to a constant. This is the clearest single description of the 3B's failure in the
-  whole series, and it is a readout at a forced position, not an intervention.
+  × 0.39; 32 of 127) is present *because of the evidence*; the rest would be there anyway.
+- *§34a Claim 1 is a ranking difference that exists without the evidence, not a difference in extraction.* With the
+  evidence cut out, the 3B − 7B log10 best-rank gap is +0.473 (+0.361, +0.584) on the logit row against +0.486 intact;
+  and the two readers' evidence lifts do not differ, 3B − 7B −0.013 (−0.126, +0.097) (J-lens: gap +0.466 ablated vs
+  +0.535 intact; lift difference −0.069 (−0.187, +0.045)). The 7B ranks the gold higher than the 3B with or without
+  the evidence in view, by the same margin; what the evidence adds is the same in both. Claim 1 should be quoted as a
+  rank gap at the answer position, not as "the 7B extracts more".
+- *The 3B's ` unknown` signal barely responds to the evidence; the 7B's does.* ` unknown` reaches top-1 at some layer
+  on 58% of questions for the 3B with the evidence and 63% without, paired +0.054 (+0.010, +0.103) on the logit row:
+  small, but the interval excludes 0. For the 7B it goes from 8% to 53%, +0.451 (+0.382, +0.520) on the J-lens. At the
+  forced position the 7B's disposition to say "unknown" tracks whether the evidence is in front of it; the 3B's moves
+  little. The 3B's signal does not track its own behaviour either: ` unknown` reaches top-1 on 58% of questions while
+  the 3B refuses on 32% (65 of 204). This is a descriptive contrast at a forced position, not an intervention.
 - *What this changes in §34a.* Outcome C is "present", not "extracted"; the interpretive sentence becomes: the 3B's
-  answer token is in reach at the end in two thirds of failures, about a third of which is evidence-driven, and the 3B
-  says "unknown" at a rate that barely moves with the evidence. The C-over-B picture stands (B is rare with or without
-  evidence); the size claims stand (paired); the "late emergence" descriptive is unchanged.
+  answer token is in reach at the end in two thirds of failures, about two fifths of that (0.25 of 0.64; 32 of 127)
+  evidence-driven, and the 3B's ` unknown` signal barely moves with the evidence. The C-over-B picture stands (B is
+  rare with or without evidence); Claim 1 stands as a paired rank gap but, per the bullet above, not as an extraction
+  difference; the "late emergence" descriptive is unchanged.
 
 **Caveats.** Forced position only (the own position of §34b cannot be used: the cached note was written with the
 evidence and would carry it). Cutting the evidence lines changes the prompt length and the positions of P0 and Q, so
