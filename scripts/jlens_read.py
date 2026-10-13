@@ -27,6 +27,7 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from memctl.analysis.jacobian import ablate_evidence
 from memctl.analysis.jlens_readout import (POSITION_NAMES, file_sha256, question_measures, rank_table,  # noqa: E402
                                            readout_for, topk_table)
 from memctl.jacobian_data import PromptRecord, load_records  # noqa: E402
@@ -94,8 +95,15 @@ def read_record(lens, lens_model, tokenizer, record: PromptRecord, k: int = 10,
     from jlens.hooks import ActivationRecorder
 
     started = time.perf_counter()
-    readout = readout_for(tokenizer, record.prompt, record.memory_lines, record.evidence_lines, record.gold,
-                          own_output=record.output if position_mode == "own" else None)
+    if position_mode == "ablated":
+        # §34c: the same prompt with every evidence line cut out (exact spans), forced position, no evidence positions
+        prompt = ablate_evidence(record.prompt, record.memory_lines, record.evidence_lines)
+        memory = tuple(l for l in record.memory_lines if l not in set(record.evidence_lines))
+        readout = readout_for(tokenizer, prompt, memory, (), record.gold)
+    else:
+        prompt = record.prompt
+        readout = readout_for(tokenizer, record.prompt, record.memory_lines, record.evidence_lines, record.gold,
+                              own_output=record.output if position_mode == "own" else None)
     chat_ids = lens_model.encode(readout.chat_text, max_length=MAX_SEQ_LEN)       # truncation guard only
     if chat_ids[0].tolist() != list(readout.input_ids[:readout.n_chat]) or len(readout.input_ids) > MAX_SEQ_LEN:
         raise ValueError(f"{record.question_id}: lens encode of the chat text ({chat_ids.shape[1]} ids) differs from the "
@@ -127,7 +135,9 @@ def read_record(lens, lens_model, tokenizer, record: PromptRecord, k: int = 10,
                 for variant in ("jlens", "logit")}
     payload = {"question_id": record.question_id, "fold": record.fold, "reader": record.reader,
                "n_tokens": len(readout.input_ids), "n_leading_ws": readout.n_leading_ws,
-               "prompt_sha256": hashlib.sha256(record.prompt.encode()).hexdigest(),
+               "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
+               "intact_prompt_sha256": hashlib.sha256(record.prompt.encode()).hexdigest(),
+               "n_evidence_lines_cut": len(record.evidence_lines) if position_mode == "ablated" else 0,
                "positions": {name: list(readout.positions[name]) for name in POSITION_NAMES},
                "tracked": dict(readout.tracked), "gold_token_text": readout.gold_token_text,
                "position_mode": position_mode, "answer_marker": readout.answer_marker,
@@ -209,11 +219,12 @@ def main(argv=None) -> int:
     p.add_argument("--device", default="auto")
     p.add_argument("--dtype", default="bfloat16")
     p.add_argument("--model-id", default=None)
-    p.add_argument("--position-mode", default="forced", choices=("forced", "own"),
+    p.add_argument("--position-mode", default="forced", choices=("forced", "own", "ablated"),
                    help="forced: P1 right after an appended 'Answer:' (§34); own: P1 at the reader's own answer after its"
-                        " cached reasoning (§34b); default --out runs/exp34_jlens_own/<reader> in own mode")
+                        " cached reasoning (§34b); ablated: forced position on the prompt with the evidence lines cut (§34c);"
+                        " default --out runs/exp34_jlens_<mode>/<reader> for own and ablated")
     args = p.parse_args(argv)
-    out = Path(args.out or (f"runs/exp34_jlens_own/{args.reader}" if args.position_mode == "own" else f"runs/exp34_jlens/{args.reader}"))
+    out = Path(args.out or (f"runs/exp34_jlens/{args.reader}" if args.position_mode == "forced" else f"runs/exp34_jlens_{args.position_mode}/{args.reader}"))
     out.mkdir(parents=True, exist_ok=True)
     records, dropped = [], {}
     for fold in (int(f) for f in args.folds.split(",")):

@@ -5854,6 +5854,29 @@ model's own reasoning-then-answer format.
 - Process: spec §8 asked for the reviewer's signature before the paid run; it came after (the `--confirm` guard and
   dev-only pod logs protected the confirmation folds, as the reviewer verified). Stated in the pre-registration.
 - The spec's descriptive "§33 evidence share against the §34 outcome" is dropped: §33 stopped at its sanity check.
+- **Reviewer questions of 2026-10-13, with what the data say (audit script `scripts/exp34_alignment_audit.py`).**
+  - *Right token, right position?* At the 3B's own answer position (§34b), on the 54 judged-correct outputs with an
+    `Answer:` marker, 40 begin with the tracked gold token and the gold's final-layer rank is 1 on 38 of them and 2 on
+    the other 2 (our greedy pass and the cached sample differ by one place); the 14 that do not begin with it are
+    paraphrases ("4" for "four", a sentence for a name), 8 at rank 2–10 and 6 beyond 10. No case begins with the gold
+    token and ranks it below 2. The 7B: 103 of 141 begin with it, all at rank 1. The token and the position are
+    aligned; "success with no gold in the top-10" is the paraphrase floor, not a bug. At the forced position rank 1 is
+    not expected even for correct answers, because it is not the context the cached answer was produced in (§34b).
+  - *Does "in the top-10" mean extracted from the evidence, or merely plausible or already known?* Not tested here. A
+    counting question makes "2" plausible without any reading. These are personal facts from the user's conversations,
+    not world knowledge, so recall of the answer itself is unlikely, but plausibility of small numbers and common words
+    is live. §34c (pre-registered, `research/proposals/2026-10-13-exp34c-evidence-ablation.md`) reads the same questions
+    with the evidence lines cut out to measure it; until it runs, outcome C is "present", not "extracted".
+  - *Is late emergence a lens artefact?* Depth is descriptive only and carries no verdict; it likely has a
+    token-frequency component (the 7B's failures emerge *earlier* than its successes). Outcome C uses the final layer,
+    the model's own logits, so the C share does not depend on any lens; only the A/B split does.
+  - *Erroneous refusal or sensible abstention?* On the 65 questions the 3B refused (folds 2–4), the 7B answered 40
+    correctly, refused 6 and got 19 wrong. About 0.6 are answerable by a model one size up; the rest, temporal reasoning
+    most of all, may be hard or arguable. The claim is "refusals on questions a 7B answers correctly", not "on easy
+    questions"; a human pass on the 25 the 7B also missed would settle the remainder.
+  - *Size, or something else?* This is a two-model comparison inside one family (Qwen2.5-Instruct, same tokenizer and,
+    as far as is public, the same recipe scaled), not a scaling law. A third point (the 14B, already at 0.77 in-view
+    accuracy in §23) would make it a trend; it costs a lens fit, about two hours on an A40.
 
 **Run and spend.** One A40 secure pod (CA-MTL-1, $0.59/h, `runpod/pytorch` 2.8 image), 2026-10-13 02:31–07:31 UTC:
 install 29 s, 7B lens 5,419 s (56 prompts), 3B lens 1,931 s, reads 277 s + 297 s (499 of 500 questions per reader; one
