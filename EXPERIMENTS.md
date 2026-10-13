@@ -5722,8 +5722,8 @@ teacher-forced), the rank of the gold's first content token is read at every lay
 prompt with `Answer:` appended directly, with no reasoning text in between (P1 = P0 + 2 in every read file); 200 of the
 204 cached 3B outputs on the confirmation folds reason first and write `Answer:` later, so every P1 figure describes a
 **forced immediate answer**, not the position at which the cached answer was produced. With k = 10 each
-question is **A** (gold never in the top-10 at any layer), **B** (in the top-10 at some layer but not at the final
-layer: extracted, then overridden) or **C** (in the top-10 at the final layer: available at the output). Positions P0
+question is **A** (gold never in the top-10 at any layer), **B** (gold in the top-10 at some layer, then out at the
+final layer) or **C** (gold in the final-layer top-10). Positions P0
 (last prompt token), E (end of each evidence line) and Q (end of the question) are read too. Population: answerable
 questions with all evidence in view, present for both readers with a §23 judge label, paired by prompt hash.
 
@@ -5849,7 +5849,7 @@ model's own reasoning-then-answer format.
   descriptive.
 - Both lenses average 56 prompts, not the 128 planned (7B time box). The 7B gate (b) margin is noise-sized; gate (a)
   carries it. Lens hashes are recorded in every read and eval file.
-- The A share carries the paraphrase floor described above; P1 tracks the gold's first content token only.
+- The A share carries a floor among successes (0.22–0.26, cause untested, described above); P1 tracks the gold's first content token only.
 - The 7B's B share is lens-dependent (0.127 J-lens, 0.032 logit) and is not a finding.
 - Process: spec §8 asked for the reviewer's signature before the paid run; it came after (the `--confirm` guard and
   dev-only pod logs protected the confirmation folds, as the reviewer verified). Stated in the pre-registration.
