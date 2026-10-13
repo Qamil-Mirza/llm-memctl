@@ -5920,7 +5920,7 @@ mixes two groups that move in opposite directions.
   0.733, +0.073 (+0.012, +0.133). Development folds: logit +0.110 (+0.050, +0.170), J-lens +0.070 (+0.020, +0.120).
   Logit depth among those emerged in both modes: +0.021 (+0.003, +0.041), a small shift earlier.
 - *Outputs without the marker* (39 of 204, 23 of them judged correct): read at their first token, the gold emerges on 30
-  at the forced position but on 17 at the own position. These outputs answer in their own words from the first token
+  at the forced position but on 17 at the own position (logit; J-lens 29 → 17). These outputs answer in their own words from the first token
   ("user has been collecting…" for a gold of "three months"), so their own-position read is the paraphrase floor of
   §34a, not an answer position.
 - The loss of 13 on the marker-less rows cancels the gain of about 15 on the marked rows, which is why the
@@ -5933,10 +5933,13 @@ belongs to the model: where the gold emerges in both modes its depth is the same
 (−0.001, +0.033) on the deciding row), and the 7B does not get earlier either. Part of the *absence* is due to the
 forced format: on the outputs the 3B actually answered after a note, the gold is present at the own position on 0.78
 against 0.69 forced (exploratory, both lenses, both fold sets), so the share where the gold never enters the top-10
-falls from 0.315 to 0.224 on those rows. The §34a caveat is therefore narrowed, not closed: §34a's A shares are
-overstated by roughly 0.09 on the marked outputs, its C-over-B picture and its depth numbers stand, and the within-3B
-result of analysis 1 (presence, not timing, separates failures) is unchanged in kind. The own-position decomposition
-of failures (A 0.32, B 0.05, C 0.63) is the one to quote from here on. It is still a readout, not an intervention.
+falls from 0.315 to 0.224 on those rows. The §34a caveat is therefore narrowed, not closed. By class on the marked rows
+(3B, logit, folds 2–4), the A share forced → own is: failures (111) 0.369 → 0.306, refusals (62) 0.419 → 0.323,
+answered wrong (49) 0.306 → 0.286, successes (54) 0.204 → 0.056. Most of the presence gain is on the successes, so the
+own position *widens* the gap between failures and successes in presence, which supports analysis 1 (presence, not
+timing, separates failures) rather than weakening it; the C-over-B picture and the depth numbers stand. The failure
+decomposition to quote from here on is the marked-row, own-position one: A 0.31, B 0.05, C 0.64 (n 111); the pooled
+own-position cells (A 0.32, B 0.05, C 0.63) include the 39 marker-less reads. It is still a readout, not an intervention.
 
 **Caveats.** 19% of the 3B's outputs (39 of 204) carry no `Answer:` marker; they are read at their first token, which is
 not an answer position, and they are included in the pooled claims as pre-registered. The 3B's J-lens failed its gate

@@ -78,3 +78,22 @@ supported. The pooled null comes from the 39 outputs with no marker, which are n
    03:19Z), not the approved 60 min / $0.59. Write "approved hard stop $0.59; the pod's timer was set at $4.00".
    progress.md has no termination record for wl4hkwkji9m44p. Add the DELETE and its time (the section's 20:52Z),
    or say that it was not logged.
+
+## Round 2 (92588cf)
+
+**Verdict: REVISE (small).** Changes 1–4 and 6–8 are applied correctly. I checked the marker-split figures against my
+round 1 run, the pre-registration's correction note (lines 20–21), and ledger line 98 (DELETE, 20:52Z, the 58 min
+timer). Change 5 is mostly done. One new sentence does not hold for the marked rows, by class, which I computed with
+the report's own functions (A forced → own on the marked 3B logit rows, folds 2–4): failures (111) 0.369 → 0.306,
+refusals (62) 0.419 → 0.323, answered wrong (49) 0.306 → 0.286, successes (54) 0.204 → 0.056; failures own B 0.054, C 0.640.
+
+Remaining required changes:
+1. Under "Reading it", replace "§34a's A shares are overstated by roughly 0.09 on the marked outputs". The 0.09 is the
+   change in presence over all marked questions, not a change in any class's A share. On the marked rows the failures'
+   A share falls by 0.06 (0.369 → 0.306) and the successes' by 0.15 (0.204 → 0.056). Most of the gain is on successes,
+   so the own position widens the failure/success presence gap. Say that too, since it supports analysis 1.
+2. "The own-position decomposition of failures (A 0.32, B 0.05, C 0.63) is the one to quote from here on" quotes the
+   pooled cells, which include the 39 marker-less reads that this same paragraph calls "not an answer position".
+   Either quote the marked-row failures (n 111: A 0.31, B 0.05, C 0.64) or label the pooled cells as pooled.
+3. The marker-less bullet ("the gold emerges on 30 at the forced position but on 17") is the logit count. Add
+   "(logit; J-lens 29 → 17)".
