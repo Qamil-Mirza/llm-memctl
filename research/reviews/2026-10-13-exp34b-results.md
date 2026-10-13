@@ -86,7 +86,6 @@ round 1 run, the pre-registration's correction note (lines 20–21), and ledger 
 timer). Change 5 is mostly done. One new sentence does not hold for the marked rows, by class, which I computed with
 the report's own functions (A forced → own on the marked 3B logit rows, folds 2–4): failures (111) 0.369 → 0.306,
 refusals (62) 0.419 → 0.323, answered wrong (49) 0.306 → 0.286, successes (54) 0.204 → 0.056; failures own B 0.054, C 0.640.
-
 Remaining required changes:
 1. Under "Reading it", replace "§34a's A shares are overstated by roughly 0.09 on the marked outputs". The 0.09 is the
    change in presence over all marked questions, not a change in any class's A share. On the marked rows the failures'
@@ -97,3 +96,5 @@ Remaining required changes:
    Either quote the marked-row failures (n 111: A 0.31, B 0.05, C 0.64) or label the pooled cells as pooled.
 3. The marker-less bullet ("the gold emerges on 30 at the forced position but on 17") is the logit count. Add
    "(logit; J-lens 29 → 17)".
+
+**Round 3 (91fa692): ACCEPT.** All three round 2 changes are in and the cells match my computation; §34b may be quoted.
