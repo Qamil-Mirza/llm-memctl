@@ -45,6 +45,9 @@ class Readout:
     chat_text: str = ""
     n_chat: int = 0                # input_ids[:n_chat] are the chat text's ids
     n_leading_ws: int = 0          # teacher-forced whitespace-only gold tokens at the end of input_ids
+    answer_marker: bool = True      # own mode: the cached output contained `Answer:`
+    own_mode: bool = False
+
 
 
 def tracked_token_ids(tokenizer, gold: str) -> tuple[dict[str, int], str]:
@@ -65,7 +68,15 @@ def _token_at_char(offsets: list[tuple[int, int]], char: int) -> int:
     return best
 
 
-def readout_for(tokenizer, prompt: str, memory_lines: tuple[str, ...], evidence_lines: tuple[str, ...], gold: str) -> Readout:
+def readout_for(tokenizer, prompt: str, memory_lines: tuple[str, ...], evidence_lines: tuple[str, ...], gold: str,
+                own_output: str | None = None) -> Readout:
+    """Readout positions for one cached prompt.
+
+    Forced mode (own_output None): `Answer:` is appended right after the chat, so P1 is a forced immediate answer
+    with no reasoning (the §34 main readout). Own mode (own_output = the reader's cached output): the output up to and
+    including its last `Answer:` marker is teacher-forced instead, so P1 is the position at which the reader wrote
+    its own answer after its own reasoning; an output without the marker answers from its first token, so nothing
+    is appended (answer_marker False). P0, E and Q are prompt positions and are identical in both modes."""
     missing = [l for l in evidence_lines if l not in memory_lines]
     if missing:
         raise ValueError(f"evidence line not among the memory lines: {missing[0][:60]!r}")
@@ -75,8 +86,14 @@ def readout_for(tokenizer, prompt: str, memory_lines: tuple[str, ...], evidence_
     offsets = [tuple(o) for o in encoded["offset_mapping"]]
     answer = _ids(tokenizer, " " + gold)
     leading = answer[:_margin_length(tokenizer, answer) - 1]            # whitespace-only gold tokens, usually [Ġ] or []
-    ids = chat_ids + _ids(tokenizer, ANSWER_PREFIX) + leading
-    text = chat + ANSWER_PREFIX + tokenizer.decode(leading)
+    if own_output is None:
+        prefix, answer_marker = ANSWER_PREFIX, True
+    elif ANSWER_PREFIX in own_output:
+        prefix, answer_marker = own_output[:own_output.rindex(ANSWER_PREFIX) + len(ANSWER_PREFIX)], True
+    else:
+        prefix, answer_marker = "", False
+    ids = chat_ids + (_ids(tokenizer, prefix) if prefix else []) + leading
+    text = chat + prefix + tokenizer.decode(leading)
     prompt_start = chat.index(prompt)
     p0 = _token_at_char(offsets, len(chat) - 1)          # the token holding the chat text's last char, robust to merges
     p1 = len(ids) - 1                                    # predicts the gold's first content token
@@ -93,7 +110,7 @@ def readout_for(tokenizer, prompt: str, memory_lines: tuple[str, ...], evidence_
     tracked, gold_text = tracked_token_ids(tokenizer, gold)
     positions = {"P1": (p1,), "P0": (p0,), "E": tuple(evidence_positions), "Q": (q_position,), "P1_raw": (p1_raw,)}
     return Readout(text, tuple(ids), positions, tracked, gold_text, chat_text=chat, n_chat=len(chat_ids),
-                   n_leading_ws=len(leading))
+                   n_leading_ws=len(leading), answer_marker=answer_marker, own_mode=own_output is not None)
 
 
 OUTCOMES = ("A", "B", "C")

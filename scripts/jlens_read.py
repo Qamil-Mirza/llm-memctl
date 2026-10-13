@@ -88,12 +88,14 @@ def lens_to(lens, device) -> None:
     lens.jacobians = {layer: J.to(device) for layer, J in lens.jacobians.items()}
 
 
-def read_record(lens, lens_model, tokenizer, record: PromptRecord, k: int = 10) -> tuple[dict, dict[str, np.ndarray]]:
+def read_record(lens, lens_model, tokenizer, record: PromptRecord, k: int = 10,
+                position_mode: str = "forced") -> tuple[dict, dict[str, np.ndarray]]:
     import torch
     from jlens.hooks import ActivationRecorder
 
     started = time.perf_counter()
-    readout = readout_for(tokenizer, record.prompt, record.memory_lines, record.evidence_lines, record.gold)
+    readout = readout_for(tokenizer, record.prompt, record.memory_lines, record.evidence_lines, record.gold,
+                          own_output=record.output if position_mode == "own" else None)
     chat_ids = lens_model.encode(readout.chat_text, max_length=MAX_SEQ_LEN)       # truncation guard only
     if chat_ids[0].tolist() != list(readout.input_ids[:readout.n_chat]) or len(readout.input_ids) > MAX_SEQ_LEN:
         raise ValueError(f"{record.question_id}: lens encode of the chat text ({chat_ids.shape[1]} ids) differs from the "
@@ -128,12 +130,13 @@ def read_record(lens, lens_model, tokenizer, record: PromptRecord, k: int = 10) 
                "prompt_sha256": hashlib.sha256(record.prompt.encode()).hexdigest(),
                "positions": {name: list(readout.positions[name]) for name in POSITION_NAMES},
                "tracked": dict(readout.tracked), "gold_token_text": readout.gold_token_text,
+               "position_mode": position_mode, "answer_marker": readout.answer_marker,
                "measures": measures, "elapsed_s": time.perf_counter() - started}
     return payload, arrays
 
 
 def run_records(lens, lens_model, tokenizer, records, out: Path, *, k: int, model_id: str, lens_path: str,
-                lens_sha256: str) -> dict[str, float]:
+                lens_sha256: str, position_mode: str = "forced") -> dict[str, float]:
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     failed_path = out / "_failed.json"
@@ -145,7 +148,7 @@ def run_records(lens, lens_model, tokenizer, records, out: Path, *, k: int, mode
         if is_done(out, record.question_id, lens_sha256):
             continue
         try:
-            payload, arrays = read_record(lens, lens_model, tokenizer, record, k=k)
+            payload, arrays = read_record(lens, lens_model, tokenizer, record, k=k, position_mode=position_mode)
         except (ValueError, RuntimeError) as error:
             failed[record.question_id] = repr(error)
             write_json(failed_path, failed)
@@ -206,8 +209,11 @@ def main(argv=None) -> int:
     p.add_argument("--device", default="auto")
     p.add_argument("--dtype", default="bfloat16")
     p.add_argument("--model-id", default=None)
+    p.add_argument("--position-mode", default="forced", choices=("forced", "own"),
+                   help="forced: P1 right after an appended 'Answer:' (§34); own: P1 at the reader's own answer after its"
+                        " cached reasoning (§34b); default --out runs/exp34_jlens_own/<reader> in own mode")
     args = p.parse_args(argv)
-    out = Path(args.out or f"runs/exp34_jlens/{args.reader}")
+    out = Path(args.out or (f"runs/exp34_jlens_own/{args.reader}" if args.position_mode == "own" else f"runs/exp34_jlens/{args.reader}"))
     out.mkdir(parents=True, exist_ok=True)
     records, dropped = [], {}
     for fold in (int(f) for f in args.folds.split(",")):
@@ -234,7 +240,7 @@ def main(argv=None) -> int:
     lens_to(lens, device)
     started = time.perf_counter()
     timing = run_records(lens, lens_model, tok, records, out, k=args.k, model_id=model_id, lens_path=args.lens,
-                         lens_sha256=lens_hash)
+                         lens_sha256=lens_hash, position_mode=args.position_mode)
     summary = {"model_id": model_id, "lens": args.lens, "lens_sha256": lens_hash, "device": device, "dtype": args.dtype, "questions": len(timing),
                "seconds_per_question": (sum(timing.values()) / len(timing)) if timing else None,
                "wall_s": time.perf_counter() - started,

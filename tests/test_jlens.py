@@ -990,3 +990,29 @@ def test_community_section_reads_a_synthetic_community_root(tmp_path, monkeypatc
     _jlens_outputs(tmp_path / "comm", "qwen7b", [("q0", 0, 4, "C")], sha="other")
     with pytest.raises(rep.PromptIdentityError):
         rep.build_report(("qwen3b", "qwen7b"), {0}, "k10", tmp_path / "ours", samples=50, community_root=tmp_path / "comm")
+
+
+# --- §34b own-answer position mode ---------------------------------------------------------------------------------
+
+def test_readout_own_mode_teacher_forces_the_cached_reasoning_up_to_answer(tiny):
+    _, tok = tiny
+    output = "The user went twice.\nAnswer: 4 hours"
+    forced = readout_for(tok, PROMPT, LINES, (LINES[2],), gold="4 hours")
+    own = readout_for(tok, PROMPT, LINES, (LINES[2],), gold="4 hours", own_output=output)
+    assert own.own_mode and own.answer_marker and not forced.own_mode and forced.answer_marker
+    prefix_ids = tok("The user went twice.\nAnswer:", add_special_tokens=False)["input_ids"]
+    assert list(own.input_ids[own.n_chat:own.n_chat + len(prefix_ids)]) == prefix_ids
+    assert own.positions["P1"] == (len(own.input_ids) - 1,)
+    assert own.positions["P1_raw"] == (len(own.input_ids) - 1 - own.n_leading_ws,)
+    assert own.n_leading_ws == forced.n_leading_ws
+    assert own.positions["P0"] == forced.positions["P0"] and own.positions["E"] == forced.positions["E"]
+    assert own.positions["Q"] == forced.positions["Q"]
+    assert "The user went twice.\nAnswer:" in own.text and "Answer:Answer:" not in own.text
+
+
+def test_readout_own_mode_without_marker_appends_nothing(tiny):
+    _, tok = tiny
+    own = readout_for(tok, PROMPT, LINES, (LINES[2],), gold="Leeds", own_output="Leeds, from the third session.")
+    assert own.own_mode and not own.answer_marker
+    assert len(own.input_ids) == own.n_chat + own.n_leading_ws
+    assert own.positions["P1"] == (len(own.input_ids) - 1,)
