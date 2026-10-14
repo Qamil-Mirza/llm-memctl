@@ -54,13 +54,18 @@ of the model's text instead of its activations: can the 3B derive the answer and
 
 ## 2. Arms (3B primary; 7B run beside, descriptive)
 
-Greedy decoding, temperature 0. **Engine:** the Executor chooses between Hugging Face transformers (bf16, the §34 image)
-and vLLM offline, writes the choice, version and sampling flags into `scripts/exp35_pod.sh`'s header and into every
-output row, and this section is updated with the choice before launch. The §23 cached answers came from a vLLM
-chat-completions server at temperature 0; §33 found transformers greedy reproduces 10 of 20 cached outputs exactly and
-16 of 20 final answers. Therefore **every verdict compares arms generated on the same engine in the same run**: B against
-A, F against N. The cached answers are used for the population, the labels, the notes and the conditioning sets, never as
-a comparison arm.
+Greedy decoding, temperature 0. **Engine (filled in before launch, Executor commit 2c04307 / 477a43a):** vLLM 0.8.5
+offline (`vllm.LLM`), bf16, max_model_len 8192, prefix caching on, transformers 4.51.3 (vLLM 0.8.5's own pin); 0.8.5 is
+the vLLM version that served every §23 answer and verdict. Sampling: greedy, temperature 0, top_p 1, seed 0;
+max_new_tokens 256 for N, F, F-cut and N-cut (as §23), 64 for A and B, 4 for the judge. Fallback if `import vllm` fails
+on the pod: transformers 5.17.0 batched greedy, for every arm of both readers and the judge. **One engine for every arm
+of both readers and for the judge within the run**, recorded in every row (`vllm-0.8.5` or `hf-transformers-5.17.0`);
+the generator refuses to resume rows from another engine, and a report over rows carrying two engines is "not
+interpretable". The judge does not reuse §23 verdicts (one judge engine per run). The §23 cached answers came from a
+vLLM chat-completions server at temperature 0; §33 found transformers greedy reproduces 10 of 20 cached outputs exactly
+and 16 of 20 final answers. Therefore **every verdict compares arms generated on the same engine in the same run**: B
+against A, F against N. The cached answers are used for the population, the labels, the notes and the conditioning sets,
+never as a comparison arm.
 
 **Teacher forcing (arms A, B).** Completion-style continuation on raw text: the chat template applied to the §23 user
 message with the generation prompt (as `memctl/analysis/jacobian.py` does for §34), then the note byte-exact, then the
