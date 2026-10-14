@@ -325,8 +325,8 @@ def render(folds: set[int], numbers: dict, data: dict) -> str:
     lines = [f"# §35 report: derivation vs answer selection (folds {fl}; population {numbers['population']} in-view "
              "answerable questions, paired by question id and prompt)", "",
              f"Engines: {numbers['engines']}. Wording sha256 {numbers['wording_sha256'][:12]}. Every verdict compares arms of "
-             "the same engine and run (B vs A, F vs N). Judge: the §23 prompt and model (Qwen2.5-7B); an identical judge "
-             "prompt already judged by §23 reuses its verdict. D1 decides; D2 beside. 95% intervals: 10,000 bootstrap "
+             "the same engine and run (B vs A, F vs N). Judge: the §23 prompt and model (Qwen2.5-7B) on this run's engine "
+             "(verdict sources listed per reader). D1 decides; D2 beside. 95% intervals: 10,000 bootstrap "
              "resamples of questions.", "",
              "## Population and rows", "",
              "| reader | population | marked | no marker | frozen-note rows after token check | " + " | ".join(sel.ARMS)

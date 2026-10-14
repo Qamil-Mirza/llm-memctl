@@ -26,9 +26,10 @@ folds 2-4.
 
 Judging (--judge): the §23 judge prompt (official LongMemEval per-type prompts, Qwen2.5-7B, 4 new tokens) on every
 generated final answer, on every cached note alone (D2), and on every cached final answer again ("cached", the judge
-engine check against the §23 labels). Verdicts are cached by text under cache/judge_exp35 (TrackedLLM keying). For
-arm answers and notes, an identical judge prompt already judged by §23 (cache/judge_exp23, read only) reuses that
-verdict; the "cached" items never do. The stub backend reads and writes cache/stub_judge_exp35 only.
+engine check against the §23 labels). Verdicts are cached by text under cache/judge_exp35 (TrackedLLM keying). Every
+verdict of a run comes from that run's judge engine: reusing §23 verdicts for identical judge prompts
+(cache/judge_exp23, read only) is off by default and only enabled by --reuse-exp23-verdicts (never for the "cached"
+items), because it would mix two judge engines inside one comparison. The stub reads and writes cache/stub_judge_exp35.
 """
 from __future__ import annotations
 
@@ -417,6 +418,8 @@ def main(argv=None) -> int:
     parser.add_argument("--out", default="runs/exp35", help="root; rows go to <out>/<reader>/")
     parser.add_argument("--judge", action="store_true", help="judge stage instead of generation (loads the 7B judge)")
     parser.add_argument("--runs", default="runs")
+    parser.add_argument("--reuse-exp23-verdicts", action="store_true",
+                        help="reuse §23 verdicts for identical judge prompts (off: one judge engine per run)")
     args = parser.parse_args(argv)
     readers = args.reader.split(",")
     folds = [int(f) for f in args.folds.split(",")]
@@ -432,8 +435,8 @@ def main(argv=None) -> int:
         if args.backend == "stub":
             cache = JudgeCache(Path("cache/stub_judge_exp35"), sel.judge_settings("stub"), None, None)
         else:
-            cache = JudgeCache(Path("cache/judge_exp35"), sel.judge_settings(engine.name), Path("cache/judge_exp23"),
-                               sel.judge_settings("openai"))
+            reuse = Path("cache/judge_exp23") if args.reuse_exp23_verdicts else None
+            cache = JudgeCache(Path("cache/judge_exp35"), sel.judge_settings(engine.name), reuse, sel.judge_settings("openai"))
         counts = run_judge(readers, folds, engine, cache, out, by_reader, qids, judge_questions(qids))
         print(f"judged: {counts} in {time.perf_counter() - began:.1f} s")
         return 0

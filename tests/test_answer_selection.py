@@ -383,3 +383,17 @@ def test_wilson_interval():
     low, high = wilson(7, 10)
     assert low == pytest.approx(0.3968, abs=1e-3) and high == pytest.approx(0.8922, abs=1e-3)
     assert wilson(0, 0) == (None, None)
+
+
+def test_judge_cache_reuses_section_23_only_when_asked(tmp_path):
+    from scripts.exp35_generate import JudgeCache
+    old = tmp_path / "judge_exp23"
+    key = sel.judge_cache_key("P", sel.judge_settings("openai"))
+    (old / key[:2]).mkdir(parents=True)
+    (old / key[:2] / f"{key}.json").write_text(json.dumps({"output": "Yes"}))
+    off = JudgeCache(tmp_path / "own", sel.judge_settings("vllm-0.8.5"), None, sel.judge_settings("openai"))
+    on = JudgeCache(tmp_path / "own", sel.judge_settings("vllm-0.8.5"), old, sel.judge_settings("openai"))
+    assert off.get("P", allow_reuse=True) == (None, None)
+    assert on.get("P", allow_reuse=True) == ("Yes", "exp23_cache") and on.get("P", allow_reuse=False) == (None, None)
+    off.put("P", "No")
+    assert on.get("P", allow_reuse=True) == ("No", "exp35_cache")

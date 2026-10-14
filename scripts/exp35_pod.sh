@@ -48,13 +48,12 @@ for READER in qwen3b qwen7b; do
   done
   test -d "cache/generations_exp23_${READER}" || missing "cache/generations_exp23_${READER}/"
 done
-test -d cache/judge_exp23 || missing "cache/judge_exp23/"
 for f in "${INPUTS[@]}"; do test -e "$f" || missing "$f"; done
 if [ -z "${HF_TOKEN:-}" ] && [ -s /workspace/.hf_token ]; then export HF_TOKEN; HF_TOKEN=$(tr -d '[:space:]' < /workspace/.hf_token); fi
 if [ "$ENGINE" != stub ] && [ -z "${HF_TOKEN:-}" ]; then
   echo "warning: HF_TOKEN not set and /workspace/.hf_token absent; Hugging Face may rate-limit the model download" >&2
 fi
-echo "preflight ok: ${#INPUTS[@]} files and 3 cache folders present; engine $ENGINE; folds $FOLDS; out $OUT" | tee -a "$OUT/pod.log"
+echo "preflight ok: ${#INPUTS[@]} files and 2 cache folders present; engine $ENGINE; folds $FOLDS; out $OUT" | tee -a "$OUT/pod.log"
 
 T0=$(date +%s)
 STAGE_START=$T0
