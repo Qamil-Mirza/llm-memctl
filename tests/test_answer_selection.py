@@ -240,7 +240,7 @@ def test_rows_carry_engine_sampling_and_hashes(tmp_path):
 
 # --- report -------------------------------------------------------------------------------------------------------
 
-def _write_run(root: Path, n_s: int, a_reproduces: bool = True, engines=("stub", "stub")):
+def _write_run(root: Path, n_s: int, a_reproduces: bool = True, engines=("stub", "stub"), fold: int = 0):
     """3B: n_s cached refusals whose note holds the gold (S), 4 with no gold in the note (S'), 4 cached successes.
     A reproduces the cached refusal; B answers S correctly and S' wrongly. The 7B is cached-correct everywhere."""
     from scripts import exp35_generate as gen
@@ -253,8 +253,8 @@ def _write_run(root: Path, n_s: int, a_reproduces: bool = True, engines=("stub",
             out, correct, unknown = "Nothing.\nAnswer: unknown", False, True
         else:
             out, correct, unknown = "Luna.\nAnswer: Luna", True, False
-        recs3.append(record(qid=qid, output=out, correct=correct, unknown=unknown))
-        recs7.append(record(qid=qid, output="Luna.\nAnswer: Luna", correct=True, unknown=False, reader="qwen7b"))
+        recs3.append(record(qid=qid, fold=fold, output=out, correct=correct, unknown=unknown))
+        recs7.append(record(qid=qid, fold=fold, output="Luna.\nAnswer: Luna", correct=True, unknown=False, reader="qwen7b"))
     for reader, recs, engine in (("qwen3b", recs3, engines[0]), ("qwen7b", recs7, engines[1])):
         judge = []
         for arm in sel.ARMS:
@@ -270,15 +270,15 @@ def _write_run(root: Path, n_s: int, a_reproduces: bool = True, engines=("stub",
                     text = "x\nAnswer: Luna"
                 row = sel.make_row(item, text, engine, "m", "raw").to_dict()
                 rows.append(row)
-                judge.append({"question_id": rec.question_id, "fold": 0, "reader": reader, "item": arm,
+                judge.append({"question_id": rec.question_id, "fold": fold, "reader": reader, "item": arm,
                               "verdict": row["final_answer"] == "Luna", "source": "stub"})
-            gen.write_jsonl(gen.arm_file(root, reader, arm, 0), rows)
+            gen.write_jsonl(gen.arm_file(root, reader, arm, fold), rows)
         for rec in recs:
-            judge.append({"question_id": rec.question_id, "fold": 0, "reader": reader, "item": "D2",
+            judge.append({"question_id": rec.question_id, "fold": fold, "reader": reader, "item": "D2",
                           "verdict": "Luna" in rec.output.split("Answer:")[0], "source": "stub"})
-            judge.append({"question_id": rec.question_id, "fold": 0, "reader": reader, "item": "cached",
+            judge.append({"question_id": rec.question_id, "fold": fold, "reader": reader, "item": "cached",
                           "verdict": bool(rec.correct), "source": "stub"})
-        gen.write_jsonl(gen.judge_file(root, reader, 0), judge)
+        gen.write_jsonl(gen.judge_file(root, reader, fold), judge)
     by_reader = {"qwen3b": {r.question_id: r for r in recs3}, "qwen7b": {r.question_id: r for r in recs7}}
     return by_reader, sorted(by_reader["qwen3b"])
 
@@ -317,11 +317,34 @@ def test_report_underpowered_below_15(report, monkeypatch, tmp_path):
     assert numbers["readers"]["qwen3b"]["claim1"]["verdict"].startswith("UNDERPOWERED")
 
 
+def test_confirm_report_adds_the_pooled_estimate_when_underpowered(report, monkeypatch, tmp_path):
+    by_reader, qids = _write_run(tmp_path / "run", n_s=10, fold=2)
+    monkeypatch.setattr(report, "load_population", lambda folds, runs: (by_reader, qids, []))
+    text, numbers = report.build({2}, tmp_path / "run", samples=200, own_root=tmp_path / "own", pooled=True)
+    n = numbers["readers"]["qwen3b"]
+    assert n["claim1"]["verdict"].startswith("UNDERPOWERED") and n["pooled"]["n_S"] == 10
+    assert "MIXES development and confirmation" in text
+    _, dev = report.build({2}, tmp_path / "run", samples=200, own_root=tmp_path / "own", pooled=False)
+    assert "pooled" not in dev["readers"]["qwen3b"]
+
+
 def test_report_gate_g_failure_makes_claims_not_interpretable(report, monkeypatch, tmp_path):
     _, numbers = _build(report, monkeypatch, tmp_path, n_s=16, a_reproduces=False)
     n = numbers["readers"]["qwen3b"]
     assert not n["gate_g"]["pass"]
     assert n["claim1"]["verdict"].startswith("not interpretable") and n["claim2"]["verdict"].startswith("not interpretable")
+
+
+def test_report_refuses_rows_from_an_older_wording(report, monkeypatch, tmp_path):
+    from scripts import exp35_generate as gen
+    by_reader, qids = _write_run(tmp_path / "run", n_s=16)
+    path = gen.arm_file(tmp_path / "run", "qwen3b", "B", 0)
+    rows = gen.read_jsonl(path)
+    rows[0]["wording_sha256"] = "old"
+    gen.write_jsonl(path, rows)
+    monkeypatch.setattr(report, "load_population", lambda folds, runs: (by_reader, qids, []))
+    with pytest.raises(SystemExit, match="wording"):
+        report.build({0}, tmp_path / "run", samples=100, own_root=tmp_path / "own")
 
 
 def test_report_refuses_mixed_engines(report, monkeypatch, tmp_path):

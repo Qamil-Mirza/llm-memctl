@@ -120,8 +120,10 @@ class ReaderData:
         return mismatch, missing, unchecked
 
     def hash_problems(self) -> list[str]:
+        """Rows whose intact prompt hash or wording hash differs from this record and this code's wording."""
         return [f"{self.reader}/{arm}/{q}" for arm in sel.ARMS for q, row in self.rows[arm].items()
-                if row["intact_prompt_sha256"] != sel.sha256(self.by_q[q].prompt)]
+                if row["intact_prompt_sha256"] != sel.sha256(self.by_q[q].prompt)
+                or row.get("wording_sha256") != sel.wording_sha256()]
 
     def cached_refusal(self, q: str) -> bool:
         record = self.by_q[q]
@@ -216,7 +218,7 @@ def analyse(data: ReaderData, other: ReaderData, samples: int) -> dict:
         stat = c3[key]
         rows = stat["keys"]
         gap = (sum(other_cached[q] for q in rows) - sum(cached[q] for q in rows)) / len(rows) if rows else None
-        stat["matched_gap"] = gap
+        stat["matched_gap"] = gap if data.reader == PRIMARY else None
         ok = data.reader == PRIMARY and gap and stat["mean"] is not None
         stat["gap_share"] = stat["mean"] / gap if ok else None
         stat["gap_share_ci"] = (stat["ci_low"] / gap, stat["ci_high"] / gap) if ok and stat["ci_low"] is not None else None
@@ -313,7 +315,8 @@ def load(folds: set[int], root: Path, runs: str, own_root: Path) -> tuple[dict, 
         raise SystemExit(f"REFUSED: the run directory mixes engines {engines}; one engine for every arm of both readers")
     problems = [p for d in data.values() for p in d.hash_problems()]
     if problems:
-        raise SystemExit(f"REFUSED: {len(problems)} rows do not carry their record's intact prompt hash, e.g. {problems[:3]}")
+        raise SystemExit(f"REFUSED: {len(problems)} rows do not carry their record's intact prompt hash or this wording's "
+                         f"hash, e.g. {problems[:3]}")
     return data, qids, mismatched
 
 
