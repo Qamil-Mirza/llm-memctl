@@ -26,7 +26,7 @@ a pointer to the EXPERIMENTS.md section, instead of deleting it.
 | Q11 | Does fixing the designated-carrier label quirk change the head? | Relabel; retrain; free gate | free |
 | Q12 | Do `cross_encoder_tuned` or lambdarank beat LR? | Dropped in §32 (memory kills, 73 min/epoch) | compute only |
 | Q13 | OpenJev arm A (memory manager) accuracy, claims A1/A2 | "not tested, not dropped" (§26); about $15 per 1,000 questions | NEEDS SPEND |
-| Q14 | Can a 3B reader be lifted to 7B (claim 1 of §23)? | Neither the controller (§23) nor qTTT (§31, closed) did it; LoRA deferred | NEEDS SPEND |
+| Q14 | Can a 3B reader be lifted to 7B (claim 1 of §23)? | Neither the controller (§23) nor qTTT (§31, closed) did it; LoRA deferred. **Partly answered by §35 (2026-10-14):** about half of the matched in-view gap is the 3B's answering policy (frozen note + "do not reply unknown" +0.176 (+0.109, +0.242); forced choice +0.242), at the cost of a fifth of refusals turning wrong and double the answered-and-wrong share without evidence; the other half stays with the reading | the reading half still NEEDS SPEND (LoRA) |
 
 ## Record-keeping gaps (not science, but they block clean citation)
 

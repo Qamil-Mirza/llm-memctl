@@ -71,6 +71,9 @@ The numbers and caveats are in [EXPERIMENTS.md](../EXPERIMENTS.md); this file on
 | 30 | UtilMem | `configs/sweeps/exp30/` | `runs/exp30/` | #24 | $0 | closed without a run |
 | 31 | Test-time training on 3B | `configs/sweeps/exp31/` | none | #24 | $0 | closed without a run |
 | 32 | Head vs standard rerankers | `configs/sweeps/exp32/` | `runs/exp32_free_f*`, `runs/exp32_latency`, `runs/exp32_rerankers/`, `runs/exp32_qwen7b_f*`, `runs/exp32_{report.md,verdicts.json}`, **`runs/exp32_spotcheck`** (judge audit) (`cache/exp32_ce`, `cache/hf_exp32`, `cache/generations_exp32_qwen7b`, `cache/judge_exp32`) | #23 | ≈ $0.15 | non-inferior to LR and CE, not better |
+| 33 | Input-gradient attribution (3B, 7B) | none (`scripts/exp33_pod.sh`) | `runs/exp33/` (regeneration check only) | branch `jacobian-lens` | share of §34 pod | stopped at its sanity check; no numbers |
+| 34, 34a–c | Jacobian-lens readout: where the 3B loses the answer; own position; evidence ablation | none (`scripts/exp34*_pod.sh`, `scripts/jlens_*.py`) | `runs/exp34_jlens/`, `runs/exp34_jlens_own/`, `runs/exp34_jlens_ablated/`, `runs/exp34{,b,c}_report_*.md` (`external/jacobian-lens` 581d398) | branch `jacobian-lens` (b42ba90 prereg ACCEPT; 06fa91e §34c ACCEPT) | ≈ $1.03 + $0.18 + $0.11 | C-over-B: answer present, `unknown` wins late; presence ~0.6 plausibility without evidence; 3B's `unknown` signal insensitive to evidence |
+| 35 | Derivation vs answer selection (frozen note, forced choice) | none (`scripts/exp35_pod.sh`, `scripts/exp35_generate.py`, `scripts/exp35_report.py`) | `runs/exp35/`, `runs/exp35_report_{dev,confirm,allfolds}.md` (`cache/judge_exp35`) | branch `jacobian-lens` (289ebd3 prereg ACCEPT; 56bfcd5 results; e6a38d7 review round 1) | ≈ $0.22 | gate PASS; Claims 1–2 SHOWN; B − A +0.176 (0.53 of the matched 3B−7B gap), F − N +0.242; costs beside |
 
 ## Deleted or moved on 2026-10-10
 
