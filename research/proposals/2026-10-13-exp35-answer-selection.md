@@ -31,8 +31,9 @@ of the model's text instead of its activations: can the 3B derive the answer and
 
 - The §23 `fixed8` (fraction 0.05) in-view answerable questions with a judge label, both readers, paired by question id
   and prompt hash, exactly the §34 population: folds 0–1 for development (126), folds 2–4 for confirmation (204), all
-  folds 330. LongMemEval's abstention questions are outside this population (the §23 sample scored them apart: the
-  cached 3B was correct on 7 of 30, §23a); arm F below answers them wrong by construction, which is noted, not measured.
+  folds 330. LongMemEval's abstention questions are outside this population (the §23 sample scored them apart: under
+  `fixed8` the cached 3B gave 7 false answers on the 30, so 23 correct abstentions, §23a cost column); arm F below
+  answers them wrong by construction, which is noted, not measured.
 - **Marked rows:** outputs whose text contains `Answer:`. Only marked rows enter the frozen-note arms (3B: 165 of 204
   on folds 2–4; 7B: all). The note is everything before the output's last `Answer:`, kept byte-exact.
 - **Derivation criterion D1 (deciding; string, free):** the normalised gold string, or every gold token, occurs in the
@@ -44,7 +45,9 @@ of the model's text instead of its activations: can the 3B derive the answer and
   no derived answer passes, and because the same judge scoring the note and the arm-B answer against the same gold would
   make D2 and "B correct" co-vary through judge false negatives.
 - **Cached label rule (as §23):** a cached answer is a refusal when the text after the last `Answer:` starts with
-  "unknown" (`runs/_pipelines/exp23_judge.py`); the same rule is applied to every generated answer here.
+  "unknown" (`runs/_pipelines/exp23_judge.py`); the same rule is applied to every generated answer here. A generated
+  output with no `Answer:` marker (possible in arms N, F, F-cut, N-cut) is graded as the whole output, and is a refusal
+  only if that whole text starts with "unknown", as `LLMAgent.act` does.
 - **Control, evidence cut:** the §34c prompt with every evidence line removed by exact span (`ablate_evidence`), same
   question. On it the right answer is unknown from the reader's view. Natural control, descriptive: answerable questions
   with zero evidence lines in view (15 of 188 labelled on the development folds; the cached 3B refuses 10 of them).
@@ -158,3 +161,7 @@ per reader ≈ 3,300 generations (N, F, F-cut, N-cut full notes of up to 256 tok
 4,000 judge calls; 3B and 7B load in turn on one A40. Full-size stub run, peak RSS and measured per-call latency before
 launch (standing rule). One A40 secure pod at $0.59/h, about 40 min expected; **hard stop 90 min ($0.89)**. Programme
 spend so far ≈ $17.00 of the $20 cap; account balance $12.65 on 2026-10-13.
+
+**Triage order, declared now, if the stub-measured latency puts the chain over the 90-minute stop:** drop the 7B's arms
+first, then the cut arms (F-cut, N-cut) of the 3B, never the 3B's N, A or B. Gate G is printed on all marked rows and
+again on S.
