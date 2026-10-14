@@ -6129,7 +6129,8 @@ development folds, where S had 7 of 30 marked refusals), about 0.07 of in-view q
 **Gate G, PASS.** Arm A gives the cached verdict and refusal flag on 0.964 (0.933, 0.988) of marked rows [0.966], and
 the cached final answer exactly on 0.952; on S, 1.000 of 22. Arm N (the whole prompt regenerated) gives the cached final
 answer on 0.642 and the whole cached output on 0.333, with acc(N) − cached −0.024 (−0.079, +0.030): offline vLLM
-reproduces the server's answers about as well as §33 found (16 of 20), and no better.
+reproduces the server's answers below what §33 found on 20 questions (16 of 20 final answers, 10 of 20 whole outputs),
+consistent with it given n 20, and not better.
 
 **Claim 1 (a selection gap exists), SHOWN.** |S| = 22 (0.108 of the population; D1 true on 22 of 62 marked refusals,
 0.35, against 0.23 on the development folds). Under A every one of the 22 refuses again; under B 14 answer correctly, 6
@@ -6145,12 +6146,18 @@ still refuse, 2 answer wrong.
 Development folds (read first): Claim 1 +0.571 (+0.143, +0.857) with |S| = 7, UNDERPOWERED as pre-registered; Claim 2
 +0.354 (−0.062, +0.739), not shown there; both point the same way as the confirmation folds.
 
-**Claim 2 (selection, not guessing), SHOWN, but S' is not inert.** B answers correctly on 0.636 of S and on 0.325 of
-S' (13 of 40). The 13 are refusals whose note holds the ingredients but not the gold string: "user spent $60 on coffee
-mugs ... bought 5 coffee mugs" → `$12`; "meeting up with Alex from Germany twice before" → `2`; "unique dessert shop,
-giant milkshakes" → `The Sugar Factory`. D1 under-counts derivation: the last step of the arithmetic or the naming
-happens *at the answer step*, once unknown is off the table. So "the answer step given the note" is what B changes, and
-it includes a final computation, not only a choice between an answer the note states and unknown.
+**Claim 2 (selection, not guessing), SHOWN, but S' is not inert (the rest of this paragraph is exploratory).** B
+answers correctly on 0.636 of S and on 0.325 of S' (13 of 40). A plain "lower threshold plus lucky guesses" account of
+the 13 is ruled out by the run's own control: F-cut (same question, no evidence) is judged correct on only 2 of the 13
+(0.15, the plausibility floor of 0.147) and never gives B's answer; among the 27 S' non-recoveries F-cut is right on 1.
+About 8 of the 13 fit "the note holds the ingredients but not the gold string": "user spent $60 on coffee mugs ... bought
+5 coffee mugs" → `$12`; "meeting up with Alex from Germany twice before" → `2`; "unique dessert shop, giant milkshakes" →
+`The Sugar Factory`; there the last step of the arithmetic or the naming happens *at the answer step*, once unknown is
+off the table. The other 5 do not: 3 recovered notes are literally "unknown" (7 of the 62 marked refusal notes are),
+1 is off-topic, 1 names only the topic. On those, B answered from the evidence in the prompt, not from the note, so the
+frozen-note arm does not freeze the derivation where the note is empty. D1 therefore under-counts derivation, and "the
+answer step given the note" is what B changes: it includes a final computation, and where the note is empty a fresh
+read, not only a choice between an answer the note states and unknown.
 
 **Claim 3 (the thesis stake).** On the 165 marked rows, the 7B's cached accuracy exceeds the 3B's by 0.333 (0.660 vs
 0.327).
@@ -6161,14 +6168,15 @@ it includes a final computation, not only a choice between an answer the note st
 | acc(F) − acc(N), regenerated | 165 | 0.545 | 0.303 | **+0.242 (+0.164, +0.321)** [+0.192 (+0.132, +0.253)] | 0.73 (0.49, 0.96) [0.67] |
 | acc(F) − acc(N), all 204 rows | 204 | 0.569 | 0.343 | +0.225 (+0.157, +0.294) [+0.188 (+0.136, +0.239)] | 0.72 (0.50, 0.94) [0.70] |
 
-Development folds: +0.110 (+0.050, +0.180) and +0.110 (+0.030, +0.190). The 3B's refusal rate on in-view questions goes
-from 0.358 under N to 0.015 under F. By type (3B, folds 2–4, accuracy): temporal-reasoning 0.185 (A) → 0.444 (B) on 54
+Development folds: +0.110 (+0.050, +0.180) and +0.110 (+0.030, +0.190). Descriptive: the 3B's refusal rate on in-view
+questions goes from 0.358 under N to 0.015 under F. By type (3B, folds 2–4, accuracy): temporal-reasoning 0.185 (A) → 0.444 (B) on 54
 rows and 0.155 (N) → 0.448 (F) on 58; single-session-user 0.393 → 0.679 and 0.556 → 0.806; single-session-assistant
 0.600 → 0.600 and 0.467 → 0.833; multi-session 0.375 → 0.531 and 0.278 → 0.472; knowledge-update 0.417 → 0.500 and
-0.486 → 0.514 (flagged type, different judge prompt); single-session-preference 0 throughout (9 questions, flagged).
+0.486 → 0.514 (flagged type, different judge prompt); single-session-preference cached 0.111 and F 0.111, N, A and B 0 (9 questions, flagged).
 
-**The 7B (descriptive).** Gate 0.995; 9 cached refusals, |S| = 1. acc(B) − acc(A) +0.020 (+0.005, +0.039); acc(F) −
-acc(N) +0.005 (−0.034, +0.044). The 7B has almost no refusals to recover and forced choice does nothing for it.
+**The 7B (descriptive).** Gate 0.995; 9 cached refusals, |S| = 1. acc(B) − acc(A) +0.020 (+0.005, +0.039), small but
+above the noise floor; acc(F) − acc(N) +0.005 (−0.034, +0.044). The 7B has almost no refusals to recover and forced
+choice does nothing for it.
 
 **Costs (pre-registered).**
 
@@ -6181,10 +6189,12 @@ acc(N) +0.005 (−0.034, +0.044). The 7B has almost no refusals to recover and f
 | evidence cut: F-cut refuses (descriptive) | 204 | 0.319 (0.255, 0.382) [0.342] | 0.245 |
 | evidence cut: N-cut judged correct (descriptive) | 204 | 0.088 (0.054, 0.127) | 0.186 |
 
-With nothing in view, the normal prompt already answers 0.35 of the time (0.09 of those "correct" by plausibility);
-forced choice answers 0.68 of the time (0.15 correct by plausibility), so the share of confidently wrong answers on
-evidence-free prompts roughly doubles, from about 0.26 to about 0.53. Even told never to say unknown, the 3B still
-refuses on 0.32 of evidence-free prompts and on 0.015 of in-view ones: its refusal does track the evidence under F.
+Descriptive, derived from (ii): with nothing in view, the normal prompt already answers 0.35 of the time (0.09 of all
+prompts "correct" by plausibility); forced choice answers 0.68 of the time (0.15 correct by plausibility), so the share
+of prompts answered and judged wrong on evidence-free prompts roughly doubles, from 0.265 to 0.534 (no confidence is
+measured; judge false negatives make these absolute shares upper bounds). Even told never to say unknown, the 3B still
+refuses on 0.32 of evidence-free prompts and on 0.015 of in-view ones (descriptive): its refusal does track the
+evidence under F.
 
 **D1 against D2.** On 165 marked notes: both 47, D1 only 16, D2 only 30, neither 72; agreement 0.721, κ 0.433. On the
 62 marked refusals D1 holds on 22 and D2 on 23; the D2-set result (+0.652) matches the D1 one.
@@ -6194,25 +6204,28 @@ refuses on 0.32 of evidence-free prompts and on 0.015 of in-view ones: its refus
   fixed to the byte and one line added that forbids unknown, the 3B's accuracy rises by 0.18, about half of the matched
   gap to the 7B; with the two unknown clauses rewritten and everything regenerated, by 0.24, about three quarters. The
   pre-registered prediction (+0.05 to +0.08, "minor") was wrong by a factor of two to three, because D1 misses the
-  refusals whose note holds the ingredients and the last step is done at the answer. This is the behavioural
+  refusals whose note holds the ingredients and the last step is done at the answer, and those whose note is empty and
+  B reads the evidence afresh (exploratory, above). This is the behavioural
   counterpart of §34c: the 3B's ` unknown` disposition barely tracks the evidence at the forced position, and here its
   refusal is mostly removable by instruction.
 - *It is not just a lower threshold.* Claim 2 holds (B is right twice as often where the note holds the gold), the 7B
-  gains nothing from the same interventions, and B's wrong answers on S' (0.275) are well below its correct ones on S
-  (0.636). But the threshold moves too: a fifth of all marked refusals become wrong answers under B, and on evidence-free
-  prompts F doubles the confidently wrong share. Forced choice is a trade of calibration for coverage; whether it pays
+  gains little from the same interventions (B − A +0.020 (+0.005, +0.039), twice the noise floor; F − N +0.005, nothing),
+  and B's wrong answers on S' (0.275) are well below its correct ones on S (0.636). But the threshold moves too: a fifth of all marked refusals become wrong answers under B, and on evidence-free
+  prompts F doubles the answered-and-wrong share. Forced choice is a trade of calibration for coverage; whether it pays
   depends on the cost of a wrong answer against an abstention, which this benchmark's metric does not price (and F
   forfeits LongMemEval's 30 abstention questions by construction, where the cached 3B abstained correctly on 23).
 - *What it changes upstream.* §23's claim 1 (a controller cannot lift the 3B to the 7B's baseline) stands as stated: the
-  controller changes what the reader sees, and the reader's in-view accuracy was the ceiling. But that ceiling is largely
-  a *response policy*, not a reading limit: the same 3B, same evidence, same note, answers half the gap away when told
-  to. A note-and-forced-answer prompt is a zero-parameter alternative to the LoRA route of §23/Q14, with the cost above.
-  "The wall" of 2026-10-08 is thinner than it looked.
+  controller changes what the reader sees, and the reader's in-view accuracy was the ceiling. About half of that ceiling
+  is a *response policy*: the same 3B, same evidence, same note, closes 0.53 (0.33, 0.73) of the matched gap when told
+  not to abstain, at the cost of a fifth of its refusals becoming wrong answers; under B it reaches 0.51 against the 7B's
+  0.66, and the other half of the gap stays with the reading. A note-and-forced-answer prompt is an untested,
+  zero-parameter alternative to the LoRA route of §23/Q14; it forfeits abstention and carries the costs above.
 
 **Caveats.** D1 is a string criterion that under-counts derivation (shown by the S' recoveries); the headline Claim 3 rows
 do not depend on it. B's line also invites the model to finish the computation, so "selection" here means the final
 answer step given the note, not a pure choice between a stated answer and unknown. F changes the note too (full
-regeneration), so F − N mixes derivation and selection; B − A is the clean one and carries 0.73 of F's lift. Labels are
+regeneration), so F − N mixes derivation and selection; B − A is the clean one and (descriptive) amounts to 0.73 of
+F's lift. Labels are
 the §23 single judge (understates accuracy by about 0.1; paired rows unaffected; the judge ran on this run's engine and
 agreed with the §23 labels on 204 of 204 cached answers). The 39 marker-less 3B outputs are outside the frozen-note arms;
 the all-rows F − N row covers them. Offline vLLM reproduces the server's cached answers on 0.64 of questions (final
@@ -6222,8 +6235,8 @@ one 3B.
 
 **Run and spend.** One A40 secure pod (CA-MTL-1, $0.59/h), created 2026-10-14 00:57 UTC, chain 01:01:16–01:17:18 UTC
 on the first attempt (install 183 s with vLLM 0.8.5 on torch 2.6.0+cu124; 3B main arms 220 s; 3B cut arms 158 s; 7B all
-arms 367 s; judge 94 s for 5,085 items), deleted 01:19 UTC; account balance 12.654 → 12.488, about $0.17 against the
-approved $0.89 hard stop. All experiments ≈ $17.17.
+arms 367 s; judge 94 s for 5,085 items), deleted 01:19 UTC; uptime about 0.37 h × $0.59 ≈ $0.22 (the account balance moved 12.654 → 12.488, $0.17, and
+billing lags), against the approved $0.89 hard stop. All experiments ≈ $17.22.
 
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
