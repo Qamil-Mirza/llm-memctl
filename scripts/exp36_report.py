@@ -29,7 +29,10 @@ Label = the §35 judge verdict on B. C0 emits iff there is a candidate and the c
   added relative to C0. C4 gets the same procedure.
 - Controls (both readers as verifiers of the 3B candidates): A, s(intact) - s(cut) for the same candidate on rows
   judged correct, and the 7B-minus-3B difference of that drop; A', AUROC of intact correct-B rows vs Cut-F rows; B, the
-  counterfactual (descriptive below 20 qualifying rows); the length control; C1, C2, C4'.
+  counterfactual: primary row = number-type substitutions whose value has no other occurrence in memory (coordinator
+  decision 2026-10-15 after the dev hand check: name substitutions are not internally consistent); name-type rows,
+  numbers with other occurrences and all rows are descriptive only (all generated; descriptive below 20 rows); the
+  length control; C1, C2, C4'.
 - Label-mass rule per verifier and item: if the mass is below 0.5 on more than 0.1 of rows, the readout is "not
   reliable" and only its argmax label is reported.
 Intervals: paired bootstrap over questions (every variant of a question in one unit), 10,000 resamples, 95%.
@@ -258,13 +261,25 @@ def controls(verifier: str, rows: dict, frame3: Frame, fcut: dict, boot, tau: fl
         return {"n": len(qs), "follows": ver.mean_stat(both, boot), "follows_cf_context": ver.mean_stat(flags_cf, boot),
                 "follows_intact_context": ver.mean_stat(flags_in, boot),
                 "verdict": "descriptive" + (f" (fewer than {ver.CF_DESCRIPTIVE_BELOW} rows)" if len(qs) < ver.CF_DESCRIPTIVE_BELOW else "")}
-    qs = sorted(full)
-    out["CF"] = cf_stats(qs)
-    out["CF"]["by_kind"] = {k: sum(1 for q in qs if full[q]["orig@cf"]["extra"]["kind"] == k) for k in ("number", "name")}
-    clean = [q for q in qs if full[q]["orig@cf"]["extra"].get("outside") == 0]
-    out["CF_no_outside_copy"] = cf_stats(clean)
+    subsets = cf_subsets({q: full[q]["orig@cf"]["extra"] for q in full})
+    out["CF"] = cf_stats(subsets["primary"])
+    out["CF"]["verdict"] = "primary row" + ("; descriptive (fewer than 20 rows)" if out["CF"]["n"] < ver.CF_DESCRIPTIVE_BELOW else "")
+    for key in ("number_with_other_copies", "name", "all_rows"):
+        out[f"CF_{key}"] = cf_stats(subsets[key])
+        out[f"CF_{key}"]["verdict"] = "descriptive only"
     out["CF_incomplete"] = len(cf) - len(full)
     return out
+
+
+def cf_subsets(extras: dict[str, dict]) -> dict[str, list[str]]:
+    """Control B row sets (coordinator decision 2026-10-15, from the dev hand check: name substitutions are not
+    internally consistent, e.g. "a guy named Memrise"). Primary: number-type substitutions whose value has no other
+    occurrence in memory. Descriptive only: numbers with other occurrences, all name-type rows, and all rows."""
+    qs = sorted(extras)
+    return {"primary": [q for q in qs if extras[q]["kind"] == "number" and extras[q].get("outside") == 0],
+            "number_with_other_copies": [q for q in qs if extras[q]["kind"] == "number" and extras[q].get("outside") != 0],
+            "name": [q for q in qs if extras[q]["kind"] == "name"],
+            "all_rows": qs}
 
 
 def analyse(folds: set[int], rows: dict, data35: dict, dev: dict, boot, own_root: Path, samples: int) -> dict:
@@ -414,10 +429,16 @@ def render(folds: set[int], numbers: dict) -> str:
              ("A′: AUROC intact correct-B vs Cut-F", lambda c: f"{_ci(c['A_prime_auroc'])} ({c['A_prime_auroc']['n_pos']} / {c['A_prime_auroc']['n_neg']})"),
              ("Length control: s(intact) − s(LC)", lambda c: f"{_ci(c['LC']['intact_minus_lc'], True)} (n {c['LC']['intact_minus_lc']['n']})"),
              ("Length control: s(LC) − s(cut)", lambda c: f"{_ci(c['LC']['lc_minus_cut'], True)}"),
-             ("B: counterfactual, follows in both contexts", lambda c: f"{_ci(c['CF']['follows'])} (n {c['CF']['n']}; {c['CF']['verdict']})"),
-             ("B: follows in the counterfactual context", lambda c: _ci(c["CF"]["follows_cf_context"])),
-             ("B: follows in the intact context", lambda c: _ci(c["CF"]["follows_intact_context"])),
-             ("B: rows whose value has no other copy in memory", lambda c: f"{_ci(c['CF_no_outside_copy']['follows'])} (n {c['CF_no_outside_copy']['n']})"),
+             ("B (primary): number substitutions, no other copy in memory; follows in both contexts",
+              lambda c: f"{_ci(c['CF']['follows'])} (n {c['CF']['n']}; {c['CF']['verdict']})"),
+             ("B (primary): follows in the counterfactual context", lambda c: _ci(c["CF"]["follows_cf_context"])),
+             ("B (primary): follows in the intact context", lambda c: _ci(c["CF"]["follows_intact_context"])),
+             ("B, DESCRIPTIVE ONLY: numbers with other copies in memory, follows in both",
+              lambda c: f"{_ci(c['CF_number_with_other_copies']['follows'])} (n {c['CF_number_with_other_copies']['n']})"),
+             ("B, DESCRIPTIVE ONLY: name substitutions (not internally consistent), follows in both",
+              lambda c: f"{_ci(c['CF_name']['follows'])} (n {c['CF_name']['n']})"),
+             ("B, DESCRIPTIVE ONLY: all counterfactual rows, follows in both",
+              lambda c: f"{_ci(c['CF_all_rows']['follows'])} (n {c['CF_all_rows']['n']})"),
              ("Cut-F emitted at τ (unsupported-answer rate)", lambda c: _f(c["cutf_unsupported_rate"]["at_tau"])),
              ("Cut-F argmax A", lambda c: _f(c["cutf_unsupported_rate"]["argmax_A"])),
              ("Abs: n, emitted at τ, argmax A", lambda c: f"{c['abs']['n']}, {_f(c['abs']['at_tau'])}, {_f(c['abs']['argmax_A'])}")]

@@ -345,3 +345,12 @@ def test_report_claim1_rows_and_forced_abstentions():
     p = policy(f, chosen, boot)
     assert p["coverage"]["estimate"] == pytest.approx(2 / 5)  # no-candidate rows stay in the denominator
     assert p["risk"]["estimate"] == pytest.approx(0.5)
+
+
+def test_control_b_primary_is_numbers_without_other_copies():
+    from scripts.exp36_report import cf_subsets
+    extras = {"a": {"kind": "number", "outside": 0}, "b": {"kind": "number", "outside": 2},
+              "c": {"kind": "name", "outside": 0}, "d": {"kind": "name", "outside": 1}}
+    sub = cf_subsets(extras)
+    assert sub["primary"] == ["a"] and sub["number_with_other_copies"] == ["b"]
+    assert sub["name"] == ["c", "d"] and sub["all_rows"] == ["a", "b", "c", "d"]
