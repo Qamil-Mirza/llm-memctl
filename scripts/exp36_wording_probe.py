@@ -205,9 +205,9 @@ def main(argv=None) -> int:
                 text, ids = chat_ids(messages)
                 t0 = time.perf_counter()
                 with torch.no_grad():
-                    out = net(input_ids=torch.tensor([ids]), use_cache=True, logits_to_keep=1)
+                    res = net(input_ids=torch.tensor([ids]), use_cache=True, logits_to_keep=1)
                     t_c = time.perf_counter() - t0
-                    cache, logits_c = out.past_key_values, out.logits[0, -1]
+                    cache, logits_c = res.past_key_values, res.logits[0, -1]
                     if "c" in todo:
                         new_rows.append(row(q, fold, rec, cand, item, "c", text, len(ids), t_c, top20(logits_c)))
                     if "d" in todo:
