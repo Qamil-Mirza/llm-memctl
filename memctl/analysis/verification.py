@@ -94,6 +94,10 @@ INSTRUCTIONS = {
 LABELS = ("A", "B", "C")
 SPELLINGS = {label: (label, " " + label) for label in LABELS}
 B_WEIGHT = 0.5
+# v1: matched the stored token strings as they were (vLLM stored byte-level BPE strings, so ' A' never matched).
+# v2: tokens decoded through the byte-level alphabet first; primary spellings unchanged ('A', ' A'); label_mass_tab
+#     beside it also counts tab-prefixed labels ('\tA'), never used by a claim.
+SCORER_VERSION = "v2-bytedecode"
 MASS_FLOOR = 0.5         # a row is low-mass below this
 MASS_SHARE = 0.1         # the readout is "not reliable" when more than this share of rows is low-mass
 TOP_LOGPROBS = 20
@@ -240,10 +244,11 @@ def label_probs(top: dict[str, float]) -> dict:
     spell = {sp: math.exp(top[sp]) if sp in top else 0.0 for label in LABELS for sp in SPELLINGS[label]}
     p = {label: sum(spell[sp] for sp in SPELLINGS[label]) for label in LABELS}
     mass = sum(p.values())
+    tab = {label: math.exp(top["\t" + label]) if "\t" + label in top else 0.0 for label in LABELS}
     s = (p["A"] + B_WEIGHT * p["B"]) / mass if mass > 0 else None
     argmax = max(LABELS, key=lambda lab: (p[lab], -LABELS.index(lab))) if mass > 0 else None
     return {"p_A": p["A"], "p_B": p["B"], "p_C": p["C"], "p_spellings": spell, "label_mass": mass, "s": s,
-            "argmax": argmax}
+            "argmax": argmax, "label_mass_tab": mass + sum(tab.values()), "scorer_version": SCORER_VERSION}
 
 
 def reliability(masses: list[float]) -> dict:
@@ -644,4 +649,46 @@ def rescore_row(row: dict) -> dict:
     new = {**row, **label_probs(top)}
     new["top1"] = decode_token(max(top, key=top.get))
     new["rescored"] = True
+    new["scorer_version"] = SCORER_VERSION
     return new
+
+
+# --- wording probe (coordinator request 2026-10-15; NOT the frozen wording) ------------------------------------
+# On dev V the 3B put label mass >= 0.5 on only 0.11 of rows: it answered the question (the prompt keeps the §23 goal
+# line and ends with "Answer: "). These variants are tested on format compliance only (no correctness-linked number).
+# They are chat messages; the engine applies the chat template with the generation prompt and appends nothing.
+PROBE_LABEL_LINES = ("A = the memory states or directly implies this answer\n"
+                     "B = the memory is partly relevant but does not settle it\n"
+                     "C = the memory does not support it, or contradicts it")
+PROBE_REPLY = "Reply with exactly one letter: A, B or C."
+PROBE_TASK = ("You will check whether a proposed answer is supported by a memory log. Below are the memory, a question "
+              "and a proposed answer. Does the memory support the proposed answer?\n" + PROBE_LABEL_LINES)
+PROBE_SYSTEM = "You are a strict fact checker. You reply with a single letter."
+PROBE_WORDINGS = ("W1", "W2", "W3")
+
+
+def memory_block(prompt: str) -> str:
+    """'## Memory' and the memory lines of a §23 prompt, byte-exact (no goal line, no reasoning instructions)."""
+    head, _ = split_prompt(strip_reasoning(prompt))
+    return head[head.index(MEMORY_HEADER):]
+
+
+def probe_messages(prompt: str, candidate: str, key: str) -> list[dict]:
+    """W1: memory block + question + proposed answer + the A/B/C lines + the reply line. W2: W1 with the task
+    sentence and the A/B/C lines once before the memory. W3: W2 with a system message."""
+    _, question = split_prompt(strip_reasoning(prompt))
+    body = f"{memory_block(prompt)}\n\n{question}\n{PROPOSED}{candidate}\n{PROBE_LABEL_LINES}\n{PROBE_REPLY}"
+    if key == "W1":
+        return [{"role": "user", "content": body}]
+    if key == "W2":
+        return [{"role": "user", "content": f"{PROBE_TASK}\n\n{body}"}]
+    if key == "W3":
+        return [{"role": "system", "content": PROBE_SYSTEM}, {"role": "user", "content": f"{PROBE_TASK}\n\n{body}"}]
+    raise ValueError(f"unknown probe wording {key!r}")
+
+
+def probe_wording_sha256(key: str) -> str:
+    material = {"key": key, "label_lines": PROBE_LABEL_LINES, "reply": PROBE_REPLY, "proposed": PROPOSED,
+                "task": PROBE_TASK if key in ("W2", "W3") else None, "system": PROBE_SYSTEM if key == "W3" else None,
+                "assistant_prefix": ""}
+    return sha256(json.dumps(material, sort_keys=True))

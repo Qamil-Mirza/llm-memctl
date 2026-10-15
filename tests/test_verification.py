@@ -409,3 +409,41 @@ def test_rescore_row_recomputes_from_stored_top20():
     assert new["label_mass"] == pytest.approx(0.8) and new["s"] == pytest.approx(0.75) and new["top1"] == " A"
     assert new["rescored"] and row["label_mass"] == 0.0            # the original row is not modified
     assert ver.rescore_row({"item": "C4", "m": 1.0}) == {"item": "C4", "m": 1.0}
+
+
+def test_probe_wordings():
+    rec = record()
+    w1 = ver.probe_messages(rec.prompt, "Luna", "W1")
+    assert len(w1) == 1 and w1[0]["content"] == "\n".join(
+        ["## Memory", *LINES, "", QUESTION, "Proposed answer: Luna", ver.PROBE_LABEL_LINES, ver.PROBE_REPLY])
+    assert GOAL not in w1[0]["content"] and REASONING_INSTRUCTIONS not in w1[0]["content"]
+    w2 = ver.probe_messages(rec.prompt, "Luna", "W2")
+    assert w2[0]["content"] == ver.PROBE_TASK + "\n\n" + w1[0]["content"]
+    w3 = ver.probe_messages(rec.prompt, "Luna", "W3")
+    assert w3[0] == {"role": "system", "content": ver.PROBE_SYSTEM} and w3[1] == w2[0]
+    assert len({ver.probe_wording_sha256(k) for k in ver.PROBE_WORDINGS} | {ver.wording_sha256()}) == 4
+    with pytest.raises(ValueError):
+        ver.probe_messages(rec.prompt, "Luna", "W4")
+
+
+def test_frozen_wording_hash_unchanged():
+    assert ver.wording_sha256().startswith("653f03b22b1f")
+
+
+def test_rescore_on_vllm_byte_form_top20_primary_and_tab_mass():
+    # a row as the real vLLM run stored it: raw byte-level strings, rounded logprobs
+    stored = [["2", -0.0599], ["3", -3.0599], ["ĠA", -5.1849], ["1", -5.8099], ["4", -6.5599], ["Ìģ", -8.4349],
+              ["ĉA", -8.4349], ["5", -8.5599], ["ĠB", -9.5599], ["æľªçŁ¥", -9.8099], ["A", -4.0], ["ĉB", -11.4349]]
+    new = ver.rescore_row({"item": "V", "label_mass": 0.0, "top1": "2", "top_logprobs": stored})
+    primary = math.exp(-5.1849) + math.exp(-4.0) + math.exp(-9.5599)
+    assert new["label_mass"] == pytest.approx(primary)
+    assert new["label_mass_tab"] == pytest.approx(primary + math.exp(-8.4349) + math.exp(-11.4349))
+    assert new["p_spellings"][" A"] == pytest.approx(math.exp(-5.1849))
+    assert new["top1"] == "2" and new["scorer_version"] == ver.SCORER_VERSION
+
+
+def test_rescore_script_refuses_sealed_folds_and_in_place(tmp_path, capsys):
+    from scripts.exp36_rescore import main
+    assert main(["--folds", "0,2"]) == 2
+    with pytest.raises(SystemExit):
+        main(["--folds", "0", "--root", str(tmp_path), "--out", str(tmp_path)])
