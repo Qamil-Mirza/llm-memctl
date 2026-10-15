@@ -4,7 +4,8 @@ Date: 2026-10-15, Advisor draft, revision 1, before any pod run and before any n
 `jacobian-lens`. Behavioural follow-up to §35. Prompted by an outside design note ("Experiment 36", pasted 2026-10-15)
 that asks whether the 3B can judge evidence support for its own candidate answers, even though its default answering
 policy does not use that judgment. This draft keeps the note's questions and drops or narrows the parts the record
-already answers or that the data cannot support. **NEEDS Reviewer verdict and the user's spend approval.**
+already answers or that the data cannot support. **Reviewer step waived by the user (2026-10-15, "Just proceed without
+the reviewer for this"); the design is frozen as committed in d2a67f2 plus this line. NEEDS the user's spend approval.**
 
 ## 0. What the record already says, what the note gets right and wrong, and what this adds
 
