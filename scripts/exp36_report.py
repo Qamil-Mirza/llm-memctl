@@ -74,14 +74,15 @@ def _ci(stat: dict, signed: bool = False) -> str:
 
 # --- loading --------------------------------------------------------------------------------------------------
 
-def load_rows(root: Path, folds: set[int]) -> dict[str, dict[str, dict[tuple[str, str], dict]]]:
+def load_rows(root: Path, folds: set[int], rescore: bool = False) -> dict[str, dict[str, dict[tuple[str, str], dict]]]:
+    """Rows per reader and item; with `rescore`, label fields are recomputed from the stored top-20 (decoded)."""
     rows: dict = {}
     for reader in READERS:
         for item in ver.ITEMS:
             got = {}
             for fold in sorted(folds):
                 for row in read_jsonl(root / reader / item / f"fold{fold}.jsonl"):
-                    got[ver.row_key(row)] = row
+                    got[ver.row_key(row)] = ver.rescore_row(row) if rescore else row
             rows.setdefault(reader, {})[item] = got
     return rows
 
@@ -428,7 +429,8 @@ def render(folds: set[int], numbers: dict) -> str:
     tag = " (development folds: not a confirmation verdict)" if dev else ""
     n = numbers
     lines = [f"# §36 report: can the 3B judge support for its own forced answers? (folds {fl})", "",
-             f"Engines: {n['engines']}. Wording sha256 {n['wording_sha256'][:12]}. Labels: the §35 judge (Qwen2.5-7B) on "
+             ("Label fields RESCORED from the stored top-20 logprobs (byte-level tokens decoded). " if n.get("rescored") else "")
+             + f"Engines: {n['engines']}. Wording sha256 {n['wording_sha256'][:12]}. Labels: the §35 judge (Qwen2.5-7B) on "
              "arm B. 95% intervals: paired bootstrap over questions (all variants of a question in one unit), "
              f"{n['samples']:,} resamples.", "",
              "## Rows", "",
@@ -537,21 +539,21 @@ def render(folds: set[int], numbers: dict) -> str:
 
 
 def build(folds: set[int], root: Path, exp35: Path, runs: str = "runs", samples: int = 10000,
-          own_root: Path = Path("runs/exp34_jlens_own")) -> tuple[str, dict]:
+          own_root: Path = Path("runs/exp34_jlens_own"), rescore: bool = False) -> tuple[str, dict]:
     data35, qids, _ = load35(folds, exp35, runs, own_root)
-    rows = load_rows(root, folds)
+    rows = load_rows(root, folds, rescore)
     absr = abs_records(folds, runs)
     check_rows(rows, data35, absr)
     if folds == DEV_FOLDS:
         dev = {"data35": data35, "rows": rows}
     else:
         d35, _, _ = load35(DEV_FOLDS, exp35, runs, own_root)
-        drows = load_rows(root, DEV_FOLDS)
+        drows = load_rows(root, DEV_FOLDS, rescore)
         check_rows(drows, d35, abs_records(DEV_FOLDS, runs))
         dev = {"data35": d35, "rows": drows}
     boot = ver.Bootstrap(list(qids) + list(absr), samples=samples, seed=0)
     numbers = analyse(folds, rows, data35, dev, boot, own_root, samples)
-    numbers.update({"folds": sorted(folds), "samples": samples, "wording_sha256": ver.wording_sha256(),
+    numbers.update({"rescored": rescore, "folds": sorted(folds), "samples": samples, "wording_sha256": ver.wording_sha256(),
                     "engines": sorted({r["engine"] for reader in rows.values() for item in reader.values() for r in item.values()})})
     return render(folds, numbers), numbers
 
@@ -566,13 +568,16 @@ def main(argv=None) -> int:
     parser.add_argument("--samples", type=int, default=10000)
     parser.add_argument("--confirm", action="store_true", help="required for any of folds 2, 3, 4")
     parser.add_argument("--out", default=None)
+    parser.add_argument("--rescore", action="store_true",
+                        help="recompute p_A/p_B/p_C, mass, s, argmax and top1 from each row's stored top-20 (no regeneration)")
     args = parser.parse_args(argv)
     folds = {int(f) for f in args.folds.split(",")}
     if folds & CONFIRM_FOLDS and not args.confirm:
         print(f"folds {sorted(folds & CONFIRM_FOLDS)} are confirmation folds; pass --confirm once the §36 pre-registration "
               "is accepted")
         return 2
-    text, numbers = build(folds, Path(args.root), Path(args.exp35), args.runs, args.samples, Path(args.own_root))
+    text, numbers = build(folds, Path(args.root), Path(args.exp35), args.runs, args.samples, Path(args.own_root),
+                          args.rescore)
     label = "dev" if folds <= DEV_FOLDS else "confirm" if folds <= CONFIRM_FOLDS else "allfolds"
     out = Path(args.out or f"runs/exp36_report_{label}.md")
     out.parent.mkdir(parents=True, exist_ok=True)

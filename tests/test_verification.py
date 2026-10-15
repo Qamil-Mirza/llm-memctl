@@ -380,3 +380,32 @@ def test_subframe_restricts_rows_and_c0():
     f = Frame(_FakeD35({"a": ("x", True, False), "b": ("y", False, False), "n": (None, False, True)}))
     sub = subframe(f, {"a", "n"})
     assert sub.rows == ["a", "n"] and sub.c0 == {"a"} and not sub.has["n"]
+
+
+def test_byte_level_tokens_are_decoded():
+    assert ver.decode_token("ĠA") == " A" and ver.decode_token("ĉA") == "\tA" and ver.decode_token("A") == "A"
+    assert ver.decode_token(" A") == " A"                    # already text: unchanged
+    assert ver.decode_token("æľªçŁ¥") == "未知"
+    from transformers import AutoTokenizer
+    try:
+        tok = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-0.5B-Instruct", local_files_only=True)
+    except Exception:  # noqa: BLE001
+        pytest.skip("no cached Qwen2.5 tokenizer")
+    for raw in ("ĠA", "ĉB", "æľªçŁ¥", "Ġunknown", "ĊC"):
+        assert ver.decode_token(raw) == tok.convert_tokens_to_string([raw])
+
+
+def test_label_probs_on_vllm_style_fixture():
+    top = {"2": math.log(0.5), "ĠA": math.log(0.2), "A": math.log(0.1), "ĠB": math.log(0.1), "ĉC": math.log(0.05)}
+    r = ver.label_probs(top)
+    assert r["p_A"] == pytest.approx(0.3) and r["p_B"] == pytest.approx(0.1) and r["p_C"] == pytest.approx(0.0)
+    assert r["label_mass"] == pytest.approx(0.4) and r["argmax"] == "A"
+
+
+def test_rescore_row_recomputes_from_stored_top20():
+    row = {"item": "V", "label_mass": 0.0, "s": None, "argmax": None, "top1": "2",
+           "top_logprobs": [["ĠA", math.log(0.6)], ["ĠC", math.log(0.2)], ["2", math.log(0.1)]]}
+    new = ver.rescore_row(row)
+    assert new["label_mass"] == pytest.approx(0.8) and new["s"] == pytest.approx(0.75) and new["top1"] == " A"
+    assert new["rescored"] and row["label_mass"] == 0.0            # the original row is not modified
+    assert ver.rescore_row({"item": "C4", "m": 1.0}) == {"item": "C4", "m": 1.0}

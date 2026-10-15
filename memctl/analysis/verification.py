@@ -198,9 +198,45 @@ def verifier_prompt(prompt: str, candidate: str, wording_key: str = "V", note: s
 
 # --- scores ---------------------------------------------------------------------------------------------------
 
+def _bytes_to_unicode() -> dict[int, str]:
+    """The byte-level BPE alphabet (GPT-2's bytes_to_unicode, used by the Qwen2.5 tokenizer): byte -> printable char."""
+    bs = list(range(ord("!"), ord("~") + 1)) + list(range(ord("¡"), ord("¬") + 1)) + list(range(ord("®"), ord("ÿ") + 1))
+    cs = bs[:]
+    n = 0
+    for b in range(256):
+        if b not in bs:
+            bs.append(b)
+            cs.append(256 + n)
+            n += 1
+    return {b: chr(c) for b, c in zip(bs, cs)}
+
+
+BYTE_DECODER = {c: b for b, c in _bytes_to_unicode().items()}
+
+
+def decode_token(token: str) -> str:
+    """A token string as text. vLLM 0.8.5 stored the top-20 as raw byte-level BPE strings ('ĠA' for ' A', 'ĉ' for a
+    tab); those are mapped back to bytes and decoded as UTF-8 (a partial character becomes U+FFFD). A string with any
+    character outside the byte-level alphabet (a space, say) is already text and is returned unchanged."""
+    if not token or any(ch not in BYTE_DECODER for ch in token):
+        return token
+    return bytes(BYTE_DECODER[ch] for ch in token).decode("utf-8", errors="replace")
+
+
+def normalize_top(top: dict[str, float]) -> dict[str, float]:
+    """{decoded text: logprob}, tokens that decode to the same text merged by log-sum-exp."""
+    out: dict[str, float] = {}
+    for token, lp in top.items():
+        text = decode_token(token)
+        out[text] = lp if text not in out else max(out[text], lp) + math.log1p(math.exp(-abs(out[text] - lp)))
+    return out
+
+
 def label_probs(top: dict[str, float]) -> dict:
-    """From {decoded token: logprob} (the first generated position's top-k): per-label probability (both spellings
-    summed), per-spelling probability, mass, s, argmax label. s and argmax are None when the mass is 0."""
+    """From {token: logprob} (the first generated position's top-k; raw byte-level BPE strings are decoded first):
+    per-label probability (both spellings summed), per-spelling probability, mass, s, argmax label. s and argmax are
+    None when the mass is 0."""
+    top = normalize_top(top)
     spell = {sp: math.exp(top[sp]) if sp in top else 0.0 for label in LABELS for sp in SPELLINGS[label]}
     p = {label: sum(spell[sp] for sp in SPELLINGS[label]) for label in LABELS}
     mass = sum(p.values())
@@ -435,7 +471,7 @@ def make_row(item: VerifyInput, reader: str, engine: str, model: str, raw_text: 
     else:
         top = result["top"]
         row.update(label_probs(top))
-        row["top1"] = max(top, key=top.get) if top else None
+        row["top1"] = decode_token(max(top, key=top.get)) if top else None
         row["top_logprobs"] = sorted(([t, round(v, 4)] for t, v in top.items()), key=lambda x: -x[1])
     return row
 
@@ -597,3 +633,15 @@ def fixed_sequence(claim1_verdict: str, claim2: dict, claim3: dict) -> tuple[str
     if v2 != "SHOWN":
         return v2, "not tested (Claim 2 not SHOWN)"
     return v2, "SHOWN" if shown(claim3) else "NOT SHOWN"
+
+
+def rescore_row(row: dict) -> dict:
+    """A label row with p_A/p_B/p_C, spellings, mass, s, argmax and top1 recomputed from its stored top_logprobs
+    (decoded); C4 rows and rows without top_logprobs are returned unchanged."""
+    if row.get("item") == "C4" or not row.get("top_logprobs"):
+        return row
+    top = {t: lp for t, lp in row["top_logprobs"]}
+    new = {**row, **label_probs(top)}
+    new["top1"] = decode_token(max(top, key=top.get))
+    new["rescored"] = True
+    return new
