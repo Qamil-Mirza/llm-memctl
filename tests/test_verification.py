@@ -413,17 +413,37 @@ def test_rescore_row_recomputes_from_stored_top20():
 
 def test_probe_wordings():
     rec = record()
-    w1 = ver.probe_messages(rec.prompt, "Luna", "W1")
+    frozen_p2 = ver.verifier_prompt(rec.prompt, "Luna", "P2")
+    a, pa = ver.probe_messages(rec.prompt, "Luna", "a")
+    assert a == [{"role": "user", "content": frozen_p2}] and pa == ""
+    b, _ = ver.probe_messages(rec.prompt, "Luna", "b")
+    assert b[0]["content"] == frozen_p2.replace(GOAL, ver.PROBE_GOAL) and GOAL not in b[0]["content"]
+    assert b[0]["content"].startswith(ver.PROBE_GOAL + "\n\n## Memory\n" + LINES[0])
+    c, pc = ver.probe_messages(rec.prompt, "Luna", "c")
+    assert c == [{"role": "system", "content": ver.PROBE_REPLY}] + b and pc == ""
+    d, pd = ver.probe_messages(rec.prompt, "Luna", "d")
+    assert d == c and pd == "Label: "
+    e, pe = ver.probe_messages(rec.prompt, "Luna", "e")
+    assert e == c and pe == ""
+    assert ver.PROBE_WORDINGS == ("a", "b", "c", "d", "f", "g", "h", "e")
+    w1, _ = ver.probe_messages(rec.prompt, "Luna", "f")
     assert len(w1) == 1 and w1[0]["content"] == "\n".join(
         ["## Memory", *LINES, "", QUESTION, "Proposed answer: Luna", ver.PROBE_LABEL_LINES, ver.PROBE_REPLY])
     assert GOAL not in w1[0]["content"] and REASONING_INSTRUCTIONS not in w1[0]["content"]
-    w2 = ver.probe_messages(rec.prompt, "Luna", "W2")
+    w2, _ = ver.probe_messages(rec.prompt, "Luna", "g")
     assert w2[0]["content"] == ver.PROBE_TASK + "\n\n" + w1[0]["content"]
-    w3 = ver.probe_messages(rec.prompt, "Luna", "W3")
+    w3, _ = ver.probe_messages(rec.prompt, "Luna", "h")
     assert w3[0] == {"role": "system", "content": ver.PROBE_SYSTEM} and w3[1] == w2[0]
-    assert len({ver.probe_wording_sha256(k) for k in ver.PROBE_WORDINGS} | {ver.wording_sha256()}) == 4
+    shas = {ver.probe_wording_sha256(k) for k in ver.PROBE_WORDINGS} | {ver.wording_sha256()}
+    assert len(shas) == len(ver.PROBE_WORDINGS) + 1
     with pytest.raises(ValueError):
         ver.probe_messages(rec.prompt, "Luna", "W4")
+
+
+def test_probe_gate():
+    assert ver.probe_gate([0.6] * 9 + [0.1], [0.5] * 10)
+    assert not ver.probe_gate([0.6] * 8 + [0.1, 0.1], [0.9] * 10)
+    assert not ver.probe_gate([0.9] * 10, [])
 
 
 def test_frozen_wording_hash_unchanged():
@@ -447,3 +467,9 @@ def test_rescore_script_refuses_sealed_folds_and_in_place(tmp_path, capsys):
     assert main(["--folds", "0,2"]) == 2
     with pytest.raises(SystemExit):
         main(["--folds", "0", "--root", str(tmp_path), "--out", str(tmp_path)])
+
+
+@pytest.mark.parametrize("text,label", [("B", "B"), (" A.", "A"), ("Answer: C", "C"), ("The answer is A", "A"),
+                                        ("Answer", None), ("2", None), ("CAT", None), ("(B) partly", "B")])
+def test_first_label(text, label):
+    assert ver.first_label(text) == label

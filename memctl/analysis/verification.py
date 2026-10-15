@@ -655,16 +655,33 @@ def rescore_row(row: dict) -> dict:
 
 # --- wording probe (coordinator request 2026-10-15; NOT the frozen wording) ------------------------------------
 # On dev V the 3B put label mass >= 0.5 on only 0.11 of rows: it answered the question (the prompt keeps the §23 goal
-# line and ends with "Answer: "). These variants are tested on format compliance only (no correctness-linked number).
-# They are chat messages; the engine applies the chat template with the generation prompt and appends nothing.
+# line and ends with "Answer: "). These variants are tested on format compliance only (no correctness-linked number),
+# in this fixed order; the first whose 3B dev V and dev CutB both reach label mass >= 0.5 on >= 0.9 of rows passes.
+#   a  the frozen P2 user message, nothing appended (the assistant turn starts empty)
+#   b  a, with the §23 goal line replaced by PROBE_GOAL (memory block byte-exact)
+#   c  b, with the system message PROBE_REPLY
+#   d  c, with "Label: " as the assistant completion prefix
+#   f  (W1) memory block + question + proposed answer + the A/B/C lines + PROBE_REPLY (no goal line)
+#   g  (W2) f with the task sentence and the A/B/C lines once before the memory
+#   h  (W3) g with the system message PROBE_SYSTEM
+#   e  fallback, run last: c generated greedily for up to 8 tokens; the label is the first standalone A, B or C in the
+#      text (a capital letter not adjacent to another letter, so "Answer" does not count); a row "complies" when the
+#      text contains one; argmax only (s undefined); the gate reads the share of complying rows as the share of rows
+#      over the mass bound.
+# Order (research/proposals/2026-10-15-exp36b-verifier-wording.md): a, b, c, d, f, g, h, e.
 PROBE_LABEL_LINES = ("A = the memory states or directly implies this answer\n"
                      "B = the memory is partly relevant but does not settle it\n"
                      "C = the memory does not support it, or contradicts it")
 PROBE_REPLY = "Reply with exactly one letter: A, B or C."
+PROBE_GOAL = "You are checking whether the memory below supports a proposed answer."
+PROBE_LABEL_PREFIX = "Label: "
 PROBE_TASK = ("You will check whether a proposed answer is supported by a memory log. Below are the memory, a question "
               "and a proposed answer. Does the memory support the proposed answer?\n" + PROBE_LABEL_LINES)
 PROBE_SYSTEM = "You are a strict fact checker. You reply with a single letter."
-PROBE_WORDINGS = ("W1", "W2", "W3")
+PROBE_WORDINGS = ("a", "b", "c", "d", "f", "g", "h", "e")
+PROBE_E_MAX_NEW_TOKENS = 8
+PROBE_GATE_MASS = 0.5
+PROBE_GATE_SHARE = 0.9
 
 
 def memory_block(prompt: str) -> str:
@@ -673,22 +690,49 @@ def memory_block(prompt: str) -> str:
     return head[head.index(MEMORY_HEADER):]
 
 
-def probe_messages(prompt: str, candidate: str, key: str) -> list[dict]:
-    """W1: memory block + question + proposed answer + the A/B/C lines + the reply line. W2: W1 with the task
-    sentence and the A/B/C lines once before the memory. W3: W2 with a system message."""
+def probe_messages(prompt: str, candidate: str, key: str) -> tuple[list[dict], str]:
+    """(chat messages, assistant completion prefix) for a probe wording; the engine applies the chat template with
+    the generation prompt and appends the prefix (empty except for d)."""
     _, question = split_prompt(strip_reasoning(prompt))
+    if key in ("a", "b", "c", "d", "e"):
+        user = verifier_prompt(prompt, candidate, "P2")
+        if key != "a":
+            goal_end = user.index("\n\n" + MEMORY_HEADER)
+            user = PROBE_GOAL + user[goal_end:]
+        messages = [{"role": "user", "content": user}]
+        if key in ("c", "d", "e"):
+            messages.insert(0, {"role": "system", "content": PROBE_REPLY})
+        return messages, PROBE_LABEL_PREFIX if key == "d" else ""
     body = f"{memory_block(prompt)}\n\n{question}\n{PROPOSED}{candidate}\n{PROBE_LABEL_LINES}\n{PROBE_REPLY}"
-    if key == "W1":
-        return [{"role": "user", "content": body}]
-    if key == "W2":
-        return [{"role": "user", "content": f"{PROBE_TASK}\n\n{body}"}]
-    if key == "W3":
-        return [{"role": "system", "content": PROBE_SYSTEM}, {"role": "user", "content": f"{PROBE_TASK}\n\n{body}"}]
+    if key == "f":
+        return [{"role": "user", "content": body}], ""
+    if key == "g":
+        return [{"role": "user", "content": f"{PROBE_TASK}\n\n{body}"}], ""
+    if key == "h":
+        return [{"role": "system", "content": PROBE_SYSTEM}, {"role": "user", "content": f"{PROBE_TASK}\n\n{body}"}], ""
     raise ValueError(f"unknown probe wording {key!r}")
 
 
 def probe_wording_sha256(key: str) -> str:
     material = {"key": key, "label_lines": PROBE_LABEL_LINES, "reply": PROBE_REPLY, "proposed": PROPOSED,
-                "task": PROBE_TASK if key in ("W2", "W3") else None, "system": PROBE_SYSTEM if key == "W3" else None,
-                "assistant_prefix": ""}
+                "p2": INSTRUCTIONS["P2"] if key in ("a", "b", "c", "d", "e") else None,
+                "goal": PROBE_GOAL if key in ("b", "c", "d", "e") else None,
+                "system": PROBE_REPLY if key in ("c", "d", "e") else PROBE_SYSTEM if key == "h" else None,
+                "task": PROBE_TASK if key in ("g", "h") else None,
+                "assistant_prefix": PROBE_LABEL_PREFIX if key == "d" else "",
+                "generate": {"max_new_tokens": PROBE_E_MAX_NEW_TOKENS, "greedy": True, "label": "first standalone A/B/C"}
+                if key == "e" else None}
     return sha256(json.dumps(material, sort_keys=True))
+
+
+def probe_gate(masses_v: list[float], masses_cut: list[float]) -> bool:
+    """Pass: dev V and dev CutB both have label mass >= 0.5 on >= 0.9 of rows."""
+    def ok(m):
+        return bool(m) and sum(x >= PROBE_GATE_MASS for x in m) / len(m) >= PROBE_GATE_SHARE
+    return ok(masses_v) and ok(masses_cut)
+
+
+def first_label(text: str) -> str | None:
+    """Wording e: the first standalone capital A, B or C in generated text (not part of a word), else None."""
+    m = re.search(r"(?<![A-Za-z])([ABC])(?![A-Za-z])", text or "")
+    return m.group(1) if m else None
