@@ -69,8 +69,10 @@ def is_label(token: str | None) -> bool:
     return token is not None and token.strip() in ver.LABELS
 
 
-def summarise(rows: list[dict]) -> dict:
-    out: dict = {"wordings": {}, "gate": {}, "pick": None}
+def summarise(rows: list[dict], n_expected: int = 84) -> dict:
+    """Per wording and item: compliance numbers. The gate is decided only for a wording with all `n_expected` rows on
+    both items; a wording stopped early is tabled as descriptive ('N of 84 questions')."""
+    out: dict = {"wordings": {}, "gate": {}, "pick": None, "n_expected": n_expected}
     for key in ver.PROBE_WORDINGS:
         masses = {}
         for item in ITEMS:
@@ -95,10 +97,13 @@ def summarise(rows: list[dict]) -> dict:
                 "seconds_per_prompt": statistics.mean(r["seconds"] for r in got),
                 "tokens_per_prompt": statistics.mean(r["n_input_tokens"] for r in got),
                 "wording_sha256": ver.probe_wording_sha256(key)}
-        if len(masses) == len(ITEMS):
+        if len(masses) == len(ITEMS) and all(len(m) == n_expected for m in masses.values()):
             out["gate"][key] = ver.probe_gate(masses["V"], masses["CutB"])
-            if out["gate"][key] and out["pick"] is None:
+            if out["gate"][key] and out["pick"] is None and all(out["gate"].get(k) is False for k in
+                                                                 ver.PROBE_WORDINGS[:ver.PROBE_WORDINGS.index(key)]):
                 out["pick"] = key
+        elif masses:
+            out["gate"][key] = f"descriptive ({min(len(m) for m in masses.values())} of {n_expected} questions)"
     return out
 
 
@@ -107,16 +112,19 @@ def render(summary: dict, n_rows: int) -> str:
              f"{n_rows} rows. Gate: label mass ≥ {ver.PROBE_GATE_MASS} on ≥ {ver.PROBE_GATE_SHARE} of rows, on V and on "
              "CutB (primary spellings only). Run-1 frozen wording on vLLM, rescored: V 0.107, CutB 0.083. Order a, b, c, "
              "d, f, g, h, e. No AUROC, risk or correctness-linked number is computed here.", "",
-             f"**First candidate to pass: {summary['pick'] or 'none'}.**", "",
+             f"**Pick (first in the order to pass on all {summary['n_expected']} rows, every earlier one having failed on all "
+             f"rows): {summary['pick'] or 'none'}.** Per §36b (30415c3) the probe stopped running later wordings once (a) "
+             "was passing; those are tabled as descriptive on the questions already done.", "",
              "| wording | item | n | share mass ≥ 0.5 | median mass | share top-1 is a label | (tab-inclusive mass ≥ 0.5) | gate (V and CutB) | top-1 on failures (count) | s/prompt | tokens/prompt |",
              "|---|---|---|---|---|---|---|---|---|---|---|"]
     for key, s in summary["wordings"].items():
         wording, item = key.split("/")
         fails = ", ".join(f"{t} ({c})" for t, c in s["failure_top1"]) or "-"
         gate = summary["gate"].get(wording)
+        gate = gate if isinstance(gate, str) else None if gate is None else "PASS" if gate else "fail"
         lines.append(f"| {wording} | {item} | {s['n']} | {s['mass_ge_0.5']:.3f} | {s['median_mass']:.3f} | "
                      f"{s['top1_is_label']:.3f} | {'-' if s['mass_tab_ge_0.5'] is None else format(s['mass_tab_ge_0.5'], '.3f')} | "
-                     f"{'-' if gate is None else 'PASS' if gate else 'fail'} | {fails} | {s['seconds_per_prompt']:.1f} | "
+                     f"{gate or '-'} | {fails} | {s['seconds_per_prompt']:.1f} | "
                      f"{s['tokens_per_prompt']:.0f} |")
     lines += ["", "e: the 'mass' is 1 when the greedy 8-token reply contains a standalone A/B/C, else 0; its seconds "
               "include c's prefill. d's seconds include c's prefill (d continues c's cache).", "",
@@ -132,6 +140,8 @@ def main(argv=None) -> int:
     parser.add_argument("--runs", default="runs")
     parser.add_argument("--limit", type=int, default=0, help="first N questions only (timing check)")
     parser.add_argument("--threads", type=int, default=8)
+    parser.add_argument("--wordings", default=",".join(ver.PROBE_WORDINGS),
+                        help="wordings to run (the rest are only tabled from rows already on disk)")
     args = parser.parse_args(argv)
     folds = [int(f) for f in args.folds.split(",")]
     if not set(folds) <= set(DEV):
@@ -140,7 +150,11 @@ def main(argv=None) -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     rows_path = out / "rows.jsonl"
+    run_keys = [k for k in args.wordings.split(",") if k]
+    if any(k not in ver.PROBE_WORDINGS for k in run_keys):
+        parser.error(f"wordings from {ver.PROBE_WORDINGS}")
     items = dev_rows(folds, Path(args.exp35), args.runs)
+    n_expected = len(items)
     if args.limit:
         items = items[: args.limit]
     print(f"{len(items)} dev candidate rows; wordings {ver.PROBE_WORDINGS}; items {ITEMS}")
@@ -192,7 +206,7 @@ def main(argv=None) -> int:
         prompts = {"V": rec.prompt, "CutB": ver.cut_prompt(rec.prompt, rec.memory_lines, rec.evidence_lines)}
         new_rows = []
         for item in ITEMS:
-            todo = [k for k in ver.PROBE_WORDINGS if (q, item, k) not in done]
+            todo = [k for k in ver.PROBE_WORDINGS if k in run_keys and (q, item, k) not in done]
             for key in [k for k in todo if k in ("a", "b", "f", "g", "h")]:
                 messages, _ = ver.probe_messages(prompts[item], cand, key)
                 text, ids = chat_ids(messages)
@@ -231,7 +245,7 @@ def main(argv=None) -> int:
         append_jsonl(rows_path, new_rows)
         print(f"{n + 1}/{len(items)} questions, {time.perf_counter() - began:.0f} s", flush=True)
     rows = read_jsonl(rows_path)
-    summary = summarise(rows)
+    summary = summarise(rows, n_expected if not args.limit else 84)
     (out / "summary.json").write_text(json.dumps(summary, indent=1))
     (out / "summary.md").write_text(render(summary, len(rows)))
     print(render(summary, len(rows)))
