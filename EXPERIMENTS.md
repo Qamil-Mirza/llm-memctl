@@ -6238,6 +6238,118 @@ on the first attempt (install 183 s with vLLM 0.8.5 on torch 2.6.0+cu124; 3B mai
 arms 367 s; judge 94 s for 5,085 items), deleted 01:19 UTC; uptime about 0.37 h × $0.59 ≈ $0.22 (the account balance moved 12.654 → 12.488, $0.17, and
 billing lags), against the approved $0.89 hard stop. All experiments ≈ $17.22.
 
+## 36. Can the 3B tell which of its own forced answers the memory supports? (2026-10-15, pre-registered; run 1 not reliable, §36b rerun the same day)
+
+**Status: RUN; readout not reliable in run 1; in §36b (a second elicitation) Claim 1 NOT SHOWN on folds 2, 3, 4, so
+Claims 2 and 3 were not tested.** Pre-registration `research/proposals/2026-10-15-exp36-verification.md` (d2a67f2;
+Reviewer step waived by the user, DECISIONS D-21, a3a3f9c; amendment 1 f14fe54, development folds only). §36b
+amendment `research/proposals/2026-10-15-exp36b-verifier-wording.md` (30415c3; probe pick recorded 84e1106); rerun
+approved by the user in this pane at the quoted shape (D-23). Reviews `research/reviews/2026-10-15-exp36-run1.md` and
+`research/reviews/2026-10-15-exp36b-results.md` (ACCEPT, 308c198, every primary figure recomputed independently).
+Code `memctl/analysis/verification.py`, `scripts/exp36_verify.py`, `scripts/exp36_pod.sh`, `scripts/exp36_report.py`,
+`scripts/exp36_rescore.py`, `scripts/exp36_wording_probe.py`, `scripts/exp36_devcheck.py`,
+`scripts/exp36_audit_sample.py` (723bf29, 26f67f6, 7b3f249, baebd29, 189168c, f8c89e5, 5cba705, 2988a12, d850c51,
+8c933f3, 57f25c6); tests `tests/test_verification.py`. Rows `runs/exp36/` (run 1) and `runs/exp36b/` (§36b); probe
+`runs/exp36_probe/`; judge audit `runs/exp36_audit/`. Reports `runs/exp36b_report_{dev,confirm,allfolds}.md` (the
+confirmation one is quoted below; 14e8478) and `runs/exp36_report_dev.md` (run 1).
+
+**Why.** §35 showed that forbidding "unknown" with the 3B's own note held fixed recovers many answers (B − A +0.176),
+at a cost: a fifth of refusals turn into wrong answers. An outside design note (2026-10-15) asked whether the 3B can
+tell which of its forced answers the memory supports. If it can, its own judgment could gate a permissive policy
+safely. If it cannot, a permissive policy needs a better checker.
+
+**Design.** Candidates are the §35 arm-B answers (frozen note, "do not reply unknown", greedy vLLM 0.8.5), generated
+before any verification instruction. Labels are the §35 judge verdicts on B. Fixed-candidate rows are the 3B's marked
+rows (dev 100, confirmation 165). Rows where B still said unknown (dev 16, confirmation 25) have no candidate. They are
+forced abstentions in every coverage and risk figure and are outside Claim 1's AUROC (amendment 1: scoring them lowest
+hands any score free correct rankings). The verifier is the same checkpoint in a fresh prompt: the memory, the question,
+"Proposed answer: <candidate>", and an A/B/C support question (A supported, B partial, C not supported). The score is
+s = (p_A + 0.5·p_B)/(p_A + p_B + p_C) from first-token logprobs. A row is reliable when the label mass is at least 0.5,
+and the item is "not reliable" if more than 0.1 of rows fall below that. Conditions on the same candidates: C0 natural
+(emit iff the cached answer was not a refusal), C1 forced, C2 argmax A, C3 gate on s, C4 gate on log P(candidate) −
+log P(" unknown") after the note, C4′ the §34b final-layer unknown rank. Claims in fixed sequence. Claim 1: AUROC of s,
+SHOWN if the lower bound is above 0.5, meaningful at 0.65 or more. Claim 2: at C0's coverage, risk(C3) − risk(C0).
+Claim 3: risk(C3) − risk(C4). Claim 4 (descriptive): τ fitted on folds 0–1 at r* = 0.30. Controls: A, the evidence cut
+(same candidate); A′, intact correct candidates against the 3B's F-cut answers; length control, cut lines replaced by
+length-matched irrelevant lines; B, counterfactual number substitution. The 7B verifies the same 3B candidates, and its
+own (descriptive). Question-level paired bootstrap, 10,000 resamples. The judge audit (blind, 60 dev rows) agrees 58 of
+60, one error each way.
+
+**Run 1: readout not reliable.** On every item of both readers, the label mass fell below 0.5 on more than 0.1 of
+rows. There were two causes. (i) A scorer bug: vLLM stores byte-level BPE token strings (`ĠA` for " A") and the scorer
+matched " A". (ii) The design itself: the prompt kept the §23 goal line ("Answer with a short phrase ... reply: unknown")
+and ended with a literal `Answer: `. So the readers answered the question instead of grading it. Decoded, only 0.11 of
+the 3B's dev V rows reached mass 0.5 (the 7B 0.35). The top-1 tokens were digits, 未知 and " unknown". As pre-registered,
+run 1 has no verdict. Its confirmation folds were read only for label-free mass (by the Advisor, disclosed in the run-1
+review), never for any correctness-linked number, and they stay sealed. Run 1 pod: 19:13–19:30 UTC, chain 859 s.
+
+**§36b: the wording fix.** A CPU probe (transformers fp32, laptop) on development folds 0–1 tested candidate wordings
+in a fixed order, under a label-free gate: mass ≥ 0.5 on ≥ 0.9 of the 3B's V and Cut-B rows. No correctness-linked
+number was computed. The first in the order, (a) = the run-1 P2 wording with the trailing `Answer: ` removed, passed on
+84 of 84 rows for both items. The other seven wordings, (b)–(h), all at or near 1.0 on their first 25 questions, are
+descriptive (`runs/exp36_probe/summary.md`). Removing the answer cue was the whole fix. On the pod, a 5-row real-model
+smoke per reader gated the chain (3B 5/5, 7B 5/5). Every row of every item then had mass ≥ 0.5.
+
+### 36a. Results (§36b, confirmation folds 2, 3, 4; 165 fixed-candidate 3B rows, 140 with a candidate; development folds in brackets)
+
+| claim | n | estimate (95% CI) | verdict |
+|---|---|---|---|
+| Claim 1: AUROC of s (V) for B judged correct, candidate rows | 84 pos / 56 neg | 0.573 (0.478, 0.666) [0.559 (0.434, 0.682)] | **NOT SHOWN** (lower bound ≤ 0.5) |
+| beside: PR-AUC, prevalence | | 0.698, 0.600 | descriptive |
+| beside: the natural refusal flag (C0) as a score, candidate rows | | 0.455 (0.381, 0.532) [0.484] | descriptive |
+| beside: C4 margin AUROC; C4′ unknown-rank AUROC | | 0.502 (0.398, 0.603); 0.502 (0.404, 0.603) | descriptive |
+| Claim 2: risk(C3) − risk(C0) at C0's coverage (0.606) | 165 | −0.060 (−0.132, +0.012) [+0.014] | not tested (Claim 1 not SHOWN) |
+| Claim 3: risk(C3) − risk(C4) at the same coverage | 165 | −0.020 (−0.090, +0.049) [+0.043] | not tested (Claim 1 not SHOWN) |
+
+Claim 4 (descriptive): the development τ (s ≥ 0.513) emits 0.339 of rows with risk 0.357 (0.233, 0.484). It does not
+hold the 0.30 cap on the confirmation folds. The C4 τ emits 0.048.
+
+| control | 3B verifier | 7B verifier (descriptive) |
+|---|---|---|
+| A: s(intact) − s(cut), B judged correct | +0.235 (+0.170, +0.302) [+0.249] | +0.508 (+0.419, +0.596) [+0.469] |
+| length control: s(intact) − s(LC); s(LC) − s(cut) | +0.238 (+0.174, +0.306); −0.003 (−0.039, +0.034) | +0.516; −0.009 |
+| A′: AUROC, intact correct-B vs Cut-F (84 / 120) | 0.715 (0.652, 0.774) [0.681] | 0.760 (0.703, 0.816) |
+| B: number substitution, no other copy in memory, follows in both contexts | 8 of 10 (descriptive, n < 20) | 8 of 10 |
+
+7B − 3B difference of the Control A drop, paired: +0.273 (+0.187, +0.359). **The 7B checking the same 140 3B
+candidates** (descriptive; the judge that made the labels is the 7B): AUROC 0.692 (0.600, 0.777). Paired 7B − 3B AUROC
+on the same candidates: **+0.119 (+0.023, +0.216)** (computed after the report, same bootstrap unit; 10,000 resamples,
+seed 0). At C0's coverage, its risk is 0.340, −0.090 (−0.171, −0.010) against the natural policy. The 7B on its own B
+candidates: AUROC 0.731 (0.651, 0.805).
+
+**Costs, beside.** C1 (emit every candidate) adds 13 wrong answers on 165 rows (27 refusals recovered correctly, 13
+turned wrong). C3 at matched coverage: 6 fewer wrong (17 refusals recovered, 9 turned wrong). On evidence-free prompts,
+Cut-F candidates emitted at the development τ: 0.183 (3B), 0.317 (7B). Abstention questions: 4 rows, none emitted by the
+3B. Verification cost: one prefill of about 1,100 tokens per candidate, 0.07 s (3B) and 0.14 s (7B) on an A40.
+
+**Reading.** (1) Claim 1 is NOT SHOWN. Given the memory, the 3B cannot reliably tell which of its own forced candidates
+are right (0.573, interval includes chance), so the pre-registered gate questions (Claims 2–3) were not tested. Their
+point estimates are listed only for completeness. (2) What the 3B's support score does carry is evidence presence. It
+drops by 0.235 when the evidence lines are cut, the drop is the same when they are replaced by length-matched irrelevant
+lines (so it is not prompt length), and it separates supported candidates from evidence-free F-cut answers at 0.715. It
+detects whether the memory speaks to the question, not whether the candidate matches what the memory says. (3) The 3B's
+own refusals carry no signal about which of its forced candidates are right (0.455 on candidate rows). The 0.62 in the
+first draft came entirely from rows with no candidate (amendment 1). (4) The 7B is a better checker of the same
+candidates (+0.119 paired AUROC; twice the evidence sensitivity, +0.508). This is descriptive, and the 7B is also the
+judge, so shared errors can inflate it. (5) Prediction scorecard (pre-registered in d2a67f2). Claim 1 "SHOWN but weak,
+0.60–0.68": wrong, not shown. Claim 3 NOT SHOWN: not tested. Control A "small for the 3B, under 0.1": wrong, +0.235; the
+§34c prior (the 3B's ` unknown` disposition ignores the evidence) does not carry over to this readout. "Clearly larger
+for the 7B": right (+0.508). "7B AUROC ≥ 0.75": wrong, 0.692. The broad reading predicted (the 3B cannot check its own
+work; a stronger checker can, partly) holds, with a smaller 7B advantage than predicted.
+
+**Caveats.** The readout is a second elicitation under a wording chosen for one-letter compliance on development folds.
+It is "elicited verification", never "the reader knew". Run 1's wording failed for a format reason, so a third wording
+could read differently, although (b)–(h) complied on their 25 dev questions and were not scored. Labels come from one 7B
+judge (understates accuracy by about 0.1; the audit gives 58 of 60), and the 7B verifier shares its weights. The
+exact-span cut leaves derivable content: Cut-F answers the judge marks correct get a mean 3B s of 0.655 against 0.496
+for wrong ones (plausibility or leftover evidence). Control B has n 10. Coverage and risk are on fixed candidates, not
+deployed accuracy (§35 gives that). One benchmark, one prompt family, one 3B.
+
+**Run and spend.** Run 1: one A40 secure pod (EU-SE-1, $0.59/h), 19:13:34–19:30:14 UTC 2026-10-15, chain 859 s.
+§36b: one A40 secure pod (EU-SE-1, $0.59/h), 22:26:26–22:42:34 UTC, chain 846 s (3B 395 s, 7B 451 s), both smokes PASS,
+in-pod self-stop wired (RUNPOD_POD_ID exported), laptop DELETE as the backstop. The account balance moved 12.452 →
+12.126, $0.33 for both runs, against an approved hard stop of $0.59 each. All experiments ≈ $17.55.
+
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
 **Status: STOPPED at the regeneration sanity check; no gradient was computed.** Secondary to §34 (the J-lens
