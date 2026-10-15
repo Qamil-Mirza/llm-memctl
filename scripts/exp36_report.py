@@ -271,6 +271,50 @@ def controls(verifier: str, rows: dict, frame3: Frame, fcut: dict, boot, tau: fl
     return out
 
 
+def claim1_verdict(stat: dict) -> tuple[str, str]:
+    """(decision for the fixed sequence, text naming the rule that decided)."""
+    if stat.get("ci_low") is None or stat["ci_low"] <= 0.5:
+        return "NOT SHOWN", "NOT SHOWN (lower bound ≤ 0.5)"
+    if stat["estimate"] < ver.CLAIM1_MEANINGFUL:
+        return "SHOWN", f"SHOWN, not meaningful (point < {ver.CLAIM1_MEANINGFUL})"
+    return "SHOWN", "SHOWN, meaningful"
+
+
+def subframe(frame: "Frame", keep: set[str]) -> "Frame":
+    """A copy of `frame` restricted to the fixed rows in `keep` (C0 restricted with it)."""
+    sub = object.__new__(Frame)
+    sub.d = frame.d
+    sub.rows = [q for q in frame.rows if q in keep]
+    for name in ("cand", "has", "y", "wrong", "refusal"):
+        setattr(sub, name, {q: getattr(frame, name)[q] for q in sub.rows})
+    sub.c0 = {q for q in frame.c0 if q in keep}
+    return sub
+
+
+def _norm_token(token) -> str:
+    return "" if token is None else token.strip().lower()
+
+
+def mass_diagnostics(got: dict) -> dict:
+    """For one reader's V rows: share with label mass < 0.5, share whose top-1 token is 'unknown' (case- and
+    space-insensitive), and the top-1 tokens of the low-mass rows (10 most common), read from the stored top-20."""
+    rows = list(got.values())
+    def top1(r):
+        if r.get("top1") is not None:
+            return r["top1"]
+        top = r.get("top_logprobs") or []
+        return top[0][0] if top else None
+    low = [r for r in rows if r.get("label_mass", 1.0) < ver.MASS_FLOOR]
+    counts: dict[str, int] = {}
+    for r in low:
+        t = repr(top1(r))
+        counts[t] = counts.get(t, 0) + 1
+    n = len(rows)
+    return {"n": n, "low_mass_share": len(low) / n if n else None,
+            "unknown_top1_share": sum(_norm_token(top1(r)) == "unknown" for r in rows) / n if n else None,
+            "low_mass_top1": sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))[:10]}
+
+
 def cf_subsets(extras: dict[str, dict]) -> dict[str, list[str]]:
     """Control B row sets (coordinator decision 2026-10-15, from the dev hand check: name substitutions are not
     internally consistent, e.g. "a guy named Memrise"). Primary: number-type substitutions whose value has no other
@@ -314,7 +358,7 @@ def analyse(folds: set[int], rows: dict, data35: dict, dev: dict, boot, own_root
                       "missing": sum(1 for v in r_scores.values() if v is None)}
     if reliable:
         c1 = discrimination(f3, s3, boot)
-        c1["verdict"] = "SHOWN" if c1["ci_low"] is not None and c1["ci_low"] > 0.5 else "NOT SHOWN"
+        c1["verdict"], c1["verdict_text"] = claim1_verdict(c1)
         c1["meaningful"] = c1["estimate"] is not None and c1["estimate"] >= ver.CLAIM1_MEANINGFUL
         c3set = matched(f3, s3)
         c4set = matched(f3, m3)
@@ -325,11 +369,20 @@ def analyse(folds: set[int], rows: dict, data35: dict, dev: dict, boot, own_root
         c2s["C3"] = policy(f3, c3set, boot)
         c3s["C4"] = policy(f3, c4set, boot)
         c3s["C4_auroc"] = discrimination(f3, m3, boot)
+        c3s["missing_C4"] = sum(1 for v in m3.values() if v is None)
+        if c3s["missing_C4"]:
+            keep = {q for q in f3.rows if not f3.has[q] or (s3.get(q) is not None and m3.get(q) is not None)}
+            fb = subframe(f3, keep)
+            both = risk_difference(fb, matched(fb, {q: s3[q] for q in fb.rows if fb.has[q]}),
+                                   matched(fb, {q: m3[q] for q in fb.rows if fb.has[q]}), boot)
+            both["n_candidate"] = sum(fb.has.values())
+            c3s["both_scores"] = both
         out["claim1"], out["claim2"], out["claim3"] = c1, c2s, c3s
         out["claim4"] = {"C3": policy(f3, ver.emit_at(s3, tau), boot), "C4": policy(f3, ver.emit_at(m3, tau_c4), boot)}
     else:
         msg = "NOT RELIABLE (label mass rule): argmax only, see C2"
         out["claim1"] = out["claim2"] = out["claim3"] = out["claim4"] = {"verdict": msg}
+    out["mass_diagnostics"] = {reader: mass_diagnostics(rows[reader]["V"]) for reader in READERS}
     out["robustness"] = {}
     for item in ("Vn", "P2", "P3"):
         sc = f3.scores(g3[item])
@@ -387,6 +440,13 @@ def render(folds: set[int], numbers: dict) -> str:
     for key, r in n["reliability"].items():
         lines.append(f"| {key} | {r['n']} | {r['low_mass']} | {_f(r['low_share'])} | {'yes' if r['reliable'] else '**no**'} |")
 
+    lines += ["", "V readout diagnostics (top-1 token from the stored top-20 logprobs):", "",
+              "| verifier | V rows | share label mass < 0.5 | share top-1 'unknown' | top-1 tokens on low-mass rows (count) |",
+              "|---|---|---|---|---|"]
+    for reader, m in n["mass_diagnostics"].items():
+        toks = ", ".join(f"{t} ({c})" for t, c in m["low_mass_top1"]) or "-"
+        lines.append(f"| {reader} | {m['n']} | {_f(m['low_mass_share'])} | {_f(m['unknown_top1_share'])} | {toks} |")
+
     def pol(name, p):
         return (f"| {name} | {p['emitted']} | {_ci(p['coverage'])} | {_ci(p['risk'])} | {p['wrong_added_vs_C0']:+d} | "
                 f"{p['refusals_recovered_correct']} | {p['refusals_new_wrong']} |")
@@ -397,7 +457,7 @@ def render(folds: set[int], numbers: dict) -> str:
     if "estimate" in c1:
         lines += ["| claim | n | estimate (95% CI) | verdict |", "|---|---|---|---|",
                   f"| Claim 1: AUROC of s (V) for B judged correct, candidate rows | {c1['n_pos']} pos / {c1['n_neg']} neg | {_ci(c1)} | "
-                  f"{c1['verdict']}{' (meaningful: ≥ 0.65)' if c1['meaningful'] else ' (below 0.65)'} |",
+                  f"{c1['verdict_text']} |",
                   f"| beside: PR-AUC, prevalence (candidate rows) | | {_f(c1['pr_auc'])}, {_f(c1['prevalence'])} | |",
                   f"| beside: AUROC over all fixed rows, no-candidate rows lowest | {c1['all_fixed_rows']['n_pos']} / "
                   f"{c1['all_fixed_rows']['n_neg']} | {_ci(c1['all_fixed_rows'])} | descriptive (inflated by the forced abstentions) |",
@@ -406,6 +466,9 @@ def render(folds: set[int], numbers: dict) -> str:
                   f"| Claim 2: risk(C3) − risk(C0) at C0's coverage | {c2['n']} | {_ci(c2, True)} | {c2['verdict']} |",
                   f"| Claim 3: risk(C3) − risk(C4) at C0's coverage | {c3['n']} | {_ci(c3, True)} | {c3['verdict']}"
                   f"{' (meaningful: ≤ −0.05)' if c3['meaningful'] else ''} |",
+                  f"| beside: candidate rows with no C4 score | {c3['missing_C4']} | | |",
+                  *([f"| beside: Claim 3 on rows with both a V and a C4 score ({c3['both_scores']['n_candidate']} candidate rows) | "
+                     f"{c3['both_scores']['n']} | {_ci(c3['both_scores'], True)} | DESCRIPTIVE |"] if c3.get("both_scores") else []),
                   f"| beside: C4 AUROC (m) | | {_ci(c3['C4_auroc'])} | descriptive |", "",
                   f"Claim 4 (descriptive): τ fitted on folds 0-1 at r* = {ver.R_STAR}: s ≥ {_f(n['tau'])}; C4: m ≥ {_f(n['tau_c4'])}"
                   + (" (in-sample on these folds)" if dev else "") + ".", "", *head,

@@ -354,3 +354,29 @@ def test_control_b_primary_is_numbers_without_other_copies():
     sub = cf_subsets(extras)
     assert sub["primary"] == ["a"] and sub["number_with_other_copies"] == ["b"]
     assert sub["name"] == ["c", "d"] and sub["all_rows"] == ["a", "b", "c", "d"]
+
+
+def test_claim1_verdict_names_the_rule():
+    from scripts.exp36_report import claim1_verdict
+    assert claim1_verdict({"estimate": 0.6, "ci_low": 0.5}) == ("NOT SHOWN", "NOT SHOWN (lower bound ≤ 0.5)")
+    assert claim1_verdict({"estimate": 0.6, "ci_low": None})[0] == "NOT SHOWN"
+    assert claim1_verdict({"estimate": 0.62, "ci_low": 0.51}) == ("SHOWN", "SHOWN, not meaningful (point < 0.65)")
+    assert claim1_verdict({"estimate": 0.70, "ci_low": 0.55}) == ("SHOWN", "SHOWN, meaningful")
+
+
+def test_mass_diagnostics_reads_top1():
+    from scripts.exp36_report import mass_diagnostics
+    got = {("a", ""): {"label_mass": 0.9, "top1": "A"},
+           ("b", ""): {"label_mass": 0.2, "top1": " Unknown"},
+           ("c", ""): {"label_mass": 0.3, "top_logprobs": [["The", -0.5], ["A", -2.0]]},
+           ("d", ""): {"label_mass": 0.1, "top1": " Unknown"}}
+    m = mass_diagnostics(got)
+    assert m["low_mass_share"] == 0.75 and m["unknown_top1_share"] == 0.5
+    assert m["low_mass_top1"] == [("' Unknown'", 2), ("'The'", 1)]
+
+
+def test_subframe_restricts_rows_and_c0():
+    from scripts.exp36_report import Frame, subframe
+    f = Frame(_FakeD35({"a": ("x", True, False), "b": ("y", False, False), "n": (None, False, True)}))
+    sub = subframe(f, {"a", "n"})
+    assert sub.rows == ["a", "n"] and sub.c0 == {"a"} and not sub.has["n"]
