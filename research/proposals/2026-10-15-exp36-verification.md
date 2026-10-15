@@ -163,6 +163,21 @@ substitution covers only strict-token, verbatim golds, a subset biased toward D1
 on fixed candidates. They are not the deployed end-to-end accuracy (§35 gives that). No confirmation-fold verifier
 number is read before the Reviewer accepts this document. The report script refuses folds 2–4 without `--confirm`.
 
+## Amendment 1 (2026-10-15, before any real verifier score; development folds only)
+
+- **Claim 1 population.** The 16 development rows where arm B still says unknown have no candidate and are all judged
+  wrong; scoring them at the bottom hands any score free correct rankings (a random stub score "passed" Claim 1 at
+  0.679 that way). Claim 1's AUROC is therefore computed over rows **with a candidate**; the all-rows AUROC is printed
+  beside it, labelled inflated. No-candidate rows still count as abstentions in every coverage and risk figure.
+- **§0 benchmark corrected.** On the 84 development rows with a candidate, the natural answer/refuse flag has AUROC
+  **0.484** (not 0.620) and the §34b unknown rank **0.424** (not 0.572); the earlier figures came entirely from the
+  no-candidate rows. The 3B's own refusals carry no usable signal about which forced candidates are right. The
+  "meaningful" bar of 0.65 stays as fixed; its rationale is now "clearly above chance", not "above the natural flag".
+- **Control B primary row.** Name substitutions are not internally consistent (dev hand check,
+  `runs/exp36_stub/cf_handcheck_dev.md`: "a guy named Memrise"). Control B's primary row is number substitutions whose
+  value occurs nowhere else in memory; name and other-occurrence rows are descriptive.
+- **Judge audit done** (`runs/exp36_audit/README.md`): 58 of 60 agree, one error each way.
+
 ## 6. Commands and spend (NEEDS SPEND; approval pending)
 
 The Executor builds `memctl/analysis/verification.py` (prompt builder, label scoring, counterfactual substitution),
