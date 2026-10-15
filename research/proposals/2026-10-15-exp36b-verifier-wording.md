@@ -32,7 +32,9 @@ support in a single-token readout under this prompt family", and the remaining q
 Paraphrases P2′ and P3′ for §36b are the adopted frame with the run-1 P2 and P3 label texts (the instruction sentence
 is the adopted one). V+n, Cut-B, Cut-F, Abs, CF and LC use the adopted frame unchanged.
 
-## 2. Rerun (NEEDS SPEND)
+**Probe result (2026-10-15):** (a) adopted, 84/84 on V and Cut-B (sha256 225330734fa0); see the review file §5.
+
+## 2. Rerun (approved by the user 2026-10-15, DECISIONS D-23)
 - Same pod script with two changes: (i) a real-model smoke before the main chain, 5 dev rows per reader through the
   adopted wording, abort the chain unless ≥ 4 of 5 rows have mass ≥ 0.5 (a failure costs about $0.05); (ii) export
   `RUNPOD_POD_ID` into the ssh shell so the in-pod self-stop can fire.
