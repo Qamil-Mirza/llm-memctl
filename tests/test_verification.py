@@ -1,5 +1,6 @@
 """§36 verifier: prompt assembly, score extraction, counterfactual substitution, cut and length-control invariants,
 resume rules and report statistics (memctl/analysis/verification.py, scripts/exp36_verify.py)."""
+import json
 import math
 
 import numpy as np
@@ -473,3 +474,50 @@ def test_rescore_script_refuses_sealed_folds_and_in_place(tmp_path, capsys):
                                         ("Answer", None), ("2", None), ("CAT", None), ("(B) partly", "B")])
 def test_first_label(text, label):
     assert ver.first_label(text) == label
+
+
+@pytest.mark.parametrize("key", ver.PROBE_WORDINGS)
+def test_frame_messages_reproduce_the_probe(key):
+    rec = record()
+    messages, prefix = ver.probe_messages(rec.prompt, "Luna", key)
+    system, user, prefix2 = ver.frame_messages(rec.prompt, "Luna", key)
+    expect = ([{"role": "system", "content": system}] if system else []) + [{"role": "user", "content": user}]
+    assert expect == messages and prefix == prefix2
+
+
+def test_frame_label_variants_and_note():
+    rec = record()
+    _, u3, _ = ver.frame_messages(rec.prompt, "Luna", "c", "P3")
+    p2_sentence, p2_lines = ver.INSTRUCTIONS["P2"].split("\n", 1)
+    assert u3.endswith(p2_sentence + "\n" + ver.INSTRUCTIONS["P3"].split("\n", 1)[1]) and p2_lines not in u3
+    _, ug, _ = ver.frame_messages(rec.prompt, "Luna", "g", "P2")
+    assert ug.count(p2_lines) == 2 and ver.PROBE_LABEL_LINES not in ug   # before the memory and after the answer
+    _, un, _ = ver.frame_messages(rec.prompt, "Luna", "f", note="Luna is the cat.\n")
+    assert "\n\nA previous reader wrote this note: Luna is the cat.\n" + QUESTION in un
+    assert len({ver.frame_wording_sha256("c", lab) for lab in ("frame", "P2", "P3")}) == 3
+
+
+def test_frame_inputs_keep_run1_hashes_and_refuse_mixing():
+    rec = record()
+    run1 = ver.label_input("V", rec, rec.prompt, "Luna", "s")
+    assert run1.input_sha256 == ver.sha256(json.dumps([run1.prompt, run1.continuation, []]))
+    assert run1.wording_sha == ver.wording_sha256() and run1.kind == "label"
+    framed = ver.label_input("V", rec, rec.prompt, "Luna", "s", frame="d")
+    assert framed.continuation == "Label: " and framed.system == ver.PROBE_REPLY and framed.input_sha256 != run1.input_sha256
+    assert framed.wording_sha == ver.frame_wording_sha256("d")
+    assert ver.label_input("P3p", rec, rec.prompt, "Luna", "s", frame="b").labels == "P3"
+    assert ver.label_input("V", rec, rec.prompt, "Luna", "s", frame="e").kind == "gen"
+    with pytest.raises(ValueError):
+        ver.label_input("P2p", rec, rec.prompt, "Luna", "s")
+    with pytest.raises(ValueError):
+        ver.label_input("P2", rec, rec.prompt, "Luna", "s", frame="c")
+    with pytest.raises(ver.StaleRowError):   # a run-1 row cannot be resumed under a frame
+        ver.pending_inputs([framed], [ver.make_row(run1, "qwen3b", "stub", "m", "r", 1, 0.0, {"top": {"A": -0.1}})], "stub")
+
+
+def test_gen_row_and_smoke_gate():
+    rec = record()
+    x = ver.label_input("V", rec, rec.prompt, "Luna", "s", frame="e")
+    row = ver.make_row(x, "qwen3b", "stub", "m", "raw", 10, 0.0, {"generated": "Answer: B"})
+    assert row["label"] == "B" and row["label_mass"] == 1.0 and row["s"] is None and row["sampling"]["max_tokens"] == 8
+    assert ver.smoke_pass([0.9, 0.6, 0.5, 0.7, 0.1]) and not ver.smoke_pass([0.9, 0.6, 0.4, 0.7, 0.1])

@@ -37,9 +37,11 @@ Layout under --out: <reader>/<item>/fold<k>.jsonl, <reader>/<item>/errors.fold<k
 from __future__ import annotations
 
 import argparse
+import functools
 import hashlib
 import json
 import math
+import os
 import sys
 import time
 from pathlib import Path
@@ -59,6 +61,20 @@ ITEMS_BY_READER = {"qwen3b": ("V", "Vn", "P2", "P3", "CutB", "CutF", "Abs", "CF"
 # then the 7B's own-candidate pass. Never dropped: the 3B's V, Cut-B, Cut-F and C4, the 7B's V on 3B candidates.
 DEFAULT_PLAN = {"qwen3b": "V,CutB,CutF,C4,Abs,CF|Vn,LC|P2,P3",
                 "qwen7b": "V,CutB,CutF,Abs,CF|Vn,LC|V_own,C4|P2,P3"}
+FRAMES = ver.PROBE_WORDINGS
+SMOKE_N, SMOKE_NEED = 5, 4
+SMOKE_FAILED = 5   # exit code: the reader's real-model smoke failed its label-mass gate
+
+
+def items_for(reader: str, frame: str | None) -> tuple[str, ...]:
+    """Run 1 items, or under a §36b frame the same with P2/P3 replaced by P2p/P3p (the frame with P2/P3 labels)."""
+    items = ITEMS_BY_READER[reader]
+    return items if frame is None else tuple({"P2": "P2p", "P3": "P3p"}.get(i, i) for i in items)
+
+
+def default_plan(reader: str, frame: str | None) -> str:
+    plan = DEFAULT_PLAN[reader]
+    return plan if frame is None else plan.replace("P2,P3", "P2p,P3p")
 
 
 # --- engines --------------------------------------------------------------------------------------------------
@@ -78,8 +94,15 @@ class StubEngine:
         except Exception:  # noqa: BLE001 - no transformers or no cached tokenizer: counts are None
             self.tokenizer = None
 
-    def chat_text(self, prompt: str) -> str:
-        return sel.QWEN25_CHAT.format(prompt=prompt)
+    def chat_text(self, prompt: str, system: str | None = None) -> str:
+        if system is None:
+            return sel.QWEN25_CHAT.format(prompt=prompt)
+        return (f"<|im_start|>system\n{system}<|im_end|>\n<|im_start|>user\n{prompt}<|im_end|>\n"
+                "<|im_start|>assistant\n")
+
+    def generate_texts(self, raws: list[str]) -> list[str]:
+        return [("B" if h % 3 == 0 else " A." if h % 3 == 1 else "The memory says")
+                for h in (self._h(self.model + raw) for raw in raws)]
 
     def encode(self, text: str) -> list[int] | None:
         return None if self.tokenizer is None else list(self.tokenizer(text, add_special_tokens=False).input_ids)
@@ -93,6 +116,8 @@ class StubEngine:
         for raw in raws:
             h = self._h(self.model + raw)
             mass = 0.3 if h % 23 == 0 else 0.9
+            if self.model in os.environ.get("EXP36_STUB_LOW_MASS_MODELS", "").split(","):  # smoke-failure tests
+                mass = 0.1
             u = (h % 1000) / 1000
             probs = {"A": 0.9 * u * mass * 0.7, " A": 0.1 * u * mass * 0.7, "B": 0.15 * mass, " B": 0.0,
                      "C": (1 - u) * mass * 0.7 * 0.8, " C": (1 - u) * mass * 0.7 * 0.2}
@@ -118,9 +143,12 @@ class VLLMEngine:
                        enable_prefix_caching=True, max_num_batched_tokens=2048)
         self.tokenizer = self.llm.get_tokenizer()
 
-    def chat_text(self, prompt: str) -> str:
+    def chat_text(self, prompt: str, system: str | None = None) -> str:
         from memctl.analysis.jacobian import wrap_chat
-        return wrap_chat(self.tokenizer, prompt)
+        if system is None:
+            return wrap_chat(self.tokenizer, prompt)  # run 1: the template's default system message
+        messages = [{"role": "system", "content": system}, {"role": "user", "content": prompt}]
+        return self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
     def encode(self, text: str) -> list[int]:
         return list(self.tokenizer(text, add_special_tokens=False).input_ids)
@@ -139,6 +167,14 @@ class VLLMEngine:
                 top[token] = _logaddexp(top.get(token), float(lp.logprob))
             res.append(top)
         return res
+
+    def generate_ids(self, id_lists: list[list[int]], max_tokens: int) -> list[str]:
+        from vllm import SamplingParams
+        from vllm.inputs import TokensPrompt
+
+        params = SamplingParams(temperature=0.0, top_p=1.0, max_tokens=max_tokens, seed=0)
+        outs = self.llm.generate([TokensPrompt(prompt_token_ids=i) for i in id_lists], params, use_tqdm=False)
+        return [o.outputs[0].text for o in outs]
 
     def suffix_logprobs_ids(self, id_lists: list[list[int]], n_suffix: list[int]) -> list[list[float]]:
         from vllm import SamplingParams
@@ -173,9 +209,12 @@ class HFEngine:
         dtype = torch.bfloat16 if self.device == "cuda" else torch.float32
         self.net = AutoModelForCausalLM.from_pretrained(model, dtype=dtype).to(self.device).eval()
 
-    def chat_text(self, prompt: str) -> str:
+    def chat_text(self, prompt: str, system: str | None = None) -> str:
         from memctl.analysis.jacobian import wrap_chat
-        return wrap_chat(self.tokenizer, prompt)
+        if system is None:
+            return wrap_chat(self.tokenizer, prompt)  # run 1: the template's default system message
+        messages = [{"role": "system", "content": system}, {"role": "user", "content": prompt}]
+        return self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
     def encode(self, text: str) -> list[int]:
         return list(self.tokenizer(text, add_special_tokens=False).input_ids)
@@ -196,6 +235,15 @@ class HFEngine:
                 token = self.tokenizer.decode([i])
                 top[token] = _logaddexp(top.get(token), float(v))
             res.append(top)
+        return res
+
+    def generate_ids(self, id_lists: list[list[int]], max_tokens: int) -> list[str]:
+        torch, res = self.torch, []
+        for ids in id_lists:
+            with torch.no_grad():
+                gen = self.net.generate(input_ids=torch.tensor([ids], device=self.device), max_new_tokens=max_tokens,
+                                        do_sample=False)
+            res.append(self.tokenizer.decode(gen[0][len(ids):], skip_special_tokens=True))
         return res
 
     def suffix_logprobs_ids(self, id_lists: list[list[int]], n_suffix: list[int]) -> list[list[float]]:
@@ -254,8 +302,10 @@ class Sources:
         return [q for q in self.qids if self.rec["qwen3b"][q].fold == fold]
 
 
-def build_inputs(item: str, reader: str, fold: int, src: Sources) -> tuple[list[ver.VerifyInput], list[dict], dict]:
-    """(inputs, errors, skip counts) for one item, reader and fold."""
+def build_inputs(item: str, reader: str, fold: int, src: Sources,
+                 frame: str | None = None) -> tuple[list[ver.VerifyInput], list[dict], dict]:
+    """(inputs, errors, skip counts) for one item, reader and fold; `frame` None = the run-1 wording."""
+    label = functools.partial(ver.label_input, frame=frame)
     inputs, errors, skipped = [], [], {"no_candidate": 0, "not_qualifying": 0}
     b3, f3, b7 = src.rows35[("qwen3b", "B")], src.rows35[("qwen3b", "Fcut")], src.rows35[("qwen7b", "B")]
 
@@ -274,7 +324,7 @@ def build_inputs(item: str, reader: str, fold: int, src: Sources) -> tuple[list[
             if cand is None:
                 skipped["no_candidate"] += 1
                 continue
-            x = guard(rec.question_id, lambda: ver.label_input("Abs", rec, rec.prompt, cand, "qwen3b/cached",
+            x = guard(rec.question_id, lambda: label("Abs", rec, rec.prompt, cand, "qwen3b/cached",
                                                                extra={"marker": sel.split_note(rec.output)[0] is not None}))
             if x:
                 inputs.append(x)
@@ -287,7 +337,7 @@ def build_inputs(item: str, reader: str, fold: int, src: Sources) -> tuple[list[
                 if cf is None:
                     return None
                 info = {k: cf[k] for k in ("original", "substitute", "kind", "start", "end", "outside")}
-                return [ver.label_input("CF", rec3, ctx, cand, source, f"{name}@{where}", extra=info)
+                return [label("CF", rec3, ctx, cand, source, f"{name}@{where}", extra=info)
                         for where, ctx in (("intact", rec3.prompt), ("cf", cf["prompt"]))
                         for name, cand, source in (("orig", cf["original"], "gold"), ("sub", cf["substitute"], "substitute"))]
             made = guard(q, cf_inputs)
@@ -301,7 +351,7 @@ def build_inputs(item: str, reader: str, fold: int, src: Sources) -> tuple[list[
             if cand is None:
                 skipped["no_candidate"] += 1
                 continue
-            x = guard(q, lambda: ver.label_input("CutF", rec3, ver.cut_prompt(rec3.prompt, rec3.memory_lines,
+            x = guard(q, lambda: label("CutF", rec3, ver.cut_prompt(rec3.prompt, rec3.memory_lines,
                                                                               rec3.evidence_lines), cand, "qwen3b/Fcut"))
             if x:
                 inputs.append(x)
@@ -311,7 +361,7 @@ def build_inputs(item: str, reader: str, fold: int, src: Sources) -> tuple[list[
             if cand is None:
                 skipped["no_candidate"] += 1
                 continue
-            x = guard(q, (lambda: ver.label_input("V_own", rec7, rec7.prompt, cand, "qwen7b/B")) if item == "V_own"
+            x = guard(q, (lambda: label("V_own", rec7, rec7.prompt, cand, "qwen7b/B")) if item == "V_own"
                       else (lambda: ver.c4_input(rec7, cand, "qwen7b/B")))
             if x:
                 inputs.append(x)
@@ -320,20 +370,20 @@ def build_inputs(item: str, reader: str, fold: int, src: Sources) -> tuple[list[
         if cand is None:
             skipped["no_candidate"] += 1
             continue
-        if item in ("V", "P2", "P3"):
-            fn = lambda: ver.label_input(item, rec3, rec3.prompt, cand, "qwen3b/B")  # noqa: E731
+        if item in ("V", "P2", "P3", "P2p", "P3p"):
+            fn = lambda: label(item, rec3, rec3.prompt, cand, "qwen3b/B")  # noqa: E731
         elif item == "Vn":
-            fn = lambda: ver.label_input("Vn", rec3, rec3.prompt, cand, "qwen3b/B",  # noqa: E731
+            fn = lambda: label("Vn", rec3, rec3.prompt, cand, "qwen3b/B",  # noqa: E731
                                          note=sel.split_note(rec3.output)[0])
         elif item == "CutB":
-            fn = lambda: ver.label_input("CutB", rec3, ver.cut_prompt(rec3.prompt, rec3.memory_lines,  # noqa: E731
+            fn = lambda: label("CutB", rec3, ver.cut_prompt(rec3.prompt, rec3.memory_lines,  # noqa: E731
                                                                       rec3.evidence_lines), cand, "qwen3b/B")
         elif item == "LC":
             def fn():
                 lc, _, reps = ver.length_control(rec3.prompt, rec3.memory_lines, rec3.evidence_lines,
                                                  src.lc_pool_for(q), q, rec3.gold)
                 lens = {"evidence_chars": [len(x) for x in rec3.evidence_lines], "replacement_chars": [len(x) for x in reps]}
-                return ver.label_input("LC", rec3, lc, cand, "qwen3b/B", extra=lens)
+                return label("LC", rec3, lc, cand, "qwen3b/B", extra=lens)
         elif item == "C4":
             fn = lambda: ver.c4_input(rec3, cand, "qwen3b/B")  # noqa: E731
         else:
@@ -352,7 +402,7 @@ def item_file(out: Path, reader: str, item: str, fold: int) -> Path:
 
 def raw_and_ids(engine, x: ver.VerifyInput) -> tuple[str, list[int] | None, int | None]:
     """(raw text, ids or None, prefix token count for C4)."""
-    chat = engine.chat_text(x.prompt)
+    chat = engine.chat_text(x.prompt, x.system)
     raw = chat + x.continuation + (x.suffixes[0] if x.suffixes else "")
     chat_ids = engine.encode(chat)
     if chat_ids is None:
@@ -365,6 +415,12 @@ def run_chunk(engine, chunk: list[ver.VerifyInput]) -> list[tuple[dict, str, int
     """[(result, raw text, n_input_tokens)] for a chunk of one kind."""
     prepared = [raw_and_ids(engine, x) for x in chunk]
     stub = isinstance(engine, StubEngine)
+    if chunk[0].kind == "gen":
+        if stub:
+            texts = engine.generate_texts([raw for raw, _, _ in prepared])
+        else:
+            texts = engine.generate_ids([ids for _, ids, _ in prepared], ver.PROBE_E_MAX_NEW_TOKENS)
+        return [({"generated": t}, raw, None if ids is None else len(ids)) for t, (raw, ids, _) in zip(texts, prepared)]
     if chunk[0].kind == "label":
         if stub:
             tops = engine.label_scores([raw for raw, _, _ in prepared])
@@ -393,7 +449,7 @@ def run_chunk(engine, chunk: list[ver.VerifyInput]) -> list[tuple[dict, str, int
 
 def probe(engine, inputs: list[ver.VerifyInput], log=print) -> None:
     """The first-minute real-shape call: the longest label input and the longest C4 input, timed, not written."""
-    for kind in ("label", "c4"):
+    for kind in ("label", "gen", "c4"):
         pool = [x for x in inputs if x.kind == kind]
         if not pool:
             continue
@@ -403,6 +459,7 @@ def probe(engine, inputs: list[ver.VerifyInput], log=print) -> None:
         took = time.perf_counter() - began
         result, _, n_tokens = res[0]
         shape = (f"label mass {ver.label_probs(result['top'])['label_mass']:.3f}" if kind == "label"
+                 else f"generated {result['generated']!r}" if kind == "gen"
                  else f"suffix tokens {[len(v) for v in result['suffix_logprobs']]}")
         log(f"probe {kind}: {longest.item}/{longest.question_id} {n_tokens} tokens, {took:.2f} s, {shape}")
 
@@ -422,14 +479,29 @@ def parse_plan(plan: str, allowed: tuple[str, ...]) -> list[tuple[list[str], int
     return groups
 
 
+def smoke(reader: str, engine, out: Path, src: Sources, frame: str | None, n: int = SMOKE_N, need: int = SMOKE_NEED,
+          log=print) -> bool:
+    """§36b real-model smoke: the first `n` development rows (folds 0-1) of item V through the wording; pass when at
+    least `need` have label mass >= 0.5 (wording e: a label in the reply). Rows go to <out>/<reader>/_smoke.jsonl only."""
+    inputs = [x for fold in (0, 1) for x in build_inputs("V", reader, fold, src, frame)[0]][:n]
+    results = run_chunk(engine, inputs)
+    rows = [ver.make_row(x, reader, engine.name, engine.model, raw, k, 0.0, res) for x, (res, raw, k) in zip(inputs, results)]
+    write_jsonl(out / reader / "_smoke.jsonl", rows)
+    masses = [r["label_mass"] for r in rows]
+    ok = len(rows) == n and ver.smoke_pass(masses, need)
+    log(f"smoke {reader} frame {frame}: label mass {[round(m, 3) for m in masses]} -> {'PASS' if ok else 'FAIL'} "
+        f"(need >= {need} of {n} at >= {ver.PROBE_GATE_MASS})")
+    return ok
+
+
 def verify_reader(reader: str, folds: list[int], plan: list[tuple[list[str], int]], engine, out: Path, src: Sources,
-                  deadline: float = 0.0, log=print, do_probe: bool = True) -> dict:
+                  deadline: float = 0.0, log=print, do_probe: bool = True, frame: str | None = None) -> dict:
     counts: dict[str, dict] = {}
     staged: dict[tuple[str, int], tuple[list, list, dict]] = {}
     for items, _ in plan:
         for item in items:
             for fold in folds:
-                staged[(item, fold)] = build_inputs(item, reader, fold, src)
+                staged[(item, fold)] = build_inputs(item, reader, fold, src, frame)
     if do_probe:
         probe(engine, [x for inputs, _, _ in staged.values() for x in inputs], log)
     for items, reserve in plan:
@@ -482,9 +554,13 @@ def main(argv=None) -> int:
     parser.add_argument("--runs", default="runs")
     parser.add_argument("--deadline", type=float, default=0.0, help="epoch seconds; 0 = none")
     parser.add_argument("--no-probe", action="store_true")
+    parser.add_argument("--frame", default=None, choices=FRAMES,
+                        help="§36b: the adopted probe wording (default: the frozen run-1 wording)")
+    parser.add_argument("--smoke", action="store_true",
+                        help=f"§36b: run the {SMOKE_N}-row dev smoke first; exit {SMOKE_FAILED} if it fails its gate")
     args = parser.parse_args(argv)
     folds = [int(f) for f in args.folds.split(",")]
-    plan = parse_plan(args.plan or DEFAULT_PLAN[args.reader], ITEMS_BY_READER[args.reader])
+    plan = parse_plan(args.plan or default_plan(args.reader, args.frame), items_for(args.reader, args.frame))
     out = Path(args.out)
     began = time.perf_counter()
     src = Sources(args.runs, Path(args.exp35), folds)
@@ -496,10 +572,19 @@ def main(argv=None) -> int:
     manifest = {"reader": args.reader, "model": MODELS[args.reader], "engine": engine.name, "wording": ver.wording(),
                 "wording_sha256": ver.wording_sha256(), "folds": folds, "plan": plan, "population": len(src.qids),
                 "exp35": args.exp35, "exp35_engines": src.exp35_engines, "sampling": ver.SAMPLING,
-                "c4_sampling": ver.C4_SAMPLING}
+                "c4_sampling": ver.C4_SAMPLING, "frame": args.frame, "scorer_version": ver.SCORER_VERSION,
+                "frame_wording_sha256": None if args.frame is None else ver.frame_wording_sha256(args.frame)}
     (out / args.reader).mkdir(parents=True, exist_ok=True)
     (out / args.reader / "_manifest.json").write_text(json.dumps(manifest, indent=1))
-    counts = verify_reader(args.reader, folds, plan, engine, out, src, args.deadline, do_probe=not args.no_probe)
+    if args.smoke:
+        ok = smoke(args.reader, engine, out, src, args.frame)
+        manifest["smoke"] = "pass" if ok else "fail"
+        (out / args.reader / "_manifest.json").write_text(json.dumps(manifest, indent=1))
+        if not ok:
+            print(f"SMOKE FAILED for {args.reader}: the readout does not comply; no rows written (exit {SMOKE_FAILED})")
+            return SMOKE_FAILED
+    counts = verify_reader(args.reader, folds, plan, engine, out, src, args.deadline, do_probe=not args.no_probe,
+                           frame=args.frame)
     manifest["counts"] = counts
     (out / args.reader / "_manifest.json").write_text(json.dumps(manifest, indent=1))
     print(f"{args.reader}: {json.dumps(counts)} in {time.perf_counter() - began:.1f} s")

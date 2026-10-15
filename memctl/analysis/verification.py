@@ -109,11 +109,14 @@ CLAIM3_MEANINGFUL = 0.05
 CF_DESCRIPTIVE_BELOW = 20
 
 # Items. Label items give one first-token readout per (question, variant); C4 gives two prompt-logprob passes.
-ITEMS = ("V", "Vn", "P2", "P3", "CutB", "CutF", "Abs", "CF", "LC", "V_own", "C4")
+ITEMS = ("V", "Vn", "P2", "P3", "CutB", "CutF", "Abs", "CF", "LC", "V_own", "C4", "P2p", "P3p")
+# §36b (an adopted frame, `frame` set): P2p / P3p are the frame with the run-1 P2 / P3 label texts (P2' and P3').
+FRAME_LABELS_OF_ITEM = {"P2p": "P2", "P3p": "P3"}
 WORDING_OF_ITEM = {"V": "V", "Vn": "V", "P2": "P2", "P3": "P3", "CutB": "V", "CutF": "V", "Abs": "V", "CF": "V",
                    "LC": "V", "V_own": "V"}
 CF_VARIANTS = ("orig@intact", "sub@intact", "orig@cf", "sub@cf")
 SAMPLING = {"temperature": 0.0, "top_p": 1.0, "seed": 0, "greedy": True, "max_tokens": 1, "logprobs": TOP_LOGPROBS}
+GEN_SAMPLING = {"temperature": 0.0, "top_p": 1.0, "seed": 0, "greedy": True, "max_tokens": 8}
 C4_SAMPLING = {"temperature": 0.0, "top_p": 1.0, "seed": 0, "greedy": True, "max_tokens": 1, "prompt_logprobs": 1}
 
 # scripts/exp34_gold_kinds.py's rule, copied (a library module does not import scripts; a test keeps them equal).
@@ -428,10 +431,15 @@ class VerifyInput:
     intact_prompt_sha256: str
     suffixes: tuple[str, ...] = ()   # C4: (" " + candidate, " unknown")
     extra: dict = field(default_factory=dict, hash=False, compare=False)
+    system: str | None = None        # §36b frames c, d, e, h: the system message (None: the template's default)
+    frame: str | None = None         # §36b: the adopted probe wording; None = the frozen run-1 wording
+    labels: str = "frame"            # §36b: "frame", or "P2"/"P3" label texts (P2', P3')
 
     @property
     def kind(self) -> str:
-        return "c4" if self.item == "C4" else "label"
+        if self.item == "C4":
+            return "c4"
+        return "gen" if self.frame == "e" else "label"
 
     @property
     def prompt_sha256(self) -> str:
@@ -439,14 +447,31 @@ class VerifyInput:
 
     @property
     def input_sha256(self) -> str:
-        return sha256(json.dumps([self.prompt, self.continuation, list(self.suffixes)]))
+        if self.frame is None:  # run 1: unchanged
+            return sha256(json.dumps([self.prompt, self.continuation, list(self.suffixes)]))
+        return sha256(json.dumps([self.prompt, self.continuation, list(self.suffixes), self.system, self.frame, self.labels]))
+
+    @property
+    def wording_sha(self) -> str:
+        return wording_sha256() if self.frame is None or self.item == "C4" else frame_wording_sha256(self.frame, self.labels)
 
 
 def label_input(item: str, record, prompt: str, candidate: str, source: str, variant: str = "",
-                note: str | None = None, extra: dict | None = None) -> VerifyInput:
-    text = verifier_prompt(prompt, candidate, WORDING_OF_ITEM[item], note)
-    return VerifyInput(item, record.question_id, variant, record.fold, text, ANSWER_LITERAL, candidate, source,
-                       sha256(record.prompt), (), extra or {})
+                note: str | None = None, extra: dict | None = None, frame: str | None = None) -> VerifyInput:
+    """The verifier input; `frame` None = the frozen run-1 wording, else a §36b probe wording (FRAME_LABELS_OF_ITEM
+    picks the label texts of P2p / P3p)."""
+    if frame is None:
+        if item in FRAME_LABELS_OF_ITEM:
+            raise ValueError(f"{item} exists only under a §36b frame")
+        text = verifier_prompt(prompt, candidate, WORDING_OF_ITEM[item], note)
+        return VerifyInput(item, record.question_id, variant, record.fold, text, ANSWER_LITERAL, candidate, source,
+                           sha256(record.prompt), (), extra or {})
+    if item in ("P2", "P3"):
+        raise ValueError(f"{item} is a run-1 item; under a frame use {item}p")
+    labels = FRAME_LABELS_OF_ITEM.get(item, "frame")
+    system, user, prefix = frame_messages(prompt, candidate, frame, labels, note)
+    return VerifyInput(item, record.question_id, variant, record.fold, user, prefix, candidate, source,
+                       sha256(record.prompt), (), extra or {}, system, frame, labels)
 
 
 def c4_input(record, candidate: str, source: str) -> VerifyInput | None:
@@ -464,7 +489,8 @@ def make_row(item: VerifyInput, reader: str, engine: str, model: str, raw_text: 
     'n_prefix_tokens': int}."""
     row = {"question_id": item.question_id, "fold": item.fold, "reader": reader, "item": item.item,
            "variant": item.variant, "engine": engine, "model": model,
-           "sampling": C4_SAMPLING if item.kind == "c4" else SAMPLING, "wording_sha256": wording_sha256(),
+           "sampling": {"c4": C4_SAMPLING, "gen": GEN_SAMPLING, "label": SAMPLING}[item.kind],
+           "wording_sha256": item.wording_sha, "frame": item.frame, "labels": item.labels, "system": item.system,
            "input_sha256": item.input_sha256, "prompt_sha256": item.prompt_sha256,
            "intact_prompt_sha256": item.intact_prompt_sha256, "raw_input_sha256": sha256(raw_text),
            "n_input_tokens": n_input_tokens, "seconds": seconds, "candidate": item.candidate,
@@ -473,6 +499,10 @@ def make_row(item: VerifyInput, reader: str, engine: str, model: str, raw_text: 
         cand, unk = result["suffix_logprobs"]
         row.update({"lp_candidate": cand, "lp_unknown": unk, "n_prefix_tokens": result.get("n_prefix_tokens"),
                     "m": confidence_margin(cand, unk)})
+    elif item.kind == "gen":
+        label = first_label(result["generated"])
+        row.update({"generated": result["generated"], "label": label, "argmax": label, "s": None, "top1": result["generated"],
+                    "label_mass": 1.0 if label else 0.0, "scorer_version": SCORER_VERSION})
     else:
         top = result["top"]
         row.update(label_probs(top))
@@ -501,7 +531,7 @@ def pending_inputs(inputs: list[VerifyInput], existing: list[dict], engine: str)
         if row is None:
             todo.append(item)
             continue
-        if row["input_sha256"] != item.input_sha256 or row.get("wording_sha256") != wording_sha256():
+        if row["input_sha256"] != item.input_sha256 or row.get("wording_sha256") != item.wording_sha:
             raise StaleRowError(f"{item.item}/{item.question_id}/{item.variant}: row on disk has a different input or "
                                 "wording; move the old file aside")
         if row["engine"] != engine:
@@ -736,3 +766,48 @@ def first_label(text: str) -> str | None:
     """Wording e: the first standalone capital A, B or C in generated text (not part of a word), else None."""
     m = re.search(r"(?<![A-Za-z])([ABC])(?![A-Za-z])", text or "")
     return m.group(1) if m else None
+
+
+def _instruction_parts(key: str) -> tuple[str, str]:
+    """(sentence, A/B/C lines) of a run-1 instruction."""
+    sentence, lines = INSTRUCTIONS[key].split("\n", 1)
+    return sentence, lines
+
+
+def frame_messages(prompt: str, candidate: str, frame: str, labels: str = "frame",
+                   note: str | None = None) -> tuple[str | None, str, str]:
+    """(system message or None, user message, completion prefix) for a §36b frame. `labels` "frame" keeps the frame's
+    own A/B/C lines; "P2"/"P3" swap in the run-1 P2 / P3 label lines (P2', P3'), the instruction sentence staying the
+    frame's. `note` (V+n) goes on the line before the question, as in run 1. With labels "frame" and no note this is
+    exactly probe_messages."""
+    if labels not in ("frame", "P2", "P3"):
+        raise ValueError(f"unknown labels {labels!r}")
+    note_line = "" if note is None else NOTE_PREFIX + note.strip() + "\n"
+    _, question = split_prompt(strip_reasoning(prompt))
+    if frame in ("a", "b", "c", "d", "e"):
+        user = verifier_prompt(prompt, candidate, "P2", note)
+        if labels == "P3":
+            user = user[: -len(_instruction_parts("P2")[1])] + _instruction_parts("P3")[1]
+        if frame != "a":
+            user = PROBE_GOAL + user[user.index("\n\n" + MEMORY_HEADER):]
+        system = PROBE_REPLY if frame in ("c", "d", "e") else None
+        return system, user, PROBE_LABEL_PREFIX if frame == "d" else ""
+    if frame in ("f", "g", "h"):
+        lines = PROBE_LABEL_LINES if labels == "frame" else _instruction_parts(labels)[1]
+        body = f"{memory_block(prompt)}\n\n{note_line}{question}\n{PROPOSED}{candidate}\n{lines}\n{PROBE_REPLY}"
+        if frame == "f":
+            return None, body, ""
+        task = PROBE_TASK.replace(PROBE_LABEL_LINES, lines)
+        return (PROBE_SYSTEM if frame == "h" else None), f"{task}\n\n{body}", ""
+    raise ValueError(f"unknown frame {frame!r}")
+
+
+def frame_wording_sha256(frame: str, labels: str = "frame") -> str:
+    material = {"probe": probe_wording_sha256(frame), "labels": labels,
+                "label_lines": None if labels == "frame" else _instruction_parts(labels)[1], "note_prefix": NOTE_PREFIX}
+    return sha256(json.dumps(material, sort_keys=True))
+
+
+def smoke_pass(masses: list[float], need: int = 4) -> bool:
+    """§36b smoke gate: at least `need` rows with label mass >= 0.5 (wording e: rows with a label)."""
+    return sum(m >= PROBE_GATE_MASS for m in masses) >= need

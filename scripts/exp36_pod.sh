@@ -1,4 +1,14 @@
 #!/usr/bin/env bash
+# §36b rerun (research/proposals/2026-10-15-exp36b-verifier-wording.md): FRAME=<adopted probe wording> is REQUIRED
+# (one of a b c d f g h e; left as a parameter until the dev probe picks it); rows go to runs/exp36b; P2/P3 become
+# P2p/P3p (the frame with the run-1 P2/P3 label texts). Each reader's process first runs a real-model smoke: 5 dev rows
+# (folds 0-1) of item V through the frame, gate label mass >= 0.5 on >= 4 of 5 (wording e: a letter in the reply).
+# A failed 3B smoke aborts the chain (exit 5) before any row is written; a failed 7B smoke ends the chain with the 3B
+# rows only and the 7B logged as "not compliant" (proposal §2). RUNPOD_POD_ID must be passed in by the launch command
+# (e.g. `RUNPOD_POD_ID=<id> FRAME=c bash scripts/exp36_pod.sh` over ssh): it is exported so the self-stop can fire.
+#
+# Run 1 (the frozen wording, runs/exp36) is reproduced with FRAME=run1.
+#
 # §36 on one A40: the 3B then the 7B verify the 3B's §35 candidates (single-token A/B/C support labels) plus C4 prompt
 # logprobs, folds 0-4. Pre-registration: research/proposals/2026-10-15-exp36-verification.md (frozen at d2a67f2 + a3a3f9c).
 # No judge pass (the labels are §35's). Resumable (rows are appended per chunk); rerun to continue.
@@ -30,6 +40,16 @@ export PIP_BREAK_SYSTEM_PACKAGES=1  # RunPod PyTorch images mark system Python e
 cd "$(dirname "$0")/.."
 FOLDS="${1:-0,1,2,3,4}"
 ENGINE="${ENGINE:-vllm}"
+FRAME="${FRAME:-}"
+case "$FRAME" in
+  a|b|c|d|e|f|g|h) FRAME_ARGS=(--frame "$FRAME" --smoke); P23="P2p,P3p"; DEFAULT_OUT=runs/exp36b ;;
+  run1) FRAME_ARGS=(); P23="P2,P3"; DEFAULT_OUT=runs/exp36 ;;
+  *) echo "FRAME must be set to the adopted wording (a b c d e f g h) or run1; got '${FRAME}'" >&2; exit 2 ;;
+esac
+export RUNPOD_POD_ID="${RUNPOD_POD_ID:-}"
+if [ "$ENGINE" != stub ] && [ -z "$RUNPOD_POD_ID" ]; then
+  echo "warning: RUNPOD_POD_ID is empty; the in-pod self-stop cannot fire. Pass RUNPOD_POD_ID=<id> in the launch command." >&2
+fi
 VLLM_VERSION=0.8.5
 VLLM_TRANSFORMERS=4.51.3
 FALLBACK_TRANSFORMERS=5.17.0
@@ -38,13 +58,14 @@ SELF_STOP_S="${SELF_STOP_S:-3600}"
 R7_CORE="${R7_CORE:-600}"     # what the 7B's never-drop group needs (load + V, CutB, CutF, Abs, CF), seconds
 R7_TIER2="${R7_TIER2:-240}"   # the 7B's Vn + LC
 R7_OWN="${R7_OWN:-300}"       # the 7B's own-candidate pass (V_own + C4)
-if [ "$ENGINE" = stub ]; then OUT="${OUT:-runs/exp36_stub}"; PY="${PYTHON:-.venv/bin/python}"; else OUT="${OUT:-runs/exp36}"; PY="${PYTHON:-python}"; fi
+if [ "$ENGINE" = stub ]; then OUT="${OUT:-runs/exp36_stub}"; PY="${PYTHON:-.venv/bin/python}"; else OUT="${OUT:-$DEFAULT_OUT}"; PY="${PYTHON:-python}"; fi
 DONE_FILE="$OUT/pod.done"
 mkdir -p "$OUT"
 rm -f "$DONE_FILE"
 T0=$(date +%s)
 DEADLINE=$(( T0 + HARD_STOP_S ))
-trap 'rc=$?; echo "exit=$rc engine=$ENGINE at $(date -u +%FT%TZ)" > "$DONE_FILE"' EXIT
+trap 'rc=$?; echo "exit=$rc engine=$ENGINE frame=$FRAME at $(date -u +%FT%TZ)" > "$DONE_FILE"' EXIT
+echo "frame $FRAME; RUNPOD_POD_ID ${RUNPOD_POD_ID:+set}${RUNPOD_POD_ID:-EMPTY}" | tee -a "$OUT/pod.log"
 
 # The self-stop watchdog: detached, so it outlives this script; its pid is kept in a file (never searched by name).
 if [ "$ENGINE" != stub ]; then
@@ -83,15 +104,20 @@ stage_done() {
   echo "stage $1: elapsed $(( now - STAGE_START )) s (total $(( now - T0 )) s of $HARD_STOP_S)" | tee -a "$OUT/pod.log"
   STAGE_START=$now
 }
-run_stage() {  # run_stage NAME CMD...: killed at the generation deadline; a cut is logged and the chain goes on
+STAGE_RC=0
+run_stage() {  # run_stage NAME CMD...: killed at the generation deadline; a cut is logged and the chain goes on.
+  # Exit 5 (smoke failed) is returned in STAGE_RC for the caller to decide; any other failure ends the chain.
   local name=$1; shift
+  STAGE_RC=0
   local budget=$(( DEADLINE - $(date +%s) ))
   if [ "$budget" -le 0 ]; then echo "deadline reached before stage $name (skipped)" | tee -a "$OUT/pod.log"; return 0; fi
   set +e
   timeout "$budget" "$@" 2>&1 | tee -a "$OUT/${name}.log"
   local rc=${PIPESTATUS[0]}
   set -e
+  STAGE_RC=$rc
   if [ "$rc" -eq 124 ]; then echo "stage $name cut by the deadline" | tee -a "$OUT/pod.log"
+  elif [ "$rc" -eq 5 ]; then echo "stage $name: SMOKE FAILED (readout not compliant)" | tee -a "$OUT/pod.log"
   elif [ "$rc" -ne 0 ]; then echo "stage $name failed: exit $rc" | tee -a "$OUT/pod.log"; exit "$rc"; fi
   stage_done "$name"
 }
@@ -117,9 +143,12 @@ else
   export HF_HUB_OFFLINE=1  # the stub tokenises with a locally cached Qwen2.5 tokenizer if there is one; never downloads
 fi
 
-GEN=($PY scripts/exp36_verify.py --folds "$FOLDS" --backend "$ENGINE" --out "$OUT" --exp35 "$EXP35" --deadline "$DEADLINE")
+GEN=($PY scripts/exp36_verify.py --folds "$FOLDS" --backend "$ENGINE" --out "$OUT" --exp35 "$EXP35" --deadline "$DEADLINE" "${FRAME_ARGS[@]}")
 run_stage verify_qwen3b "${GEN[@]}" --reader qwen3b \
-  --plan "V,CutB,CutF,C4,Abs,CF|Vn,LC@${R7_CORE}|P2,P3@$(( R7_CORE + R7_TIER2 + R7_OWN ))"
+  --plan "V,CutB,CutF,C4,Abs,CF|Vn,LC@${R7_CORE}|${P23}@$(( R7_CORE + R7_TIER2 + R7_OWN ))"
+if [ "$STAGE_RC" -eq 5 ]; then
+  echo "3B smoke failed: chain aborted before any row (exit 5)" | tee -a "$OUT/pod.log"; exit 5
+fi
 # The 3B's never-drop items must be complete before the 7B starts.
 $PY - "$OUT" "$FOLDS" <<'EOF' | tee -a "$OUT/pod.log"
 import json, sys
@@ -130,5 +159,8 @@ bad = [i for i in ("V", "CutB", "CutF", "C4") if not m.get(i) or m[i].get("cut")
 print("3B never-drop items complete" if not bad else f"3B never-drop items INCOMPLETE: {bad}")
 sys.exit(124 if bad else 0)
 EOF
-run_stage verify_qwen7b "${GEN[@]}" --reader qwen7b --plan "V,CutB,CutF,Abs,CF|Vn,LC|V_own,C4|P2,P3"
+run_stage verify_qwen7b "${GEN[@]}" --reader qwen7b --plan "V,CutB,CutF,Abs,CF|Vn,LC|V_own,C4|${P23}"
+if [ "$STAGE_RC" -eq 5 ]; then
+  echo "7B smoke failed: the 7B is NOT COMPLIANT under frame $FRAME; the chain ends with the 3B rows only" | tee -a "$OUT/pod.log"
+fi
 echo "all stages done in $(( $(date +%s) - T0 )) s; copy $OUT/ back before the self-stop at +${SELF_STOP_S} s" | tee -a "$OUT/pod.log"

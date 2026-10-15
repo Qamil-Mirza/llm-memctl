@@ -97,6 +97,10 @@ def check_rows(rows: dict, data35: dict, absr: dict) -> None:
     engines = sorted({r["engine"] for reader in rows.values() for item in reader.values() for r in item.values()})
     if len(engines) > 1:
         raise SystemExit(f"REFUSED: the §36 run directory mixes engines {engines}")
+    frames = sorted({str(r.get("frame")) for reader in rows.values() for item, got in reader.items() if item != "C4"
+                     for r in got.values()})
+    if len(frames) > 1:
+        raise SystemExit(f"REFUSED: the §36 run directory mixes verifier wordings {frames}")
     problems = []
     for reader, items in rows.items():
         for item, got in items.items():
@@ -104,10 +108,12 @@ def check_rows(rows: dict, data35: dict, absr: dict) -> None:
                 rec = absr.get(q) if item == "Abs" else data35["qwen7b" if item in ("V_own",) or (item == "C4" and reader == "qwen7b") else "qwen3b"].by_q.get(q)
                 if rec is None:
                     continue
-                if r.get("wording_sha256") != ver.wording_sha256() or r["intact_prompt_sha256"] != ver.sha256(rec.prompt):
+                expected = (ver.frame_wording_sha256(r["frame"], r.get("labels", "frame")) if r.get("frame") and item != "C4"
+                            else ver.wording_sha256())
+                if r.get("wording_sha256") != expected or r["intact_prompt_sha256"] != ver.sha256(rec.prompt):
                     problems.append(f"{reader}/{item}/{q}")
                     continue
-                if item in ("V", "Vn", "P2", "P3", "CutB", "LC") or (item == "C4" and reader == "qwen3b"):
+                if item in ("V", "Vn", "P2", "P3", "P2p", "P3p", "CutB", "LC") or (item == "C4" and reader == "qwen3b"):
                     cand = ver.candidate_of_row(data35["qwen3b"].rows["B"].get(q))
                 elif item == "CutF":
                     cand = ver.candidate_of_row(data35["qwen3b"].rows["Fcut"].get(q))
@@ -330,7 +336,8 @@ def cf_subsets(extras: dict[str, dict]) -> dict[str, list[str]]:
 def analyse(folds: set[int], rows: dict, data35: dict, dev: dict, boot, own_root: Path, samples: int) -> dict:
     f3, f7 = Frame(data35["qwen3b"]), Frame(data35["qwen7b"])
     rel = reliability_table(rows)
-    reliable = rel.get("qwen3b/V", {"reliable": False})["reliable"]
+    has_s = any(r.get("s") is not None for r in rows["qwen3b"]["V"].values())
+    reliable = rel.get("qwen3b/V", {"reliable": False})["reliable"] and has_s
     g3 = rows["qwen3b"]
     s3 = f3.scores(g3["V"])
     m3 = f3.scores(g3["C4"], "m")
@@ -381,11 +388,12 @@ def analyse(folds: set[int], rows: dict, data35: dict, dev: dict, boot, own_root
         out["claim1"], out["claim2"], out["claim3"] = c1, c2s, c3s
         out["claim4"] = {"C3": policy(f3, ver.emit_at(s3, tau), boot), "C4": policy(f3, ver.emit_at(m3, tau_c4), boot)}
     else:
-        msg = "NOT RELIABLE (label mass rule): argmax only, see C2"
+        msg = ("NOT RELIABLE (label mass rule): argmax only, see C2" if has_s else
+               "argmax only (wording e: generated letter, s undefined): Claims 1, 3, 4 not testable; see C2")
         out["claim1"] = out["claim2"] = out["claim3"] = out["claim4"] = {"verdict": msg}
     out["mass_diagnostics"] = {reader: mass_diagnostics(rows[reader]["V"]) for reader in READERS}
     out["robustness"] = {}
-    for item in ("Vn", "P2", "P3"):
+    for item in [i for i in ("Vn", "P2", "P3", "P2p", "P3p") if g3.get(i)]:
         sc = f3.scores(g3[item])
         ok = rel.get(f"qwen3b/{item}", {"reliable": False})["reliable"]
         out["robustness"][item] = (discrimination(f3, sc, boot) if ok else {"verdict": "not reliable"}) | {
@@ -430,6 +438,7 @@ def render(folds: set[int], numbers: dict) -> str:
     n = numbers
     lines = [f"# §36 report: can the 3B judge support for its own forced answers? (folds {fl})", "",
              ("Label fields RESCORED from the stored top-20 logprobs (byte-level tokens decoded). " if n.get("rescored") else "")
+             + f"Verifier wording: {', '.join('run-1 frozen' if f == 'None' else '§36b frame ' + f for f in n.get('frames', []))}. "
              + f"Engines: {n['engines']}. Wording sha256 {n['wording_sha256'][:12]}. Labels: the §35 judge (Qwen2.5-7B) on "
              "arm B. 95% intervals: paired bootstrap over questions (all variants of a question in one unit), "
              f"{n['samples']:,} resamples.", "",
@@ -553,8 +562,11 @@ def build(folds: set[int], root: Path, exp35: Path, runs: str = "runs", samples:
         dev = {"data35": d35, "rows": drows}
     boot = ver.Bootstrap(list(qids) + list(absr), samples=samples, seed=0)
     numbers = analyse(folds, rows, data35, dev, boot, own_root, samples)
-    numbers.update({"rescored": rescore, "folds": sorted(folds), "samples": samples, "wording_sha256": ver.wording_sha256(),
+    numbers.update({"frames": sorted({str(r.get("frame")) for reader in rows.values() for i, got in reader.items()
+                                      if i != "C4" for r in got.values()}), "rescored": rescore, "folds": sorted(folds), "samples": samples,
                     "engines": sorted({r["engine"] for reader in rows.values() for item in reader.values() for r in item.values()})})
+    frames = [f for f in numbers["frames"] if f != "None"]
+    numbers["wording_sha256"] = ver.frame_wording_sha256(frames[0]) if frames else ver.wording_sha256()
     return render(folds, numbers), numbers
 
 
