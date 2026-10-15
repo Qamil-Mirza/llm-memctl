@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# §36b rerun (research/proposals/2026-10-15-exp36b-verifier-wording.md): FRAME=<adopted probe wording> is REQUIRED
-# (one of a b c d f g h e; left as a parameter until the dev probe picks it); rows go to runs/exp36b; P2/P3 become
+# §36b rerun (research/proposals/2026-10-15-exp36b-verifier-wording.md): FRAME = the adopted probe wording, default
+# "a" (the dev probe's pick: label mass >= 0.5 on 84/84 dev rows for V and for CutB; runs/exp36_probe/summary.md); rows go to runs/exp36b; P2/P3 become
 # P2p/P3p (the frame with the run-1 P2/P3 label texts). Each reader's process first runs a real-model smoke: 5 dev rows
 # (folds 0-1) of item V through the frame, gate label mass >= 0.5 on >= 4 of 5 (wording e: a letter in the reply).
 # A failed 3B smoke aborts the chain (exit 5) before any row is written; a failed 7B smoke ends the chain with the 3B
@@ -40,7 +40,7 @@ export PIP_BREAK_SYSTEM_PACKAGES=1  # RunPod PyTorch images mark system Python e
 cd "$(dirname "$0")/.."
 FOLDS="${1:-0,1,2,3,4}"
 ENGINE="${ENGINE:-vllm}"
-FRAME="${FRAME:-}"
+FRAME="${FRAME:-a}"   # the §36b dev probe's pick (runs/exp36_probe/summary.md): wording a, 84/84 rows compliant on V and CutB
 case "$FRAME" in
   a|b|c|d|e|f|g|h) FRAME_ARGS=(--frame "$FRAME" --smoke); P23="P2p,P3p"; DEFAULT_OUT=runs/exp36b ;;
   run1) FRAME_ARGS=(); P23="P2,P3"; DEFAULT_OUT=runs/exp36 ;;
