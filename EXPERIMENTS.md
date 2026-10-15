@@ -6244,7 +6244,7 @@ billing lags), against the approved $0.89 hard stop. All experiments ≈ $17.22.
 Claims 2 and 3 were not tested.** Pre-registration `research/proposals/2026-10-15-exp36-verification.md` (d2a67f2;
 Reviewer step waived by the user, DECISIONS D-21, a3a3f9c; amendment 1 f14fe54, development folds only). §36b
 amendment `research/proposals/2026-10-15-exp36b-verifier-wording.md` (30415c3; probe pick recorded 84e1106); rerun
-approved by the user in this pane at the quoted shape (D-23). Reviews `research/reviews/2026-10-15-exp36-run1.md` and
+approved by the user (D-23); launch confirmed in the Executor pane. Reviews `research/reviews/2026-10-15-exp36-run1.md` and
 `research/reviews/2026-10-15-exp36b-results.md` (ACCEPT, 308c198, every primary figure recomputed independently).
 Code `memctl/analysis/verification.py`, `scripts/exp36_verify.py`, `scripts/exp36_pod.sh`, `scripts/exp36_report.py`,
 `scripts/exp36_rescore.py`, `scripts/exp36_wording_probe.py`, `scripts/exp36_devcheck.py`,
@@ -6346,7 +6346,7 @@ for wrong ones (plausibility or leftover evidence). Control B has n 10. Coverage
 deployed accuracy (§35 gives that). One benchmark, one prompt family, one 3B.
 
 **Run and spend.** Run 1: one A40 secure pod (EU-SE-1, $0.59/h), 19:13:34–19:30:14 UTC 2026-10-15, chain 859 s.
-§36b: one A40 secure pod (EU-SE-1, $0.59/h), 22:26:26–22:42:34 UTC, chain 846 s (3B 395 s, 7B 451 s), both smokes PASS,
+§36b: one A40 secure pod (EU-SE-1, $0.59/h), 22:26:26–22:42:34 UTC, chain 846 s (install 145 s, 3B 250 s, 7B 451 s), both smokes PASS,
 in-pod self-stop wired (RUNPOD_POD_ID exported), laptop DELETE as the backstop. The account balance moved 12.452 →
 12.126, $0.33 for both runs, against an approved hard stop of $0.59 each. All experiments ≈ $17.55.
 
