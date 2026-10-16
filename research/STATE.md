@@ -39,7 +39,10 @@ frozen reader is the ceiling: with perfect evidence, a 3B reader still trails a 
    are byte-identical, and so are folds 3 and 4 (sha256 `2825193…`, `849e524…`). The cause is the half-A
    dealing in `memctl/splits.py`. It is not a leak (0 of 200 overlap with the test part), but `fixed8`
    is **3 distinct heads, not 5**. Its per-fold spread (0.650–0.750) understates training variance.
-   Paired bootstraps are unaffected. The same holds for head B and for `lr_f1 = lr_f2`.
+   Paired bootstraps are unaffected. The same holds for head B and for `lr_f1 = lr_f2`. **Added 2026-10-16
+   (audit, sha256 of every `runs/lme_n4_head_f*_{a,b}/checkpoints/policy_best.pt`):** head B folds 0 = 1 and
+   2 = 3, and head A fold 0 = head B fold 4 (prefix `9f0be108`). Heads A and B together hold **5 distinct
+   networks, not 10**, so §19d's "second head" was not independent of head A on fold 4.
 2. **Reader noise floor (§29b, §32c).** vLLM at temperature 0 is not batch-deterministic. Two passes
    over the same picks give different answer text on 35 of 470 questions, and 7 verdicts flip (6 from
    changed answers, 1 from the judge on an identical answer). Same-pick accuracy moves by about ±0.007.
