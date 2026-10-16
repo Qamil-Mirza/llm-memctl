@@ -226,3 +226,21 @@ one prompt family, one 3B.
   the gate arithmetic), reviews the development run against the gate, and reviews the confirmation results.
 - User decides: (i) whether the laptop may be busy for about 5 h on the free development run; (ii) if the gate passes,
   approve or decline the pod at the quoted price and hard stop. DECISIONS rows are written only after each decision.
+
+## Amendment 1 (2026-10-16, after the build review and before any development readout)
+
+- **E3 wording.** The primary E3 sentence failed its label-free calibration (identical → A 17 of 20; different → C 18
+  of 20; every miss argmax B). The pre-fixed fallback "Are Answer 1 and Answer 2 the same answer?" (letter lines
+  unchanged) passed at 18 of 20 and 19 of 20 and is the E3 wording for every call, laptop and pod. No further E3
+  wording may be tried. Both calibration records are reported beside Claim 1.
+- **Memory block in E1 and E2** = the `## Memory` header plus the numbered items, without the §23 goal line (which
+  carries the "reply: unknown" cue). **V-num keeps frame (a) with the goal line**, because it is the §36b baseline that
+  Claim 2 compares against. The asymmetry is deliberate and is reported with Claim 2.
+- **Normaliser rule added (v2).** If either side contains a number and the numeric rule did not apply (a date or time
+  on either side, or more than one number on a side), m = 1 only on exact equality after normalisation; whole-word
+  containment applies only when neither side contains a number. Fixed before any development readout.
+- **Control P count corrected.** 27 development rows qualify (14 number, 13 name), 16 of them judged correct; about 45
+  expected on confirmation. Descriptive, split by kind, as before.
+- **Laptop item set:** V, Cut-B, Cut-F, planted numbers and names, V-num, in-dialogue E2. Measured 5-row timing
+  projects 2.83 h (decode 0.95 s/token on the CPU), within the approved 3.5 h; peak RSS 18.6 GB under a 22 GB guard.
+- Build review: `research/reviews/2026-10-16-exp37-build.md` (ACCEPT, conditional on the normaliser fix).
