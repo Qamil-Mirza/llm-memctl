@@ -1,6 +1,6 @@
 # §37 pre-registration: can the 3B be cross-examined into checking its own answer? (an elenchus in three turns)
 
-Date: 2026-10-16, Advisor draft, revision 1, before any new verifier number on any fold. Branch `jacobian-lens`.
+Date: 2026-10-16, Advisor draft, revision 2 (revision 1 d993eca; the Executor's build read F1–F3 and adds (i)–(iii) folded in; the 7B own-candidate pass cut), before any new verifier number on any fold. Branch `jacobian-lens`.
 Follow-up to §36/§36b (`research/proposals/2026-10-15-exp36-verification.md`, results review
 `research/reviews/2026-10-15-exp36b-results.md`, EXPERIMENTS.md §36a). Prompted by the user's question of 2026-10-16:
 "Did we try putting the 3B model through Socrates's elenchus?" We did not. Every §36 check was one shot and one token.
@@ -25,6 +25,10 @@ approves the pod and the Advisor's review of the development run is in `research
   is therefore run **blind** (the candidate is not in view) as the primary form, and the in-dialogue form is run beside
   it as the sycophancy measurement. A **planted wrong thesis** control measures how often the chain passes an answer we
   know is wrong.
+- A fixed8 prompt holds exactly 8 memory items (development: min = median = max = 8), and 86 of 126 development
+  prompts have an item with internal newlines. "Line" below means a memory **item**, numbered once. With only 8 items
+  the 3B will almost always cite something, so the grounding flag g will be near 1 on intact prompts; g's own
+  discrimination is expected to be weak and Control A on g modest. The work of the chain is in E2 and E3.
 - Prior from the record, written down before the data: my predictions have over-estimated the 3B twice (§35 by 2–3×
   in the other direction, §36 Claim 1 and Control A). The honest prior for Claim 1 clearing 0.65 is about one in three.
 
@@ -51,26 +55,38 @@ wraps each user message; no system message; the assistant turn starts empty (the
 with a literal that names another task).
 
 **The memory block is the cached §23 memory block with the reasoning instructions removed, byte-exact except that
-each memory line is prefixed `[k] ` for k = 1..n in prompt order.** The numbering is what makes grounding mechanical.
-Cut-B and Cut-F keep the numbering over the remaining lines (renumbered 1..n′). The §36b one-shot had no numbers, so a
+each memory item is prefixed `[k] ` before its first character, k = 1..8 in prompt order (one number per item, never per
+text line; asserted against the record's `memory_lines`; header lines are not numbered).** The numbering is what makes
+grounding mechanical. Cut-B and Cut-F: `ablate_evidence` runs on the unnumbered cached prompt first (it matches exact
+spans of the item texts), and the remaining items are then numbered 1..n′. The §36b one-shot had no numbers, so a
 one-shot **V-num** (the §36b frame (a) wording on the numbered block) runs beside as a descriptive comparison, to
 separate "dialogue" from "numbering" in Claim 2.
 
 | turn | what the model sees | what it returns | parse |
 |---|---|---|---|
-| **E1 grounds** | numbered memory block; `Question: <q>`; `You answered: <candidate>`; "Which memory lines is this answer based on? Reply with the line numbers only, for example [2] [5]. If no line bears on the question, reply NONE." | up to 16 tokens | G = the set of valid line numbers in the reply (numbers outside 1..n are dropped). **g = 1** if G is non-empty, else 0 (NONE, empty, or only invalid numbers) |
+| **E1 grounds** | numbered memory block; `Question: <q>`; `You answered: <candidate>`; "Which memory lines is this answer based on? Reply with the line numbers only, for example [2] [5]. If no line bears on the question, reply NONE." | up to 24 tokens | G = the set of valid item numbers in the reply (numbers outside 1..n are dropped). **g = 1** if G is non-empty, else 0 (NONE, empty, or only invalid numbers) |
 | **E2 derivation, blind (primary)** | a fresh context: only the cited lines, with their numbers, then `Question: <q>`, then "Using only the lines above, what is the answer? Answer with a short phrase. If the lines above do not determine the answer, reply: not determined." The candidate is **not** shown | up to 32 tokens | d = the reply's first line. Skipped when g = 0 (d := not determined) |
-| **E3 confrontation** | no memory: `Question: <q>`; `Answer 1: <x>`; `Answer 2: <y>`; "Do Answer 1 and Answer 2 give the same answer to the question? Reply with one letter. A = same, B = partly the same or unclear, C = different". x, y are the candidate and d in an order fixed by the parity of the question id's first hex digit (recorded per row) | 1 token, logprobs 20 | a = (p_A + 0.5·p_B)/(p_A + p_B + p_C), v2 byte-decoded scorer, primary spellings bare and space-prefixed, `label_mass` stored; the §36 reliability rule (mass < 0.5 on more than 0.1 of rows = not reliable, argmax only) |
+| **E3 confrontation** | no memory: `Question: <q>`; `Answer 1: <x>`; `Answer 2: <y>`; "Do Answer 1 and Answer 2 give the same answer to the question? Reply with one letter. A = same, B = partly the same or unclear, C = different". x, y are the candidate and d in an order fixed by the parity of the first hex digit of sha256(question_id) (question ids are not all hex; recorded per row) | 1 token, logprobs 20 | a = (p_A + 0.5·p_B)/(p_A + p_B + p_C), v2 byte-decoded scorer, primary spellings bare and space-prefixed, `label_mass` stored; the §36 reliability rule (mass < 0.5 on more than 0.1 of rows = not reliable, argmax only) |
 
 **Elenchus score e** = 0 if g = 0 or d is "not determined" (or a refusal by the §23 rule); otherwise e = a.
 **Mechanical agreement m** = 1 if d and the candidate are the same after a normalisation fixed in code before the
-development run (lower case; strip punctuation and the articles a/an/the; number words one..twenty to digits; two
-numbers equal if numerically equal; otherwise one must equal the other or contain it as a whole-word phrase). **e_mech =
+development run: strip a leading `Answer:` / `A:` label, surrounding quotes and a trailing period; Unicode quotes and
+dashes to ASCII; lower case; strip punctuation and the articles a/an/the; currency signs and thousands commas removed
+(`$1,200` → 1200); number words one..twenty and "a dozen" to digits, ordinals stay words; if **each** side contains
+exactly one number, the two are equal iff numerically equal (so "5 goals and 2 assists" vs "5" falls through to the
+phrase rule); otherwise one side must equal the other or contain it as a whole-word phrase; times and dates are
+compared as phrases only (conservative); empty after normalisation → m = 0. "Not determined" = any of {not determined,
+cannot be determined, undetermined, unknown, not specified, not mentioned} after normalisation. **e_mech =
 g·m**, binary, label- and model-free beyond the two generations. **Grounding alone, g,** is reported as a score too.
 
 **E2 in dialogue (secondary; the sycophancy measurement).** The same derivation asked as a third user turn after E1,
 with the E1 reply and the candidate in context: "Based only on lines <G>, what do those lines say the answer is?
 Short phrase, or: not determined." Its d′ feeds its own E3 and gives e′. e′ is never primary.
+
+**E3 calibration check (label-free, 20 development rows, run before anything else is read).** Identical strings
+(x = y = the candidate) must give argmax A; x = the candidate and y = another question's candidate must give argmax C.
+Pass = ≥ 18 of 20 on each. A failure means the comparison step is broken; fix the E3 wording once (one pre-fixed
+fallback: "Are Answer 1 and Answer 2 the same answer?") or close on compliance.
 
 **Wording fixed now.** The three instructions above are the texts; one pre-fixed fallback for E1 exists in case the
 parse gate fails (E1′: "List the numbers of the memory lines that support your answer, separated by spaces, or write
@@ -113,15 +129,18 @@ and their sha256 is in every row.
   (counted on development before the run, as §36 did).
 - **(S) Sycophancy.** On rows judged wrong: the share where d reproduces the candidate (m = 1), blind vs in dialogue.
   On rows judged correct: the same two shares. The gap is the pull of the model's own thesis.
-- **(7B).** The 7B runs the same elenchus on the 3B's candidates (V, Cut-B, planted) and on its own B candidates. Never
-  merged into one size conclusion; judge circularity as in §36.
+- **(G) Grounding hits the evidence (descriptive, label-free).** The share of rows whose cited set G contains at
+  least one annotated evidence item (the benchmark's evidence annotation, not a correctness label), intact and cut.
+- **(7B).** The 7B runs the same elenchus on the 3B's candidates (V, Cut-B, planted). The 7B's own-candidate pass is
+  **cut** (§36b already has 0.731 for it, and Q15 needs an independent label source before more 7B-on-7B numbers mean
+  anything). Judge circularity as in §36.
 - **Costs beside every claim.** Calls, tokens and seconds per candidate against §36b's one call (0.07 s on an A40);
   wrong answers added vs C0; Cut-F pass rate.
 
 **Prediction, recorded now.** Claim 1: AUROC(e) 0.58–0.66; the chance that the point reaches 0.65 is about 0.35.
 Claim 2: the interval includes 0 (the chain is not clearly better than the one-shot); V-num close to s. Claim 3 not
-tested or not shown. Control A: g about 0.8 intact and about 0.4 on the cut prompt (the 3B will still cite some line
-on about 0.4 of evidence-free prompts, consistent with A′ 0.715). Planted thesis: the 3B rejects 0.55–0.70 of planted
+tested or not shown. Control A: g near 1 intact (8 items, something is always citable) and about 0.7 on the cut prompt; g alone
+AUROC under 0.6; the evidence-hit share (G) about 0.8 intact. Planted thesis: the 3B rejects 0.55–0.70 of planted
 wrong answers, the 7B above 0.8. Sycophancy: in dialogue the 3B reproduces its own wrong candidate on at least half
 the judged-wrong rows, blind on under a third. Repair: d corrects 0.10–0.20 of judged-wrong rows and breaks about as
 many judged-right ones; net about zero. 7B on 3B candidates: 0.72–0.80.
@@ -152,9 +171,10 @@ Laptop CPU, folds 0–1 only (the script refuses other folds), 3B only, `GUARD_V
    result is recorded in EXPERIMENTS.md §37 as a development-only closure (as §25 and §30 were). No confirmation-fold
    number is ever read. If it passes, the Advisor reviews the development run and the Executor quotes the pod to the
    user.
-4. **Time budget.** Estimated 60–90 s per candidate row on the laptop (prefill 1,000 tokens, ≤ 48 generated tokens,
-   two short prefills): intact 84 rows about 2 h, Cut-B about 1.5 h, planted about 1 h, in-dialogue E2 about 0.5 h,
-   about 5 h in all, in the background. **The Executor times the first 5 rows and reports the projection before
+4. **Time budget.** The Executor's estimate from the §36b probe (18 s per 1,100-token prefill, decode about 0.3
+   s/token unmeasured): about 40 s per intact row (E1 25 s, E2 12 s, E3 2 s); intact 84 rows about 1 h, Cut-B 50 min,
+   planted about 30 min, in-dialogue E2 about 45 min (re-prefills E1's context), V-num 30 min: about 3.5 h, with 5 h as
+   the ceiling, in the background. **The Executor times the first 5 rows and reports the projection before
    running the rest.** If the projection exceeds 8 h, P and S move to the pod only and the laptop runs intact, Cut-B and
    V-num. The user is told how long the laptop will be busy before it starts.
 5. **Engine caveat.** The laptop is fp32 `transformers`, the pod is bf16 vLLM. The pod re-runs the development folds and
@@ -164,15 +184,17 @@ Laptop CPU, folds 0–1 only (the script refuses other folds), 3B only, `GUARD_V
 ## 6. Stage 2: the pod (NEEDS SPEND; quoted only if the gate passes)
 
 - One A40 secure pod at the then-current price (§36b: $0.59/h). Work: 3B elenchus on all folds (intact, Cut-B, Cut-F,
-  planted, in-dialogue E2, V-num; about 330 rows × 6 items × 3 short calls), the 7B on the 3B's candidates and its own,
-  and the judge pass on d (and d′) for the 3B rows, cached by text as §35. §36b's 3B stage took 250 s for about 3,000
+  planted, in-dialogue E2, V-num; about 330 rows × 6 items × 3 short calls), the 7B on the 3B's candidates, and the
+  judge pass on d (and d′) for the 3B rows: the §35 judge code and text-keyed cache under `cache/judge_exp37/`, run in
+  the 7B process after the 7B's elenchus items so the 7B loads once. The laptop has no judge (7B fp32 does not fit), so
+  Claim 4 has no development number; it is descriptive. §36b's 3B stage took 250 s for about 3,000
   one-token prompts; generation here is ≤ 48 tokens per call. Expected 20–30 min; **hard stop 60 min (≈ $0.59)**.
   Programme spend now ≈ $17.55 of $20; after this run about $17.85.
 - **D-22 smoke in the pod:** 5 development rows per reader through E1–E3 before the main chain; abort unless ≥ 4 of 5
   parse at E1 and ≥ 4 of 5 have E3 mass ≥ 0.5. 7B smoke fail with 3B pass: 3B only, 7B rows "not compliant".
   `RUNPOD_POD_ID` exported for the in-pod self-stop; laptop DELETE as the backstop; the lab-broker sweep stopped first.
-- **Triage order if the stub latency exceeds the stop:** drop the 7B's own-candidate pass, then in-dialogue E2, then
-  V-num, then planted names (keep planted numbers). Never drop the 3B's intact, Cut-B, Cut-F, planted numbers, or the
+- **Triage order if the stub latency exceeds the stop:** drop in-dialogue E2, then V-num, then planted names (keep
+  planted numbers). Never drop the 3B's intact, Cut-B, Cut-F, planted numbers, or the
   judge pass on d.
 - Reports: `scripts/exp37_report.py --folds 0,1`, then `--folds 2,3,4 --confirm`, then all folds. The report refuses
   folds 2–4 without `--confirm`, and `--confirm` is run once, after the Advisor has the development review in
@@ -195,9 +217,11 @@ one prompt family, one 3B.
 
 - Executor builds `memctl/analysis/elenchus.py` (numbered block, E1–E3 builders, parsers, normalisation, planted
   thesis, scores), `scripts/exp37_dev.py` (laptop, folds 0–1 only, resumable per question/item/turn, 5-row timing
-  first), `scripts/exp37_pod.sh` (smoke, 3B, 7B, judge, self-stop) and `scripts/exp37_report.py`. Unit tests: the
-  parser on NONE / `[2] [5]` / `2, 5` / out-of-range; the normaliser on the cases listed in §2; the planted substitute
-  never equals the gold after normalisation; the blind E2 prompt never contains the candidate string.
+  first, the E3 calibration check first of all), `scripts/exp37_pod.sh` (smoke, 3B, 7B, judge, self-stop) and
+  `scripts/exp37_report.py`. Unit tests: the parser on NONE / `[2] [5]` / `2, 5` / out-of-range; the normaliser on the
+  cases listed in §2; the planted substitute never equals the gold after normalisation; the blind E2 prompt never
+  contains the candidate string; the numbered block has exactly one `[k] ` per memory item and none inside an item;
+  Cut-B numbering equals numbering applied after `ablate_evidence`.
 - Advisor reviews the build before the laptop run starts (prompts byte-exact against §2, the refusal of folds 2–4,
   the gate arithmetic), reviews the development run against the gate, and reviews the confirmation results.
 - User decides: (i) whether the laptop may be busy for about 5 h on the free development run; (ii) if the gate passes,
