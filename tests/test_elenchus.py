@@ -141,12 +141,18 @@ def test_parse_e1_out_of_range_dropped():
 @pytest.mark.parametrize("d,c,m", [
     ("Answer: Luna.", "Luna", 1), ("A: luna", "“Luna”", 1), ("'Luna'", "Luna", 1),
     ("$1,200", "1200", 1), ("1,200 dollars", "$1200", 1), ("three", "3", 1), ("a dozen", "12", 1),
-    ("twenty", "20", 1), ("third", "3", 0), ("5 goals and 2 assists", "5", 1), ("4", "5", 0),
+    ("twenty", "20", 1), ("third", "3", 0), ("5 goals and 2 assists", "5", 0), ("4", "5", 0), ("two", "2", 1),
     ("2.5 hours", "2.50", 1), ("The Nike store", "Nike", 1), ("Leeds", "Leeds Bradford", 1), ("Paris", "London", 0),
-    ("10:30", "10:30 am", 1), ("7 May 2023", "7", 1), ("May 7", "8", 0), ("the", "the", 0), ("", "x", 0),
+    ("Denver", "Emily lives in Denver, Colorado.", 1), ("10:30", "10:30 am", 0), ("10:30", "10:30.", 1),
+    ("7 May 2023", "7", 0), ("7 May 2023", "7 may 2023", 1), ("May 7", "8", 0), ("Room 12 B", "Room 12", 1),
+    ("the", "the", 0), ("", "x", 0),
     ("Dr. Smith", "Dr Smith", 1), ("well—known", "well-known", 1), ("a dog", "dog", 1), ("Annie", "an", 0)])
 def test_same_answer(d, c, m):
     assert el.same_answer(d, c) == m
+
+
+def test_normaliser_version_is_v2():
+    assert el.NORMALISER_VERSION == "v2" and el.wording()["normaliser"] == "v2"
 
 
 def test_normalise_steps():

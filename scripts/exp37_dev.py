@@ -6,8 +6,8 @@
 Pre-registration: research/proposals/2026-10-16-exp37-elenchus.md at 714da06 (rev 2), §5. Without --run the script
 does exactly two things and stops:
 1. the E3 calibration check (§2), before anything else: 20 development rows, identical pair -> A, another question's
-   candidate -> C, pass >= 18/20 each; on a failure, the one pre-fixed fallback wording once; a second failure closes
-   §37 on compliance (exit 6).
+   candidate -> C, pass >= 18/20 each, on the adopted E3 wording (amendment 1: the pre-fixed fallback; the primary
+   failed 17/20, 18/20); a failure closes §37 on compliance (exit 6).
 2. a 5-row timing: the first 5 development V rows through E1, E2 (blind), E3, E2 in dialogue and V-num, timed per
    turn (prefill and decode separately); it prints a projection for the whole laptop run from the measured per-token
    rates and every planned prompt's exact input length, writes runs/.../timing.json (timings only, no model output),
@@ -30,7 +30,7 @@ from memctl.analysis import elenchus as el  # noqa: E402
 from scripts import exp37_elenchus as gen  # noqa: E402
 
 DEV = (0, 1)
-LAPTOP_ITEMS = ("V", "CutB", "Pnum", "Pname", "Vdlg", "Vnum")   # §5.4; CutF projected beside (pod item)
+LAPTOP_ITEMS = ("V", "CutB", "CutF", "Pnum", "Pname", "Vnum", "Vdlg")   # §5.4 plus Cut-F (amendment 1, 9639186)
 TIMING_N = 5
 
 
@@ -66,7 +66,7 @@ def projection(src, engine, t: dict) -> dict:
     """Hours per item on the laptop: exact E1 / V-num input lengths per planned row; E2, E3 and E2d at the timed means."""
     rp, rd, pt = t["prefill_s_per_token"], t["decode_s_per_token"], t["per_turn"]
     out = {}
-    for item in LAPTOP_ITEMS + ("CutF",):
+    for item in LAPTOP_ITEMS:
         tasks = [x for f in DEV for x in gen.build_tasks(item, f, src)]
         if item == "Vnum":
             secs = sum(engine.n_tokens(engine.chat_text(el.vnum_messages(x.prompt, x.memory_lines, x.candidate))) * rp
@@ -80,7 +80,6 @@ def projection(src, engine, t: dict) -> dict:
                     + len(tasks) * (pt["E2"]["mean_s"] + pt["E3"]["mean_s"]))
         out[item] = {"rows": len(tasks), "hours": secs / 3600}
     out["total_laptop_hours"] = sum(v["hours"] for k, v in out.items() if k in LAPTOP_ITEMS)
-    out["with_CutF_hours"] = out["total_laptop_hours"] + out["CutF"]["hours"]
     out["over_8h"] = out["total_laptop_hours"] > 8
     return out
 
@@ -106,14 +105,14 @@ def main(argv=None) -> int:
     t0 = time.perf_counter()
     engine = gen.build_engine(args.backend, gen.MODELS["qwen3b"], args.threads)
     log(f"engine {engine.name}, model loaded in {time.perf_counter() - t0:.0f} s")
-    opts = gen.Opts()
+    # Amendment 1 (9639186): the primary E3 sentence failed calibration (17/20, 18/20); the pre-fixed fallback passed
+    # (18/20, 19/20) and is the E3 wording for every call. The check is repeated on it at the start of every run; no
+    # other E3 wording may be tried.
+    opts = gen.Opts(e3_fallback=True)
     verdict = gen.calibrate("qwen3b", src, engine, out, opts, log)
     if not verdict["pass"]:
-        opts = gen.Opts(e3_fallback=True)
-        verdict = gen.calibrate("qwen3b", src, engine, out, opts, log)
-        if not verdict["pass"]:
-            log("E3 calibration failed with the fallback too: §37 closes on compliance (exit 6)")
-            return gen.CALIBRATION_FAILED
+        log("E3 calibration failed with the adopted (fallback) wording: §37 closes on compliance (exit 6)")
+        return gen.CALIBRATION_FAILED
     if not args.run:
         t = timing(src, engine, opts, log)
         proj = projection(src, engine, t)
@@ -121,8 +120,8 @@ def main(argv=None) -> int:
                   "projection": proj}
         (out / "qwen3b" / "timing.json").write_text(json.dumps(record, indent=1))
         log(json.dumps(record, indent=1))
-        log(f"projection: {proj['total_laptop_hours']:.1f} h for {', '.join(LAPTOP_ITEMS)} "
-            f"({proj['with_CutF_hours']:.1f} h with CutF); over 8 h: {proj['over_8h']}. Stopping (no --run).")
+        log(f"projection: {proj['total_laptop_hours']:.1f} h for {', '.join(LAPTOP_ITEMS)}; over 8 h: "
+            f"{proj['over_8h']}. Stopping (no --run).")
         return 0
     items = [x for x in args.items.split(",") if x]
     for item in items:

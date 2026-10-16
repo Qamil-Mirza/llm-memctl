@@ -123,7 +123,8 @@ else
 fi
 
 R3=$(( R7_CORE + R_JUDGE )); R2=$(( R3 + R_VNUM )); R1=$(( R2 + R_VDLG ))
-GEN=($PY scripts/exp37_elenchus.py --folds "$FOLDS" --backend "$ENGINE" --out "$OUT" --exp35 "$EXP35" --deadline "$DEADLINE")
+# Amendment 1 (9639186): the E3 fallback wording is the E3 wording for every call.
+GEN=($PY scripts/exp37_elenchus.py --folds "$FOLDS" --backend "$ENGINE" --out "$OUT" --exp35 "$EXP35" --deadline "$DEADLINE" --e3-fallback)
 run_stage elenchus_qwen3b "${GEN[@]}" --reader qwen3b --smoke --reserves "R1=$R1,R2=$R2,R3=$R3" \
   --plan "V,CutB,CutF,Pnum|Pname@R3|Vnum@R2|Vdlg@R1"
 if [ "$STAGE_RC" -eq 5 ]; then

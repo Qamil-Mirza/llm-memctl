@@ -79,7 +79,7 @@ def check_rows(rows: dict, d35) -> None:
     if len(engines) > 1:
         raise SystemExit(f"REFUSED: the §37 run directory mixes engines {engines}")
     shas = sorted({r["wording_sha256"] for rd in rows.values() for it in rd.values() for t in it.values() for r in t.values()})
-    allowed = {el.wording_sha256(a, b) for a in (False, True) for b in (False, True)}
+    allowed = {el.wording_sha256(a, True) for a in (False, True)}   # amendment 1: the E3 fallback, normaliser v2
     if len(shas) > 1 or not set(shas) <= allowed:
         raise SystemExit(f"REFUSED: wording sha256 {shas} (one of the committed wordings, one per run)")
     bad = [f"{r['item']}/{q}" for rd in rows.values() for it in rd.values() for t in it.values() for q, r in t.items()

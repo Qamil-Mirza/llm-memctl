@@ -30,7 +30,9 @@ Readings taken where the proposal is open (reported to the Advisor):
 6. Not-determined: the normalised reply equals or contains (as a whole-word phrase) one of the six normalised phrases.
 7. Normaliser number rule: a "number" is a run of digits with an optional decimal part, after the number-word mapping;
    the numeric rule applies only when each side has exactly one and neither side looks like a time or a date (h:mm,
-   d/m, a month name), so dates and times always go to the phrase rule.
+   d/m, a month name). Normaliser v2 (amendment 1, 9639186): when either side contains a number and the numeric rule
+   did not apply, m = 1 only on exact equality after normalisation; whole-word containment only when neither side
+   has a number.
 8. Calibration rows: the first 20 development candidate rows by question id; "another question's candidate" is the
    next row's candidate in that order (cyclic), skipping any whose normalised form equals this one's.
 9. Smoke E3: E3 runs on (candidate, d) when d is a real answer, else on (candidate, candidate), so every smoke row
@@ -65,7 +67,7 @@ MAX_TOKENS = {"E1": 24, "E2": 32, "E2d": 32, "E3": 1, "E3d": 1, "Vnum": 1}
 CALIBRATION_N, CALIBRATION_PASS = 20, 18
 GATE_AUROC, GATE_MARGIN = 0.65, 0.05
 SAMPLING = {"temperature": 0.0, "top_p": 1.0, "seed": 0, "greedy": True}
-NORMALISER_VERSION = "v1"
+NORMALISER_VERSION = "v2"
 
 
 def e3_text(fallback: bool = False) -> str:
@@ -265,14 +267,17 @@ def is_not_determined(text: str) -> bool:
 
 
 def same_answer(d: str, candidate: str) -> int:
-    """m: 1 if d and the candidate agree after normalisation (numeric rule when each side has exactly one number and
-    neither is a time or date; else equality or whole-word containment), else 0; empty after normalisation -> 0."""
+    """m (normaliser v2): 1 if d and the candidate agree after normalisation, else 0. Numeric rule when each side has
+    exactly one number and neither is a time or date; otherwise, if either side contains a number, exact equality
+    only; whole-word containment only when neither side has a number. Empty after normalisation -> 0."""
     a, b = normalise(d), normalise(candidate)
     if not a or not b:
         return 0
     na, nb = _NUMBER.findall(a), _NUMBER.findall(b)
     if len(na) == 1 and len(nb) == 1 and not looks_like_time_or_date(d) and not looks_like_time_or_date(candidate):
         return int(float(na[0]) == float(nb[0]))
+    if na or nb:  # v2 (amendment 1, 9639186): a number on either side and no numeric rule -> exact equality only
+        return int(a == b)
     if a == b:
         return 1
     return int(f" {a} " in f" {b} " or f" {b} " in f" {a} ")

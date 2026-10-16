@@ -323,6 +323,7 @@ def row_of(task: Task, reader: str, turn: str, engine, messages: list[dict], wor
             "prompt_sha256": ver.sha256(text), "intact_prompt_sha256": task.intact_prompt_sha256,
             "n_input_tokens": engine.n_tokens(text), "candidate": task.candidate,
             "candidate_source": task.candidate_source, "n_items": len(task.memory_lines), "extra": task.extra,
+            "normaliser_version": el.NORMALISER_VERSION,
             "stats": stats, **payload}
 
 
