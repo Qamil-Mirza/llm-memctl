@@ -2328,6 +2328,8 @@ accuracy-against-tokens frontier against FIFO + floor; the §13a decomposition. 
 
 ### 19a. Result: more turns pay; the chooser does not (2026-10-07)
 
+> **Record note (2026-10-16 audit, `research/audits/2026-10-16-thesis-direction-audit.md`, re-verified by sha256):** the ten `runs/lme_n4_head_f*_{a,b}/checkpoints/policy_best.pt` files are five distinct networks: head A f1 = f2, f3 = f4; head B f0 = f1, f2 = f3; head A f0 = head B f4. Per-fold results are therefore not ten independent trainings. Paired bootstraps are unaffected.
+
 All runs are at 4b44dfd, not dirty. The heads were trained at 325dc7f. Report:
 `runs/_pipelines/exp19_report.py` → `runs/exp19_gate_report.md`. There is no reader: a stub model answers, so the
 real prompt is built and counted. All-found is paired against the §15 head with a 95% bootstrap interval.
@@ -2567,6 +2569,8 @@ The differences are within the run-to-run variation of §15c. (The FIFO prompt t
 counted all questions, including refusal-scored ones.)
 
 ## 19d. Confirming the context-rot pair (2026-10-07; approved by the user, about $0.15; written before launch)
+
+> **Record note (2026-10-16 audit, `research/audits/2026-10-16-thesis-direction-audit.md`, re-verified by sha256):** the ten `runs/lme_n4_head_f*_{a,b}/checkpoints/policy_best.pt` files are five distinct networks: head A f1 = f2, f3 = f4; head B f0 = f1, f2 = f3; head A f0 = head B f4. So the "second head on a second host" on fold 4 was the same network as head A on fold 0, not an independent one. Paired bootstraps are unaffected.
 
 **Question.** §19c found, as an exploratory row, that the same head showing 16 turns instead of 8 puts more
 evidence in view but answers worse: −0.057 (−0.096, −0.019), with P(correct | in view) falling from 0.676 to
