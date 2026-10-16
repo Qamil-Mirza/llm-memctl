@@ -35,8 +35,9 @@ a pointer to the EXPERIMENTS.md section, instead of deleting it.
   must be reconciled with F3 (head ≈ LR) and must carry the 3-head and ±0.007 caveats.
 - The cost table ends at §27–§28 ($12.58); §29 and §32 rows are missing.
 - Head A fold 0 and head B fold 4 are the same checkpoint (sha256 prefix `9f0be108`), and head B folds 0 = 1,
-  2 = 3: five distinct §19 networks across both heads. EXPERIMENTS.md §19a/§19d need a footnote (found by the
-  2026-10-16 audit, `research/audits/2026-10-16-thesis-direction-audit.md` §1.8).
+  2 = 3: five distinct §19 networks across both heads. Found by the 2026-10-16 audit
+  (`research/audits/2026-10-16-thesis-direction-audit.md` §1.8); record notes under §19a and §19d in
+  EXPERIMENTS.md at 9289b52 (Executor, hashes re-verified). Resolved.
 - No interpretability or abstention literature note exists for §33–§37 (`docs/literature/` covers memory
   controllers only).
 - The §32 spot-check file times (Oct 9, about 21:xx local) and the text's date (2026-10-10) differ,
