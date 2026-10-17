@@ -6354,6 +6354,81 @@ deployed accuracy (§35 gives that). One benchmark, one prompt family, one 3B.
 in-pod self-stop wired (RUNPOD_POD_ID exported), laptop DELETE as the backstop. The account balance moved 12.452 →
 12.126, $0.33 for both runs, against an approved hard stop of $0.59 each. All experiments ≈ $17.55.
 
+## 37. Can the 3B be cross-examined into checking its own answer? An elenchus in three turns (2026-10-16, pre-registered; closed on the development folds)
+
+**Status: CLOSED, development only. The development gate FAILED: AUROC(e) 0.505 (0.431, 0.574) on folds 0–1, 84
+candidate rows. No pod was quoted and no confirmation-fold number exists.** Pre-registration
+`research/proposals/2026-10-16-exp37-elenchus.md` (Advisor; d993eca, revision 2 714da06, amendment 1 9639186). The
+user approved the free laptop run (D-25, b0f955d). Reviews: `research/reviews/2026-10-16-exp37-build.md` (ACCEPT on
+condition of the normaliser fix) and `research/reviews/2026-10-16-exp37-dev.md` (gate FAIL confirmed, 06bc575). Code:
+`memctl/analysis/elenchus.py`, `scripts/exp37_elenchus.py`, `scripts/exp37_dev.py`, `scripts/exp37_pod.sh` (built, never
+run on a pod), `scripts/exp37_report.py` (213636e, 02332a2); tests `tests/test_elenchus.py` (73). Rows
+`runs/exp37_dev/qwen3b/<item>/<turn>.fold<k>.jsonl`; report `runs/exp37_report_dev.md` (5c5c9ef).
+
+**Why.** The user asked: "Did we try putting the 3B model through Socrates's elenchus?" Every §36 check was one shot and
+one token, and the one-shot failed (§36b AUROC 0.573). An elenchus splits the judgment into smaller steps. First, state
+the grounds. Second, derive what the grounds say on their own. Third, face the comparison.
+
+**Design.** The candidates, labels and population are §36's: the §35 arm-B answers, the §35 judge verdicts, 84 dev rows
+with a candidate. Each memory item is numbered `[k]`. Turn E1: "which memory lines is this answer based on?", parsed to
+a set G, with g = 1 if G is non-empty. Turn E2 is blind: only the cited items and the question, with the candidate not
+shown; it returns d, or "not determined". Turn E3: a one-letter same / partly / different comparison of the candidate
+and d, scored by its logprobs as a. The score is e = 0 if g = 0 or d is "not determined", else a. Beside it: e_mech
+(g × mechanical agreement, normaliser v2) and g alone. Controls: A (Cut-B), G (whether G hits an annotated evidence
+item), P (a planted wrong thesis in the intact memory), S (blind against in-dialogue derivation), and V-num (§36b frame
+(a) on the numbered block). The gate to quote a pod was: dev AUROC(e) ≥ 0.65 and ≥ AUROC(s, dev) + 0.05 = 0.609.
+Laptop CPU, transformers fp32, greedy; 2 h 23 min wall time.
+
+**Calibration first (label-free, 20 dev rows).** The primary E3 wording called identical pairs the same 17/20 times
+(FAIL; the bar is 18/20). The one pre-fixed fallback ("Are Answer 1 and Answer 2 the same answer?") passed: 18/20
+identical called the same, 19/20 different called different. It was re-run at the start of the run with identical
+counts. Every miss was argmax B at label mass 1.0: the model is cautious, not off-format. The wording sha changed
+b48048c2 → 7ef8e033 because NORMALISER_VERSION is part of the hash (v1 → v2 at 02332a2). Compliance: E1 parses on ≥ 0.98
+of rows on every item; E3 mass ≥ 0.5 on every E3 row that ran.
+
+**Result: the chain stops at the derivation.** Intact: g = 1 on 62 of 84 (0.738). Blind E2 returns "not determined" on
+52 of those 62, so E3 runs on only 10 rows (6 judged correct, 4 judged wrong), and e = 0 on 74 of 84. In dialogue the
+same thing happens: E2d returns "not determined" on 56 of 62, with 6 derivations. Cut-B: 22 grounded, 17 not determined,
+5 derived. Cut-F: 25, 22, 3. Planted numbers: 8, 7, 1. Planted names: g = 0 on all 13.
+
+| claim (dev folds 0–1, 84 candidate rows) | estimate (95% CI) | verdict |
+|---|---|---|
+| Claim 1: AUROC(e) | 0.505 (0.431, 0.574) | NOT SHOWN; gate FAIL (0.505 < 0.65 and < 0.609) |
+| beside: AUROC(g); AUROC(e_mech); AUROC(V-num); §36b AUROC(s) | 0.576 (0.481, 0.675); 0.521 (0.460, 0.578); 0.548 (0.422, 0.675); 0.559 (0.433, 0.681) | descriptive |
+| Claim 2: AUROC(e) − AUROC(s), paired | −0.055 (−0.181, +0.071) | not tested |
+| Claim 3: risk(C3e) − risk(C0) at C0's coverage | −0.057 (−0.121, +0.004) | not tested |
+| AUROC(e′), in-dialogue derivation | 0.537 (0.486, 0.589) | descriptive, never primary |
+
+**Controls (descriptive).**
+- A: g drops from 0.738 to 0.262 when the evidence is cut (+0.476 (+0.369, +0.582)), but e on judged-correct rows barely
+  moves (+0.038 (−0.055, +0.135)). The Cut-F pass rate (e ≥ 0.5) is 0.050.
+- G: the cited set contains an annotated evidence item on 0.560 (0.455, 0.667) of intact rows and 0.000 of Cut-B rows.
+- P: the chain rejects the planted wrong number 7 of 7 times but accepts the true candidate only 1 of 7 ("follows the
+  evidence" 1/7). For names it rejects the planted value 9 of 9 and accepts the true one 3 of 9 (3/9). Rejecting planted
+  values means little here, because the chain rejects almost everything.
+- S: the derivation reproduces a judged-wrong candidate 0.059 of the time blind and 0.000 in dialogue; for
+  judged-correct candidates, 0.100 and 0.100. No pull of the model's own thesis is visible; the chain says "not
+  determined" either way.
+
+Costs: on the laptop, 1.86 calls, 1,231 input tokens and 26.4 s per intact candidate, against §36b's single call.
+
+**Reading (the pre-registered third reading).** The 3B cannot ground and derive its own answers reliably. Its citations
+miss the evidence about half the time. Given only the items it cited, it says the answer is not determined five times
+out of six, including on rows where those items determine it. One observation, not a measurement: the review lists rows
+00ca467f and 06db6396, where the cited items do state the answer and E2 still returned "not determined". So the
+bottleneck is extraction (consistent with §34c), and the score again carries evidence presence (g drop +0.476; G 0.56
+against 0.00), not candidate correctness. The self-verification route of Q14 closes with a second negative (§36b one
+shot, §37 three turns). Only a larger checker (Q15) remains. No other E2 wording was tried: none was pre-registered, and
+a retry would be a post-hoc wording search.
+
+**Caveats.** Development folds only, 84 rows, wide intervals. The gate can refuse a true effect, the cheaper error.
+Laptop fp32 transformers, not the pod's bf16 vLLM. Every score is elicited, three new prompts. Labels come from one 7B
+judge (audit 58 of 60). P has n 7 and 9. Claim 4 (repair) has no number (no judge on the laptop). One benchmark, one
+prompt family, one 3B.
+
+**Spend.** $0 (laptop). All experiments ≈ $17.55.
+
+
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
 **Status: STOPPED at the regeneration sanity check; no gradient was computed.** Secondary to §34 (the J-lens
