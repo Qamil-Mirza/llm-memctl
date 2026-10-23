@@ -80,3 +80,39 @@ with k and reaches Steer-all by k = 4. Random-0 ≤ 0.1. Damage-0 none.
    the full text is identical. Identical text on most rows would show the step-0 push alone fixes the whole answer.
 7. Reuse guard as built: Steer-all rows are reused only if engine, classifier version, wording sha, vector sha and max
    tokens all match the §38 dev manifest.
+
+## Amendment 2 (Advisor, 2026-10-23, after the development run; D-33 item 1): the first-token-only clean-cache control (§39b)
+
+**Question.** §39's Steer-0 leaves the pushed `:` key/value above layer 29 in the cache for every later token (caveat F1).
+Is the effect carried by the first generated token, or by that pushed state? This arm removes the pushed state entirely.
+
+**Arms** (the same 28 dev R rows, engine, wording sha, max 16 tokens, greedy; folds 0–1 only; laptop fp32; $0):
+- **Steer-first (primary).** The first generated token of §39's Steer-0 row (`gen_ids[0]` from
+  `runs/exp39_dev/qwen3b/arms.jsonl`, byte-exact, with a check below) is fed as a forced token on an **unpushed** cache:
+  unpushed prefill through `:` (the A arm's cache), then the forced token, then greedy continuation with no hook at any
+  step. No pushed state exists anywhere.
+- **Steer-first-cut (descriptive).** The same on the evidence-cut prompt, forced token from the Steer-0-cut row.
+- **Gold-first (descriptive ceiling).** The first token of the gold string (tokenised as the model would emit it after
+  `Answer:`, with the leading space) forced on the unpushed cache: does any answer-start token let the model continue an
+  answer from the evidence?
+- **Unknown-first (sanity).** The token ` unknown` forced on the unpushed cache. Must equal the A row byte-exact on
+  28/28, otherwise the forcing path is wrong: stop, exit 4, before any other arm.
+- **Step-0 first-token check.** Steer-0 re-run for one new token on all 28 rows; its token must equal the §39 Steer-0
+  first token on 28/28, otherwise stop, exit 5.
+- Reproduction as in §39 (flag rule ≥ 0.8 against the §38 dev rows; byte identity ≥ 0.9, stop below); the unsteered
+  prefills come first so both stops fire before any forced or steered output.
+
+**Readings, fixed now** (exact counts; aF = ans(Steer-first), gF = D1 gold(Steer-first); a0 = 26, g0 = 7 from §39):
+- **Token carries it:** 5·aF ≥ 4·a0 (aF ≥ 21) and 5·gF ≥ 4·g0 (gF ≥ 6).
+- **State needed:** 2·aF < a0 (aF ≤ 12).
+- **Split:** aF ≥ 21 and 2·gF < g0 (gF ≤ 3): the token keeps the model answering, the pushed state keeps it right.
+- Otherwise undetermined on 28 rows. Per-row table in every case: forced token, Steer-first text, Steer-0 text, same
+  text yes/no, divergence index. Gold-first and Unknown-first beside, descriptive. Soft-refusal count as in the §39 review.
+- **Prediction, recorded now:** split or undetermined, aF about 0.6–0.9 of a0 and gF ≤ 4. In §39 the texts left
+  Steer-all at token 1–2 on 11 rows, so later tokens do read the pushed state, and a leading token such as "The" or
+  "Favorite" need not commit to content.
+
+**Time and rules.** About 28 × 4 arms × ≤ 24 s plus reproduction, about 1.0–1.2 h conservative; `--timing-only` first
+and the projection sent before `--run`; `GUARD_VM_GB=22`; rows under `runs/exp39b_dev/qwen3b/`, report
+`runs/exp39b_report_dev.md`; the script refuses folds other than 0–1. Build, then the Advisor's review, then run.
+Development only; no claim on folds 2–4; no pod.
