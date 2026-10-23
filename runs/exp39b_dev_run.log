@@ -1,0 +1,224 @@
+direction: runs/exp38_dev/qwen3b/directions.npz sha256 be1e3a09bdb5157d24126ebe16b14c035d429ebd51409e9b615b347c5b29f921; v_29 sha256 a7f967ecdf2f59a9e1f64d99e366d33011f27daa8b09b18f5ff33d1e1ba20c6c; Steer-0 vector 2 * v_29 sha256 e0000366813f3c94cf4875c5ba948fc7f4bac220099cc8848edb79196045d71c (step-0 check only)
+populations (folds [0, 1]): R 28; pairs 13; unseen 15; damage 8
+§39 rows: runs/exp39_dev/qwen3b/arms.jsonl sha256 03d5ac981812cb240d7c5439a3c1b49ec1d816dea9c41c332ef605581b48d212
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/434 [00:00<?, ?it/s]Loading weights:   0%|          | 1/434 [00:00<01:36,  4.49it/s]Loading weights:  17%|█▋        | 75/434 [00:00<00:01, 274.82it/s]Loading weights:  26%|██▌       | 113/434 [00:00<00:01, 285.54it/s]Loading weights:  34%|███▍      | 148/434 [00:00<00:00, 294.54it/s]Loading weights:  42%|████▏     | 182/434 [00:00<00:00, 303.56it/s]Loading weights:  50%|████▉     | 215/434 [00:00<00:00, 302.00it/s]Loading weights:  57%|█████▋    | 247/434 [00:00<00:00, 287.62it/s]Loading weights:  64%|██████▍   | 277/434 [00:01<00:00, 286.63it/s]Loading weights:  71%|███████   | 307/434 [00:01<00:00, 279.71it/s]Loading weights:  78%|███████▊  | 339/434 [00:01<00:00, 276.50it/s]Loading weights:  86%|████████▋ | 375/434 [00:01<00:00, 287.29it/s]Loading weights:  95%|█████████▍| 411/434 [00:01<00:00, 285.87it/s]Loading weights: 100%|██████████| 434/434 [00:01<00:00, 282.83it/s]
+engine hf-transformers-5.17.0-cpu-float32, model loaded in 6 s
+§39 Steer-0 rows verified and copied: 56 (['A', 'cut']) of steer:L29:a2:vnorm:s0, source sha256 03d5ac981812cb240d7c5439a3c1b49ec1d816dea9c41c332ef605581b48d212; engine, wording, vector and input shas match
+timing from runs/exp39b_dev/qwen3b/timing.json
+timing: prefill 14.2 ms/token, decode 0.76 s/token, cache copy 0.02 s
+projection: 1.17 h conservative (1.01 h optimistic); by stage repro 0.33 h, unknown_first 0.15 h, step0_check 0.14 h, steer_gold_first 0.33 h, steer_first_cut 0.21 h
+== (i) reproduction
+  [repro R A none] 37f165cf refusal    'unknown'
+  [repro R B none] 37f165cf refusal    'unknown'
+  [repro R A none] 4388e9dd refusal    'unknown'
+  [repro R B none] 4388e9dd refusal    'unknown'
+  [repro R A none] 4adc0475 refusal    'unknown'
+  [repro R B none] 4adc0475 answer     '5 goals and 2 assists'
+  [repro R A none] 4bc144e2 refusal    'unknown'
+  [repro R B none] 4bc144e2 answer     '$65'
+  [repro R A none] 51b23612 refusal    'unknown'
+  [repro R B none] 51b23612 refusal    'unknown'
+  [repro R A none] 60d45044 refusal    'unknown'
+  [repro R B none] 60d45044 refusal    'unknown'
+  [repro R A none] 66f24dbb refusal    'unknown'
+  [repro R B none] 66f24dbb answer     'Yellow dress and a pair of earrings'
+  [repro R A none] 6ade9755 refusal    'unknown'
+  [repro R B none] 6ade9755 answer     'Serenity Yoga'
+  [repro R A none] 75832dbd refusal    'unknown'
+  [repro R B none] 75832dbd refusal    'unknown'
+  [repro R A none] 7e00a6cb refusal    'unknown'
+  [repro R B none] 7e00a6cb answer     'Stayokay Amsterdam Vondelpark'
+  [repro R A none] 89527b6b refusal    'unknown'
+  [repro R B none] 89527b6b refusal    'unknown'
+  [repro R A none] 89941a94 refusal    'unknown'
+  [repro R B none] 89941a94 refusal    'unknown'
+  [repro R A none] 8ebdbe50 refusal    'unknown'
+  [repro R B none] 8ebdbe50 answer     'Data Science certification'
+  [repro R A none] b320f3f8 refusal    'unknown'
+  [repro R B none] b320f3f8 answer     'Snaggletooth action figure'
+  [repro R A none] b6025781 refusal    'unknown'
+  [repro R B none] b6025781 refusal    'unknown'
+  [repro R A none] b86304ba refusal    'unknown'
+  [repro R B none] b86304ba refusal    'unknown'
+  [repro R A none] caf03d32 refusal    'unknown'
+  [repro R B none] caf03d32 refusal    'unknown'
+  [repro R A none] cc539528 refusal    'unknown'
+  [repro R B none] cc539528 refusal    'unknown'
+  [repro R A none] d6062bb9 refusal    'unknown'
+  [repro R B none] d6062bb9 answer     '1998'
+  [repro R A none] d905b33f refusal    'unknown'
+  [repro R B none] d905b33f refusal    'unknown'
+  [repro R A none] fca70973 refusal    'unknown'
+  [repro R B none] fca70973 refusal    'unknown'
+  [repro R A none] gpt4_1d80365e refusal    'unknown'
+  [repro R B none] gpt4_1d80365e answer     '1 day'
+  [repro R A none] gpt4_213fd887 refusal    'unknown'
+  [repro R B none] gpt4_213fd887 answer     'charity 5K run'
+  [repro R A none] gpt4_4929293a refusal    'unknown'
+  [repro R B none] gpt4_4929293a refusal    'unknown'
+  [repro R A none] gpt4_4ef30696 refusal    'unknown'
+  [repro R B none] gpt4_4ef30696 answer     '35'
+  [repro R A none] gpt4_74aed68e refusal    'unknown'
+  [repro R B none] gpt4_74aed68e answer     '11'
+  [repro R A none] gpt4_88806d6e refusal    'unknown'
+  [repro R B none] gpt4_88806d6e answer     'Tom'
+  [repro R A none] gpt4_98f46fc6 refusal    'unknown'
+  [repro R B none] gpt4_98f46fc6 refusal    'unknown'
+  [repro C A none] 00ca467f answer     '2'
+  [repro C A none] 07741c44 answer     'under the bed'
+  [repro C A none] 0862e8bf answer     'Luna'
+  [repro C A none] 0bb5a684 answer     '7'
+  [repro C A none] 19b5f2b3 answer     '14 days'
+  [repro C A none] 1c549ce4 answer     '$140'
+  [repro C A none] 2133c1b5 answer     '3 months'
+  [repro C A none] 22d2cb42 answer     'Rhythm Central on Main St'
+reproduction (flag rule vs §38 dev rows) 0.889 (R 1.000); dropped ['07741c44', '0bb5a684', '19b5f2b3', '22d2cb42']
+byte-identity with the §38 dev rows 1.000 (64/64); flags match, bytes differ (kept, marked): []
+== (ii) Unknown-first on 28 R rows
+  [unknown_first R A forced:unknown_first] 37f165cf refusal    'unknown'
+  [unknown_first R A forced:unknown_first] 4388e9dd refusal    'unknown'
+  [unknown_first R A forced:unknown_first] 4adc0475 refusal    'unknown'
+  [unknown_first R A forced:unknown_first] 4bc144e2 refusal    'unknown'
+  [unknown_first R A forced:unknown_first] 51b23612 refusal    'unknown'
+  [unknown_first R A forced:unknown_first] 60d45044 refusal    'unknown'
+  [unknown_first R A forced:unknown_first] 66f24dbb refusal    'unknown'
+  [unknown_first R A forced:unknown_first] 6ade9755 refusal    'unknown'
+  [unknown_first R A forced:unknown_first] 75832dbd refusal    'unknown'
+  [unknown_first R A forced:unknown_first] 7e00a6cb refusal    'unknown'
+  [unknown_first R A forced:unknown_first] 89527b6b refusal    'unknown'
+  [unknown_first R A forced:unknown_first] 89941a94 refusal    'unknown'
+  [unknown_first R A forced:unknown_first] 8ebdbe50 refusal    'unknown'
+  [unknown_first R A forced:unknown_first] b320f3f8 refusal    'unknown'
+  [unknown_first R A forced:unknown_first] b6025781 refusal    'unknown'
+  [unknown_first R A forced:unknown_first] b86304ba refusal    'unknown'
+  [unknown_first R A forced:unknown_first] caf03d32 refusal    'unknown'
+  [unknown_first R A forced:unknown_first] cc539528 refusal    'unknown'
+  [unknown_first R A forced:unknown_first] d6062bb9 refusal    'unknown'
+  [unknown_first R A forced:unknown_first] d905b33f refusal    'unknown'
+  [unknown_first R A forced:unknown_first] fca70973 refusal    'unknown'
+  [unknown_first R A forced:unknown_first] gpt4_1d80365e refusal    'unknown'
+  [unknown_first R A forced:unknown_first] gpt4_213fd887 refusal    'unknown'
+  [unknown_first R A forced:unknown_first] gpt4_4929293a refusal    'unknown'
+  [unknown_first R A forced:unknown_first] gpt4_4ef30696 refusal    'unknown'
+  [unknown_first R A forced:unknown_first] gpt4_74aed68e refusal    'unknown'
+  [unknown_first R A forced:unknown_first] gpt4_88806d6e refusal    'unknown'
+  [unknown_first R A forced:unknown_first] gpt4_98f46fc6 refusal    'unknown'
+Unknown-first equals the A row byte-exact on 28/28
+== (iii) step-0 check (Steer-0, one new token) on 28 R rows
+  [step0 R A steer:L29:a2:vnorm:s0] 37f165cf refusal    'unknown'
+  [step0 R A steer:L29:a2:vnorm:s0] 4388e9dd answer     'Andy'
+  [step0 R A steer:L29:a2:vnorm:s0] 4adc0475 degenerate ''
+  [step0 R A steer:L29:a2:vnorm:s0] 4bc144e2 degenerate '$'
+  [step0 R A steer:L29:a2:vnorm:s0] 51b23612 answer     'Political'
+  [step0 R A steer:L29:a2:vnorm:s0] 60d45044 answer     'Favorite'
+  [step0 R A steer:L29:a2:vnorm:s0] 66f24dbb answer     'Yellow'
+  [step0 R A steer:L29:a2:vnorm:s0] 6ade9755 answer     'Ser'
+  [step0 R A steer:L29:a2:vnorm:s0] 75832dbd answer     'Romance'
+  [step0 R A steer:L29:a2:vnorm:s0] 7e00a6cb answer     'Red'
+  [step0 R A steer:L29:a2:vnorm:s0] 89527b6b answer     'The'
+  [step0 R A steer:L29:a2:vnorm:s0] 89941a94 answer     'The'
+  [step0 R A steer:L29:a2:vnorm:s0] 8ebdbe50 answer     'Data'
+  [step0 R A steer:L29:a2:vnorm:s0] b320f3f8 answer     'Blue'
+  [step0 R A steer:L29:a2:vnorm:s0] b6025781 answer     'Next'
+  [step0 R A steer:L29:a2:vnorm:s0] b86304ba refusal    'unknown'
+  [step0 R A steer:L29:a2:vnorm:s0] caf03d32 answer     'user'
+  [step0 R A steer:L29:a2:vnorm:s0] cc539528 answer     'Back'
+  [step0 R A steer:L29:a2:vnorm:s0] d6062bb9 degenerate ''
+  [step0 R A steer:L29:a2:vnorm:s0] d905b33f degenerate ''
+  [step0 R A steer:L29:a2:vnorm:s0] fca70973 answer     'Theme'
+  [step0 R A steer:L29:a2:vnorm:s0] gpt4_1d80365e degenerate ''
+  [step0 R A steer:L29:a2:vnorm:s0] gpt4_213fd887 answer     'Volley'
+  [step0 R A steer:L29:a2:vnorm:s0] gpt4_4929293a answer     'Cous'
+  [step0 R A steer:L29:a2:vnorm:s0] gpt4_4ef30696 degenerate ''
+  [step0 R A steer:L29:a2:vnorm:s0] gpt4_74aed68e degenerate ''
+  [step0 R A steer:L29:a2:vnorm:s0] gpt4_88806d6e answer     'Tom'
+  [step0 R A steer:L29:a2:vnorm:s0] gpt4_98f46fc6 answer     'First'
+step-0 first token equals the §39 Steer-0 first token on 28/28
+== (iv)-(vi) Steer-first, Gold-first (A prompt), Steer-first-cut (cut prompt) on 28 R rows
+  [forced R A forced:steer_first] 37f165cf refusal    'unknown'
+  [forced R A forced:gold_first] 37f165cf answer     '416'
+  [forced R A forced:steer_first] 4388e9dd answer     'Andy is described as wearing an untidy, stained w
+  [forced R A forced:gold_first] 4388e9dd answer     'Andy is described as wearing an untidy, stained w
+  [forced R A forced:steer_first] 4adc0475 answer     '5'
+  [forced R A forced:gold_first] 4adc0475 answer     '5'
+  [forced R A forced:steer_first] 4bc144e2 answer     '$55'
+  [forced R A forced:gold_first] 4bc144e2 answer     '$55'
+  [forced R A forced:steer_first] 51b23612 answer     'Political propaganda using humor and satire, such
+  [forced R A forced:gold_first] 51b23612 answer     'Nu, pogodi!'
+  [forced R A forced:steer_first] 60d45044 answer     'Favorite rice type not specified'
+  [forced R A forced:gold_first] 60d45044 answer     'Japanese short-grain rice'
+  [forced R A forced:steer_first] 66f24dbb answer     'Yellow dress and a pair of earrings'
+  [forced R A forced:gold_first] 66f24dbb answer     'a yellow dress and a pair of earrings'
+  [forced R A forced:steer_first] 6ade9755 answer     'Serenity Yoga'
+  [forced R A forced:gold_first] 6ade9755 answer     'Serenity Yoga'
+  [forced R A forced:steer_first] 75832dbd answer     'Romance'
+  [forced R A forced:gold_first] 75832dbd answer     'The memory does not contain the specific question
+  [forced R A forced:steer_first] 7e00a6cb answer     'Red Light District Hostel'
+  [forced R A forced:gold_first] 7e00a6cb answer     'International Budget Hostel'
+  [forced R A forced:steer_first] 89527b6b answer     'The Plesiosaur has a blue scaly body in the image
+  [forced R A forced:gold_first] 89527b6b answer     'The Plesiosaur has a blue scaly body in the image
+  [forced R A forced:steer_first] 89941a94 answer     'The memory does not contain information about the
+  [forced R A forced:gold_first] 89941a94 answer     'Yes'
+  [forced R A forced:steer_first] 8ebdbe50 answer     'Data Science certification'
+  [forced R A forced:gold_first] 8ebdbe50 answer     'Data Science certification'
+  [forced R A forced:steer_first] b320f3f8 answer     'Blue Snaggletooth action figure'
+  [forced R A forced:gold_first] b320f3f8 answer     'a rare blue Snaggletooth action figure'
+  [forced R A forced:steer_first] b6025781 answer     'Next steps could involve researching recipes that
+  [forced R A forced:gold_first] b6025781 answer     'The user needs new meal prep ideas and protein so
+  [forced R A forced:steer_first] b86304ba refusal    'unknown'
+  [forced R A forced:gold_first] b86304ba answer     'The value of the painting of a sunset is not spec
+  [forced R A forced:steer_first] caf03d32 answer     'user'
+  [forced R A forced:gold_first] caf03d32 answer     'The user has been struggling with slow cooker rec
+  [forced R A forced:steer_first] cc539528 answer     'Back-end programming languages like Ruby, Python,
+  [forced R A forced:gold_first] cc539528 answer     'I recommended learning a back-end programming lan
+  [forced R A forced:steer_first] d6062bb9 answer     '1998'
+  [forced R A forced:gold_first] d6062bb9 answer     '1998'
+  [forced R A forced:steer_first] d905b33f answer     '20%'
+  [forced R A forced:gold_first] d905b33f answer     '20%'
+  [forced R A forced:steer_first] fca70973 answer     'Theme park recommendations not provided in the gi
+  [forced R A forced:gold_first] fca70973 answer     'The user has some recent experience with theme pa
+  [forced R A forced:steer_first] gpt4_1d80365e answer     '1'
+  [forced R A forced:gold_first] gpt4_1d80365e answer     '1'
+  [forced R A forced:steer_first] gpt4_213fd887 answer     'Volleyball league'
+  [forced R A forced:gold_first] gpt4_213fd887 answer     'volleyball league'
+  [forced R A forced:steer_first] gpt4_4929293a answer     "Cousin's wedding"
+  [forced R A forced:gold_first] gpt4_4929293a answer     "Michael's engagement party"
+  [forced R A forced:steer_first] gpt4_4ef30696 answer     '35'
+  [forced R A forced:gold_first] gpt4_4ef30696 answer     '35'
+  [forced R A forced:steer_first] gpt4_74aed68e answer     '21'
+  [forced R A forced:gold_first] gpt4_74aed68e answer     '21'
+  [forced R A forced:steer_first] gpt4_88806d6e answer     'Tom'
+  [forced R A forced:gold_first] gpt4_88806d6e answer     'Tom'
+  [forced R A forced:steer_first] gpt4_98f46fc6 answer     'First event not mentioned'
+  [forced R A forced:gold_first] gpt4_98f46fc6 answer     "I don't have the specific dates or order of event
+  [forced R cut forced:steer_first_cut] 37f165cf refusal    'unknown'
+  [forced R cut forced:steer_first_cut] 4388e9dd answer     'Lunch break reminder set for 12:30 PM Monday thro
+  [forced R cut forced:steer_first_cut] 4adc0475 answer     'Goals: unknown'
+  [forced R cut forced:steer_first_cut] 4bc144e2 answer     '$15'
+  [forced R cut forced:steer_first_cut] 51b23612 answer     'Political propaganda examples discussed include a
+  [forced R cut forced:steer_first_cut] 60d45044 answer     'Rice'
+  [forced R cut forced:steer_first_cut] 66f24dbb answer     'Yellow dress and pair of earrings'
+  [forced R cut forced:steer_first_cut] 6ade9755 answer     'Yoga classes are mentioned, but the location is n
+  [forced R cut forced:steer_first_cut] 75832dbd refusal    'unknown'
+  [forced R cut forced:steer_first_cut] 7e00a6cb refusal    'unknown'
+  [forced R cut forced:steer_first_cut] 89527b6b answer     'The color of the scaly body of the Plesiosaur in 
+  [forced R cut forced:steer_first_cut] 89941a94 answer     '2023/04/29 (Sat) 2'
+  [forced R cut forced:steer_first_cut] 8ebdbe50 answer     'Data Science certification'
+  [forced R cut forced:steer_first_cut] b320f3f8 refusal    'unknown'
+  [forced R cut forced:steer_first_cut] b6025781 answer     'The user asked for meal prep suggestions on 2023/
+  [forced R cut forced:steer_first_cut] b86304ba refusal    'unknown'
+  [forced R cut forced:steer_first_cut] caf03d32 answer     'The user has been seeking advice on slow cooker r
+  [forced R cut forced:steer_first_cut] cc539528 answer     'Front-end: HTML, CSS, JavaScript; Back-end: Pytho
+  [forced R cut forced:steer_first_cut] d6062bb9 refusal    'Unknown'
+  [forced R cut forced:steer_first_cut] d905b33f answer     '20%'
+  [forced R cut forced:steer_first_cut] fca70973 refusal    'unknown'
+  [forced R cut forced:steer_first_cut] gpt4_1d80365e refusal    'unknown'
+  [forced R cut forced:steer_first_cut] gpt4_213fd887 answer     'Charity 5K run'
+  [forced R cut forced:steer_first_cut] gpt4_4929293a refusal    'Unknown'
+  [forced R cut forced:steer_first_cut] gpt4_4ef30696 answer     '2'
+  [forced R cut forced:steer_first_cut] gpt4_74aed68e answer     '29'
+  [forced R cut forced:steer_first_cut] gpt4_88806d6e refusal    'unknown'
+  [forced R cut forced:steer_first_cut] gpt4_98f46fc6 refusal    'Unknown'
+Gold-first tokenisation: in-context and alone ids disagree on no rows
+done; forward passes {'prefills': 176, 'generations': 204, 'tokens_generated': 724}. Report: scripts/exp39b_report.py --run-dir runs/exp39b_dev/qwen3b

@@ -1,0 +1,1647 @@
+{
+ "run_dir": "runs/exp39b_dev/qwen3b",
+ "source": "runs/exp38_dev/qwen3b",
+ "source39": "runs/exp39_dev/qwen3b",
+ "source39_arms_sha256": "03d5ac981812cb240d7c5439a3c1b49ec1d816dea9c41c332ef605581b48d212",
+ "engine": "hf-transformers-5.17.0-cpu-float32",
+ "layer": 29,
+ "vector_sha256": "e0000366813f3c94cf4875c5ba948fc7f4bac220099cc8848edb79196045d71c",
+ "forcing": "unpushed prefix cache through the token before ':'; ':' unpushed (argmax recorded, unused); forced id = gen_ids[0]; greedy, no hook at any step; EOS / newline stop (newline token kept); max new tokens counts the forced one",
+ "tokenisation": "first id of ids(continuation + text) after the ids(continuation) prefix (prefix asserted stable)",
+ "n_R": 28,
+ "n_pairs": 13,
+ "n_unseen": 15,
+ "repro": {
+  "R": {
+   "37f165cf": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "4388e9dd": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "4adc0475": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "4bc144e2": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "51b23612": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "60d45044": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "66f24dbb": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "6ade9755": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "75832dbd": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "7e00a6cb": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "89527b6b": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "89941a94": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "8ebdbe50": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "b320f3f8": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "b6025781": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "b86304ba": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "caf03d32": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "cc539528": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "d6062bb9": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "d905b33f": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "fca70973": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "gpt4_1d80365e": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "gpt4_213fd887": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "gpt4_4929293a": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "gpt4_4ef30696": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "gpt4_74aed68e": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "gpt4_88806d6e": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "gpt4_98f46fc6": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "B": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   }
+  },
+  "damage": {
+   "00ca467f": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "d1_new": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "07741c44": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": false,
+     "same_answer": true,
+     "d1_new": false,
+     "vs35": false,
+     "bytes": true
+    },
+    "ok": false
+   },
+   "0862e8bf": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "d1_new": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "0bb5a684": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": false,
+     "same_answer": true,
+     "d1_new": false,
+     "vs35": false,
+     "bytes": true
+    },
+    "ok": false
+   },
+   "19b5f2b3": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": false,
+     "same_answer": true,
+     "d1_new": false,
+     "vs35": false,
+     "bytes": true
+    },
+    "ok": false
+   },
+   "1c549ce4": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "d1_new": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "2133c1b5": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": true,
+     "same_answer": true,
+     "d1_new": true,
+     "vs35": true,
+     "bytes": true
+    },
+    "ok": true
+   },
+   "22d2cb42": {
+    "A": {
+     "flag_match": true,
+     "verdict_match": true,
+     "ok": false,
+     "same_answer": true,
+     "d1_new": false,
+     "vs35": false,
+     "bytes": true
+    },
+    "ok": false
+   }
+  },
+  "R_ok": [
+   "37f165cf",
+   "4388e9dd",
+   "4adc0475",
+   "4bc144e2",
+   "51b23612",
+   "60d45044",
+   "66f24dbb",
+   "6ade9755",
+   "75832dbd",
+   "7e00a6cb",
+   "89527b6b",
+   "89941a94",
+   "8ebdbe50",
+   "b320f3f8",
+   "b6025781",
+   "b86304ba",
+   "caf03d32",
+   "cc539528",
+   "d6062bb9",
+   "d905b33f",
+   "fca70973",
+   "gpt4_1d80365e",
+   "gpt4_213fd887",
+   "gpt4_4929293a",
+   "gpt4_4ef30696",
+   "gpt4_74aed68e",
+   "gpt4_88806d6e",
+   "gpt4_98f46fc6"
+  ],
+  "damage_ok": [
+   "00ca467f",
+   "0862e8bf",
+   "1c549ce4",
+   "2133c1b5"
+  ],
+  "dropped": [
+   "07741c44",
+   "0bb5a684",
+   "19b5f2b3",
+   "22d2cb42"
+  ],
+  "rate": 0.8888888888888888,
+  "rate_R": 1.0,
+  "pass": true,
+  "R_verdict_match": 28,
+  "gate_against": "\u00a738 dev rows (flag rule, bound 0.8)",
+  "byte_identity": {
+   "R/A/37f165cf": true,
+   "R/B/37f165cf": true,
+   "R/A/4388e9dd": true,
+   "R/B/4388e9dd": true,
+   "R/A/4adc0475": true,
+   "R/B/4adc0475": true,
+   "R/A/4bc144e2": true,
+   "R/B/4bc144e2": true,
+   "R/A/51b23612": true,
+   "R/B/51b23612": true,
+   "R/A/60d45044": true,
+   "R/B/60d45044": true,
+   "R/A/66f24dbb": true,
+   "R/B/66f24dbb": true,
+   "R/A/6ade9755": true,
+   "R/B/6ade9755": true,
+   "R/A/75832dbd": true,
+   "R/B/75832dbd": true,
+   "R/A/7e00a6cb": true,
+   "R/B/7e00a6cb": true,
+   "R/A/89527b6b": true,
+   "R/B/89527b6b": true,
+   "R/A/89941a94": true,
+   "R/B/89941a94": true,
+   "R/A/8ebdbe50": true,
+   "R/B/8ebdbe50": true,
+   "R/A/b320f3f8": true,
+   "R/B/b320f3f8": true,
+   "R/A/b6025781": true,
+   "R/B/b6025781": true,
+   "R/A/b86304ba": true,
+   "R/B/b86304ba": true,
+   "R/A/caf03d32": true,
+   "R/B/caf03d32": true,
+   "R/A/cc539528": true,
+   "R/B/cc539528": true,
+   "R/A/d6062bb9": true,
+   "R/B/d6062bb9": true,
+   "R/A/d905b33f": true,
+   "R/B/d905b33f": true,
+   "R/A/fca70973": true,
+   "R/B/fca70973": true,
+   "R/A/gpt4_1d80365e": true,
+   "R/B/gpt4_1d80365e": true,
+   "R/A/gpt4_213fd887": true,
+   "R/B/gpt4_213fd887": true,
+   "R/A/gpt4_4929293a": true,
+   "R/B/gpt4_4929293a": true,
+   "R/A/gpt4_4ef30696": true,
+   "R/B/gpt4_4ef30696": true,
+   "R/A/gpt4_74aed68e": true,
+   "R/B/gpt4_74aed68e": true,
+   "R/A/gpt4_88806d6e": true,
+   "R/B/gpt4_88806d6e": true,
+   "R/A/gpt4_98f46fc6": true,
+   "R/B/gpt4_98f46fc6": true,
+   "C/A/00ca467f": true,
+   "C/A/07741c44": true,
+   "C/A/0862e8bf": true,
+   "C/A/0bb5a684": true,
+   "C/A/19b5f2b3": true,
+   "C/A/1c549ce4": true,
+   "C/A/2133c1b5": true,
+   "C/A/22d2cb42": true
+  },
+  "byte_n": 64,
+  "byte_k": 64,
+  "byte_rate": 1.0,
+  "byte_pass": true,
+  "flags_ok_bytes_differ": [],
+  "rate_vs35": 0.8888888888888888
+ },
+ "unknown_check": {
+  "n": 28,
+  "k": 28,
+  "natural_first_is_forced_k": 28
+ },
+ "step0_check": {
+  "n": 28,
+  "k": 28
+ },
+ "arms": {
+  "A (unsteered)": {
+   "R": {
+    "n": 28,
+    "ans_k": 0,
+    "degenerate_k": 0,
+    "refusal_k": 28,
+    "gold_k": 0,
+    "soft_k": 0,
+    "ans": 0.0,
+    "degenerate": 0.0,
+    "refusal": 1.0,
+    "gold": 0.0
+   },
+   "pairs": {
+    "n": 13,
+    "ans_k": 0,
+    "degenerate_k": 0,
+    "refusal_k": 13,
+    "gold_k": 0,
+    "soft_k": 0,
+    "ans": 0.0,
+    "degenerate": 0.0,
+    "refusal": 1.0,
+    "gold": 0.0
+   },
+   "unseen": {
+    "n": 15,
+    "ans_k": 0,
+    "degenerate_k": 0,
+    "refusal_k": 15,
+    "gold_k": 0,
+    "soft_k": 0,
+    "ans": 0.0,
+    "degenerate": 0.0,
+    "refusal": 1.0,
+    "gold": 0.0
+   },
+   "missing": 0
+  },
+  "Steer-0 (\u00a739)": {
+   "R": {
+    "n": 28,
+    "ans_k": 26,
+    "degenerate_k": 0,
+    "refusal_k": 2,
+    "gold_k": 7,
+    "soft_k": 4,
+    "ans": 0.9285714285714286,
+    "degenerate": 0.0,
+    "refusal": 0.07142857142857142,
+    "gold": 0.25
+   },
+   "pairs": {
+    "n": 13,
+    "ans_k": 13,
+    "degenerate_k": 0,
+    "refusal_k": 0,
+    "gold_k": 6,
+    "soft_k": 0,
+    "ans": 1.0,
+    "degenerate": 0.0,
+    "refusal": 0.0,
+    "gold": 0.46153846153846156
+   },
+   "unseen": {
+    "n": 15,
+    "ans_k": 13,
+    "degenerate_k": 0,
+    "refusal_k": 2,
+    "gold_k": 1,
+    "soft_k": 4,
+    "ans": 0.8666666666666667,
+    "degenerate": 0.0,
+    "refusal": 0.13333333333333333,
+    "gold": 0.06666666666666667
+   },
+   "missing": 0
+  },
+  "Steer-first": {
+   "R": {
+    "n": 28,
+    "ans_k": 26,
+    "degenerate_k": 0,
+    "refusal_k": 2,
+    "gold_k": 7,
+    "soft_k": 4,
+    "ans": 0.9285714285714286,
+    "degenerate": 0.0,
+    "refusal": 0.07142857142857142,
+    "gold": 0.25
+   },
+   "pairs": {
+    "n": 13,
+    "ans_k": 13,
+    "degenerate_k": 0,
+    "refusal_k": 0,
+    "gold_k": 6,
+    "soft_k": 0,
+    "ans": 1.0,
+    "degenerate": 0.0,
+    "refusal": 0.0,
+    "gold": 0.46153846153846156
+   },
+   "unseen": {
+    "n": 15,
+    "ans_k": 13,
+    "degenerate_k": 0,
+    "refusal_k": 2,
+    "gold_k": 1,
+    "soft_k": 4,
+    "ans": 0.8666666666666667,
+    "degenerate": 0.0,
+    "refusal": 0.13333333333333333,
+    "gold": 0.06666666666666667
+   },
+   "missing": 0
+  },
+  "Steer-0-cut (\u00a739)": {
+   "R": {
+    "n": 28,
+    "ans_k": 17,
+    "degenerate_k": 0,
+    "refusal_k": 11,
+    "gold_k": 2,
+    "soft_k": 1,
+    "ans": 0.6071428571428571,
+    "degenerate": 0.0,
+    "refusal": 0.39285714285714285,
+    "gold": 0.07142857142857142
+   },
+   "pairs": {
+    "n": 13,
+    "ans_k": 8,
+    "degenerate_k": 0,
+    "refusal_k": 5,
+    "gold_k": 1,
+    "soft_k": 1,
+    "ans": 0.6153846153846154,
+    "degenerate": 0.0,
+    "refusal": 0.38461538461538464,
+    "gold": 0.07692307692307693
+   },
+   "unseen": {
+    "n": 15,
+    "ans_k": 9,
+    "degenerate_k": 0,
+    "refusal_k": 6,
+    "gold_k": 1,
+    "soft_k": 0,
+    "ans": 0.6,
+    "degenerate": 0.0,
+    "refusal": 0.4,
+    "gold": 0.06666666666666667
+   },
+   "missing": 0
+  },
+  "Steer-first-cut": {
+   "R": {
+    "n": 28,
+    "ans_k": 17,
+    "degenerate_k": 0,
+    "refusal_k": 11,
+    "gold_k": 2,
+    "soft_k": 1,
+    "ans": 0.6071428571428571,
+    "degenerate": 0.0,
+    "refusal": 0.39285714285714285,
+    "gold": 0.07142857142857142
+   },
+   "pairs": {
+    "n": 13,
+    "ans_k": 8,
+    "degenerate_k": 0,
+    "refusal_k": 5,
+    "gold_k": 1,
+    "soft_k": 1,
+    "ans": 0.6153846153846154,
+    "degenerate": 0.0,
+    "refusal": 0.38461538461538464,
+    "gold": 0.07692307692307693
+   },
+   "unseen": {
+    "n": 15,
+    "ans_k": 9,
+    "degenerate_k": 0,
+    "refusal_k": 6,
+    "gold_k": 1,
+    "soft_k": 0,
+    "ans": 0.6,
+    "degenerate": 0.0,
+    "refusal": 0.4,
+    "gold": 0.06666666666666667
+   },
+   "missing": 0
+  },
+  "Gold-first": {
+   "R": {
+    "n": 28,
+    "ans_k": 28,
+    "degenerate_k": 0,
+    "refusal_k": 0,
+    "gold_k": 13,
+    "soft_k": 2,
+    "ans": 1.0,
+    "degenerate": 0.0,
+    "refusal": 0.0,
+    "gold": 0.4642857142857143
+   },
+   "pairs": {
+    "n": 13,
+    "ans_k": 13,
+    "degenerate_k": 0,
+    "refusal_k": 0,
+    "gold_k": 8,
+    "soft_k": 0,
+    "ans": 1.0,
+    "degenerate": 0.0,
+    "refusal": 0.0,
+    "gold": 0.6153846153846154
+   },
+   "unseen": {
+    "n": 15,
+    "ans_k": 15,
+    "degenerate_k": 0,
+    "refusal_k": 0,
+    "gold_k": 5,
+    "soft_k": 2,
+    "ans": 1.0,
+    "degenerate": 0.0,
+    "refusal": 0.0,
+    "gold": 0.3333333333333333
+   },
+   "missing": 0
+  },
+  "Unknown-first": {
+   "R": {
+    "n": 28,
+    "ans_k": 0,
+    "degenerate_k": 0,
+    "refusal_k": 28,
+    "gold_k": 0,
+    "soft_k": 0,
+    "ans": 0.0,
+    "degenerate": 0.0,
+    "refusal": 1.0,
+    "gold": 0.0
+   },
+   "pairs": {
+    "n": 13,
+    "ans_k": 0,
+    "degenerate_k": 0,
+    "refusal_k": 13,
+    "gold_k": 0,
+    "soft_k": 0,
+    "ans": 0.0,
+    "degenerate": 0.0,
+    "refusal": 1.0,
+    "gold": 0.0
+   },
+   "unseen": {
+    "n": 15,
+    "ans_k": 0,
+    "degenerate_k": 0,
+    "refusal_k": 15,
+    "gold_k": 0,
+    "soft_k": 0,
+    "ans": 0.0,
+    "degenerate": 0.0,
+    "refusal": 1.0,
+    "gold": 0.0
+   },
+   "missing": 0
+  }
+ },
+ "a0_g0_from_39": {
+  "n": 28,
+  "a0": 26,
+  "g0": 7,
+  "assertion": "equal to the pre-registered a0 = 26, g0 = 7"
+ },
+ "reading": {
+  "n": 28,
+  "aF": 26,
+  "gF": 7,
+  "a0": 26,
+  "g0": 7,
+  "aF_ge_08a0": true,
+  "gF_ge_08g0": true,
+  "aF_lt_05a0": false,
+  "gF_lt_05g0": false,
+  "verdict": "token carries it",
+  "meaning": "the first generated token alone keeps the model answering and right; the pushed ':' state is not needed",
+  "why_undetermined": [],
+  "thresholds": {
+   "carries_aF_min": 21,
+   "carries_gF_min": 6,
+   "state_aF_max": 12,
+   "split_gF_max": 3
+  }
+ },
+ "identity": {
+  "n": 28,
+  "same_text_k": 26,
+  "divergence_counts": {
+   "1": 1,
+   "2": 1
+  },
+  "rows": {
+   "37f165cf": {
+    "forced": " unknown",
+    "forced_id": 9788,
+    "natural_first": 9788,
+    "steer_first": "unknown",
+    "steer_first_cls": "refusal",
+    "steer_first_gold": false,
+    "steer0": "unknown",
+    "steer0_cls": "refusal",
+    "steer0_gold": false,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " ",
+    "gold_first": "416",
+    "gold_first_cls": "answer",
+    "gold_first_gold": false,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "4388e9dd": {
+    "forced": " Andy",
+    "forced_id": 24832,
+    "natural_first": 9788,
+    "steer_first": "Andy is described as wearing an untidy, stained white shirt.",
+    "steer_first_cls": "answer",
+    "steer_first_gold": false,
+    "steer0": "Andy is described as wearing an untidy, stained white shirt.",
+    "steer0_cls": "answer",
+    "steer0_gold": false,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " Andy",
+    "gold_first": "Andy is described as wearing an untidy, stained white shirt.",
+    "gold_first_cls": "answer",
+    "gold_first_gold": false,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "4adc0475": {
+    "forced": " ",
+    "forced_id": 220,
+    "natural_first": 9788,
+    "steer_first": "5",
+    "steer_first_cls": "answer",
+    "steer_first_gold": true,
+    "steer0": "5",
+    "steer0_cls": "answer",
+    "steer0_gold": true,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " ",
+    "gold_first": "5",
+    "gold_first_cls": "answer",
+    "gold_first_gold": true,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "4bc144e2": {
+    "forced": " $",
+    "forced_id": 400,
+    "natural_first": 9788,
+    "steer_first": "$55",
+    "steer_first_cls": "answer",
+    "steer_first_gold": false,
+    "steer0": "$55",
+    "steer0_cls": "answer",
+    "steer0_gold": false,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " $",
+    "gold_first": "$55",
+    "gold_first_cls": "answer",
+    "gold_first_gold": false,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "51b23612": {
+    "forced": " Political",
+    "forced_id": 30497,
+    "natural_first": 9788,
+    "steer_first": "Political propaganda using humor and satire, such as the examples mentioned, did not include",
+    "steer_first_cls": "answer",
+    "steer_first_gold": false,
+    "steer0": "Political propaganda examples using humor and satire, such as the Soviet cartoon mocking Western culture",
+    "steer0_cls": "answer",
+    "steer0_gold": false,
+    "same_text": false,
+    "divergence": 2,
+    "gold_first_forced": " Nu",
+    "gold_first": "Nu, pogodi!",
+    "gold_first_cls": "answer",
+    "gold_first_gold": true,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "60d45044": {
+    "forced": " Favorite",
+    "forced_id": 39722,
+    "natural_first": 9788,
+    "steer_first": "Favorite rice type not specified",
+    "steer_first_cls": "answer",
+    "steer_first_gold": false,
+    "steer0": "Favorite rice type not specified",
+    "steer0_cls": "answer",
+    "steer0_gold": false,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " Japanese",
+    "gold_first": "Japanese short-grain rice",
+    "gold_first_cls": "answer",
+    "gold_first_gold": true,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "66f24dbb": {
+    "forced": " Yellow",
+    "forced_id": 25462,
+    "natural_first": 9788,
+    "steer_first": "Yellow dress and a pair of earrings",
+    "steer_first_cls": "answer",
+    "steer_first_gold": true,
+    "steer0": "Yellow dress and a pair of earrings",
+    "steer0_cls": "answer",
+    "steer0_gold": true,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " a",
+    "gold_first": "a yellow dress and a pair of earrings",
+    "gold_first_cls": "answer",
+    "gold_first_gold": true,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "6ade9755": {
+    "forced": " Ser",
+    "forced_id": 8245,
+    "natural_first": 9788,
+    "steer_first": "Serenity Yoga",
+    "steer_first_cls": "answer",
+    "steer_first_gold": true,
+    "steer0": "Serenity Yoga",
+    "steer0_cls": "answer",
+    "steer0_gold": true,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " Ser",
+    "gold_first": "Serenity Yoga",
+    "gold_first_cls": "answer",
+    "gold_first_gold": true,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "75832dbd": {
+    "forced": " Romance",
+    "forced_id": 51156,
+    "natural_first": 9788,
+    "steer_first": "Romance",
+    "steer_first_cls": "answer",
+    "steer_first_gold": false,
+    "steer0": "Romance",
+    "steer0_cls": "answer",
+    "steer0_gold": false,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " The",
+    "gold_first": "The memory does not contain the specific question about recent publications or conferences.",
+    "gold_first_cls": "answer",
+    "gold_first_gold": false,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "7e00a6cb": {
+    "forced": " Red",
+    "forced_id": 3731,
+    "natural_first": 9788,
+    "steer_first": "Red Light District Hostel",
+    "steer_first_cls": "answer",
+    "steer_first_gold": false,
+    "steer0": "Red Light District Hostel",
+    "steer0_cls": "answer",
+    "steer0_gold": false,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " International",
+    "gold_first": "International Budget Hostel",
+    "gold_first_cls": "answer",
+    "gold_first_gold": true,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "89527b6b": {
+    "forced": " The",
+    "forced_id": 576,
+    "natural_first": 9788,
+    "steer_first": "The Plesiosaur has a blue scaly body in the image.",
+    "steer_first_cls": "answer",
+    "steer_first_gold": false,
+    "steer0": "The Plesiosaur has a blue scaly body in the image.",
+    "steer0_cls": "answer",
+    "steer0_gold": false,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " The",
+    "gold_first": "The Plesiosaur has a blue scaly body in the image.",
+    "gold_first_cls": "answer",
+    "gold_first_gold": false,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "89941a94": {
+    "forced": " The",
+    "forced_id": 576,
+    "natural_first": 9788,
+    "steer_first": "The memory does not contain information about the user having other bikes besides the mountain bike",
+    "steer_first_cls": "answer",
+    "steer_first_gold": false,
+    "steer0": "The memory does not contain information about the user having other bikes besides the mountain bike",
+    "steer0_cls": "answer",
+    "steer0_gold": false,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " Yes",
+    "gold_first": "Yes",
+    "gold_first_cls": "answer",
+    "gold_first_gold": false,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "8ebdbe50": {
+    "forced": " Data",
+    "forced_id": 2885,
+    "natural_first": 9788,
+    "steer_first": "Data Science certification",
+    "steer_first_cls": "answer",
+    "steer_first_gold": true,
+    "steer0": "Data Science certification",
+    "steer0_cls": "answer",
+    "steer0_gold": true,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " Data",
+    "gold_first": "Data Science certification",
+    "gold_first_cls": "answer",
+    "gold_first_gold": true,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "b320f3f8": {
+    "forced": " Blue",
+    "forced_id": 8697,
+    "natural_first": 9788,
+    "steer_first": "Blue Snaggletooth action figure",
+    "steer_first_cls": "answer",
+    "steer_first_gold": false,
+    "steer0": "Blue Snaggletooth action figure",
+    "steer0_cls": "answer",
+    "steer0_gold": false,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " a",
+    "gold_first": "a rare blue Snaggletooth action figure",
+    "gold_first_cls": "answer",
+    "gold_first_gold": true,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "b6025781": {
+    "forced": " Next",
+    "forced_id": 9295,
+    "natural_first": 9788,
+    "steer_first": "Next steps could involve researching recipes that incorporate quinoa and roasted vegetables as protein sources",
+    "steer_first_cls": "answer",
+    "steer_first_gold": false,
+    "steer0": "Next week, user could try recipes that incorporate quinoa and roasted vegetables as protein",
+    "steer0_cls": "answer",
+    "steer0_gold": false,
+    "same_text": false,
+    "divergence": 1,
+    "gold_first_forced": " The",
+    "gold_first": "The user needs new meal prep ideas and protein sources for quinoa and roasted vegetables",
+    "gold_first_cls": "answer",
+    "gold_first_gold": false,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "b86304ba": {
+    "forced": " unknown",
+    "forced_id": 9788,
+    "natural_first": 9788,
+    "steer_first": "unknown",
+    "steer_first_cls": "refusal",
+    "steer_first_gold": false,
+    "steer0": "unknown",
+    "steer0_cls": "refusal",
+    "steer0_gold": false,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " The",
+    "gold_first": "The value of the painting of a sunset is not specified in the given memory.",
+    "gold_first_cls": "answer",
+    "gold_first_gold": false,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "caf03d32": {
+    "forced": " user",
+    "forced_id": 1196,
+    "natural_first": 9788,
+    "steer_first": "user",
+    "steer_first_cls": "answer",
+    "steer_first_gold": false,
+    "steer0": "user",
+    "steer0_cls": "answer",
+    "steer0_gold": false,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " The",
+    "gold_first": "The user has been struggling with slow cooker recipes and is seeking advice on improving results",
+    "gold_first_cls": "answer",
+    "gold_first_gold": false,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "cc539528": {
+    "forced": " Back",
+    "forced_id": 6841,
+    "natural_first": 9788,
+    "steer_first": "Back-end programming languages like Ruby, Python, or PHP.",
+    "steer_first_cls": "answer",
+    "steer_first_gold": false,
+    "steer0": "Back-end programming languages like Ruby, Python, or PHP.",
+    "steer0_cls": "answer",
+    "steer0_gold": false,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " I",
+    "gold_first": "I recommended learning a back-end programming language such as Ruby, Python, or PHP",
+    "gold_first_cls": "answer",
+    "gold_first_gold": true,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "d6062bb9": {
+    "forced": " ",
+    "forced_id": 220,
+    "natural_first": 9788,
+    "steer_first": "1998",
+    "steer_first_cls": "answer",
+    "steer_first_gold": false,
+    "steer0": "1998",
+    "steer0_cls": "answer",
+    "steer0_gold": false,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " ",
+    "gold_first": "1998",
+    "gold_first_cls": "answer",
+    "gold_first_gold": false,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "d905b33f": {
+    "forced": " ",
+    "forced_id": 220,
+    "natural_first": 9788,
+    "steer_first": "20%",
+    "steer_first_cls": "answer",
+    "steer_first_gold": true,
+    "steer0": "20%",
+    "steer0_cls": "answer",
+    "steer0_gold": true,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " ",
+    "gold_first": "20%",
+    "gold_first_cls": "answer",
+    "gold_first_gold": true,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "fca70973": {
+    "forced": " Theme",
+    "forced_id": 16442,
+    "natural_first": 9788,
+    "steer_first": "Theme park recommendations not provided in the given conversation.",
+    "steer_first_cls": "answer",
+    "steer_first_gold": false,
+    "steer0": "Theme park recommendations not provided in the given conversation.",
+    "steer0_cls": "answer",
+    "steer0_gold": false,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " The",
+    "gold_first": "The user has some recent experience with theme parks and may have some ideas based on",
+    "gold_first_cls": "answer",
+    "gold_first_gold": false,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "gpt4_1d80365e": {
+    "forced": " ",
+    "forced_id": 220,
+    "natural_first": 9788,
+    "steer_first": "1",
+    "steer_first_cls": "answer",
+    "steer_first_gold": false,
+    "steer0": "1",
+    "steer0_cls": "answer",
+    "steer0_gold": false,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " ",
+    "gold_first": "1",
+    "gold_first_cls": "answer",
+    "gold_first_gold": false,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "gpt4_213fd887": {
+    "forced": " Volley",
+    "forced_id": 77179,
+    "natural_first": 9788,
+    "steer_first": "Volleyball league",
+    "steer_first_cls": "answer",
+    "steer_first_gold": true,
+    "steer0": "Volleyball league",
+    "steer0_cls": "answer",
+    "steer0_gold": true,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " volleyball",
+    "gold_first": "volleyball league",
+    "gold_first_cls": "answer",
+    "gold_first_gold": true,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "gpt4_4929293a": {
+    "forced": " Cous",
+    "forced_id": 60469,
+    "natural_first": 9788,
+    "steer_first": "Cousin's wedding",
+    "steer_first_cls": "answer",
+    "steer_first_gold": false,
+    "steer0": "Cousin's wedding",
+    "steer0_cls": "answer",
+    "steer0_gold": false,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " Michael",
+    "gold_first": "Michael's engagement party",
+    "gold_first_cls": "answer",
+    "gold_first_gold": true,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "gpt4_4ef30696": {
+    "forced": " ",
+    "forced_id": 220,
+    "natural_first": 9788,
+    "steer_first": "35",
+    "steer_first_cls": "answer",
+    "steer_first_gold": false,
+    "steer0": "35",
+    "steer0_cls": "answer",
+    "steer0_gold": false,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " ",
+    "gold_first": "35",
+    "gold_first_cls": "answer",
+    "gold_first_gold": false,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "gpt4_74aed68e": {
+    "forced": " ",
+    "forced_id": 220,
+    "natural_first": 9788,
+    "steer_first": "21",
+    "steer_first_cls": "answer",
+    "steer_first_gold": false,
+    "steer0": "21",
+    "steer0_cls": "answer",
+    "steer0_gold": false,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " ",
+    "gold_first": "21",
+    "gold_first_cls": "answer",
+    "gold_first_gold": false,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "gpt4_88806d6e": {
+    "forced": " Tom",
+    "forced_id": 8364,
+    "natural_first": 9788,
+    "steer_first": "Tom",
+    "steer_first_cls": "answer",
+    "steer_first_gold": true,
+    "steer0": "Tom",
+    "steer0_cls": "answer",
+    "steer0_gold": true,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " Tom",
+    "gold_first": "Tom",
+    "gold_first_cls": "answer",
+    "gold_first_gold": true,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   },
+   "gpt4_98f46fc6": {
+    "forced": " First",
+    "forced_id": 5512,
+    "natural_first": 9788,
+    "steer_first": "First event not mentioned",
+    "steer_first_cls": "answer",
+    "steer_first_gold": false,
+    "steer0": "First event not mentioned",
+    "steer0_cls": "answer",
+    "steer0_gold": false,
+    "same_text": true,
+    "divergence": null,
+    "gold_first_forced": " I",
+    "gold_first": "I don't have the specific dates or order of events for the charity gala and",
+    "gold_first_cls": "answer",
+    "gold_first_gold": false,
+    "gold_first_tok_agree": true,
+    "unknown_first_same_as_A": true
+   }
+  }
+ },
+ "cut_identity": {
+  "n": 28,
+  "same_text_k": 28
+ },
+ "gold_tokenisation_disagree": [],
+ "soft_refusals": {
+  "Steer-first": {
+   "k": 4,
+   "of_ans": 26,
+   "n": 28
+  },
+  "Steer-0 (\u00a739)": {
+   "k": 4,
+   "of_ans": 26,
+   "n": 28
+  },
+  "Steer-first-cut": {
+   "k": 1,
+   "of_ans": 17,
+   "n": 28
+  },
+  "Gold-first": {
+   "k": 2,
+   "of_ans": 28,
+   "n": 28
+  }
+ },
+ "soft_refusal_pattern": "not (specified|mentioned|provided|determined|explicitly|contain|named|available|stated|given)|does not contain|cannot be determined|no (information|mention)"
+}
