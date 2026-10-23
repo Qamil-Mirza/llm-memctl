@@ -6569,6 +6569,100 @@ stub test from the extracted bundle in a fresh venv built from the bundle's own 
 **Spend.** Laptop design run $0 (1.85 h). Pod ebfakbdujp2z7w ran 13 min at $0.59/h ≈ $0.13, including attempt 1; the
 chain itself took 613 s. All experiments ≈ $17.68 of $20.
 
+## 39. Is the answer already computed under the 3B's refusal? The §38 layer-29 direction at the ':' position only (2026-10-23, pre-registered; development only)
+
+**Status: RUN, development only (folds 0–1, laptop, $0). Reading: M1 supported. The pushed ':' state carries the
+answer path. Gold is provisional (D1 string rule; no judge ran). No claim on folds 2–4.** Pre-registration
+`research/proposals/2026-10-23-exp39-one-position.md` (Advisor; rev 1 25d257f, amendment 1 7db734d with rulings on the
+Executor's F1–F6). The user approved drafting, the build and the free laptop run (D-31, 25d257f). Reviews:
+`research/reviews/2026-10-23-exp39-build.md` (ACCEPT, c895ed8) and `research/reviews/2026-10-23-exp39-dev.md` (ACCEPT,
+980a06b). Code: `memctl/analysis/steering.py` (step-limited settings), `scripts/exp39_dev.py`, `scripts/exp39_report.py`
+(28c908d); tests `tests/test_exp39.py` (16). Rows `runs/exp39_dev/qwen3b/`; report `runs/exp39_report_dev.md` (b743bd9).
+
+**Why.** §38 added v_29 (α 2) at the ':' token of `Answer:` and at every generated token, and the 3B then answered and
+got the gold mostly when the evidence was in view. Two mechanisms fit that.
+- M1, answer in place: the pushed ':' state already carries the answer path.
+- M2, disposition held off: the refusal comes back at each generated token unless the push is kept on.
+
+§38's caveat 2 named the test: push at step 0 only (Q16).
+
+**Design.** The 28 dev refusal rows R of §38 (13 estimation pairs, 15 unseen) and its 8 damage rows. The direction is
+§38's layer-29 vector, reused byte-exact (`runs/exp38_dev/qwen3b/directions.npz` sha be1e3a09…, added vector 2·v_29
+sha e0000366…, norm 64.47). It is not re-estimated. Arms, all at layer 29, α 2, max 16 tokens, greedy, laptop fp32:
+- Steer-0 (primary): add at step 0 only, the forward pass at ':' that produces the first generated token;
+- Steer-0..k, k ∈ {1, 2, 4}: add at steps 0..k, a dose curve;
+- Steer-all: §38's rows, reused under a guard on engine, classifier, wording, vector sha and max tokens;
+- Steer-0-cut and Steer-all-cut on §38's evidence-cut prompt;
+- Random-0: the seeded layer-29 random vector of the same norm, at step 0 (sha 633bc895…; not the pod's layer-29
+  random vector);
+- Damage-0: Steer-0 on the 8 damage rows.
+
+Readings, fixed in advance, with a0 = ans(Steer-0), aA = ans(Steer-all), and g0, gA their D1 gold counts:
+- M1 if a0 ≥ 0.8·aA, g0 ≥ 0.8·gA and ans(Random-0) ≤ 0.2·a0;
+- M2 if a0 < 0.5·aA;
+- split if a0 ≥ 0.8·aA and g0 < 0.5·gA.
+
+With gA = 8, M1 needs g0 ≥ 7 and the split needs g0 ≤ 3.
+
+**Reproduction.** Flag rule 0.889, pass (R 28/28; the 4 damage rows dropped are §38's D1-paraphrase rows).
+Byte-identity with the §38 dev rows: 64/64. Unsteered A and A-cut re-run in the arms stage matched on 28/28.
+
+| 28 dev R rows | ans | D1 gold (provisional) | refusal |
+|---|---|---|---|
+| A (unsteered) | 0 | 0 | 28 |
+| B (the §35 line) | 13 | 6 | 15 |
+| Steer-all (§38) | 26 | 8 | 2 |
+| Steer-0 | 26 | 7 | 2 |
+| Steer-0..1 / 0..2 / 0..4 | 26 / 26 / 26 | 7 / 7 / 7 | 2 / 2 / 2 |
+| Random-0 | 0 | 0 | 28 |
+| A-cut (unsteered) | 4 | 2 | 24 |
+| Steer-0-cut | 17 | 2 | 11 |
+| Steer-all-cut | 17 | 3 | 11 |
+
+Reading: a0 26 ≥ 21, g0 7 ≥ 7, Random-0 0 ≤ 5, so **M1 supported**. The row that sits on the gold bar is 89527b6b:
+Steer-0 "The Plesiosaur has a blue scaly body in the image." against Steer-all "had …", gold "The Plesiosaur had a
+blue scaly body." D1 accepts one and not the other. It is a tense paraphrase, and a judge would most likely give
+g0 = gA = 8/28. Gold stays provisional. Damage-0: the 4 reproduced damage rows stay answered and gold, 4/4 (8/8 answered,
+4/8 gold on all 8, as for A).
+
+**Texts.**
+- The first generated token is the same under Steer-0 and Steer-all on 28/28.
+- Steer-0..k equals Steer-all on its first k + 1 tokens on 28/28 for each k, which confirms the step semantics.
+- The whole text equals Steer-all on 11 / 13 / 16 / 19 of 28 at k = 0 / 1 / 2 / 4.
+- The point where Steer-0 and Steer-all first differ is token 1 on 6 rows, 2 on 5, 3 on 2, 5 on 2 and 11–12 on 2; on
+  the other 11 rows they never differ.
+- So the dose curve is flat in counts, not in text: later pushes move the wording toward Steer-all without changing any
+  class or D1 gold. Most differences are continuations ("21" against "21 days", "1998" against "1998 Views").
+
+**Soft refusals (descriptive).** The v2 rule counts as answers some phrases that hedge: "not specified", "does not
+contain information", "not provided", "not mentioned". A simple pattern finds 4 of Steer-0's 26, 3 of Steer-all's 26,
+2 of Steer-0..4's 26 and 0 of B's 13. Removing them gives a0 22 against aA 23, and M1 still holds (5 × 22 = 110 ≥
+4 × 23 = 92). Two of the four, 89941a94 and fca70973, are rows where Steer-0 hedges ("The memory does not contain
+information…", "not provided") while Steer-all invents (a road bike, named parks).
+
+**Found.** Pushing the 3B's state at one position, the ':' where it decides to refuse, does as much as pushing at every
+generated token. It answers 26 of 28 refusals against 26, with provisional gold 7 against 8. That one-row gap is a
+tense paraphrase. Pushing for 1, 2 or 4 more tokens changes no count, only wording. A random push of the same size at the
+same position makes it answer 0 times. The pre-registered prediction (M2 or split, a dose curve rising with k) was wrong.
+
+**Why it matters.** The refusal is decided at the answer position and can be lifted there. Once lifted, the 3B produces
+the answer from its own computation on the evidence in view. With the evidence cut, the same push gives 2 of 28 gold.
+This sharpens §38: the instruction line of §35 and the direction of §38 both act on a disposition at that one position.
+
+**Caveats.**
+1. The F1 caveat, as amended. The pushed ':' key/value above layer 29 stays in the cache, so every later token can
+   attend to the pushed state. "One position" means one input position, not one moment. This run does not separate "the
+   first token commits the model" from "later tokens keep reading the pushed ':' state".
+2. Development only: 28 rows, the same folds the direction was estimated on (13 of the 28 are estimation pairs). Gold
+   is the D1 string rule, and the gold verdict sits on the bar by one row.
+3. One layer, one α, one model, one prompt family.
+
+**Next.** A first-token-only arm would generate token 0 under the push, then continue from the unpushed cache with that
+token forced. That separates the two readings of caveat 1, free on the laptop; the Advisor will put it to the user. A
+sealed-fold run of §39 would be a separate quote (about $0.15 on an A40).
+
+**Spend.** $0 (laptop; 128 prefills, 324 generations). All experiments ≈ $17.68 of $20.
+
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
 **Status: STOPPED at the regeneration sanity check; no gradient was computed.** Secondary to §34 (the J-lens
