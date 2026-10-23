@@ -382,12 +382,54 @@ def reproduces(row: dict, cached: dict, gold: str) -> dict:
             "same_answer": row["final_answer"] == cached["final_answer"]}
 
 
+def reproduces_c_judge(row: dict, cached: dict, gold: str, verdict: bool | None) -> dict:
+    """A C row on the pod (A judged correct in §35): A must answer on the new engine and the NEW judge (this run's
+    engine) must call it correct. The pod's analogue of `reproduces_damage`, with the judge in place of D1 (the
+    Executor's choice at the pod build, for the Advisor to rule). `verdict` None (not judged) -> not reproduced."""
+    out = reproduces(row, cached, gold)
+    out["judge_new"] = verdict
+    out["ok"] = (not row["refusal"]) and verdict is True
+    return out
+
+
 def reproduces_damage(row: dict, cached: dict, gold: str) -> dict:
     """A damage row (A judged correct in §35): on the new engine A must answer and pass D1 (build review ruling 1)."""
     out = reproduces(row, cached, gold)
     out["d1_new"] = (not row["refusal"]) and sel.d1(row["final_answer"], gold) is True
     out["ok"] = out["d1_new"]
     return out
+
+
+# --- the pod: settings, the judge's reply ---------------------------------------------------------------------
+
+SECONDARY = (29, 2.0, "vnorm")      # amendment 2: L29 alpha 2 (vnorm), disclosed secondary setting
+SECONDARY_LABEL = "secondary (chosen after dev D1 gold; disclosed)"
+SECONDARY_ONLY = "shown at the secondary setting only; two settings were tested"
+JUDGE_AGREEMENT_BAR = 0.90          # dev review addendum, condition 2
+JUDGE_CAVEAT = "judge engine differs from §35"
+
+
+def setting_from_key(key: str) -> Setting:
+    """'steer:L25:a4:vnorm' -> Setting('steer', 25, 4.0, 'vnorm')."""
+    mode, layer, alpha, unit = key.split(":")
+    return Setting(mode, int(layer[1:]), float(alpha[1:]), unit)
+
+
+def map_layer(layer: int, n_layers: int) -> int:
+    """A layer of the 36-layer 3B on an engine with `n_layers` (identity on the 3B; the stub has fewer layers)."""
+    return layer if n_layers == N_LAYERS else int(round(layer * n_layers / N_LAYERS))
+
+
+def parse_verdict(reply: str | None) -> bool | None:
+    """The judge's reply as a verdict: True for 'yes...', False for 'no...', None when it is neither (the §36 run 1
+    failure mode: the model answered instead of grading). `answer_selection.verdict_of` is the §35 rule (anything not
+    'yes' is False); the smoke and the report use this one to count replies that are not verdicts."""
+    r = (reply or "").strip().lower()
+    if r.startswith("yes"):
+        return True
+    if r.startswith("no"):
+        return False
+    return None
 
 
 # --- sanity and the design gate -------------------------------------------------------------------------------

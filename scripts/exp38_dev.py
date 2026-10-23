@@ -64,13 +64,20 @@ class Run:
         self.vectors: dict = {}
         self.stats: dict = {}
         self.forward_passes = {"prefills": 0, "generations": 0, "tokens_generated": 0}
+        self._rows: dict[str, dict] = {}     # stage -> {row key: row}, read once, kept in step with the file
 
     # --- files -----------------------------------------------------------------------------------------------
     def path(self, stage: str) -> Path:
         return self.dir / f"{stage}.jsonl"
 
     def rows(self, stage: str) -> dict:
-        return {st.row_key(r): r for r in read_jsonl(self.path(stage))}
+        if stage not in self._rows:
+            self._rows[stage] = {st.row_key(r): r for r in read_jsonl(self.path(stage))}
+        return dict(self._rows[stage])
+
+    def log_rows(self, stage: str, rows: list[dict]) -> None:
+        for r in rows:
+            self.log(f"  [{stage} {r['pop']} {r['kind']} {r['setting']['key']}] {r['question_id']} {r['cls']:10s} {r['phrase']!r:.50}")
 
     def resid_path(self, kind: str, q: str) -> Path:
         return self.dir / "resid" / kind / f"{q}.npy"
@@ -139,8 +146,9 @@ class Run:
             new.append(row)
             out[s.key] = row
         append_jsonl(self.path(stage), new)
-        for r in new:
-            self.log(f"  [{stage} {pop} {kind} {r['setting']['key']}] {q} {r['cls']:10s} {r['phrase']!r:.50}")
+        self.rows(stage)
+        self._rows[stage].update({st.row_key(r): r for r in new})
+        self.log_rows(stage, new)
         return out
 
     # --- stage i ---------------------------------------------------------------------------------------------
