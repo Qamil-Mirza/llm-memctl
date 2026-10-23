@@ -105,7 +105,7 @@ def repro_from_rows(rows: dict, d, pop) -> dict:
         a = rows.get(("C", "A", "none", q))
         if a is None:
             continue
-        ra = st.reproduces(a, d.rows["A"][q], d.by_q[q].gold)
+        ra = st.reproduces_damage(a, d.rows["A"][q], d.by_q[q].gold)
         result["damage"][q] = {"A": ra, "ok": ra["ok"]}
     from scripts.exp38_dev import summarise_repro
     return summarise_repro(result)
@@ -323,7 +323,7 @@ def render(n: dict, confirm: bool) -> str:
     L = [f"# §38 report ({'confirmation' if confirm else 'design run'}; folds {', '.join(map(str, n['folds']))})", "",
          f"Engine {n['engines']}. Gold: {n['gold_source']}.", "",
          "## Reproduction", "",
-         f"Rows reproduce (refusal flag, and the D1 string verdict when answering) on {_r(rp['rate'])} of the R and damage "
+         f"Rows reproduce (R: refusal flags of A and B; damage: A answers and passes D1 on this engine) on {_r(rp['rate'])} of the R and damage "
          f"rows (R alone {_r(rp['rate_R'])}; D1 verdict also matches on {rp.get('R_verdict_match')} R rows, descriptive; bound {st.REPRO_GATE}): **{'PASS' if rp['pass'] else 'FAIL'}**. "
          f"Dropped: {', '.join(rp['dropped']) or 'none'}.", "",
          f"Populations: R {pops['R']} (reproduced {pops['R_reproduced']}), pairs {pops['pairs']} ({pops['pairs_reproduced']}), "

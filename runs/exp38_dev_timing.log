@@ -1,0 +1,7 @@
+populations (folds [0, 1]): R 28 (B correct 8, wrong 5, refuses 15); pairs 13; unseen 15; C 39; damage 8
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/434 [00:00<?, ?it/s]Loading weights:   0%|          | 1/434 [00:00<03:32,  2.03it/s]Loading weights:  26%|██▌       | 111/434 [00:00<00:01, 248.72it/s]Loading weights:  41%|████      | 176/434 [00:00<00:01, 237.45it/s]Loading weights:  51%|█████     | 222/434 [00:01<00:00, 222.11it/s]Loading weights:  59%|█████▉    | 258/434 [00:01<00:00, 214.23it/s]Loading weights:  66%|██████▋   | 288/434 [00:01<00:00, 217.93it/s]Loading weights:  73%|███████▎  | 316/434 [00:01<00:00, 195.25it/s]Loading weights:  81%|████████  | 351/434 [00:01<00:00, 215.83it/s]Loading weights:  87%|████████▋ | 376/434 [00:01<00:00, 199.12it/s]Loading weights:  92%|█████████▏| 399/434 [00:02<00:00, 204.13it/s]Loading weights:  97%|█████████▋| 423/434 [00:02<00:00, 187.96it/s]Loading weights: 100%|██████████| 434/434 [00:02<00:00, 200.53it/s]
+engine hf-transformers-5.17.0-cpu-float32, model loaded in 6 s
+timing: prefill 13.1 ms/token, decode 0.69 s/token, cache copy 0.02 s
+projection, full grid (15 settings): 2.5 h conservative (1.0 h optimistic, 5.5 h if Random runs at every setting); small grid 1.5 h; by stage repro 0.30 h, sanity 0.07 h, sweep 1.42 h, random_k1 0.21 h, controls 0.51 h
+Stopping (--timing-only).
