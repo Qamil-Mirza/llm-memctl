@@ -64,6 +64,9 @@ RANDOM_SEED = 38
 TIMING_N = 5
 PROJECTION_LIMIT_H = 5.0
 SAMPLING = {"temperature": 0.0, "top_p": 1.0, "seed": 0, "greedy": True, "stop": "eos or newline"}
+# Soft refusals (answer-class phrases that hedge): the pattern frozen in §41 rev 1 (877f86d), the §39 review's.
+SOFT_REFUSAL_PATTERN = (r"not (specified|mentioned|provided|determined|explicitly|contain|named|available|stated|given)"
+                        r"|does not contain|cannot be determined|no (information|mention)")
 CLASSIFIER_VERSION = "v2: refusal = §23 rule on the phrase; degenerate = empty / no alnum / a run of >= 8 identical ids"
 
 

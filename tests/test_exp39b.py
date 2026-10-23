@@ -133,8 +133,10 @@ def test_reading_arithmetic_and_boundaries():
 
 
 def test_soft_refusal_and_divergence():
-    from scripts.exp39b_report import SOFT_REFUSAL_PHRASES, divergence, soft_refusal
-    assert SOFT_REFUSAL_PHRASES == ("not specified", "does not contain information", "not provided", "not mentioned")
+    from scripts.exp39b_report import SOFT_REFUSAL_PATTERN, divergence, soft_refusal
+    assert SOFT_REFUSAL_PATTERN == (r"not (specified|mentioned|provided|determined|explicitly|contain|named|available|stated|given)"
+                                    r"|does not contain|cannot be determined|no (information|mention)")
+    assert soft_refusal({"cls": "answer", "phrase": "First event participation cannot be determined"})
     assert soft_refusal({"cls": "answer", "phrase": "Favorite rice type NOT specified"})
     assert soft_refusal({"cls": "answer", "phrase": "The memory does not contain information about it"})
     assert not soft_refusal({"cls": "refusal", "phrase": "not mentioned"})

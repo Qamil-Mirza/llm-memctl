@@ -30,8 +30,8 @@ from scripts.exp39b_dev import ARM_GOLD, ARM_STEER, ARM_STEER_CUT, ARM_UNKNOWN  
 
 STAGES = ("repro", "unknown_first", "step0", "forced", "steer0")
 EXPECTED_A0, EXPECTED_G0, EXPECTED_N = 26, 7, 28       # amendment 2, from §39 (asserted against the rows)
-SOFT_REFUSAL_PHRASES = ("not specified", "does not contain information", "not provided", "not mentioned")
-SOFT_REFUSAL_RE = re.compile("|".join(re.escape(p) for p in SOFT_REFUSAL_PHRASES), re.IGNORECASE)
+SOFT_REFUSAL_PATTERN = st.SOFT_REFUSAL_PATTERN   # frozen in §41 rev 1 (877f86d), the §39 review's pattern
+SOFT_REFUSAL_RE = re.compile(SOFT_REFUSAL_PATTERN, re.IGNORECASE)
 WORDS = {"token carries it": "the first generated token alone keeps the model answering and right; the pushed ':' "
                              "state is not needed",
          "state needed": "without the pushed ':' state the forced token does not keep the model answering",
@@ -84,7 +84,7 @@ def reading_line(r: dict) -> str:
 
 
 def soft_refusal(row: dict) -> bool:
-    """An answer-class row whose phrase hedges (the §39 review's pattern, `SOFT_REFUSAL_PHRASES`)."""
+    """An answer-class row whose phrase hedges (the §39 review's pattern, frozen in §41 rev 1: `SOFT_REFUSAL_PATTERN`)."""
     return row["cls"] == "answer" and bool(SOFT_REFUSAL_RE.search(row["phrase"] or ""))
 
 
@@ -217,7 +217,7 @@ def analyse(run_dir: Path, d, pop, source: Path | None = None) -> dict:
     n["soft_refusals"] = {name: {"k": n["arms"][name]["R"]["soft_k"], "of_ans": n["arms"][name]["R"]["ans_k"],
                                  "n": n["arms"][name]["R"]["n"]}
                           for name in ("Steer-first", "Steer-0 (§39)", "Steer-first-cut", "Gold-first")}
-    n["soft_refusal_phrases"] = list(SOFT_REFUSAL_PHRASES)
+    n["soft_refusal_pattern"] = SOFT_REFUSAL_PATTERN
     return n
 
 
@@ -269,7 +269,7 @@ def render(n: dict) -> str:
         L.append(f"| {name} | {b['n']} | {_c(b, 'ans')} | {_c(b, 'degenerate')} | {_c(b, 'refusal')} | {_c(b, 'gold')} | "
                  f"{_c(p, 'ans')} | {_c(p, 'gold')} | {_c(q, 'ans')} | {_c(q, 'gold')} |")
     L += ["", "## Soft refusals (descriptive; answer-class phrases matching "
-          + ", ".join(repr(p) for p in n["soft_refusal_phrases"]) + ", case-insensitive)", ""]
+          + f"/{n['soft_refusal_pattern']}/, case-insensitive; §41 rev 1)", ""]
     for name, v in n["soft_refusals"].items():
         L.append(f"- {name}: {v['k']} of {v['of_ans']} answers ({v['n']} rows)")
     idn = n["identity"]
