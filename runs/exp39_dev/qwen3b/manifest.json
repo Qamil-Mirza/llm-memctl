@@ -1,0 +1,42 @@
+{
+ "engine": "hf-transformers-5.17.0-cpu-float32",
+ "model": "Qwen/Qwen2.5-3B-Instruct",
+ "layer": 29,
+ "alpha": 2.0,
+ "unit": "vnorm",
+ "ks": [
+  1,
+  2,
+  4
+ ],
+ "max_new_tokens": 16,
+ "wording_sha256": "8ef1224f8bba23157e66b63ac9122f3a708d68d769480404b0fccfa39f0530db",
+ "wording": {
+  "answer_marker": "Answer:",
+  "b_instruction": "Based on the note above, give the answer as a short phrase. Do not reply unknown.",
+  "exp35_wording": "1c45f71a94df640e848641c4fd0950bd580d147141737c61029ef0cc3a5a904a",
+  "cut": "ablate_evidence + N-cut note (split_note of generated, byte-exact; no marker -> no note) + Answer:",
+  "position": "':' of Answer:, prefix cache excludes it",
+  "residual": "decoder layer output, pre final norm",
+  "sampling": {
+   "temperature": 0.0,
+   "top_p": 1.0,
+   "seed": 0,
+   "greedy": true,
+   "stop": "eos or newline"
+  },
+  "max_new_tokens": 16,
+  "classifier": "v2: refusal = \u00a723 rule on the phrase; degenerate = empty / no alnum / a run of >= 8 identical ids"
+ },
+ "source": "runs/exp38_dev/qwen3b",
+ "npz_sha256": "be1e3a09bdb5157d24126ebe16b14c035d429ebd51409e9b615b347c5b29f921",
+ "v_sha256": "a7f967ecdf2f59a9e1f64d99e366d33011f27daa8b09b18f5ff33d1e1ba20c6c",
+ "vector_sha256": "e0000366813f3c94cf4875c5ba948fc7f4bac220099cc8848edb79196045d71c",
+ "random_note": "seeded layer-29 random vector (rng [38, 29], norm ||2 v_29||), rebuilt deterministically; NOT the pod's layer-29 random vector (bf16 re-estimate, different norm)",
+ "random_29_sha256": "633bc895c2af0dc7f5c88d235c557eaaa4fa7955d2e3c4ba7efdfe9fa2269513",
+ "random_added_sha256": "633bc895c2af0dc7f5c88d235c557eaaa4fa7955d2e3c4ba7efdfe9fa2269513",
+ "folds": [
+  0,
+  1
+ ]
+}
