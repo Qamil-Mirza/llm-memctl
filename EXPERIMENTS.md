@@ -6429,6 +6429,146 @@ prompt family, one 3B.
 **Spend.** $0 (laptop). All experiments ≈ $17.55.
 
 
+## 38. Is the answer already under the 3B's refusal? A content-free "answer, don't refuse" direction with an evidence-cut control (2026-10-22, pre-registered; laptop design run and pod 2026-10-23)
+
+**Status: RUN and CONFIRMED on folds 2–4, with a disclosed second setting. Primary setting (layer 25, α 4): NOT
+INTERPRETABLE (Control X fails). Secondary setting (layer 29, α 2, chosen after reading development labels): Claim 1
+SHOWN, +0.333 (+0.183, +0.483). Record: shown at the secondary setting only; two settings were tested.**
+Pre-registration `research/proposals/2026-10-22-exp38-refusal-direction.md` (Advisor; rev 1 bb758c3, amendment 1
+c367d28 with rulings on the Executor's F1–F9, amendment 2 at the development review). The user approved the draft, build
+and free laptop design run (D-27, bb758c3) and the pod at the quote (D-28, 13214c0; the user's "Yes" also typed in the
+Executor pane). Reviews: `research/reviews/2026-10-22-exp38-build.md` (08014ad), `research/reviews/2026-10-23-exp38-dev.md`
+(4df512f, judge addendum 7e2c90d, C-row ruling fc58772), `research/reviews/2026-10-23-exp38-results.md` (ACCEPT,
+ba9fc60). Code: `memctl/analysis/steering.py`, `scripts/exp38_dev.py`, `scripts/exp38_pod_run.py`,
+`scripts/exp38_pod.sh`, `scripts/exp38_bundle.sh`, `scripts/exp38_report.py` (0943373, 468cd52, 377bd52); tests
+`tests/test_steering.py` (26), `tests/test_exp38_pod.py` (13). Rows: `runs/exp38_dev/qwen3b/` and
+`runs/exp38_report_dev.md` (c782dee); `runs/exp38_pod/qwen3b/` and `runs/exp38_report_confirm.md` (2263ca3, report
+regenerated with the Control T and population-label changes of the results review).
+
+**Why.** §34–§34c found the gold "present" in the 3B's late state on about two thirds of failures, with ` unknown`
+winning late. §35 turned 27 of 64 marked refusals into correct answers with one line forbidding "unknown". Both were
+readouts or prompt changes; nothing in the record had intervened on the representation. §38 asks: under the refusing
+prompt, does shifting only the 3B's disposition to answer, with nothing question-specific added, release the gold? And
+does the same shift release it as often when the evidence is not in the prompt?
+
+**Design.** Arm A of §35 (frozen note + `Answer:`) refuses on R, the marked rows where A says "unknown" (28 dev, 64
+confirmation). The direction v_L is the mean of resid_B − resid_A at the output of decoder layer L, at the ':' token of
+`Answer:`, over the 13 development rows where A refuses and B (A plus the forbidding line) answers. It is never
+re-estimated and never sees folds 2–4. Steer adds α·v_L (α in units of ‖v_L‖) at layer L at the ':' position and at
+every generated token, on A's prompt. Steer-cut applies the same vector to the §34c evidence-cut prompt with the N-cut
+arm's own note (9 confirmation rows have no N-cut marker and keep no note). A-cut is the same cut prompt unsteered.
+Controls:
+- X: a random vector with the same norm; ans(Random) ≤ 0.2 × ans(Steer), or Claim 1 is not interpretable;
+- Reverse (−α·v_L), descriptive;
+- C: damage on rows A already answers correctly;
+- T: by question type;
+- sanity S: overwriting A's ':' state with B's at layer 35 must give B's first token on ≥ 0.9 of pairs; a zero add and
+  a self-overwrite must reproduce A byte-exact.
+
+Outputs are classed as refusal (the §23 rule), degenerate (empty, no alphanumeric character, or a run of ≥ 8 identical
+token ids), or answer. Claim 1 is P(gold(Steer)) − P(gold(Steer-cut)) on R, paired bootstrap over questions, 10,000
+resamples; SHOWN if the lower bound > 0, meaningful if P(gold(Steer)) ≥ 0.30. Claim 1′ repeats it on the rows where the
+gold fails the D1 string rule in both the cut prompt and the N-cut note (35 of 60).
+
+**Stage 1, laptop design run (folds 0–1, fp32 CPU, 1.85 h, $0).** All 28 R rows reproduced. Sanity S passed (1.000 at
+layer 35; 0.077 at layer 7). ‖v_L‖ / mean‖resid_A‖ was 0.25–0.31 at layers 18–32. Of the 15 settings (5 layers × α 1,
+2, 4), the pre-registered rule (highest ans(Steer), Random passing, degenerate ≤ 0.2) chose layer 25, α 4: ans 0.964,
+Random 0.179 against the bound 0.193. Its provisional D1 gold was 3/28, equal to Steer-cut and below B's 6/28; its
+"answers" were mostly lists of topic words. Layer 29, α 2 had ans 0.929 and D1 gold 8/28. Amendment 2 added it as a
+secondary setting, declared as chosen after seeing development labels; folds 2–4 stayed sealed.
+
+**Stage 2, pod (A40, transformers 5.17 bf16 for the 3B and for the 7B judge; folds 2–4 read once with `--confirm`).**
+Reproduction 0.973 over the R and C rows run (R 0.957; 60 of 64 confirmation R rows kept; 54 C rows). The pod's
+directions match the laptop's (cosine 1.000 at layer 25, 0.999 at 29). Sanity S passed (1.000; layer 7 0.231,
+descriptive). Judge: the same Qwen2.5-7B-Instruct with the §35 per-type prompts, on the HF engine instead of §35's vLLM.
+It agreed with the cached §35 verdicts on the reproduced A and B rows at 0.971 (0.943, 0.994), above the 0.90 bar, and
+at 1.000 on identical texts; it gave no non-verdict replies. Every gold figure below is this judge on this run's outputs.
+
+| folds 2–4, 60 reproduced R rows | ans | gold | gold, 22 rows where B refuses |
+|---|---|---|---|
+| A (unsteered) | 0.000 | 0.000 | 0.000 |
+| B (the §35 line) | 0.633 | 0.433 (0.317, 0.567) | 0.000 |
+| A-cut | 0.067 | 0.017 | 0.000 |
+| primary L25 α4: Steer / Steer-cut / Random | 0.950 / 0.683 / 0.283 | 0.150 / 0.100 / 0.033 | 0.000 / 0.045 / 0.045 |
+| secondary L29 α2: Steer / Steer-cut / Random | 0.900 / 0.517 / 0.033 | 0.517 / 0.183 / 0.000 | 0.364 / 0.182 / 0.000 |
+
+(The last column is the 22 rows where B itself refuses; no direction was estimated on them, and B's gold there is 0 by definition.)
+
+| claim / control (folds 2–4) | primary L25 α4 | secondary L29 α2 (disclosed) |
+|---|---|---|
+| Control X: ans(Random) ≤ 0.2 × ans(Steer) | 0.283 > 0.190: FAIL | 0.033 ≤ 0.180: pass |
+| Claim 1: gold(Steer) − gold(Steer-cut), n 60 | +0.050 (−0.067, +0.167): NOT INTERPRETABLE | +0.333 (+0.183, +0.483): SHOWN, meaningful (0.517 ≥ 0.30) |
+| Claim 1′, clean subset, n 35 | +0.086 (−0.029, +0.200): NOT SHOWN | +0.429 (+0.257, +0.600): SHOWN |
+| Control C: gold(Steer) − gold(A) on 54 C rows | −0.519 (−0.648, −0.389): damages correct answers | −0.056 (−0.130, 0.000) |
+| Claim 2: gold(Steer) / gold(B) | not tested | 31/26 ≈ 1.19 (0.87, 1.68), descriptive |
+| Reverse: ans on R; on C | 0.017; 0.185 | 0.000; not run |
+
+By B's outcome on the 60 rows (new judge), secondary setting, gold under Steer / Steer-cut:
+- B correct (26): 18 / 5;
+- B wrong (12): 5 / 2;
+- B refuses (22): 8 / 4.
+
+(The report's Claim 2 conditionals split by the cached §35 B outcome instead and give 20/26 and 3/12; same 31 in total.)
+
+Control T, secondary, gold counts Steer / Steer-cut / B:
+
+| type | n | counts |
+|---|---|---|
+| temporal-reasoning | 20 | 12 / 5 / 11 |
+| multi-session | 13 | 7 / 1 / 3 |
+| single-session-user | 12 | 5 / 2 / 7 |
+| knowledge-update | 6 | 3 / 1 / 2 |
+| single-session-assistant | 4 | 3 / 2 / 2 |
+| single-session-preference | 5 | 1 / 0 / 1 |
+
+The primary's dev reading holds on folds 2–4: its outputs are mostly topic-word lists, and it wrecks about half the
+correct answers. The secondary's correct outputs are short real answers, not candidate lists (review: 10.2 tokens and
+0.42 separators on average, against 12.5 and 0.21 for the wrong ones). The 10 rows the judge marks correct while D1
+fails are honest paraphrases. The 3 C rows it damages:
+- "Veja" → "E-V-R (Eco-Vegan Rubber)…";
+- "Roscioli" → "Pizzeria La Montecarlo";
+- "Jaipur Rugs" → repeated "Rug-manufacturing industry".
+
+**Found.** Pushing the 3B's internal state at layer 29, by the average "answer, don't refuse" difference from 13 other
+questions, made it answer 9 of 10 of its refusals. Half of those answers were right (0.517), against 0.183 when the
+evidence was cut from the prompt, and 0.433 for the §35 instruction line. A random push of the same size did almost
+nothing. On the 22 questions where even the instruction line refused, the push got 8 right. The pre-registered setting
+(layer 25, a push twice as large) did not work: it produced word salad, a random push also made the model "answer", and
+it broke half the correct answers.
+
+**Why it matters.** This is the first intervention in the record on the 3B's representation, not its prompt. A single
+direction, with nothing question-specific in it, switches off the refusal, and the 3B then gets the gold mostly when the
+evidence is in view. So on many of its "unknown"s the 3B can extract the answer; the refusal is a late disposition laid
+over it. That gives the reading-vs-policy split of F6 its first causal support.
+
+**Caveats, which bound the reading.**
+1. Selection. The working setting was chosen on development labels, after the pre-registered ans-only rule had picked a
+   setting that fails its specificity control. Folds 2–4 were sealed throughout and read once, but two settings were
+   tested, and the result stands at the secondary setting only.
+2. Mechanism. The add acts at the ':' token and at every generated token, so the generated tokens still attend to the
+   evidence. Shown: one content-free direction at layer 29 switches off the refusal, after which the 3B extracts the gold
+   from the evidence in view. It does so above the instruction line's rate and far above its rate without the evidence.
+   Not shown: that the answer was already computed at the ':' position. That needs an add at step 0 only.
+3. Narrow scope. One model, one benchmark, one prompt family, two layers. Control C at the secondary setting has n 54,
+   with 3 damaged answers. Control T cells are small. The judge is one 7B, on a different engine from §35 (agreement
+   0.971; no caveat line, since the bar was met).
+4. A negative at other settings would not have shown the answer absent; this positive does not locate the circuit that
+   decides to refuse.
+
+**Next.** A free laptop variant on folds 0–1 adds the layer-29 vector at the ':' position only (step 0) and lets
+generation run unsteered. It tells "the answer is already computed under the refusal" apart from "the refusal is lifted
+and the model then reads the evidence". A fresh confirmation of the layer-29 setting, now fixed in advance, would remove
+the selection caveat.
+
+**Process note (attempt 1).** The first pod attempt died at the smoke stage, after about 2 minutes and with no rows
+written: `scipy` was missing from the bundle's install line. It was installed by hand and the chain re-run, with its
+deadlines shortened to stay inside the original hour; the install line is fixed (2263ca3). The stub end-to-end test had
+run in the laptop venv, so it could not see a package missing from the pod's install line. Proposed to the user: run the
+stub test from the extracted bundle in a fresh venv built from the bundle's own install line.
+
+**Spend.** Laptop design run $0 (1.85 h). Pod ebfakbdujp2z7w ran 13 min at $0.59/h ≈ $0.13, including attempt 1; the
+chain itself took 613 s. All experiments ≈ $17.68 of $20.
+
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
 **Status: STOPPED at the regeneration sanity check; no gradient was computed.** Secondary to §34 (the J-lens

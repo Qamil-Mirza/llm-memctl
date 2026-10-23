@@ -6,7 +6,7 @@ Steering engine ['hf-transformers-5.17.0-cuda-bfloat16']; judge engine ['hf-tran
 
 Rows reproduce (R: refusal flags of A and B; C: A answers and the new judge calls it correct on this engine) on 0.973 of the R and C rows run (R alone 0.957; confirmation folds alone 0.958; D1 verdict also matches on 91 R rows, descriptive; bound 0.8): **PASS**. Dropped: 1da05512, 6f9b354f, ceb54acb, f685340e, 184da446.
 
-Populations: R 92 (reproduced 60), pairs 55 (38), unseen 37 (22), C rows reproduced 54 (confirmation folds).
+Populations: R 92 (reproduced 60); A-refuses/B-answers rows 55 (38), A-refuses/B-refuses rows (unseen) 37 (22) (all folds run; the direction itself uses only the 13 development pairs, see Directions); C rows reproduced 54 (confirmation folds).
 
 ## Directions
 
@@ -68,16 +68,16 @@ Claim 1: P(gold(Steer)) − P(gold(Steer-cut)) on R, n 60: +0.050 (-0.067, +0.16
 Claim 1′ (gold fails D1 in the cut prompt and the N-cut note), n 35: +0.086 (-0.029, +0.200) — NOT SHOWN.
 P(gold(B)) on these R rows, new judge: 0.433 (0.317, 0.567); cached §35 verdicts (beside, not a claim): 27/64 on all confirmation R rows, 26/60 on the rows above.
 
-Control T (descriptive):
+Control T (descriptive; counts Steer / Steer-cut / B, new judge):
 
-| type | n | gold(Steer) | gold(Steer-cut) |
-|---|---|---|---|
-| knowledge-update | 6 | 0.500 | 0.167 |
-| multi-session | 13 | 0.077 | 0.000 |
-| single-session-assistant | 4 | 0.000 | 0.250 |
-| single-session-preference | 5 | 0.000 | 0.000 |
-| single-session-user | 12 | 0.250 | 0.083 |
-| temporal-reasoning | 20 | 0.100 | 0.150 |
+| type | n | gold(Steer) | gold(Steer-cut) | gold(B) | counts |
+|---|---|---|---|---|---|
+| knowledge-update | 6 | 0.500 | 0.167 | 0.333 | 3 / 1 / 2 |
+| multi-session | 13 | 0.077 | 0.000 | 0.231 | 1 / 0 / 3 |
+| single-session-assistant | 4 | 0.000 | 0.250 | 0.500 | 0 / 1 / 2 |
+| single-session-preference | 5 | 0.000 | 0.000 | 0.200 | 0 / 0 / 1 |
+| single-session-user | 12 | 0.250 | 0.083 | 0.583 | 3 / 1 / 7 |
+| temporal-reasoning | 20 | 0.100 | 0.150 | 0.550 | 2 / 3 / 11 |
 
 ## Secondary setting steer:L29:a2:vnorm — secondary (chosen after dev D1 gold; disclosed)
 
@@ -107,6 +107,19 @@ Control C: gold(Steer) − gold(A) on C rows (n 54) -0.056 (-0.130, +0.000).
 
 Claim 1: P(gold(Steer)) − P(gold(Steer-cut)) on R, n 60: +0.333 (+0.183, +0.483) — **SHOWN**; P(gold(Steer)) 0.517 (meaningful at 0.3: True), P(gold(Steer-cut)) 0.183.
 Claim 1′ (gold fails D1 in the cut prompt and the N-cut note), n 35: +0.429 (+0.257, +0.600) — SHOWN.
+P(gold(B)) on these R rows, new judge: 0.433 (0.317, 0.567); cached §35 verdicts (beside, not a claim): 27/64 on all confirmation R rows, 26/60 on the rows above.
+Claim 2: P(gold(Steer)) / P(gold(B)) 1.192 (0.870, 1.682) (P(gold(B)) from the new judge on the reproduced B rows); P(gold(Steer) | B correct) 0.769 (0.615, 0.923); | B wrong 0.250 (0.000, 0.500); P(ans(Steer) | B refuses) 0.727 (0.545, 0.909).
+
+Control T (descriptive; counts Steer / Steer-cut / B, new judge):
+
+| type | n | gold(Steer) | gold(Steer-cut) | gold(B) | counts |
+|---|---|---|---|---|---|
+| knowledge-update | 6 | 0.500 | 0.167 | 0.333 | 3 / 1 / 2 |
+| multi-session | 13 | 0.538 | 0.077 | 0.231 | 7 / 1 / 3 |
+| single-session-assistant | 4 | 0.750 | 0.500 | 0.500 | 3 / 2 / 2 |
+| single-session-preference | 5 | 0.200 | 0.000 | 0.200 | 1 / 0 / 1 |
+| single-session-user | 12 | 0.417 | 0.167 | 0.583 | 5 / 2 / 7 |
+| temporal-reasoning | 20 | 0.600 | 0.250 | 0.550 | 12 / 5 / 11 |
 
 **Record: shown at the secondary setting only; two settings were tested.**
 

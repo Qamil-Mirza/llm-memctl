@@ -334,7 +334,10 @@ def setting_block(rows: dict, d, pop, key: str, R: list[str], unseen: list[str],
     for q in keys:
         types[d.by_q[q].question_type].append(q)
     n["control_T"] = {t: {"n": len(qs), "steer": sum(gs[q] for q in qs) / len(qs),
-                          "steer_cut": sum(gc[q] for q in qs) / len(qs)} for t, qs in sorted(types.items())}
+                          "steer_cut": sum(gc[q] for q in qs) / len(qs),
+                          "B": sum(b_gold.get(q, 0.0) for q in qs) / len(qs),
+                          "k": (int(sum(gs[q] for q in qs)), int(sum(gc[q] for q in qs)),
+                                int(sum(b_gold.get(q, 0.0) for q in qs)))} for t, qs in sorted(types.items())}
     return n
 
 
@@ -507,9 +510,11 @@ def render_block(n: dict, confirm: bool, title: str, caveat: str | None = None, 
                          f"{_r(c2['ratio']['ci_high'])}) (P(gold(B)) from the new judge on the reproduced B rows); "
                          f"P(gold(Steer) | B correct) {_p(c2['p_gold_steer_given_B_correct'])}; "
                          f"| B wrong {_p(c2['p_gold_steer_given_B_wrong'])}; P(ans(Steer) | B refuses) {_p(c2['p_ans_steer_given_B_refuses'])}.")
-            L += ["", "Control T (descriptive):", "", "| type | n | gold(Steer) | gold(Steer-cut) |", "|---|---|---|---|"]
+            L += ["", "Control T (descriptive; counts Steer / Steer-cut / B, new judge):", "",
+                  "| type | n | gold(Steer) | gold(Steer-cut) | gold(B) | counts |", "|---|---|---|---|---|---|"]
             for t, v in n["control_T"].items():
-                L.append(f"| {t} | {v['n']} | {v['steer']:.3f} | {v['steer_cut']:.3f} |")
+                L.append(f"| {t} | {v['n']} | {v['steer']:.3f} | {v['steer_cut']:.3f} | {v['B']:.3f} | "
+                         f"{v['k'][0]} / {v['k'][1]} / {v['k'][2]} |")
     return L
 
 
@@ -524,8 +529,10 @@ def render(n: dict, confirm: bool) -> str:
          + (f"; confirmation folds alone {_r(rp['rate_confirm'])}" if rp.get("rate_confirm") is not None else "")
          + f"; D1 verdict also matches on {rp.get('R_verdict_match')} R rows, descriptive; bound {st.REPRO_GATE}): "
          f"**{'PASS' if rp['pass'] else 'FAIL'}**. Dropped: {', '.join(rp['dropped']) or 'none'}.", "",
-         f"Populations: R {pops['R']} (reproduced {pops['R_reproduced']}), pairs {pops['pairs']} ({pops['pairs_reproduced']}), "
-         f"unseen {pops['unseen']} ({pops['unseen_reproduced']}), C rows reproduced {pops['C_reproduced']}"
+         f"Populations: R {pops['R']} (reproduced {pops['R_reproduced']}); A-refuses/B-answers rows {pops['pairs']} "
+         f"({pops['pairs_reproduced']}), A-refuses/B-refuses rows (unseen) {pops['unseen']} ({pops['unseen_reproduced']}) "
+         f"(all folds run; the direction itself uses only the 13 development pairs, see Directions); "
+         f"C rows reproduced {pops['C_reproduced']}"
          + (" (confirmation folds)" if confirm else "") + ".", ""]
     if confirm and n.get("gold_source", "").startswith("D1"):
         L += ["WARNING: no judge verdicts in this run directory; gold is the D1 string rule, PROVISIONAL, not a claim.", ""]
@@ -585,7 +592,7 @@ def render(n: dict, confirm: bool) -> str:
     if sec and sec.get("missing"):
         L += ["", f"## Secondary setting {sec['setting']} — {sec['label']}", "", "No rows at this setting (not run or skipped)."]
     elif sec:
-        L += render_block(sec, confirm, f"Secondary setting {sec['setting']} — {sec['label']}", caveat, full=False)
+        L += render_block(sec, confirm, f"Secondary setting {sec['setting']} — {sec['label']}", caveat, full=True)
     if n.get("record"):
         L += ["", f"**Record: {n['record']}.**"]
     plan = n.get("plan")

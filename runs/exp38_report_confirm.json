@@ -737,32 +737,68 @@
   "knowledge-update": {
    "n": 6,
    "steer": 0.5,
-   "steer_cut": 0.16666666666666666
+   "steer_cut": 0.16666666666666666,
+   "B": 0.3333333333333333,
+   "k": [
+    3,
+    1,
+    2
+   ]
   },
   "multi-session": {
    "n": 13,
    "steer": 0.07692307692307693,
-   "steer_cut": 0.0
+   "steer_cut": 0.0,
+   "B": 0.23076923076923078,
+   "k": [
+    1,
+    0,
+    3
+   ]
   },
   "single-session-assistant": {
    "n": 4,
    "steer": 0.0,
-   "steer_cut": 0.25
+   "steer_cut": 0.25,
+   "B": 0.5,
+   "k": [
+    0,
+    1,
+    2
+   ]
   },
   "single-session-preference": {
    "n": 5,
    "steer": 0.0,
-   "steer_cut": 0.0
+   "steer_cut": 0.0,
+   "B": 0.2,
+   "k": [
+    0,
+    0,
+    1
+   ]
   },
   "single-session-user": {
    "n": 12,
    "steer": 0.25,
-   "steer_cut": 0.08333333333333333
+   "steer_cut": 0.08333333333333333,
+   "B": 0.5833333333333334,
+   "k": [
+    3,
+    1,
+    7
+   ]
   },
   "temporal-reasoning": {
    "n": 20,
    "steer": 0.1,
-   "steer_cut": 0.15
+   "steer_cut": 0.15,
+   "B": 0.55,
+   "k": [
+    2,
+    3,
+    11
+   ]
   }
  },
  "secondary": {
@@ -1217,32 +1253,68 @@
    "knowledge-update": {
     "n": 6,
     "steer": 0.5,
-    "steer_cut": 0.16666666666666666
+    "steer_cut": 0.16666666666666666,
+    "B": 0.3333333333333333,
+    "k": [
+     3,
+     1,
+     2
+    ]
    },
    "multi-session": {
     "n": 13,
     "steer": 0.5384615384615384,
-    "steer_cut": 0.07692307692307693
+    "steer_cut": 0.07692307692307693,
+    "B": 0.23076923076923078,
+    "k": [
+     7,
+     1,
+     3
+    ]
    },
    "single-session-assistant": {
     "n": 4,
     "steer": 0.75,
-    "steer_cut": 0.5
+    "steer_cut": 0.5,
+    "B": 0.5,
+    "k": [
+     3,
+     2,
+     2
+    ]
    },
    "single-session-preference": {
     "n": 5,
     "steer": 0.2,
-    "steer_cut": 0.0
+    "steer_cut": 0.0,
+    "B": 0.2,
+    "k": [
+     1,
+     0,
+     1
+    ]
    },
    "single-session-user": {
     "n": 12,
     "steer": 0.4166666666666667,
-    "steer_cut": 0.16666666666666666
+    "steer_cut": 0.16666666666666666,
+    "B": 0.5833333333333334,
+    "k": [
+     5,
+     2,
+     7
+    ]
    },
    "temporal-reasoning": {
     "n": 20,
     "steer": 0.6,
-    "steer_cut": 0.25
+    "steer_cut": 0.25,
+    "B": 0.55,
+    "k": [
+     12,
+     5,
+     11
+    ]
    }
   },
   "label": "secondary (chosen after dev D1 gold; disclosed)"
