@@ -6647,7 +6647,7 @@ same position makes it answer 0 times. The pre-registered prediction (M2 or spli
 
 **Why it matters.** The refusal is decided at the answer position and can be lifted there. Once lifted, the 3B produces
 the answer from its own computation on the evidence in view. With the evidence cut, the same push gives 2 of 28 gold.
-This sharpens §38: the instruction line of §35 and the direction of §38 both act on a disposition at that one position.
+This sharpens §38: the direction acts on a disposition at that one position; whether the §35 instruction line acts at the same point was not tested.
 
 **Caveats.**
 1. The F1 caveat, as amended. The pushed ':' key/value above layer 29 stays in the cache, so every later token can
