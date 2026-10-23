@@ -25,6 +25,8 @@ Pure logic plus the hooked engines; torch is imported lazily so the analysis pac
 - §39b (amendment 2 of the §39 proposal): `HookedEngine.run_forced` feeds a given token as the first generated token
   on the unpushed cache (':' run unpushed, no hook at any step, checked); `continuation_first_id` is the tokenisation
   of a forced text after "Answer:"; `ForcedArm` / `make_forced_row` stamp the rows.
+- §41: `HookedEngine.run(..., return_logits=True)` also returns the step-0 logits at ':' (`Generation.logits0`) from
+  the same pass that captures the residual; row formats are unchanged (memctl/analysis/conditional.py reads them).
 """
 
 from __future__ import annotations
@@ -569,6 +571,7 @@ class Generation:
     copy_s: float
     forced: int | None = None          # §39b: the token fed as the first generated token (None: not forced)
     natural_first: int | None = None   # §39b: the argmax at ':' on the unpushed cache, recorded and not used
+    logits0: np.ndarray | None = None  # §41: the step-0 logits (at ':'), float32, only with run(return_logits=True)
 
     @property
     def n_new(self) -> int:
@@ -596,7 +599,10 @@ class HookedEngine:
         return self.decode([prepared.last_id])
 
     def run(self, prepared: Prepared, specs: list[HookSpec], max_new_tokens: int,
-            capture: tuple[int, ...] = ()) -> Generation:
+            capture: tuple[int, ...] = (), return_logits: bool = False) -> Generation:
+        """Greedy generation under `specs`; `capture` layers' residuals at ':' (step 0) are returned in `captured`.
+        `return_logits` (§41) also returns the step-0 logits (the pass at ':' under the same hooks) as `logits0`; the
+        generation itself is unchanged by it."""
         import torch
 
         t0 = time.perf_counter()
@@ -607,6 +613,7 @@ class HookedEngine:
         gen: list[int] = []
         with torch.no_grad(), hooked(self.layers, all_specs, state):
             logits = self._step(prepared.last_id, cache)
+            logits0 = logits.detach().float().cpu().numpy().copy() if return_logits else None
             t2 = time.perf_counter()
             first = None
             while True:
@@ -621,7 +628,8 @@ class HookedEngine:
                 state.step += 1
                 logits = self._step(nxt, cache)
         t3 = time.perf_counter()
-        return Generation(self.decode(gen), gen, first, dict(state.captured), t2 - t1, t3 - t2, t1 - t0)
+        return Generation(self.decode(gen), gen, first, dict(state.captured), t2 - t1, t3 - t2, t1 - t0,
+                          logits0=logits0)
 
     def assert_no_hooks(self) -> None:
         """§39b: refuse to run a forced generation while any forward hook is registered on a decoder layer (or
