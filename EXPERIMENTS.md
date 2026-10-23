@@ -6663,6 +6663,77 @@ sealed-fold run of §39 would be a separate quote (about $0.15 on an A40).
 
 **Spend.** $0 (laptop; 128 prefills, 324 generations). All experiments ≈ $17.68 of $20.
 
+### 39b. Does the first generated token carry the effect, or the pushed ':' state? A first-token-only clean-cache control (2026-10-23, pre-registered as §39 amendment 2; development only)
+
+**Status: RUN, development only (folds 0–1, laptop, $0). Reading: token carries it. The refusal is a one-token
+decision; the token the push chooses is the answer's own first token, not a neutral one. Gold is provisional (D1).
+No claim on folds 2–4.** Spec: §39 amendment 2 (3e7c349, D-33 item 1). Reviews:
+`research/reviews/2026-10-23-exp39b-build.md` (ACCEPT, 64ac039) and `research/reviews/2026-10-23-exp39b-dev.md` (ACCEPT,
+7d4e037). Code: `memctl/analysis/steering.py` (`run_forced`, which refuses if any hook is registered),
+`scripts/exp39b_dev.py`, `scripts/exp39b_report.py` (68ac539, soft-refusal pattern 8bc073c); tests `tests/test_exp39b.py`
+(18). Rows `runs/exp39b_dev/qwen3b/`; report `runs/exp39b_report_dev.md` (24eded6).
+
+**Why.** §39's caveat 1: Steer-0 leaves the pushed ':' key/value above layer 29 in the cache for every later token, so
+§39 could not separate "the first token commits the model" from "later tokens keep reading the pushed state".
+
+**Design.** Same 28 dev R rows, engine and wording as §39. Steer-first (primary): the first generated token of §39's
+Steer-0 row is forced as the first output token on an unpushed cache (':' run unpushed). Greedy continuation follows
+with no hook at any step, so no pushed state exists anywhere. Beside it:
+- Steer-first-cut: the same on the evidence-cut prompt, with Steer-0-cut's first token;
+- Gold-first: the gold's first token forced, a descriptive ceiling;
+- Unknown-first: ' unknown' forced, which must equal A byte-exact;
+- a step-0 check: Steer-0 for one token must give §39's first token.
+
+Readings, fixed in advance, with aF = ans(Steer-first) and gF = its D1 gold, against a0 = 26 and g0 = 7:
+- token carries it if aF ≥ 21 and gF ≥ 6;
+- state needed if aF ≤ 12;
+- split if aF ≥ 21 and gF ≤ 3.
+
+**Checks.**
+- Reproduction: flag rule 0.889 (R 28/28; the same 4 D1-paraphrase damage drops as §38–§39); byte-identity 64/64.
+- Unknown-first equals A byte-exact on 28/28, and the unpushed ':' argmax is ' unknown' on 28/28.
+- The step-0 check gives §39's first token on 28/28.
+
+| 28 dev R rows | ans | D1 gold (provisional) | refusal |
+|---|---|---|---|
+| A (unsteered) | 0 | 0 | 28 |
+| Steer-0 (§39, pushed ':' state kept) | 26 | 7 | 2 |
+| **Steer-first (clean cache, forced first token)** | **26** | **7** | 2 |
+| Steer-0-cut (§39) / Steer-first-cut | 17 / 17 | 2 / 2 | 11 / 11 |
+| Gold-first | 28 | 13 | 0 |
+| Unknown-first | 0 | 0 | 28 |
+
+Reading: aF 26 ≥ 21 and gF 7 ≥ 6, so **token carries it**.
+
+**Texts.**
+- Steer-first's text equals Steer-0's on 26/28. The two that diverge, 51b23612 at token 2 and b6025781 at token 1, change
+  neither class nor gold.
+- Steer-first-cut equals Steer-0-cut on 28/28.
+- Soft refusals (the §41 rev 1 pattern): Steer-first 4/26, Steer-0 4/26, Steer-first-cut 1/17, Gold-first 2/28.
+
+**Gold-first (descriptive).**
+- Forced tokens: ' ' on 7 rows (numbers), ' The' on 6, ' a' on 2, ' I' on 2, and a content-bearing first word on the
+  other 11 (' Nu', ' Japanese', ' International', ' Michael'…).
+- It answers on 28/28, with gold 13/28 (5/15 unseen).
+- The content-bearing tokens give part of the answer away, so 13/28 is an upper bound helped by the forced token.
+- Generic starts (' The', ' I') often lead to hedges or off-topic text.
+
+**Found.** Removing the pushed state entirely changes almost nothing. One forced first token on a clean cache reproduces
+the pushed run almost token for token: 26 answers and 7 gold, identical text on 26 of 28. The push's whole effect passes
+through its choice of the first generated token. After that token, the unpushed 3B continues on its own, from the
+evidence when it is in view. The pre-registered prediction (split or undetermined, gF ≤ 4) was wrong.
+
+**Why it matters.** The 3B's refusal is a one-token decision at the answer position: ' unknown' or the answer's first
+token. The token the push chooses is not content-free. It is usually the answer's own first word ("Serenity" for
+"Serenity Yoga") or ' ' before a number. So what the layer-29 push supplies is the choice of a non-refusal first token
+that the model's own computation already ranks below ' unknown'. The content then follows without the push.
+
+**Caveats.** Development only: 28 rows, 13 of them the direction's estimation pairs, the same folds the direction came
+from. Gold is the D1 string rule. One layer and one α. That the forced token is "the answer's own first token" is read
+off the texts, not measured as a rank.
+
+**Spend.** $0 (laptop; 176 prefills, 204 generations). All experiments ≈ $17.68 of $20.
+
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
 **Status: STOPPED at the regeneration sanity check; no gradient was computed.** Secondary to §34 (the J-lens
