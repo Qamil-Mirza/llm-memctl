@@ -22,6 +22,9 @@ Pure logic plus the hooked engines; torch is imported lazily so the analysis pac
 - Output classes (amendment 1.2): 'refusal' (the §23 rule on the phrase), 'degenerate' (empty after strip, no
   alphanumeric character, or a consecutive run of >= `DEGENERATE_REPEAT` identical token ids), else
   'answer'; ans = class == 'answer'.
+- §39b (amendment 2 of the §39 proposal): `HookedEngine.run_forced` feeds a given token as the first generated token
+  on the unpushed cache (':' run unpushed, no hook at any step, checked); `continuation_first_id` is the tokenisation
+  of a forced text after "Answer:"; `ForcedArm` / `make_forced_row` stamp the rows.
 """
 
 from __future__ import annotations
@@ -561,6 +564,8 @@ class Generation:
     first_step_s: float
     decode_s: float
     copy_s: float
+    forced: int | None = None          # §39b: the token fed as the first generated token (None: not forced)
+    natural_first: int | None = None   # §39b: the argmax at ':' on the unpushed cache, recorded and not used
 
     @property
     def n_new(self) -> int:
@@ -614,6 +619,45 @@ class HookedEngine:
                 logits = self._step(nxt, cache)
         t3 = time.perf_counter()
         return Generation(self.decode(gen), gen, first, dict(state.captured), t2 - t1, t3 - t2, t1 - t0)
+
+    def assert_no_hooks(self) -> None:
+        """§39b: refuse to run a forced generation while any forward hook is registered on a decoder layer (or
+        globally), so 'no hook at any step' is checked, not assumed."""
+        from torch.nn.modules import module as tmod
+
+        stray = [i for i, layer in enumerate(self.layers) if layer._forward_hooks or layer._forward_pre_hooks]
+        if stray or tmod._global_forward_hooks or tmod._global_forward_pre_hooks:
+            raise RuntimeError(f"forward hooks registered (layers {stray}); a forced generation runs with none")
+
+    def run_forced(self, prepared: Prepared, forced: int, max_new_tokens: int) -> Generation:
+        """§39b, the first-token-only clean-cache path. From the unpushed prefix cache (every token before ':') the
+        ':' token is run unpushed (its argmax is recorded as `natural_first` and discarded); `forced` is then the
+        first generated token (gen_ids[0]) and greedy decoding continues from it with no hook at any step. Stops as
+        `run`: EOS (never recorded), a newline in the decoded text (the newline token is kept, as in `run`), or
+        `max_new_tokens` generated tokens counting the forced one. A forced token whose text contains a newline
+        therefore ends the generation at once (gen_ids = [forced]). A stop id cannot be forced (ValueError)."""
+        import torch
+
+        forced = int(forced)
+        if forced in self.stop_ids:
+            raise ValueError(f"cannot force a stop id ({forced}); it is never a generated token")
+        if max_new_tokens < 1:
+            raise ValueError("max_new_tokens must be >= 1 (the forced token counts)")
+        self.assert_no_hooks()
+        t0 = time.perf_counter()
+        cache = copy.deepcopy(prepared.cache)
+        t1 = time.perf_counter()
+        with torch.no_grad():
+            natural = int(self._step(prepared.last_id, cache).argmax())
+            t2 = time.perf_counter()
+            gen = [forced]
+            while "\n" not in self.decode(gen) and len(gen) < max_new_tokens:
+                nxt = int(self._step(gen[-1], cache).argmax())
+                if nxt in self.stop_ids:
+                    break
+                gen.append(nxt)
+        t3 = time.perf_counter()
+        return Generation(self.decode(gen), gen, forced, {}, t2 - t1, t3 - t2, t1 - t0, forced, natural)
 
 
 class HFEngine(HookedEngine):
@@ -744,6 +788,30 @@ class StubEngine(HookedEngine):
         return logits
 
 
+def continuation_first_id(engine, continuation: str, text: str) -> int:
+    """§39b: the first token id of `text` as the tokenizer emits it after `continuation` (the prompt's own ids end
+    with ids(continuation)): ids(continuation + text) minus the ids(continuation) prefix. Raises if appending `text`
+    re-tokenises the continuation (the prefix is not stable) or adds no token."""
+    a = engine.encode(continuation)
+    b = engine.encode(continuation + text)
+    if b[:len(a)] != a or len(b) <= len(a):
+        raise ValueError(f"appending {text!r} changes the tokens of the continuation; no first id")
+    return b[len(a)]
+
+
+@dataclass(frozen=True)
+class ForcedArm:
+    """§39b: a forced-first-token arm (no hook; the forced id is per row and stamped on the row)."""
+    name: str                  # 'unknown_first', 'steer_first', 'steer_first_cut', 'gold_first'
+
+    @property
+    def key(self) -> str:
+        return f"forced:{self.name}"
+
+    def to_dict(self) -> dict:
+        return {"mode": "forced", "layer": None, "alpha": None, "unit": None, "key": self.key, "arm": self.name}
+
+
 def build_engine(backend: str, model: str, threads: int = 8):
     if backend == "stub":
         return StubEngine(model)
@@ -772,6 +840,16 @@ def make_row(stage: str, pop: str, item: SteerInput, setting: Setting, gen: Gene
             "ans": cls == "answer", "gold_d1_provisional": provisional_gold(phrase, gold, cls),
             "timing": {"prefill_s": prepared.prefill_s, "copy_s": gen.copy_s, "first_step_s": gen.first_step_s,
                        "decode_s": gen.decode_s, "n_new": gen.n_new}}
+
+
+def make_forced_row(stage: str, pop: str, item: SteerInput, arm: ForcedArm, gen: Generation, engine, prepared: Prepared,
+                    max_new_tokens: int, gold: str, source: dict, reader: str = "qwen3b") -> dict:
+    """§39b: `make_row` for a forced generation (vector None: no hook), plus the forced id, its text, the unpushed
+    ':' argmax and where the forced id came from."""
+    row = make_row(stage, pop, item, arm, gen, engine, prepared, None, max_new_tokens, gold, reader)
+    row.update({"forced_token": gen.forced, "forced_text": engine.decode([gen.forced]),
+                "natural_first_token": gen.natural_first, "forced_source": source})
+    return row
 
 
 def row_key(row: dict) -> tuple[str, str, str, str]:
