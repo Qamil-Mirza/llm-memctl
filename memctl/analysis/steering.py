@@ -201,17 +201,53 @@ class Setting:
     layer: int | None = None
     alpha: float | None = None
     unit: str | None = None
+    steps: tuple | None = None  # §39: the add acts only at these steps (0 = the ':' token); None = every step (§38)
 
     @property
     def key(self) -> str:
         if self.mode == "none":
             return "none"
         if self.alpha is None:
-            return f"{self.mode}:L{self.layer}"
-        return f"{self.mode}:L{self.layer}:a{self.alpha:g}:{self.unit}"
+            base = f"{self.mode}:L{self.layer}"
+        else:
+            base = f"{self.mode}:L{self.layer}:a{self.alpha:g}:{self.unit}"
+        return base if self.steps is None else f"{base}:{steps_label(self.steps)}"
 
     def to_dict(self) -> dict:
-        return {"mode": self.mode, "layer": self.layer, "alpha": self.alpha, "unit": self.unit, "key": self.key}
+        out = {"mode": self.mode, "layer": self.layer, "alpha": self.alpha, "unit": self.unit, "key": self.key}
+        if self.steps is not None:      # §38 rows (every step) keep their exact dict
+            out["steps"] = list(self.steps)
+        return out
+
+
+def steps_label(steps) -> str:
+    """(0,) -> 's0'; (0, 1, 2) -> 's0-2'; a non-contiguous set -> 's0,3'. Every step (None) has no label."""
+    s = sorted(set(int(x) for x in steps))
+    if not s:
+        raise ValueError("an empty step set acts nowhere; use Setting('none')")
+    if len(s) == 1:
+        return f"s{s[0]}"
+    if s == list(range(s[0], s[-1] + 1)):
+        return f"s{s[0]}-{s[-1]}"
+    return "s" + ",".join(str(x) for x in s)
+
+
+def parse_steps(label: str) -> tuple:
+    """Inverse of `steps_label`."""
+    if not label.startswith("s"):
+        raise ValueError(f"not a step label: {label!r}")
+    body = label[1:]
+    if "," in body:
+        return tuple(sorted(int(x) for x in body.split(",")))
+    if "-" in body:
+        a, b = body.split("-")
+        return tuple(range(int(a), int(b) + 1))
+    return (int(body),)
+
+
+def steps_upto(k: int) -> tuple:
+    """Steer-k of §39: steps 0..k (k = 0 is Steer-0, the ':' position only)."""
+    return tuple(range(k + 1))
 
 
 def sweep_settings(layers, alphas, unit: str = DEFAULT_UNIT) -> list[Setting]:
@@ -235,9 +271,9 @@ class HookState:
     calls: int = 0
 
 
-def add_spec(layer: int, vector) -> HookSpec:
-    """Add at the current position at the ':' token and every generated token."""
-    return HookSpec(layer, "add", np.asarray(vector, dtype=np.float32), None)
+def add_spec(layer: int, vector, steps=None) -> HookSpec:
+    """Add at the current position at the ':' token and every generated token (steps None), or only at `steps`."""
+    return HookSpec(layer, "add", np.asarray(vector, dtype=np.float32), None if steps is None else frozenset(steps))
 
 
 def overwrite_spec(layer: int, vector) -> HookSpec:
@@ -305,7 +341,7 @@ def specs_for(setting: Setting, vectors: dict, own_state: np.ndarray | None = No
     vec = hook_vector(setting, vectors, own_state, b_state, hidden)
     if setting.mode in ("overwrite_B", "overwrite_self"):
         return [overwrite_spec(setting.layer, vec)]
-    return [add_spec(setting.layer, vec)]
+    return [add_spec(setting.layer, vec, setting.steps)]
 
 
 def hook_vector(setting: Setting, vectors: dict, own_state: np.ndarray | None = None, b_state: np.ndarray | None = None,
@@ -410,9 +446,13 @@ JUDGE_CAVEAT = "judge engine differs from §35"
 
 
 def setting_from_key(key: str) -> Setting:
-    """'steer:L25:a4:vnorm' -> Setting('steer', 25, 4.0, 'vnorm')."""
-    mode, layer, alpha, unit = key.split(":")
-    return Setting(mode, int(layer[1:]), float(alpha[1:]), unit)
+    """'steer:L25:a4:vnorm' -> Setting('steer', 25, 4.0, 'vnorm'); a §39 key adds the steps ('...:vnorm:s0-2')."""
+    parts = key.split(":")
+    mode, layer, alpha, unit = parts[:4]
+    steps = parse_steps(parts[4]) if len(parts) == 5 else None
+    if len(parts) not in (4, 5):
+        raise ValueError(f"not a steer setting key: {key!r}")
+    return Setting(mode, int(layer[1:]), float(alpha[1:]), unit, steps)
 
 
 def map_layer(layer: int, n_layers: int) -> int:
