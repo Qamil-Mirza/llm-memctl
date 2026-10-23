@@ -71,3 +71,42 @@ prompt for C rows; the time of the 75 × 2 prefills on the laptop; anything that
 - **Confirmation** on §40's rows as §5, unchanged; plus the descriptive adversarial answer rate of Cond against Steer-all.
 - **Order.** Build after the §39b run; the Advisor reviews the build; the dev run is free; the frozen rule's commit hash
   goes into §40's launch message. If the gate fails, §41 closes development-only and §40 still logs the signals.
+
+## Amendment 1 (Advisor, 2026-10-23, after the development fit, before the §40 launch; no §40 row has been read)
+
+The frozen rule (30f891a, `runs/exp41_dev/qwen3b/rule.json` sha af0cbe98…) is s_evid > 2.218, firing on 6 of 67
+development rows (R 4, C 2). It stays frozen and is scored on §40 as the pre-registered primary. The fit exposed
+three things the Executor raised and the Advisor confirms from the report:
+
+- The gate (Cond − Steer ≥ 3) passed at +9.9 weighted units mainly because Steer's development utility is about 0 at
+  λ = 1 under D1 labels (R: 8 correct, 15 wrong, 3 soft). Any rule close to "never steer" passes it. The frozen rule
+  beats A by 0.76 weighted units, about one R row; it is close to "never steer".
+- 33 of Steer's 67 development labels are D1, which under-counts correct paraphrases, so the fit saw steering as worse
+  than a judge would. §40 scores with the 7B judge: the fit and the test use different label sources.
+- The chosen signal is not the one that ranks. Dev AUROC for gold(Steer): s_proj 0.722 (R 0.731), s_evid 0.237
+  (R 0.575), s_margin 0.136. The fit chose s_evid at an extreme τ on 6 rows; a selection artefact of the utility grid.
+
+**Claims on §40's R rows, fixed now** (all at λ = 1, paired bootstrap 10k, λ = 2 beside; the rule and the signals are
+what `rule.json` and the logged step-0 quantities give):
+- **Claim 1 (unchanged):** U(Cond) − U(Steer), SHOWN if LB > 0. **Reading rule added:** SHOWN says only that the rule
+  beats indiscriminate steering; U(Steer) − U(A) is printed beside it, and if U(Steer) ≤ U(A) on §40 the text says
+  "expected under a net-negative steer; not evidence of a selective signal".
+- **Claim 2 (unchanged):** U(Cond) − U(B), SHOWN if LB > 0.
+- **Claim 3 (new):** U(Cond) − U(A), SHOWN if LB > 0. This is the test of "the signal knows when steering helps":
+  the rule must beat not steering at all.
+- **Claim 4 (new):** AUROC of s_proj for gold(Steer-all) on §40's R rows, bootstrap over rows; SHOWN if LB > 0.5.
+  s_proj is named now on its dev AUROC (0.722); s_margin and s_evid reported beside, descriptive. This answers the
+  user's question directly, independent of any threshold.
+- **Descriptive:** for s_proj, the utility of "steer the top fraction q of R rows by s_proj" for q in 0.1 steps, on
+  §40's rows, labelled post hoc; the precision of the frozen rule's fires (gold rate among fired rows against Steer's
+  overall gold rate); coverage and risk of each policy; the adversarial answer rates.
+
+**Prediction, recorded now.** Under the judge, Steer is net positive at λ = 1 (§38 sealed folds: 31 right, 23 wrong),
+so with Cond close to A: Claim 1 NOT SHOWN (Cond loses to a net-positive Steer), Claim 2 NOT SHOWN, Claim 3 NOT SHOWN
+(Cond ≈ A), Claim 4 SHOWN with a point estimate 0.60–0.70. At λ = 2 Steer turns net negative and Cond beats it, the
+trivial direction. The honest summary expected: "the fitted threshold rule is essentially 'do not steer'; the
+projection on the direction ranks steerable rows modestly; no threshold on 67 development rows turns that into a
+policy that beats abstention".
+
+The §40 report's §41 block implements Claims 3–4 and the descriptive items before the bundle is rebuilt; the pod script
+is unchanged (the signals are already logged). The rule is not refitted.
