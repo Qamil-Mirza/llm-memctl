@@ -92,3 +92,24 @@ force a choice the Advisor has not fixed above.
   bundle passes D-30; then the quote's conditions are re-read and the pod launches on the user's word.
 - **Quote to the user:** one A40 secure pod at the then-current price (last $0.59/h), hard stop 60 min, ≈ $0.59;
   programme spend ≈ $17.68 → ≈ $18.27 of $20.
+
+## Rev 2 (Advisor, 2026-10-23, after pod attempt 1): the smoke's marker bar
+
+Attempt 1 (pod b0qnmah0utqvh2, 19:19–19:22 UTC, about $0.03, logs at 78f2c07) stopped at the D-22 smoke before any
+note pass or arm: batched and single-sequence notes agreed on the first token 5/5 and the text 4/5, all 4 judge replies
+were verdicts, but the notes carried the `Answer:` marker on only 3 of 5 rows (batched and single alike), and the
+smoke as built required an absolute 4/5. Rev 1's wording ("same first token ≥ 4/5, marker ≥ 4/5") was meant as a
+batched-against-single agreement check and was read as an absolute bar; the Advisor's wording was ambiguous.
+
+**Ruling: option (a).** The smoke checks what it exists for, batching drift and judge compliance: same first token
+≥ 4/5 and marker agreement (batched = single) ≥ 4/5; the absolute marker rate is printed, not gated. The marker
+rate on LoCoMo is a result, not a fault: on 2 of the 5 smoke rows the 3B answered in one sentence without the
+note-and-`Answer:` format. After the N pass the marker rate on the 600 and the 40 is printed; the pre-registered
+R < 40 rule (claims descriptive) stands as the only population guard. The record states that R and C are drawn
+from marked rows only, as in §35 and §38, and gives the unmarked share as a finding about the prompt family on LoCoMo.
+Descriptive, only if it is a few lines: the unmarked rows' direct answers (the N output) judged, so the record can say
+how often the 3B answers correctly on LoCoMo when it skips the format.
+
+A relaunch is a new pod and needs the user's new line in the Executor's pane. Terms unchanged: A40 secure at the
+then-current price (now $0.59/h), hard stop 60 min, at most about $0.59; programme spend about $17.71 after attempt 1,
+at most about $18.30 after the relaunch.
