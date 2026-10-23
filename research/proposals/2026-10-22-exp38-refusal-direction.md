@@ -132,3 +132,42 @@ Nothing about the 7B (its residual width differs; no cross-model patch). Nothing
 rows fail to derive (that is a separate attention or note study). A positive result shows availability and a late
 override; it does not locate the circuit that decides to refuse. A negative result does not show the answer is absent,
 only that one direction at one layer does not release it.
+
+## Amendment 1 (Advisor, 2026-10-22, before the build; the Executor's F1–F9 at the design stage, all from inputs only)
+
+Counts re-derived by the Executor from the §35 cache match §1 (dev R 28 = 8 + 5 + 15, 13 pairs, A-correct 39;
+confirmation R 64 = 27 + 15 + 22, A-correct 55; confirmation rows counted only, no outcomes read). Dev input facts: the
+N-cut output has no `Answer:` marker on 8 of 28 R rows; the N-cut arm refuses on 18 of 28; the gold passes D1 inside the
+cut prompt on 9 of 28 and inside the N-cut note on 5 of 28.
+
+1. **α unit (F1, accepted).** The unit is ‖v_L‖ itself: α = 1 adds exactly the mean B − A difference. Grid α ∈ {1, 2, 4}.
+   The design run prints ‖v_L‖ / mean‖resid_A(L, last)‖ per layer. §2's residual-norm unit is withdrawn.
+2. **Degenerate output (F2, accepted).** A fixed class: empty after strip, no alphanumeric character, or one token
+   repeated ≥ 8 times. It is neither an answer nor a refusal; ans excludes it; its rate is printed per setting, and a
+   setting whose degenerate rate exceeds 0.2 on the 28 dev R rows is not eligible for selection.
+3. **Cut prompt not evidence-free by D1 on about a third of rows (F3).** Primary Claim 1 stays on the full R set: a gold
+   string that survives the cut inflates the control's gold rate, which makes the control conservative for Claim 1 (it
+   can hide an effect, not invent one). **Secondary Claim 1′, pre-registered:** the same paired difference on the R rows
+   where the gold fails D1 in both the cut prompt and the N-cut note (the §36 Control B restriction); reported beside
+   Claim 1 with its n. If Claim 1 is NOT SHOWN and 1′ is, the record says "shown on the clean subset only", descriptive.
+4. **Missing N-cut marker (F4, accepted).** No marker → the Steer-cut prompt is the cut chat text + `Answer:` with no note,
+   the same as an empty note; the count is reported. **Unsteered A-cut** (the same cut prompt, α = 0) is added as the
+   control's own baseline: P(gold(A-cut)) and P(ans(A-cut)) are printed beside Steer-cut, so a nonzero Steer-cut rate is
+   read against what the cut prompt gives with no steering.
+5. **Reverse (F5, accepted as descriptive).** Reverse runs on the C rows as well (laptop: the same 8 as the damage check),
+   where it should lower ans; reported descriptively, not part of Control X. Reverse on R is kept and read as a
+   descriptive floor only.
+6. **Sanity S (F6, accepted).** Plumbing = (a) overwrite at the final layer reproduces B's first token on ≥ 0.9 of pairs,
+   (b) a zero-vector add reproduces A byte-exact on all pairs, (c) a self-overwrite with A's own state reproduces A
+   byte-exact on all pairs. The 0.2-depth overwrite is printed descriptively and voids nothing. "Final layer" = the
+   output of decoder layer 35, before the final RMSNorm.
+7. **Position (F7, accepted).** `last` is the `:` token of `Answer:`, the final prompt token; the generation's first token
+   begins with a space.
+8. **Selection rules (F8, accepted).** The damage and Reverse rows on the laptop are the first 8 dev A-correct rows by
+   `question_id`. The gate stays on the 28 dev R rows; ans(Steer) on the 15 B-refuses rows, which the estimation never
+   used, is printed beside it, descriptive.
+9. **Implementation (F9, accepted with one condition).** The prefix KV cache is computed once per row **up to and
+   excluding the `:` token**; the `:` position is recomputed under each setting, because the add at layer L changes its
+   keys and values above L. Generation stops at EOS or newline (the §35 phrase rule); 16 new tokens on the laptop.
+
+Nothing else in §1–§8 changes. The direction is still estimated from the 13 dev pairs only; folds 2–4 remain sealed.
