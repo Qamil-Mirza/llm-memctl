@@ -25,7 +25,7 @@ from memctl.analysis import steering as st
 
 LAYER, ALPHA, UNIT = 29, 2.0, "vnorm"
 RANDOM_SEED = 40
-MAX_NEW = st.MAX_NEW_TOKENS_LAPTOP          # 16, as §38's sealed-fold setting and the rev 0 text
+MAX_NEW = st.MAX_NEW_TOKENS_POD             # 64, as the §38 pod confirmation it validates (build review 456dd11)
 NOTE_MAX_NEW = 256
 NOTE_BATCH = 32
 R_CAP, C_CAP = 120, 40

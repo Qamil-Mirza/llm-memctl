@@ -24,7 +24,7 @@ cache, rows, classifier v2), memctl/analysis/conditional.py (the §41 signals). 
      any arm (and before the note pass: the earliest point the judge is loaded).
   4. N pass: the §23-template note on all 640 rows, batched 32, left padding, greedy (repetition penalty 1, no
      sampling), 256 new tokens, EOS stop. note = split_note(output.strip()); no marker -> the row is dropped (counted).
-  5. A pass on every marked row: note + 'Answer:', unsteered, 16 new tokens, newline/EOS stop, with the step-0 logits
+  5. A pass on every marked row: note + 'Answer:', unsteered, 64 new tokens, newline/EOS stop, with the step-0 logits
      and the layer-29 residual at ':' captured from the same pass (§41 signals: margin over the refusal-start ids,
      projection on v_29; residuals saved).
   6. the judge on every marked A answer of the 600 (the adversarial block is never judged). Counts printed: marker
@@ -569,7 +569,7 @@ def projection(secs: dict, n: int, n_judged: int) -> dict:
     per_gen = secs["a_and_steer"] / max(n + 1, 1)
     apass = (lv.N_ROWS + lv.N_ADVERSARIAL) * per_gen
     arm_gens = ex.R_CAP * 3 + ex.R_CAP * 2 + ex.C_CAP + ex.R_CAP + lv.N_ADVERSARIAL * 2 + ex.C_CAP + lv.N_ADVERSARIAL
-    arms = arm_gens * per_gen * 1.5           # steered outputs run to the 16-token cap more often
+    arms = arm_gens * per_gen * 1.5           # steered outputs run to the 64-token cap more often
     judge_n = lv.N_ROWS + ex.R_CAP * 6 + ex.C_CAP + ex.AGREEMENT_N
     judge = judge_n * secs["judge"] / max(n_judged, 1)
     notes = n_batches * per_batch
