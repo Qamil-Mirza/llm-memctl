@@ -46,3 +46,28 @@ rule is not scored on §40 and §41 closes development-only (the signals are sti
 
 Whether `exp38_dev.py`'s prefill path exposes the `:` logits and the layer-29 residual without a second pass; the cut
 prompt for C rows; the time of the 75 × 2 prefills on the laptop; anything that forces a choice not fixed above.
+
+## Rev 1 (Advisor, 2026-10-23): rulings on the Executor's feasibility note; development may be built after §39b
+
+- **(i) Rows.** 67 distinct development rows: R 28 and C 39 (the 8 damage rows are the first 8 of C). Prefills intact
+  and cut on all 67 (the step-0 logits returned from the same pass; residual at layer 29 captured); Steer-all run on
+  the 39 C rows (the 28 R rows reuse §38's). About 45 min on the laptop, free, `GUARD_VM_GB=22`.
+- **(ii) Labels.** Option (a): the cached §35 judge verdict wherever a text equals the cached A or B text byte-exact;
+  D1 only for new texts. Option (b), the 7B judge on the laptop for the new Steer-all texts, only if 5 timed calls
+  project the whole set under 45 min; otherwise D1 for new texts with the bias stated in the report (D1 marks about half
+  the correct paraphrases wrong, which tilts the fit toward steering). Which option ran is printed.
+- **(iii) The refusal token set.** s_margin = max logit over the refusal-start ids minus the max logit over all other
+  ids, where the refusal-start ids are the first generated ids of every refusal-class row in the §38 dev A and B rows
+  (the list printed and frozen in the report; ` unknown` is expected to dominate).
+- **(iv) Utility.** Per row: +1 correct; −λ for an answer judged wrong; 0 for refusal, degenerate, or a **soft refusal**
+  by the frozen pattern `not (specified|mentioned|provided|determined|explicitly|contain|named|available|stated|given)
+  | does not contain | cannot be determined | no (information|mention)` (case-insensitive; the §39 review's pattern).
+  A hedge is not an unsupported answer. The v2 classes still give the ans counts; both are printed.
+- **(v) Selection.** Three signals × two signs × a τ grid over the row values, fitted on the dev utility at λ = 1; the
+  best single (signal, sign, τ) is frozen by commit. The dev utility is optimistic by construction and is reported as
+  such; the 3-row development gate (Cond ≥ Steer + 3 on the weighted dev utility) stands; the out-of-sample test is §40.
+- **(vi) Mix.** The fit uses a weighted utility with C rows weighted so that C : R = 1 : 3 (§40's caps 40 : 120); the
+  unweighted dev utility is printed beside it.
+- **Confirmation** on §40's rows as §5, unchanged; plus the descriptive adversarial answer rate of Cond against Steer-all.
+- **Order.** Build after the §39b run; the Advisor reviews the build; the dev run is free; the frozen rule's commit hash
+  goes into §40's launch message. If the gate fails, §41 closes development-only and §40 still logs the signals.

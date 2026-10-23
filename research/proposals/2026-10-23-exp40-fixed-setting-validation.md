@@ -55,3 +55,40 @@ setting, fixed in advance, on a set it had never seen".
 LoCoMo evidence format and prompt length at the 3B's limit; note-generation time per row on the A40; whether §34 caches
 cover (b)'s A arm; expected R size under each candidate; wall-clock inside 60 min with the judge; anything that would
 force a choice the Advisor has not fixed above.
+
+## Rev 1 (Advisor, 2026-10-23): rulings on the Executor's feasibility note; design frozen for the build
+
+- **Set: LoCoMo (a) is primary; (b) is dropped.** The Executor's F1 stands: under the §23 prompt the 3B regenerates
+  the same greedy note on the same folds 2–4 rows, so (b) would re-run §38's confirmation, not test a new distribution.
+- **Rows.** Answerable questions (categories 1–4) with 1–8 resolvable evidence turns; a seeded shuffle (seed 40) takes
+  600 of them for the note pass. R = marked refusals under A, capped at 120 in shuffle order; C = marked correct
+  rows under A (judge), capped at 40. **Adversarial block (new):** 40 category-5 questions (seed 40), arms A, B and
+  Steer-all; the readout is the answer rate alone (every answer to an unanswerable question is unsupported; no judge).
+  If R < 40 after the 600, the arms still run and the §4 claims are reported descriptive, no verdict.
+- **In-view memory (i).** All evidence turns plus BM25 top turns from the same conversation (the question as the
+  query) to fill 8 items, in arrival order. Questions with more than 8 evidence turns, none, or an unresolved id are
+  excluded before the shuffle; the counts are printed.
+- **Line format (ii).** The §23 compact "speaker, date: content" line (`label_prefix`), the session date as the date.
+- **Photo captions (iii).** Included as "[shares a photo: <blip_caption>]" inside the turn's content; some golds live
+  only there, and the caption is part of the evidence the user saw.
+- **Judge map (iv).** 4 → single-session-user, 1 → multi-session, 2 → temporal-reasoning, 3 → the default prompt.
+  Agreement check as §38: the judge re-scores 60 cached §35 rows and must agree ≥ 0.90.
+- **Notes (v, vi).** A fresh N pass on the 600 rows (the §23 prompt, 256 tokens, greedy), **batched** (batch 32, left
+  padding); `split_note` gives the frozen note; rows without a marker dropped, count printed. N-cut notes for the R rows
+  generated on the pod on the cut prompt, batched. Batched generation is new code: the D-22 five-row smoke on the pod
+  compares batched against single-sequence notes on the same 5 rows and must show the same first token on ≥ 4 of 5 and a
+  marker on ≥ 4 of 5, else abort before the 600. The D-30 bundle test in a fresh venv covers the batched path with the
+  stub engine.
+- **Direction.** The laptop fp32 `directions.npz` v_29 (sha a7f967ec…), bf16 cast, cosine with the fp32 vector printed;
+  the §38 pod's own re-estimate is not used. One (layer, α) = (29, 2); the script refuses anything else; no sweep.
+- **Arms on R:** A, A-cut, B, Steer-all (primary), Steer-all-cut, Random (seeded rng [40, 29], norm-matched), Steer-0
+  (descriptive). On C: Steer-all. Steer-all and Steer-0 share one prefix cache. Signals for §41 (step-0 logits and the
+  layer-29 residual at `:`) logged on the A and A-cut prefills.
+- **Claims:** as §4, unchanged. Added descriptive readouts: the adversarial answer rates (A, B, Steer-all) and, for
+  §41, Cond's answer rate on the adversarial block beside Steer-all's.
+- **Time and stop.** Executor's projection 25–35 min with batched notes; hard stop 60 min; the pod is killed at the stop
+  whatever the state, and the rows written so far are reported as partial.
+- **Order.** §39b finishes first; §41's rule is frozen by commit (named in the launch message) before the pod; the
+  bundle passes D-30; then the quote's conditions are re-read and the pod launches on the user's word.
+- **Quote to the user:** one A40 secure pod at the then-current price (last $0.59/h), hard stop 60 min, ≈ $0.59;
+  programme spend ≈ $17.68 → ≈ $18.27 of $20.
