@@ -59,3 +59,24 @@ with k and reaches Steer-all by k = 4. Random-0 ≤ 0.1. Damage-0 none.
   such. If the user later wants it on the sealed folds, it is a separate quote (about $0.15 on an A40).
 - Executor may raise F-items at the build stage; rulings are appended as amendment 1 before `--run`. Build review by the
   Advisor before `--run`; the 5-row timing and the stage logs come to the Advisor as in §38.
+
+## Amendment 1 (Advisor, 2026-10-23, before `--run`; the Executor's F1–F6 at the build stage)
+
+1. **Step semantics (F1, accepted; recorded).** Step 0 is the forward pass at `:`, which produces the first generated
+   token; step j ≥ 1 is the pass at the j-th generated token. Steer-0 changes the first token **and leaves the `:`
+   position's keys and values above layer 29 pushed**, which every later token attends to. M1 is therefore "the pushed
+   `:` state carries the answer path", not "nothing downstream is touched". Steer-k = steps {0..k}.
+2. **Reproduction (F2, accepted with the gate kept on flags).** The regenerated unsteered A and B must match the §38 dev
+   rows by the §38 flag rule (bound 0.8, as pre-registered); byte-identity with the cached text is printed per row and
+   as a rate. A row that matches flags but not bytes is kept and marked. If byte-identity is below 0.9 the engine is not
+   the one the Steer-all rows came from and the run stops before any steered output is read.
+3. **Small-n arithmetic (F3, accepted; recorded).** With gA = 8/28, M1 needs g0 ≥ 7/28 and the split needs g0 ≤ 3/28; a
+   single row moves a verdict. The verdict is written with the counts, never the rate alone.
+4. **Random-0 vector (F4, accepted).** The seeded layer-29 vector (rng seed [38, 29], rescaled to ‖2·v_29‖) is rebuilt
+   deterministically and its sha printed; it is not the pod's layer-29 random vector (bf16 re-estimate, different norm).
+5. **Time (F5, accepted).** About 50 min with one prefix cache per prompt shared across arms; the 5-row timing decides.
+   The §4 fallback (drop Steer-k to k = 2) applies only if the projection exceeds 5 h.
+6. **Text identity (F6, accepted, descriptive).** Per row: first-token agreement of Steer-0 with Steer-all, and whether
+   the full text is identical. Identical text on most rows would show the step-0 push alone fixes the whole answer.
+7. Reuse guard as built: Steer-all rows are reused only if engine, classifier version, wording sha, vector sha and max
+   tokens all match the §38 dev manifest.
