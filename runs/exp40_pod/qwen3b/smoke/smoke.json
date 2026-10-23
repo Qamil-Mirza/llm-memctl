@@ -8,15 +8,14 @@
  ],
  "notes_check": {
   "same_first": 5,
+  "marker_agree": 5,
   "marker_batched": 3,
   "marker_single": 3,
   "exact_text": 4,
   "n": 5,
   "need": 4,
-  "problems": [
-   "batched notes with an Answer: marker 3/5 < 4"
-  ],
-  "pass": false
+  "problems": [],
+  "pass": true
  },
  "batched": [
   {
@@ -646,10 +645,10 @@
    "ans": false,
    "gold_d1_provisional": false,
    "timing": {
-    "prefill_s": 0.025525161996483803,
-    "copy_s": 0.004507330013439059,
-    "first_step_s": 0.06026609701802954,
-    "decode_s": 0.02494706294964999,
+    "prefill_s": 0.025219917006324977,
+    "copy_s": 0.0042084979941137135,
+    "first_step_s": 0.061477123002987355,
+    "decode_s": 0.0255694700172171,
     "n_new": 1
    }
   },
@@ -694,10 +693,10 @@
    "ans": true,
    "gold_d1_provisional": true,
    "timing": {
-    "prefill_s": 0.025484000041615218,
-    "copy_s": 0.0035256309784017503,
-    "first_step_s": 0.0614535270142369,
-    "decode_s": 0.07535456301411614,
+    "prefill_s": 0.02527628804091364,
+    "copy_s": 0.0034833860117942095,
+    "first_step_s": 0.060953228967264295,
+    "decode_s": 0.07513513404410332,
     "n_new": 3
    }
   },
@@ -763,10 +762,10 @@
    "ans": true,
    "gold_d1_provisional": true,
    "timing": {
-    "prefill_s": 0.025569572986569256,
-    "copy_s": 0.003440090047661215,
-    "first_step_s": 0.0643040809663944,
-    "decode_s": 0.600897069030907,
+    "prefill_s": 0.02537365397438407,
+    "copy_s": 0.0034968049731105566,
+    "first_step_s": 0.06345606700051576,
+    "decode_s": 0.6120906450087205,
     "n_new": 24
    }
   }
@@ -826,10 +825,10 @@
   "ans": true,
   "gold_d1_provisional": false,
   "timing": {
-   "prefill_s": 0.025525161996483803,
-   "copy_s": 0.003531066991854459,
-   "first_step_s": 0.023921701009385288,
-   "decode_s": 0.42940702103078365,
+   "prefill_s": 0.025219917006324977,
+   "copy_s": 0.0035685779876075685,
+   "first_step_s": 0.026032874011434615,
+   "decode_s": 0.43390973802888766,
    "n_new": 17
   }
  },
@@ -845,22 +844,19 @@
   true,
   true
  ],
- "problems": [
-  "batched notes with an Answer: marker 3/5 < 4",
-  "only 3 smoke rows reached A (need 4)"
- ],
+ "problems": [],
  "seconds": {
-  "notes_batched": 3.895329307008069,
-  "notes_single": 5.807799386035185,
-  "a_and_steer": 1.439113730972167,
-  "judge": 0.162563112040516
+  "notes_batched": 3.692063830967527,
+  "notes_single": 5.818150831037201,
+  "a_and_steer": 1.4560875999741256,
+  "judge": 0.1599417240358889
  },
  "projection": {
-  "notes_min": 1.752898188153631,
-  "apass_min": 2.558424410617186,
-  "arms_min": 5.5166026353933075,
-  "judge_min": 0.9618317462397196,
-  "total_min": 10.789756980403844,
+  "notes_min": 1.661428723935387,
+  "apass_min": 2.5886001777317786,
+  "arms_min": 5.581669133234148,
+  "judge_min": 0.9463218672123427,
+  "total_min": 10.778019902113657,
   "note_batches": 27,
   "arm_generations": 920,
   "judge_prompts": 1420
