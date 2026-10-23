@@ -20,7 +20,7 @@ Pure logic plus the hooked engines; torch is imported lazily so the analysis pac
   at layer L at the ':' position and at every generated token. Random: a seeded Gaussian direction rescaled to the
   steer vector's norm. Reverse: minus the steer vector.
 - Output classes (amendment 1.2): 'refusal' (the §23 rule on the phrase), 'degenerate' (empty after strip, no
-  alphanumeric character, or one token id occurring >= `DEGENERATE_REPEAT` times among the generated ids), else
+  alphanumeric character, or a consecutive run of >= `DEGENERATE_REPEAT` identical token ids), else
   'answer'; ans = class == 'answer'.
 """
 
@@ -31,7 +31,6 @@ import hashlib
 import json
 import re
 import time
-from collections import Counter
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
@@ -62,7 +61,7 @@ RANDOM_SEED = 38
 TIMING_N = 5
 PROJECTION_LIMIT_H = 5.0
 SAMPLING = {"temperature": 0.0, "top_p": 1.0, "seed": 0, "greedy": True, "stop": "eos or newline"}
-CLASSIFIER_VERSION = "v1: refusal = §23 rule on the phrase; degenerate = empty / no alnum / one id >= 8 times"
+CLASSIFIER_VERSION = "v2: refusal = §23 rule on the phrase; degenerate = empty / no alnum / a run of >= 8 identical ids"
 
 
 def depth_layer(depth: float, n_layers: int = N_LAYERS) -> int:
@@ -347,8 +346,11 @@ def is_degenerate(phrase: str, token_ids: list[int] | None = None) -> bool:
     p = (phrase or "").strip()
     if not p or not re.search(r"[A-Za-z0-9]", p):
         return True
-    if token_ids:
-        if Counter(token_ids).most_common(1)[0][1] >= DEGENERATE_REPEAT:
+    run, prev = 0, None
+    for t in token_ids or []:
+        run = run + 1 if t == prev else 1
+        prev = t
+        if run >= DEGENERATE_REPEAT:
             return True
     return False
 
@@ -369,14 +371,23 @@ def provisional_gold(phrase: str, gold: str, cls: str) -> bool:
 # --- reproduction ---------------------------------------------------------------------------------------------
 
 def reproduces(row: dict, cached: dict, gold: str) -> dict:
-    """A regenerated A or B row against the §35 cached row: the refusal flag (§23 rule on continuation + generated,
-    as the cache) must match and, when both answer, the string verdict (D1 of the final answer) must match."""
+    """A regenerated A or B row (R rows and pairs) against the §35 cached row: the refusal flag (§23 rule on
+    continuation + generated, as the cache) must match (build review ruling 1). The D1 verdict match is reported as a
+    column, not required."""
     flag = bool(row["refusal"]) == bool(cached["refusal"])
     verdict = True
     if flag and not cached["refusal"]:
         verdict = (sel.d1(row["final_answer"], gold) is True) == (sel.d1(cached["final_answer"], gold) is True)
-    return {"flag_match": flag, "verdict_match": verdict, "ok": flag and verdict,
+    return {"flag_match": flag, "verdict_match": verdict, "ok": flag,
             "same_answer": row["final_answer"] == cached["final_answer"]}
+
+
+def reproduces_damage(row: dict, cached: dict, gold: str) -> dict:
+    """A damage row (A judged correct in §35): on the new engine A must answer and pass D1 (build review ruling 1)."""
+    out = reproduces(row, cached, gold)
+    out["d1_new"] = (not row["refusal"]) and sel.d1(row["final_answer"], gold) is True
+    out["ok"] = out["d1_new"]
+    return out
 
 
 # --- sanity and the design gate -------------------------------------------------------------------------------

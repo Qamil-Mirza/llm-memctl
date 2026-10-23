@@ -213,7 +213,7 @@ def analyse(run_dir: Path, d, pop, confirm: bool, samples: int, design: Path | N
     unseen = [q for q in pop.unseen if q in R]
     C = rep["damage_ok"]
     n = {"engines": engines, "folds": sorted(folds), "gold_source": gold.label, "repro": {
-        k: rep[k] for k in ("rate", "rate_R", "pass", "dropped", "R_ok", "damage_ok")},
+        k: rep[k] for k in ("rate", "rate_R", "R_verdict_match", "pass", "dropped", "R_ok", "damage_ok")},
         "populations": {"R": len(pop.R), "pairs": len(pop.pairs), "unseen": len(pop.unseen), "C": len(pop.C),
                         "R_reproduced": len(R), "pairs_reproduced": len(pairs), "unseen_reproduced": len(unseen),
                         "C_reproduced": len(C)}}
@@ -324,7 +324,7 @@ def render(n: dict, confirm: bool) -> str:
          f"Engine {n['engines']}. Gold: {n['gold_source']}.", "",
          "## Reproduction", "",
          f"Rows reproduce (refusal flag, and the D1 string verdict when answering) on {_r(rp['rate'])} of the R and damage "
-         f"rows (R alone {_r(rp['rate_R'])}; bound {st.REPRO_GATE}): **{'PASS' if rp['pass'] else 'FAIL'}**. "
+         f"rows (R alone {_r(rp['rate_R'])}; D1 verdict also matches on {rp.get('R_verdict_match')} R rows, descriptive; bound {st.REPRO_GATE}): **{'PASS' if rp['pass'] else 'FAIL'}**. "
          f"Dropped: {', '.join(rp['dropped']) or 'none'}.", "",
          f"Populations: R {pops['R']} (reproduced {pops['R_reproduced']}), pairs {pops['pairs']} ({pops['pairs_reproduced']}), "
          f"unseen {pops['unseen']} ({pops['unseen_reproduced']}), C rows run {pops['C_reproduced']}.", ""]

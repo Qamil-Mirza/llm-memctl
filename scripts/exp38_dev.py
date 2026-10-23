@@ -155,7 +155,7 @@ class Run:
             result["R"][q] = {"A": ra, "B": rb, "ok": ra["ok"] and rb["ok"]}
         for q in self.pop.damage:
             a = self.do("repro", "C", "A", q, [none], capture=True)["none"]
-            ra = st.reproduces(a, self.d.rows["A"][q], self.d.by_q[q].gold)
+            ra = st.reproduces_damage(a, self.d.rows["A"][q], self.d.by_q[q].gold)
             result["damage"][q] = {"A": ra, "ok": ra["ok"]}
         return summarise_repro(result)
 
@@ -260,6 +260,8 @@ def summarise_repro(result: dict) -> dict:
     result["rate"] = (len(ok_r) + len(ok_c)) / n if n else None
     result["rate_R"] = len(ok_r) / len(result["R"]) if result["R"] else None
     result["pass"] = result["rate"] is not None and result["rate"] >= st.REPRO_GATE
+    # descriptive column (build review ruling 1): R rows whose A and B D1 verdicts also match the cache
+    result["R_verdict_match"] = sum(v["A"]["verdict_match"] and v["B"]["verdict_match"] for v in result["R"].values())
     return result
 
 
@@ -396,7 +398,7 @@ def main(argv=None) -> int:
     log("== (i) reproduction")
     rep = run.reproduction()
     run.write_json("repro.json", rep)
-    log(f"reproduction {rep['rate']:.3f} (R {rep['rate_R']:.3f}); dropped {rep['dropped']}")
+    log(f"reproduction {rep['rate']:.3f} (R {rep['rate_R']:.3f}; D1 verdict match {rep['R_verdict_match']}/{len(rep['R'])}); dropped {rep['dropped']}")
     if not rep["pass"]:
         log(f"reproduction below {st.REPRO_GATE}: the engine is not fit, §38 stops here (exit {EXIT_REPRO})")
         return EXIT_REPRO

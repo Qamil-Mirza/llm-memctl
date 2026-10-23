@@ -145,6 +145,10 @@ def test_classification():
     assert st.classify("?!...") == "degenerate"
     assert st.classify("ha ha", [5] * 8) == "degenerate"
     assert st.classify("ha ha", [5] * 7 + [6]) == "answer"
+    # a list answer reuses the comma id 8 times but never 8 in a row (build review ruling 2)
+    assert st.classify("1, 2, 3, 4, 5, 6, 7, 8, 9", [1, 9, 2, 9, 3, 9, 4, 9, 5, 9, 6, 9, 7, 9, 8, 9, 10]) == "answer"
+    assert st.classify("ha ha", [6] + [5] * 8 + [6]) == "degenerate"
+    assert st.CLASSIFIER_VERSION.startswith("v2")
     assert st.classify("Luna") == "answer"
     assert st.provisional_gold("Luna the cat", "Luna", "answer") is True
     assert st.provisional_gold("unknown", "unknown", "refusal") is False
@@ -157,7 +161,13 @@ def test_reproduces():
     assert not st.reproduces({"refusal": False, "final_answer": "Luna"}, cached_ref, "Luna")["ok"]
     cached_ans = {"refusal": False, "final_answer": "Luna"}
     assert st.reproduces({"refusal": False, "final_answer": "it is Luna"}, cached_ans, "Luna")["ok"]
-    assert not st.reproduces({"refusal": False, "final_answer": "Max"}, cached_ans, "Luna")["ok"]
+    # R rows and pairs: refusal flags only; the D1 verdict match is a column (build review ruling 1)
+    r = st.reproduces({"refusal": False, "final_answer": "Max"}, cached_ans, "Luna")
+    assert r["ok"] and not r["verdict_match"]
+    # damage rows: A must answer and pass D1 on the new engine
+    assert st.reproduces_damage({"refusal": False, "final_answer": "Luna"}, cached_ans, "Luna")["ok"]
+    assert not st.reproduces_damage({"refusal": False, "final_answer": "Max"}, cached_ans, "Luna")["ok"]
+    assert not st.reproduces_damage({"refusal": True, "final_answer": "unknown"}, cached_ans, "Luna")["ok"]
 
 
 def test_cut_input_without_marker_has_no_note():
