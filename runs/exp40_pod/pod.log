@@ -1,0 +1,9 @@
+§40 pod chain; engine hf; RUNPOD_POD_ID setb0qnmah0utqvh2; hard stop +2700 s, self-stop +3300 s
+watchdog pid 209: pod stops itself at +3300 s
+preflight: §41 rule present (runs/exp41_dev/qwen3b/rule.json)
+preflight ok: 13 files present; out runs/exp40_pod
+torch 2.8.0+cu128 transformers 5.17.0 scipy 1.18.1 numpy 2.1.2
+gpu NVIDIA A40
+stage install: elapsed 26 s (total 26 s of 2700)
+stage run: elapsed 43 s (total 69 s of 2700)
+SMOKE FAILED: chain aborted before the note pass (exit 5)
