@@ -510,8 +510,9 @@ def smoke(run: Run, judge) -> int:
     s_rows = [note_row(q, "smoke", "N", p, r, run.engine, "single") for q, p, r in zip(qs, prompts, single)]
     check = ex.smoke_notes_check(b_rows, s_rows)
     problems = list(check["problems"])
-    log(f"smoke notes: same first token {check['same_first']}/{check['n']}, marker batched {check['marker_batched']} "
-        f"single {check['marker_single']}, identical text {check['exact_text']}/{check['n']}")
+    log(f"smoke notes: same first token {check['same_first']}/{check['n']}, marker agreement {check['marker_agree']}/"
+        f"{check['n']} (batched {check['marker_batched']}, single {check['marker_single']}; absolute rate printed, not "
+        f"gated), identical text {check['exact_text']}/{check['n']}")
     a_rows, steer = [], None
     t3 = time.perf_counter()
     for q, b in zip(qs, b_rows):
@@ -542,8 +543,8 @@ def smoke(run: Run, judge) -> int:
         log(f"  smoke judge {r['setting']['key']}: reply {x!r} -> {v}")
         if v is None:
             problems.append(f"judge reply {x!r} on {r['setting']['key']}/{r['question_id']} is not a verdict")
-    if len(a_rows) < ex.SMOKE_MIN:
-        problems.append(f"only {len(a_rows)} smoke rows reached A (need {ex.SMOKE_MIN})")
+    if not a_rows:     # rev 2: the A and Steer paths must run on at least one marked smoke row
+        problems.append("no smoke row reached A (no marked note among the 5): the A and Steer paths are untested")
     rec = {"rows": qs, "notes_check": check, "batched": b_rows, "single": s_rows, "a_rows": a_rows, "steer": steer,
            "replies": replies, "verdicts": vs, "problems": problems,
            "seconds": {"notes_batched": t1 - t0, "notes_single": t2 - t1, "a_and_steer": t4 - t3, "judge": t5 - t4},
@@ -695,6 +696,8 @@ def cmd_run(args) -> int:
     picked = ex.select(run.order, a_rows, verdict)
     R, C = picked["R"], picked["C"]
     adv_marked = [q for q in run.adv if q in notes and notes[q]["marker"]]
+    log(f"marker rate (rev 2, a finding about the prompt family on LoCoMo): {len(marked)}/{len(run.order)} answerable, "
+        f"{len(adv_marked)}/{len(run.adv)} adversarial; R and C are marked rows only, as in §35/§38")
     run.write_json("selection.json", {"counts": counts, "R": R, "C": C, "adversarial_marked": adv_marked,
                                       "notes": info_notes,
                                       "rule": "R = first 120 marked A refusals (§23 rule), C = first 40 marked A "

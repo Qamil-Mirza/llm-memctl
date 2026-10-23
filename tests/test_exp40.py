@@ -196,7 +196,9 @@ def test_smoke_check_and_agreement_arithmetic():
     s = [dict(r, first_id=99) if i < 2 else r for i, r in enumerate(b)]
     assert not ex.smoke_notes_check(b, s)["pass"]                          # 3/5 same first token
     m = [dict(r, marker=i > 1) for i, r in enumerate(b)]
-    assert not ex.smoke_notes_check(m, b)["pass"]                          # 3/5 markers
+    assert not ex.smoke_notes_check(m, b)["pass"]                          # marker outcome differs on 2/5
+    c = ex.smoke_notes_check(m, m)                                         # attempt 1: 3/5 markers in both modes
+    assert c["pass"] and c["marker_agree"] == 5 and c["marker_batched"] == 3   # rev 2: absolute rate not gated
     one = [dict(r, first_id=99) if i == 0 else r for i, r in enumerate(b)]
     assert ex.smoke_notes_check(b, one)["pass"]                            # 4/5 passes
     assert ex.agreement(["yes"] * 54 + ["no"] * 6, [True] * 60)["rate"] == 0.9

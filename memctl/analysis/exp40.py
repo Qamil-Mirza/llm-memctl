@@ -12,8 +12,9 @@ Advisor's binding ruling on R/C selection (2026-10-23, after rev 1), D-34; §41 
   C = the first 40 rows in shuffle order whose A answer is judged correct (verdict yes and class 'answer');
   R = the first 120 marked rows in shuffle order whose A answer is a refusal (the §23 rule on the final answer, as §38).
   Both use only the A outputs and the judge, before any steered arm.
-- Smoke (D-22): batched against single-sequence notes on 5 rows: the same first generated token on >= 4 of 5 and an
-  'Answer:' marker in the batched note on >= 4 of 5, else abort; every judge reply a yes/no verdict, else abort.
+- Smoke (D-22; rev 2, 61f9f6b): batched against single-sequence notes on 5 rows: the same first generated token on
+  >= 4 of 5 and the same marker outcome (batched = single) on >= 4 of 5, else abort; the absolute marker rate is
+  printed, not gated (the R < 40 rule is the only population guard); every judge reply a yes/no verdict, else abort.
 - Judge agreement (the ruling): the 7B re-scores the 60 frozen cached §35 rows; agreement < 0.90 stops the run before
   any arm (exit EXIT_AGREEMENT; the pod script then stops the pod).
 """
@@ -138,17 +139,20 @@ def pass_counts(order: list[str], marked: set[str], a_rows: dict[str, dict], ver
 # --- the smoke ----------------------------------------------------------------------------------------------------
 
 def smoke_notes_check(batched: list[dict], single: list[dict], need: int = SMOKE_MIN) -> dict:
-    """Rows {'first_id', 'marker', 'output'}; same first id on >= need, a marker in the batched note on >= need."""
+    """Rows {'first_id', 'marker', 'output'}; batching drift only (rev 2): the same first id on >= need and the same
+    marker outcome (batched = single) on >= need. The absolute marker rate is returned and printed, never gated."""
     same = sum(b["first_id"] is not None and b["first_id"] == s["first_id"] for b, s in zip(batched, single))
     marker = sum(bool(b["marker"]) for b in batched)
+    agree = sum(bool(b["marker"]) == bool(s["marker"]) for b, s in zip(batched, single))
     exact = sum(b["output"] == s["output"] for b, s in zip(batched, single))
     problems = []
     if same < need:
         problems.append(f"batched vs single-sequence notes: same first token on {same}/{len(batched)} < {need}")
-    if marker < need:
-        problems.append(f"batched notes with an Answer: marker {marker}/{len(batched)} < {need}")
-    return {"same_first": same, "marker_batched": marker, "marker_single": sum(bool(s["marker"]) for s in single),
-            "exact_text": exact, "n": len(batched), "need": need, "problems": problems, "pass": not problems}
+    if agree < need:
+        problems.append(f"batched vs single-sequence notes: same marker outcome on {agree}/{len(batched)} < {need}")
+    return {"same_first": same, "marker_agree": agree, "marker_batched": marker,
+            "marker_single": sum(bool(s["marker"]) for s in single), "exact_text": exact, "n": len(batched),
+            "need": need, "problems": problems, "pass": not problems}
 
 
 def agreement(replies: list[str], cached: list[bool], bar: float = AGREEMENT_BAR) -> dict:
