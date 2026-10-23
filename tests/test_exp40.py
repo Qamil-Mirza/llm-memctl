@@ -505,5 +505,5 @@ def test_pod_script_install_line_and_preflight_cover_the_imports():
     assert "stop_pod_now" in sh and '"$RC" -eq 7' in sh
     src = Path("scripts/exp40_pod_run.py").read_text() + Path("scripts/exp40_report.py").read_text()
     third = {m for m in re.findall(r"^\s*(?:from|import) (\w+)", src, re.M)} - {
-        "argparse", "hashlib", "json", "sys", "time", "pathlib", "collections", "__future__", "memctl", "scripts"}
+        "argparse", "hashlib", "json", "random", "sys", "time", "pathlib", "collections", "__future__", "memctl", "scripts"}
     assert third <= {"numpy", "torch"}, third

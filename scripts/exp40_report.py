@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import sys
 from collections import defaultdict
 from pathlib import Path
@@ -150,6 +151,26 @@ def signals_for(d: Data, q: str, pop: str = "all", cut_pop: str = "R") -> dict |
             "s_evid": (a["step0"]["margin"] - m_cut) if m_cut is not None else None}
 
 
+def auroc_bootstrap(scores: dict[str, float], labels: dict[str, bool], samples: int = 10000, seed: int = 0) -> dict:
+    """AUROC with a 95% percentile interval from resampling rows (resamples without both classes are skipped and
+    counted); §41 amendment 1 Claim 4: SHOWN if the lower bound > 0.5."""
+    keys = sorted(set(scores) & set(labels))
+    point = cd.auroc([scores[k] for k in keys], [labels[k] for k in keys])
+    rng, vals, skipped = random.Random(seed), [], 0
+    for _ in range(samples if keys else 0):
+        pick = rng.choices(keys, k=len(keys))
+        a = cd.auroc([scores[k] for k in pick], [labels[k] for k in pick])
+        if a is None:
+            skipped += 1
+        else:
+            vals.append(a)
+    vals.sort()
+    lo = vals[int(0.025 * len(vals))] if vals else None
+    hi = vals[min(int(0.975 * len(vals)), len(vals) - 1)] if vals else None
+    return {"n": len(keys), "auroc": point, "ci_low": lo, "ci_high": hi, "skipped_resamples": skipped,
+            "verdict": "SHOWN" if lo is not None and lo > 0.5 else "NOT SHOWN"}
+
+
 def conditional_block(d: Data, R: list[str], rule: dict | None, rule_info: dict, adv: list[str], samples: int) -> dict:
     out = {"rule": rule_info}
     sig = {q: signals_for(d, q) for q in R}
@@ -160,6 +181,10 @@ def conditional_block(d: Data, R: list[str], rule: dict | None, rule_info: dict,
         desc[name] = {"n": len(vals), "mean": mean(vals.values()),
                       "auroc_gold_steer_higher": cd.auroc([vals[q] for q in vals], [bool(gs[q]) for q in vals])}
     out["signals"] = desc
+    # §41 amendment 1 Claim 4: AUROC of s_proj for gold(Steer-all) on R, bootstrap over rows; the others beside
+    out["claim4"] = {name: auroc_bootstrap({q: s[name] for q, s in sig.items() if s and s.get(name) is not None},
+                                           {q: bool(g) for q, g in gs.items()}, samples=samples)
+                     for name in cd.SIGNALS}
     if rule is None or not rule_info.get("scored"):
         out["scored"] = False
         return out
@@ -187,9 +212,26 @@ def conditional_block(d: Data, R: list[str], rule: dict | None, rule_info: dict,
         u = {p: {q: cd.utility(o, lam) for q, o in oc[p].items()} for p in oc}
         blk = {"U": {p: sum(u[p].values()) for p in u},
                "cond_minus_steer": paired_claim(u["Cond"], u["Steer"], samples=samples),
-               "cond_minus_B": paired_claim(u["Cond"], u["B"], samples=samples)}
+               "cond_minus_B": paired_claim(u["Cond"], u["B"], samples=samples),
+               "cond_minus_A": paired_claim(u["Cond"], u["A"], samples=samples),        # amendment 1 Claim 3
+               "steer_minus_A": paired_claim(u["Steer"], u["A"], samples=samples)}      # the Claim 1 reading rule
+        blk["claim1_reading"] = ("expected under a net-negative steer; not evidence of a selective signal"
+                                 if blk["U"]["Steer"] <= blk["U"]["A"] else "steer is net positive here")
+        # descriptive, post hoc: steer the top fraction q of R rows by s_proj, A elsewhere
+        ranked = sorted((q for q in oc["A"] if sig.get(q) and sig[q].get("s_proj") is not None),
+                        key=lambda q: -sig[q]["s_proj"])
+        curve = []
+        for i in range(11):
+            k = round(len(ranked) * i / 10)
+            top = set(ranked[:k])
+            curve.append({"q": i / 10, "steered": k,
+                          "U": sum(cd.utility(oc["Steer"][q] if q in top else oc["A"][q], lam) for q in ranked)})
+        blk["s_proj_top_q"] = curve
         out[f"lambda{lam}"] = blk
     out["coverage_risk"] = {p: cd.coverage_risk(oc[p]) for p in oc}
+    fired = [q for q, f in fires.items() if f and q in gs]
+    out["fire_precision"] = {"fired": len(fired), "gold_rate_fired": mean([gs[q] for q in fired]) if fired else None,
+                             "gold_rate_steer_all": mean([gs[q] for q in fires if q in gs]) if fires else None}
     sign = 1.0 if rule["sign"] == "+" else -1.0
     qs = [q for q in fires if q in gs]
     out["auroc_rule_gold_steer"] = cd.auroc([sign * sig[q][rule["signal"]] for q in qs], [bool(gs[q]) for q in qs])
@@ -395,12 +437,26 @@ def render(n: dict) -> str:
     L.append("Signals on R (descriptive): " + "; ".join(
         f"{k} n {v['n']}, mean {_p(v['mean'])}, AUROC(gold Steer, higher) {_p(v['auroc_gold_steer_higher'])}"
         for k, v in s["signals"].items()) + ".")
+    c4 = s["claim4"]
+    L.append(f"- Claim 4 (amendment 1): AUROC of s_proj for gold(Steer-all) on R {_p(c4['s_proj']['auroc'])} "
+             f"({_p(c4['s_proj']['ci_low'])}, {_p(c4['s_proj']['ci_high'])}), n {c4['s_proj']['n']}: "
+             f"**{c4['s_proj']['verdict']}** (bar: lower bound > 0.5); beside, descriptive: "
+             + "; ".join(f"{k} {_p(v['auroc'])} ({_p(v['ci_low'])}, {_p(v['ci_high'])})"
+                         for k, v in c4.items() if k != "s_proj") + ".")
     if s.get("scored"):
         for lam in (1, 2):
             b = s[f"lambda{lam}"]
-            L.append(f"- lambda {lam}: U {b['U']}; U(Cond) - U(Steer) {_ci(b['cond_minus_steer'])} "
-                     f"**{b['cond_minus_steer']['verdict']}**; U(Cond) - U(B) {_ci(b['cond_minus_B'])} "
-                     f"**{b['cond_minus_B']['verdict']}**" + (" (claims)" if lam == 1 else " (beside)"))
+            tag = " (claims)" if lam == 1 else " (beside)"
+            L.append(f"- lambda {lam}{tag}: U {b['U']}; Claim 1 U(Cond) - U(Steer) {_ci(b['cond_minus_steer'])} "
+                     f"**{b['cond_minus_steer']['verdict']}**, beside U(Steer) - U(A) {_ci(b['steer_minus_A'])}: "
+                     f"{b['claim1_reading']}; Claim 2 U(Cond) - U(B) {_ci(b['cond_minus_B'])} "
+                     f"**{b['cond_minus_B']['verdict']}**; Claim 3 U(Cond) - U(A) {_ci(b['cond_minus_A'])} "
+                     f"**{b['cond_minus_A']['verdict']}**")
+            L.append(f"  - post hoc (descriptive): steer the top fraction q by s_proj: " + ", ".join(
+                f"q {c['q']:.1f} U {c['U']:g}" for c in b["s_proj_top_q"]))
+        fp = s["fire_precision"]
+        L.append(f"- rule fires: gold rate among fired rows {_p(fp['gold_rate_fired'])} (n {fp['fired']}) against "
+                 f"Steer-all's overall {_p(fp['gold_rate_steer_all'])}")
         L.append(f"- rows {s['n']}, fires {s['fires']}, skipped {s['skipped']}; rule AUROC for gold(Steer) "
                  f"{_p(s['auroc_rule_gold_steer'])}; adversarial ans Cond {_p(s['adversarial_cond_ans']['ans'])} "
                  f"(n {s['adversarial_cond_ans']['n']}) beside Steer-all {_p(n['adversarial']['Steer-all']['ans'])}")
