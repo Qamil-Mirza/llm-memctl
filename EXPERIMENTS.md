@@ -6530,7 +6530,7 @@ fails are honest paraphrases. The 3 C rows it damages:
 - "Jaipur Rugs" → repeated "Rug-manufacturing industry".
 
 **Found.** Pushing the 3B's internal state at layer 29, by the average "answer, don't refuse" difference from 13 other
-questions, made it answer 9 of 10 of its refusals. Half of those answers were right (0.517), against 0.183 when the
+questions, made it answer 9 of 10 of its refusals. 31 of the 60 rows came out right (0.517; 31 of the 54 answers), against 0.183 when the
 evidence was cut from the prompt, and 0.433 for the §35 instruction line. A random push of the same size did almost
 nothing. On the 22 questions where even the instruction line refused, the push got 8 right. The pre-registered setting
 (layer 25, a push twice as large) did not work: it produced word salad, a random push also made the model "answer", and
