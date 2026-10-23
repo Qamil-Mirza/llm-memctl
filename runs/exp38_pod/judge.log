@@ -1,0 +1,14 @@
+populations: {'R_dev': 28, 'R_confirm': 64, 'pairs_dev': 13, 'C_dev': 39, 'C_confirm': 55}
+judge engine hf-transformers-5.17.0-cuda-bfloat16 (Qwen/Qwen2.5-7B-Instruct) loaded in 7 s
+judge hf-transformers-5.17.0-cuda-bfloat16: 1166 items, 602 distinct prompts, 602 not yet judged
+judge: 64/602 prompts (0.042 s/prompt)
+judge: 128/602 prompts (0.041 s/prompt)
+judge: 192/602 prompts (0.041 s/prompt)
+judge: 256/602 prompts (0.042 s/prompt)
+judge: 320/602 prompts (0.043 s/prompt)
+judge: 384/602 prompts (0.042 s/prompt)
+judge: 448/602 prompts (0.042 s/prompt)
+judge: 512/602 prompts (0.042 s/prompt)
+judge: 576/602 prompts (0.041 s/prompt)
+judge: 602/602 prompts (0.041 s/prompt)
+judge: 1166/1166 items judged in 25 s; replies that are not verdicts: 0

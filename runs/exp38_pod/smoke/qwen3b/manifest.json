@@ -1,0 +1,42 @@
+{
+ "engine": "hf-transformers-5.17.0-cuda-bfloat16",
+ "model": "Qwen/Qwen2.5-3B-Instruct",
+ "role": "steering",
+ "layers": [
+  25,
+  29
+ ],
+ "alphas": [
+  2.0,
+  4.0
+ ],
+ "unit": "vnorm",
+ "max_new_tokens": 64,
+ "wording_sha256": "1c3e27fa6dd79e98aeec35f3a72c7d75c39b601c60d51ea531b0a24632b468b0",
+ "wording": {
+  "answer_marker": "Answer:",
+  "b_instruction": "Based on the note above, give the answer as a short phrase. Do not reply unknown.",
+  "exp35_wording": "1c45f71a94df640e848641c4fd0950bd580d147141737c61029ef0cc3a5a904a",
+  "cut": "ablate_evidence + N-cut note (split_note of generated, byte-exact; no marker -> no note) + Answer:",
+  "position": "':' of Answer:, prefix cache excludes it",
+  "residual": "decoder layer output, pre final norm",
+  "sampling": {
+   "temperature": 0.0,
+   "top_p": 1.0,
+   "seed": 0,
+   "greedy": true,
+   "stop": "eos or newline"
+  },
+  "max_new_tokens": 64,
+  "classifier": "v2: refusal = \u00a723 rule on the phrase; degenerate = empty / no alnum / a run of >= 8 identical ids"
+ },
+ "folds": [
+  0,
+  1,
+  2,
+  3,
+  4
+ ],
+ "primary": "steer:L25:a4:vnorm",
+ "secondary": "steer:L29:a2:vnorm"
+}

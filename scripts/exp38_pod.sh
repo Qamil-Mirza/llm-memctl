@@ -109,7 +109,7 @@ if [ "$ENGINE" != stub ]; then
   done
   TORCH_VERSION=$($PY -c "import torch; print(torch.__version__)")
   echo "torch==${TORCH_VERSION}" > "$OUT/constraints.txt"   # keep the image's CUDA torch; never let pip replace it
-  timeout 900 $PY -m pip install -q -c "$OUT/constraints.txt" -e . "transformers==${TRANSFORMERS_VERSION}" accelerate 2>&1 | tail -2
+  timeout 900 $PY -m pip install -q -c "$OUT/constraints.txt" -e . "transformers==${TRANSFORMERS_VERSION}" accelerate scipy 2>&1 | tail -2
   $PY -c "import torch, transformers; assert torch.cuda.is_available(), 'CUDA not available'; \
 print('torch', torch.__version__, 'cuda', torch.version.cuda, 'gpu', torch.cuda.get_device_name(0), 'transformers', transformers.__version__); \
 assert transformers.__version__ == '${TRANSFORMERS_VERSION}', transformers.__version__" 2>&1 | tee -a "$OUT/pod.log" \

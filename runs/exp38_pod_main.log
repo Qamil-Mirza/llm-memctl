@@ -1,0 +1,245 @@
+§38 pod chain; engine hf; RUNPOD_POD_ID setebfakbdujp2z7w; hard stop +2520 s, self-stop +3060 s
+watchdog pid 670: pod stops itself at +3060 s
+preflight ok: 61 files and 3 folders present; out runs/exp38_pod
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+torch 2.8.0+cu128 cuda 12.8 gpu NVIDIA A40 transformers 5.17.0
+stage install: elapsed 8 s (total 8 s of 2520)
+populations: {'R_dev': 28, 'R_confirm': 64, 'pairs_dev': 13, 'C_dev': 39, 'C_confirm': 55}
+  [repro R A none] 4adc0475 refusal    'unknown'
+  [repro R B none] 4adc0475 answer     '5 goals and 2 assists'
+  [repro R A none] 4bc144e2 refusal    'unknown'
+  [repro R B none] 4bc144e2 answer     '$65'
+  [repro R A none] 66f24dbb refusal    'unknown'
+  [repro R B none] 66f24dbb answer     'Yellow dress and a pair of earrings'
+  [repro R A none] 6ade9755 refusal    'unknown'
+  [repro R B none] 6ade9755 answer     'Serenity Yoga'
+  [repro R A none] 7e00a6cb refusal    'unknown'
+  [repro R B none] 7e00a6cb answer     'Stayokay Amsterdam Vondelpark'
+  [arms R A steer:L25:a4:vnorm] 4adc0475 answer     'Total goals: 3, total assists: 2; total total: 3 
+smoke: reproduction flags {'4adc0475': {'A': True, 'B': True}, '4bc144e2': {'A': True, 'B': True}, '66f24dbb': {'A': True, 'B': True}, '6ade9755': {'A': True, 'B': True}, '7e00a6cb': {'A': True, 'B': True}}; one Steer at steer:L25:a4:vnorm on 4adc0475: answer (64 tokens) 'Total goals: 3, total assists: 2; total total: 3 total tota
+  judge A none 4adc0475: reply 'no' -> False
+  judge B none 4adc0475: reply 'yes' -> True
+  judge A none 4bc144e2: reply 'no' -> False
+  judge B none 4bc144e2: reply 'yes' -> True
+  judge A none 66f24dbb: reply 'no' -> False
+  judge B none 66f24dbb: reply 'yes' -> True
+  judge A none 6ade9755: reply 'no' -> False
+  judge B none 6ade9755: reply 'Yes' -> True
+  judge A none 7e00a6cb: reply 'no' -> False
+  judge B none 7e00a6cb: reply 'No' -> False
+  judge A steer:L25:a4:vnorm 4adc0475: reply 'no' -> False
+smoke rates: prefill 0.05 ms/token, decode 28.8 ms/token; judge 0.048 s/prompt; projected run (all steered outputs at the cap) 22.2 min, judge 0.9 min
+smoke PASS: every smoke output got a yes/no verdict
+stage smoke: elapsed 53 s (total 61 s of 2520)
+populations: {'R_dev': 28, 'R_confirm': 64, 'pairs_dev': 13, 'C_dev': 39, 'C_confirm': 55}
+engine hf-transformers-5.17.0-cuda-bfloat16, 3B loaded in 6 s
+primary steer:L25:a4:vnorm (from runs/exp38_dev/qwen3b/gate.json); secondary steer:L29:a2:vnorm (secondary (chosen after dev D1 gold; disclosed))
+== (i) reproduction (all folds)
+  [repro R A none] 37f165cf refusal    'unknown'
+  [repro R B none] 37f165cf refusal    'unknown'
+  [repro R A none] 4388e9dd refusal    'unknown'
+  [repro R B none] 4388e9dd refusal    'unknown'
+  [repro R A none] 4adc0475 refusal    'unknown'
+  [repro R B none] 4adc0475 answer     '5 goals and 2 assists'
+  [repro R A none] 4bc144e2 refusal    'unknown'
+  [repro R B none] 4bc144e2 answer     '$65'
+  [repro R A none] 51b23612 refusal    'unknown'
+  [repro R B none] 51b23612 refusal    'unknown'
+  [repro R A none] 60d45044 refusal    'unknown'
+  [repro R B none] 60d45044 refusal    'unknown'
+  [repro R A none] 66f24dbb refusal    'unknown'
+  [repro R B none] 66f24dbb answer     'Yellow dress and a pair of earrings'
+  [repro R A none] 6ade9755 refusal    'unknown'
+  [repro R B none] 6ade9755 answer     'Serenity Yoga'
+  [repro R A none] 75832dbd refusal    'unknown'
+  [repro R B none] 75832dbd refusal    'unknown'
+  [repro R A none] 7e00a6cb refusal    'unknown'
+  [repro R B none] 7e00a6cb answer     'Stayokay Amsterdam Vondelpark'
+  [repro R A none] 89527b6b refusal    'unknown'
+  [repro R B none] 89527b6b refusal    'unknown'
+  [repro R A none] 89941a94 refusal    'unknown'
+  [repro R B none] 89941a94 refusal    'unknown'
+  [repro R A none] 8ebdbe50 refusal    'unknown'
+  [repro R B none] 8ebdbe50 answer     'Data Science certification'
+  [repro R A none] b320f3f8 refusal    'unknown'
+  [repro R B none] b320f3f8 answer     'Snaggletooth action figure'
+  [repro R A none] b6025781 refusal    'unknown'
+  [repro R B none] b6025781 refusal    'unknown'
+  [repro R A none] b86304ba refusal    'unknown'
+  [repro R B none] b86304ba refusal    'unknown'
+  [repro R A none] caf03d32 refusal    'unknown'
+  [repro R B none] caf03d32 refusal    'unknown'
+  [repro R A none] cc539528 refusal    'unknown'
+  [repro R B none] cc539528 refusal    'unknown'
+  [repro R A none] d6062bb9 refusal    'unknown'
+  [repro R B none] d6062bb9 answer     '1998'
+  [repro R A none] d905b33f refusal    'unknown'
+  [repro R B none] d905b33f refusal    'unknown'
+  [repro R A none] fca70973 refusal    'unknown'
+  [repro R B none] fca70973 refusal    'unknown'
+  [repro R A none] gpt4_1d80365e refusal    'unknown'
+  [repro R B none] gpt4_1d80365e answer     '1 day'
+  [repro R A none] gpt4_213fd887 refusal    'unknown'
+  [repro R B none] gpt4_213fd887 answer     'charity 5K run'
+  [repro R A none] gpt4_4929293a refusal    'unknown'
+  [repro R B none] gpt4_4929293a refusal    'unknown'
+  [repro R A none] gpt4_4ef30696 refusal    'unknown'
+  [repro R B none] gpt4_4ef30696 answer     '35'
+  [repro R A none] gpt4_74aed68e refusal    'unknown'
+  [repro R B none] gpt4_74aed68e answer     '11'
+  [repro R A none] gpt4_88806d6e refusal    'unknown'
+  [repro R B none] gpt4_88806d6e answer     'Tom'
+  [repro R A none] gpt4_98f46fc6 refusal    'unknown'
+  [repro R B none] gpt4_98f46fc6 refusal    'unknown'
+  [repro C A none] 00ca467f answer     '2'
+  [repro C A none] 07741c44 answer     'under the bed'
+  [repro C A none] 0862e8bf answer     'Luna'
+  [repro C A none] 0bb5a684 answer     '7'
+  [repro C A none] 19b5f2b3 answer     '14 days'
+  [repro C A none] 1c549ce4 answer     '$140'
+  [repro C A none] 2133c1b5 answer     '3 months'
+  [repro C A none] 22d2cb42 answer     'Rhythm Central on Main St'
+  [repro C A none] 2698e78f answer     'every week'
+  [repro C A none] 28bcfaac answer     'MusicTheory.net'
+  [repro C A none] 29f2956b answer     '30 minutes'
+  [repro C A none] 2bf43736 answer     'Chapter 4 of Book 1'
+  [repro C A none] 3f1e9474 answer     'Sarah'
+  [repro C A none] 3fe836c9 answer     '25000'
+  [repro C A none] 4d6b87c8 answer     '25'
+  [repro C A none] 5d3d2817 answer     'marketing specialist at a small startup.'
+  [repro C A none] 60bf93ed answer     '5'
+  [repro C A none] 71017276 answer     '4 weeks'
+  [repro C A none] 7527f7e2 answer     '$800'
+  [repro C A none] 76d63226 answer     '55-inch'
+  [repro C A none] 85fa3a3f answer     '$50'
+  [repro C A none] 94f70d80 answer     '4 hours'
+  [repro C A none] 95bcc1c8 answer     '10'
+  [repro C A none] ac031881 answer     'LIV'
+  [repro C A none] b3c15d39 answer     '5'
+  [repro C A none] b6019101 answer     '5'
+  [repro C A none] b9cfe692 answer     '6.13 weeks'
+  [repro C A none] bb7c3b45 answer     '$300'
+  [repro C A none] bbf86515 answer     '4'
+  [repro C A none] c2ac3c61 answer     '5'
+  [repro C A none] c5e8278d answer     'Johnson'
+  [repro C A none] c7cf7dfd answer     'Nostalgia'
+  [repro C A none] c8c3f81d answer     'Nike'
+  [repro C A none] e48988bc answer     'Patagonia'
+  [repro C A none] f0e564bc answer     '1300'
+  [repro C A none] gpt4_1e4a8aeb answer     '6'
+  [repro C A none] gpt4_85da3956 answer     '3 weeks'
+  [repro C A none] gpt4_b0863698 answer     '7'
+  [repro C A none] gpt4_b5700ca9 answer     '4'
+reproduction: R flags 0.957 (88/92); C rows where A answers 94/94; preliminary 0.978 (bar 0.8)
+== (ii) directions on 13 reproduced dev pairs
+  L25: ||v|| 21.078, mean||resid_A|| 68.216, ratio 0.3090, cosine with laptop 1.000
+  L29: ||v|| 32.270, mean||resid_A|| 109.050, ratio 0.2959, cosine with laptop 0.999
+== (iii) sanity S
+  [sanity pairs A overwrite_B:L35] 4adc0475 answer     '5'
+  [sanity pairs A overwrite_B:L7] 4adc0475 answer     '5'
+  [sanity pairs A overwrite_self:L35] 4adc0475 refusal    'unknown'
+  [sanity pairs A overwrite_self:L7] 4adc0475 refusal    'unknown'
+  [sanity pairs A zero:L25] 4adc0475 refusal    'unknown'
+  [sanity pairs A zero:L29] 4adc0475 refusal    'unknown'
+  [sanity pairs A overwrite_B:L35] 4bc144e2 answer     '$55'
+  [sanity pairs A overwrite_B:L7] 4bc144e2 answer     '$55'
+  [sanity pairs A overwrite_self:L35] 4bc144e2 refusal    'unknown'
+  [sanity pairs A overwrite_self:L7] 4bc144e2 refusal    'unknown'
+  [sanity pairs A zero:L25] 4bc144e2 refusal    'unknown'
+  [sanity pairs A zero:L29] 4bc144e2 refusal    'unknown'
+  [sanity pairs A overwrite_B:L35] 66f24dbb answer     'Yellow dress and a pair of earrings'
+  [sanity pairs A overwrite_B:L7] 66f24dbb answer     "user bought a yellow dress and a pair of earrings
+  [sanity pairs A overwrite_self:L35] 66f24dbb refusal    'unknown'
+  [sanity pairs A overwrite_self:L7] 66f24dbb refusal    'unknown'
+  [sanity pairs A zero:L25] 66f24dbb refusal    'unknown'
+  [sanity pairs A zero:L29] 66f24dbb refusal    'unknown'
+  [sanity pairs A overwrite_B:L35] 6ade9755 answer     'Serenity Yoga'
+  [sanity pairs A overwrite_B:L7] 6ade9755 refusal    'unknown'
+  [sanity pairs A overwrite_self:L35] 6ade9755 refusal    'unknown'
+  [sanity pairs A overwrite_self:L7] 6ade9755 refusal    'unknown'
+  [sanity pairs A zero:L25] 6ade9755 refusal    'unknown'
+  [sanity pairs A zero:L29] 6ade9755 refusal    'unknown'
+  [sanity pairs A overwrite_B:L35] 7e00a6cb answer     'Stayokay Amsterdam Vondelpark'
+  [sanity pairs A overwrite_B:L7] 7e00a6cb refusal    'unknown'
+  [sanity pairs A overwrite_self:L35] 7e00a6cb refusal    'unknown'
+  [sanity pairs A overwrite_self:L7] 7e00a6cb refusal    'unknown'
+  [sanity pairs A zero:L25] 7e00a6cb refusal    'unknown'
+  [sanity pairs A zero:L29] 7e00a6cb refusal    'unknown'
+  [sanity pairs A overwrite_B:L35] 8ebdbe50 answer     'Data Science certification'
+  [sanity pairs A overwrite_B:L7] 8ebdbe50 refusal    'unknown'
+  [sanity pairs A overwrite_self:L35] 8ebdbe50 refusal    'unknown'
+  [sanity pairs A overwrite_self:L7] 8ebdbe50 refusal    'unknown'
+  [sanity pairs A zero:L25] 8ebdbe50 refusal    'unknown'
+  [sanity pairs A zero:L29] 8ebdbe50 refusal    'unknown'
+  [sanity pairs A overwrite_B:L35] b320f3f8 answer     'Snaggletooth'
+  [sanity pairs A overwrite_B:L7] b320f3f8 refusal    'unknown'
+  [sanity pairs A overwrite_self:L35] b320f3f8 refusal    'unknown'
+  [sanity pairs A overwrite_self:L7] b320f3f8 refusal    'unknown'
+  [sanity pairs A zero:L25] b320f3f8 refusal    'unknown'
+  [sanity pairs A zero:L29] b320f3f8 refusal    'unknown'
+  [sanity pairs A overwrite_B:L35] d6062bb9 answer     '1998'
+  [sanity pairs A overwrite_B:L7] d6062bb9 refusal    'unknown'
+  [sanity pairs A overwrite_self:L35] d6062bb9 refusal    'unknown'
+  [sanity pairs A overwrite_self:L7] d6062bb9 refusal    'unknown'
+  [sanity pairs A zero:L25] d6062bb9 refusal    'unknown'
+  [sanity pairs A zero:L29] d6062bb9 refusal    'unknown'
+  [sanity pairs A overwrite_B:L35] gpt4_1d80365e answer     '1'
+  [sanity pairs A overwrite_B:L7] gpt4_1d80365e refusal    'unknown'
+  [sanity pairs A overwrite_self:L35] gpt4_1d80365e refusal    'unknown'
+  [sanity pairs A overwrite_self:L7] gpt4_1d80365e refusal    'unknown'
+  [sanity pairs A zero:L25] gpt4_1d80365e refusal    'unknown'
+  [sanity pairs A zero:L29] gpt4_1d80365e refusal    'unknown'
+  [sanity pairs A overwrite_B:L35] gpt4_213fd887 answer     'charity 5K run'
+  [sanity pairs A overwrite_B:L7] gpt4_213fd887 refusal    'unknown'
+  [sanity pairs A overwrite_self:L35] gpt4_213fd887 refusal    'unknown'
+  [sanity pairs A overwrite_self:L7] gpt4_213fd887 refusal    'unknown'
+  [sanity pairs A zero:L25] gpt4_213fd887 refusal    'unknown'
+  [sanity pairs A zero:L29] gpt4_213fd887 refusal    'unknown'
+  [sanity pairs A overwrite_B:L35] gpt4_4ef30696 answer     '35'
+  [sanity pairs A overwrite_B:L7] gpt4_4ef30696 refusal    'unknown'
+  [sanity pairs A overwrite_self:L35] gpt4_4ef30696 refusal    'unknown'
+  [sanity pairs A overwrite_self:L7] gpt4_4ef30696 refusal    'unknown'
+  [sanity pairs A zero:L25] gpt4_4ef30696 refusal    'unknown'
+  [sanity pairs A zero:L29] gpt4_4ef30696 refusal    'unknown'
+  [sanity pairs A overwrite_B:L35] gpt4_74aed68e answer     '21'
+  [sanity pairs A overwrite_B:L7] gpt4_74aed68e answer     '21'
+  [sanity pairs A overwrite_self:L35] gpt4_74aed68e refusal    'unknown'
+  [sanity pairs A overwrite_self:L7] gpt4_74aed68e refusal    'unknown'
+  [sanity pairs A zero:L25] gpt4_74aed68e refusal    'unknown'
+  [sanity pairs A zero:L29] gpt4_74aed68e refusal    'unknown'
+  [sanity pairs A overwrite_B:L35] gpt4_88806d6e answer     'Tom'
+  [sanity pairs A overwrite_B:L7] gpt4_88806d6e refusal    'unknown'
+  [sanity pairs A overwrite_self:L35] gpt4_88806d6e refusal    'unknown'
+  [sanity pairs A overwrite_self:L7] gpt4_88806d6e refusal    'unknown'
+  [sanity pairs A zero:L25] gpt4_88806d6e refusal    'unknown'
+  [sanity pairs A zero:L29] gpt4_88806d6e refusal    'unknown'
+final-layer overwrite 1.000 (>= 0.9); zero add exact True; self-overwrite exact True; 0.2 depth 0.231
+== (iv) arms on 60 confirmation R rows and 55 C rows; 1946 s left before the judge reserve
+  arm primary:R:A: 60/60 rows in 129 s
+  arm primary:R:cut: 60/60 rows in 84 s
+  arm primary:C:A: 55/55 rows in 87 s
+  arm secondary:R:A:steer: 60/60 rows in 25 s
+  arm secondary:R:cut:steer: 60/60 rows in 23 s
+  arm secondary:R:A:random: 60/60 rows in 10 s
+  arm secondary:C:A:steer: 55/55 rows in 17 s
+  arm secondary:R:A:reverse: 60/60 rows in 9 s
+run done in 476 s; skipped []; cut []; forward passes {'prefills': 761, 'generations': 1061, 'tokens_generated': 13015}
+stage run: elapsed 477 s (total 538 s of 2520)
+populations: {'R_dev': 28, 'R_confirm': 64, 'pairs_dev': 13, 'C_dev': 39, 'C_confirm': 55}
+judge engine hf-transformers-5.17.0-cuda-bfloat16 (Qwen/Qwen2.5-7B-Instruct) loaded in 7 s
+judge hf-transformers-5.17.0-cuda-bfloat16: 1166 items, 602 distinct prompts, 602 not yet judged
+judge: 64/602 prompts (0.042 s/prompt)
+judge: 128/602 prompts (0.041 s/prompt)
+judge: 192/602 prompts (0.041 s/prompt)
+judge: 256/602 prompts (0.042 s/prompt)
+judge: 320/602 prompts (0.043 s/prompt)
+judge: 384/602 prompts (0.042 s/prompt)
+judge: 448/602 prompts (0.042 s/prompt)
+judge: 512/602 prompts (0.042 s/prompt)
+judge: 576/602 prompts (0.041 s/prompt)
+judge: 602/602 prompts (0.041 s/prompt)
+judge: 1166/1166 items judged in 25 s; replies that are not verdicts: 0
+stage judge: elapsed 53 s (total 591 s of 2520)
+report exit 0: runs/exp38_report_confirm.md (copied into runs/exp38_pod/)
+stage report: elapsed 22 s (total 613 s of 2520)
+all stages done in 613 s; copy runs/exp38_pod/ back before the self-stop at +3060 s
