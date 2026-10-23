@@ -171,3 +171,23 @@ cut prompt on 9 of 28 and inside the N-cut note on 5 of 28.
    keys and values above L. Generation stops at EOS or newline (the §35 phrase rule); 16 new tokens on the laptop.
 
 Nothing else in §1–§8 changes. The direction is still estimated from the 13 dev pairs only; folds 2–4 remain sealed.
+
+## Amendment 2 (Advisor, 2026-10-23, after the free design run c782dee, before any pod; see `research/reviews/2026-10-23-exp38-dev.md`)
+
+1. **Primary setting, unchanged:** L25 α4 (vnorm), chosen by the §5.5 rule (highest ans(Steer) with Random passing; 27/28
+   over L29 α2's 26/28). Claim 1, Claim 2, Controls X, C, T as written.
+2. **Secondary setting, declared now:** L29 α2 (vnorm). Chosen after seeing the dev D1 gold rate (Steer 8/28 vs 3/28 at the
+   primary; 2/15 vs 0/15 on the 15 rows the estimation never used). This is a train-side selection on dev labels, disclosed
+   here; folds 2–4 remain sealed and are read once. At the secondary, the pod runs Steer, Steer-cut, Random (the seeded
+   layer-29 vector) and Reverse on R and Steer on C, and reports Claim 1, Control X and Control C with the same arithmetic,
+   labelled **secondary**. If the primary is NOT SHOWN and the secondary SHOWN, the record reads "shown at the secondary
+   setting only; two settings were tested"; no reading in §4 is claimed from the secondary alone without that sentence.
+3. **Why:** the design gate selected on ans, and the dev outputs show that at L25 α4 most "answers" are topic-word lists
+   the degenerate rule (a run of ≥ 8 identical ids) does not catch; the ans-maximising setting is not the gold-maximising
+   one. The gate and classifier are not changed after the fact; this weakness is recorded in §38's write-up.
+4. **Time and cost:** both settings run only if the Executor's estimate fits the same 60-minute hard stop with the D-22
+   five-row smoke; otherwise the primary alone. The quote to the user (A40 ≈ $0.59/h, hard stop 60 min ≈ $0.59) does not
+   change. A-cut (α = 0) is setting-independent and runs once.
+5. **Dev provisional figures, for the record (D1, not a claim):** at L25 α4 Steer gold 3/28 = Steer-cut 3/28, A-cut 2/28,
+   B 6/28; Control C on 4 rows Steer 3/4 vs A 4/4; Steer and Steer-cut give the same phrase on 0 of 21 rows where both
+   answer; 2 of 27 Steer phrases occur verbatim in the intact prompt.
