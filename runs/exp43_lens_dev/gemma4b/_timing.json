@@ -1,0 +1,1 @@
+{"runs": [{"model_id": "google/gemma-3-4b-it", "weights": "cache/exp43_fp32/gemma-3-4b-it", "lens": "identity (logit lens; no J-lens fitted)", "read_tag": "exp43_lens_dev_v1", "device": "cpu", "dtype": "float32", "threads": 8, "load_s": 4.826214798958972, "questions": 126, "seconds_per_question": 34.208090961875676, "wall_s": 4311.076816780958, "peak_rss_mb": 17412.99609375}]}

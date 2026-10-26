@@ -1,0 +1,838 @@
+{
+ "family": "gemma4b",
+ "folds": [
+  0,
+  1
+ ],
+ "k": 10,
+ "lens": "logit (identity; no J-lens fitted)",
+ "depth_convention": "layer / n_layers (\u00a734 emergence_depth)",
+ "profiles": {
+  "gemma4b": {
+   "n": 126,
+   "n_layers": 34,
+   "refusal_ids": [
+    11908,
+    60355
+   ],
+   "class_counts": {
+    "success": 83,
+    "refusal": 2,
+    "answered wrong": 41,
+    "all failures": 43
+   },
+   "layers": [
+    {
+     "layer": 0,
+     "depth": 0.0,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 59979.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 1,
+     "depth": 0.029411764705882353,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 62980.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 2,
+     "depth": 0.058823529411764705,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 69921.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 3,
+     "depth": 0.08823529411764706,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 50609.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 4,
+     "depth": 0.11764705882352941,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 101304.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 5,
+     "depth": 0.14705882352941177,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 95574.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 6,
+     "depth": 0.17647058823529413,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 104563.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 7,
+     "depth": 0.20588235294117646,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 78848.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 8,
+     "depth": 0.23529411764705882,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 47705.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 9,
+     "depth": 0.2647058823529412,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 28026.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 10,
+     "depth": 0.29411764705882354,
+     "n": 126,
+     "gold_topk": 0.015873015873015872,
+     "gold_top1": 0.0,
+     "median_rank_successes": 4024.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 11,
+     "depth": 0.3235294117647059,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 10787.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 12,
+     "depth": 0.35294117647058826,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 2564.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 13,
+     "depth": 0.38235294117647056,
+     "n": 126,
+     "gold_topk": 0.015873015873015872,
+     "gold_top1": 0.0,
+     "median_rank_successes": 1620.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 14,
+     "depth": 0.4117647058823529,
+     "n": 126,
+     "gold_topk": 0.07142857142857142,
+     "gold_top1": 0.0,
+     "median_rank_successes": 3691.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 15,
+     "depth": 0.4411764705882353,
+     "n": 126,
+     "gold_topk": 0.07142857142857142,
+     "gold_top1": 0.0,
+     "median_rank_successes": 304.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 16,
+     "depth": 0.47058823529411764,
+     "n": 126,
+     "gold_topk": 0.03968253968253968,
+     "gold_top1": 0.0,
+     "median_rank_successes": 374.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 17,
+     "depth": 0.5,
+     "n": 126,
+     "gold_topk": 0.047619047619047616,
+     "gold_top1": 0.007936507936507936,
+     "median_rank_successes": 221.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 18,
+     "depth": 0.5294117647058824,
+     "n": 126,
+     "gold_topk": 0.09523809523809523,
+     "gold_top1": 0.015873015873015872,
+     "median_rank_successes": 105.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 19,
+     "depth": 0.5588235294117647,
+     "n": 126,
+     "gold_topk": 0.1984126984126984,
+     "gold_top1": 0.023809523809523808,
+     "median_rank_successes": 49.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 20,
+     "depth": 0.5882352941176471,
+     "n": 126,
+     "gold_topk": 0.23015873015873015,
+     "gold_top1": 0.023809523809523808,
+     "median_rank_successes": 34.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 21,
+     "depth": 0.6176470588235294,
+     "n": 126,
+     "gold_topk": 0.3888888888888889,
+     "gold_top1": 0.047619047619047616,
+     "median_rank_successes": 14.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 22,
+     "depth": 0.6470588235294118,
+     "n": 126,
+     "gold_topk": 0.42857142857142855,
+     "gold_top1": 0.15873015873015872,
+     "median_rank_successes": 13.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 23,
+     "depth": 0.6764705882352942,
+     "n": 126,
+     "gold_topk": 0.5952380952380952,
+     "gold_top1": 0.2777777777777778,
+     "median_rank_successes": 3.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 24,
+     "depth": 0.7058823529411765,
+     "n": 126,
+     "gold_topk": 0.6507936507936508,
+     "gold_top1": 0.3412698412698413,
+     "median_rank_successes": 2.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 25,
+     "depth": 0.7352941176470589,
+     "n": 126,
+     "gold_topk": 0.6507936507936508,
+     "gold_top1": 0.3492063492063492,
+     "median_rank_successes": 2.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 26,
+     "depth": 0.7647058823529411,
+     "n": 126,
+     "gold_topk": 0.6746031746031746,
+     "gold_top1": 0.373015873015873,
+     "median_rank_successes": 2.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.5
+    },
+    {
+     "layer": 27,
+     "depth": 0.7941176470588235,
+     "n": 126,
+     "gold_topk": 0.6825396825396826,
+     "gold_top1": 0.35714285714285715,
+     "median_rank_successes": 2.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.5
+    },
+    {
+     "layer": 28,
+     "depth": 0.8235294117647058,
+     "n": 126,
+     "gold_topk": 0.7301587301587301,
+     "gold_top1": 0.40476190476190477,
+     "median_rank_successes": 1.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.5
+    },
+    {
+     "layer": 29,
+     "depth": 0.8529411764705882,
+     "n": 126,
+     "gold_topk": 0.7301587301587301,
+     "gold_top1": 0.5,
+     "median_rank_successes": 1.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.5
+    },
+    {
+     "layer": 30,
+     "depth": 0.8823529411764706,
+     "n": 126,
+     "gold_topk": 0.7380952380952381,
+     "gold_top1": 0.5238095238095238,
+     "median_rank_successes": 1.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.5
+    },
+    {
+     "layer": 31,
+     "depth": 0.9117647058823529,
+     "n": 126,
+     "gold_topk": 0.8015873015873016,
+     "gold_top1": 0.5079365079365079,
+     "median_rank_successes": 1.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.5
+    },
+    {
+     "layer": 32,
+     "depth": 0.9411764705882353,
+     "n": 126,
+     "gold_topk": 0.8492063492063492,
+     "gold_top1": 0.5238095238095238,
+     "median_rank_successes": 1.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.5
+    },
+    {
+     "layer": 33,
+     "depth": 0.9705882352941176,
+     "n": 126,
+     "gold_topk": 0.8253968253968254,
+     "gold_top1": 0.5079365079365079,
+     "median_rank_successes": 1.0,
+     "n_refusals": 2,
+     "refusal_unknown_top1": 0.5
+    }
+   ],
+   "abc": {
+    "all": {
+     "n": 126,
+     "A": 0.07936507936507936,
+     "B": 0.09523809523809523,
+     "C": 0.8253968253968254
+    },
+    "success": {
+     "n": 83,
+     "A": 0.03614457831325301,
+     "B": 0.04819277108433735,
+     "C": 0.9156626506024096
+    },
+    "refusal": {
+     "n": 2,
+     "A": 0.0,
+     "B": 0.5,
+     "C": 0.5
+    },
+    "answered wrong": {
+     "n": 41,
+     "A": 0.17073170731707318,
+     "B": 0.17073170731707318,
+     "C": 0.6585365853658537
+    },
+    "all failures": {
+     "n": 43,
+     "A": 0.16279069767441862,
+     "B": 0.18604651162790697,
+     "C": 0.6511627906976745
+    }
+   },
+   "emergence": {
+    "n": 116,
+    "mean": 0.6412271805273834,
+    "q1": 0.5588235294117647,
+    "median": 0.6470588235294118,
+    "q3": 0.6764705882352942,
+    "n_read": 126
+   }
+  },
+  "qwen3b": {
+   "n": 126,
+   "n_layers": 36,
+   "refusal_ids": [
+    9788,
+    21693
+   ],
+   "class_counts": {
+    "success": 54,
+    "refusal": 32,
+    "answered wrong": 40,
+    "all failures": 72
+   },
+   "layers": [
+    {
+     "layer": 0,
+     "depth": 0.0,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 53466.5,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 1,
+     "depth": 0.027777777777777776,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 99995.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 2,
+     "depth": 0.05555555555555555,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 81379.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 3,
+     "depth": 0.08333333333333333,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 69429.5,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 4,
+     "depth": 0.1111111111111111,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 54512.5,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 5,
+     "depth": 0.1388888888888889,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 58813.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 6,
+     "depth": 0.16666666666666666,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 60434.5,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 7,
+     "depth": 0.19444444444444445,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 59190.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 8,
+     "depth": 0.2222222222222222,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 44740.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 9,
+     "depth": 0.25,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 21605.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 10,
+     "depth": 0.2777777777777778,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 24344.5,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 11,
+     "depth": 0.3055555555555556,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 20456.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 12,
+     "depth": 0.3333333333333333,
+     "n": 126,
+     "gold_topk": 0.015873015873015872,
+     "gold_top1": 0.0,
+     "median_rank_successes": 9527.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 13,
+     "depth": 0.3611111111111111,
+     "n": 126,
+     "gold_topk": 0.023809523809523808,
+     "gold_top1": 0.0,
+     "median_rank_successes": 41846.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 14,
+     "depth": 0.3888888888888889,
+     "n": 126,
+     "gold_topk": 0.047619047619047616,
+     "gold_top1": 0.0,
+     "median_rank_successes": 49910.5,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 15,
+     "depth": 0.4166666666666667,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 84770.5,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 16,
+     "depth": 0.4444444444444444,
+     "n": 126,
+     "gold_topk": 0.023809523809523808,
+     "gold_top1": 0.023809523809523808,
+     "median_rank_successes": 60047.5,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 17,
+     "depth": 0.4722222222222222,
+     "n": 126,
+     "gold_topk": 0.023809523809523808,
+     "gold_top1": 0.0,
+     "median_rank_successes": 57645.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 18,
+     "depth": 0.5,
+     "n": 126,
+     "gold_topk": 0.023809523809523808,
+     "gold_top1": 0.023809523809523808,
+     "median_rank_successes": 50153.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 19,
+     "depth": 0.5277777777777778,
+     "n": 126,
+     "gold_topk": 0.023809523809523808,
+     "gold_top1": 0.023809523809523808,
+     "median_rank_successes": 27434.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 20,
+     "depth": 0.5555555555555556,
+     "n": 126,
+     "gold_topk": 0.023809523809523808,
+     "gold_top1": 0.0,
+     "median_rank_successes": 48674.5,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 21,
+     "depth": 0.5833333333333334,
+     "n": 126,
+     "gold_topk": 0.023809523809523808,
+     "gold_top1": 0.0,
+     "median_rank_successes": 41861.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 22,
+     "depth": 0.6111111111111112,
+     "n": 126,
+     "gold_topk": 0.007936507936507936,
+     "gold_top1": 0.0,
+     "median_rank_successes": 66212.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 23,
+     "depth": 0.6388888888888888,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 83718.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 24,
+     "depth": 0.6666666666666666,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 109265.5,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 25,
+     "depth": 0.6944444444444444,
+     "n": 126,
+     "gold_topk": 0.0,
+     "gold_top1": 0.0,
+     "median_rank_successes": 101955.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 26,
+     "depth": 0.7222222222222222,
+     "n": 126,
+     "gold_topk": 0.023809523809523808,
+     "gold_top1": 0.0,
+     "median_rank_successes": 80005.5,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 27,
+     "depth": 0.75,
+     "n": 126,
+     "gold_topk": 0.023809523809523808,
+     "gold_top1": 0.0,
+     "median_rank_successes": 57362.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 28,
+     "depth": 0.7777777777777778,
+     "n": 126,
+     "gold_topk": 0.023809523809523808,
+     "gold_top1": 0.0,
+     "median_rank_successes": 65531.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 29,
+     "depth": 0.8055555555555556,
+     "n": 126,
+     "gold_topk": 0.031746031746031744,
+     "gold_top1": 0.007936507936507936,
+     "median_rank_successes": 34151.5,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.0
+    },
+    {
+     "layer": 30,
+     "depth": 0.8333333333333334,
+     "n": 126,
+     "gold_topk": 0.03968253968253968,
+     "gold_top1": 0.015873015873015872,
+     "median_rank_successes": 8994.5,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.03125
+    },
+    {
+     "layer": 31,
+     "depth": 0.8611111111111112,
+     "n": 126,
+     "gold_topk": 0.10317460317460317,
+     "gold_top1": 0.015873015873015872,
+     "median_rank_successes": 2074.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.375
+    },
+    {
+     "layer": 32,
+     "depth": 0.8888888888888888,
+     "n": 126,
+     "gold_topk": 0.23015873015873015,
+     "gold_top1": 0.07936507936507936,
+     "median_rank_successes": 33.5,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.59375
+    },
+    {
+     "layer": 33,
+     "depth": 0.9166666666666666,
+     "n": 126,
+     "gold_topk": 0.3888888888888889,
+     "gold_top1": 0.1349206349206349,
+     "median_rank_successes": 8.5,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.71875
+    },
+    {
+     "layer": 34,
+     "depth": 0.9444444444444444,
+     "n": 126,
+     "gold_topk": 0.626984126984127,
+     "gold_top1": 0.2222222222222222,
+     "median_rank_successes": 3.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.78125
+    },
+    {
+     "layer": 35,
+     "depth": 0.9722222222222222,
+     "n": 126,
+     "gold_topk": 0.6825396825396826,
+     "gold_top1": 0.30952380952380953,
+     "median_rank_successes": 2.0,
+     "n_refusals": 32,
+     "refusal_unknown_top1": 0.71875
+    }
+   ],
+   "abc": {
+    "all": {
+     "n": 126,
+     "A": 0.29365079365079366,
+     "B": 0.023809523809523808,
+     "C": 0.6825396825396826
+    },
+    "success": {
+     "n": 54,
+     "A": 0.25925925925925924,
+     "B": 0.0,
+     "C": 0.7407407407407407
+    },
+    "refusal": {
+     "n": 32,
+     "A": 0.375,
+     "B": 0.0625,
+     "C": 0.5625
+    },
+    "answered wrong": {
+     "n": 40,
+     "A": 0.275,
+     "B": 0.025,
+     "C": 0.7
+    },
+    "all failures": {
+     "n": 72,
+     "A": 0.3194444444444444,
+     "B": 0.041666666666666664,
+     "C": 0.6388888888888888
+    }
+   },
+   "emergence": {
+    "n": 89,
+    "mean": 0.8789013732833957,
+    "q1": 0.8888888888888888,
+    "median": 0.9166666666666666,
+    "q3": 0.9444444444444444,
+    "n_read": 126
+   }
+  }
+ },
+ "checks": {
+  "same_prompt_sha256": 126,
+  "n": 126,
+  "same_gold_first_token_text": 121,
+  "numeric_gold": 53,
+  "final_topk_same_token_subset": {
+   "gemma4b": 0.8264462809917356,
+   "qwen3b": 0.6942148760330579
+  },
+  "final_topk_numeric_subset": {
+   "gemma4b": 1.0,
+   "qwen3b": 0.9811320754716981
+  }
+ }
+}
