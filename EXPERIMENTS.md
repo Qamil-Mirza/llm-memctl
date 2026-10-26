@@ -6826,6 +6826,9 @@ On LoCoMo the refusal decision is still the first token at ':', but keeping the 
 content by about 7 points. §39's "one position does as much" holds for whether the model answers, not, on this set, for
 how often it is right.
 
+See §42: on fresh LoCoMo rows the gap did not replicate (Steer-all − Steer-0 on gold +0.017 (−0.042, +0.075), first token
+identical 120/120).
+
 **Costs.**
 - Correct rows: on 40 rows the 3B already had right, the push loses 8 (−0.200). The pre-registered bar was set when §38
   showed −0.056, and it is missed by 0.025.
@@ -6920,6 +6923,111 @@ A threshold on s_proj, fixed in advance, is the next test, on rows neither §40 
 One model, one layer, one direction. The top-q curve is post hoc.
 
 **Spend.** Development $0 (laptop); confirmation rode on §40's pod at no extra cost.
+
+## 42. Can a threshold on the projection signal choose which refusals to push? Selective steering on fresh LoCoMo rows (2026-10-25, pre-registered; pod run 2026-10-26)
+
+**Status: RUN. The selective policy fails: Claims 1–3 NOT SHOWN at λ 1 (U: Cond −6, Steer −6, A 0, B +1). Claim 4
+replicates: AUROC of s_proj 0.765 (0.678, 0.843). Q17 closes negative for s_proj as a policy.** Pre-registration
+`research/proposals/2026-10-25-exp42-selective-steering.md` (Advisor; rev 0 b2e0543, rev 1 8fd2613 after the Executor's
+feasibility note). Decisions: D-36 (draft and build), D-37 (pod approval; the user's "Yes launch please" in the Executor
+pane). Reviews: `research/reviews/2026-10-25-exp42-build.md` (ACCEPT, 604cc73) and
+`research/reviews/2026-10-26-exp42-results.md` (ACCEPT, cab1a25). Code: the §40 pipeline with `--exp exp42`
+(`memctl/locomo_view.py` seed and exclusion parameters, `scripts/exp40_pod_run.py`, `scripts/exp40_report.py`),
+`scripts/exp42_rule.py` (e2c9798); tests `tests/test_exp42.py` (15). Rule `runs/exp42_inputs/rule42.json` (sha
+7a6afa62…); rows `runs/exp42_pod/`; report `runs/exp42_pod/exp42_report_confirm.md` (909626a).
+
+**Why.** §41 found that s_proj, the projection of the unsteered ':' state on v_29, ranks which steered refusals come out
+right (AUROC 0.803 on §40's rows). A post hoc cut at the top 10–30% would have beaten the §35 line. §42 fixes that cut
+in advance and tests it on rows nothing has seen (Q17).
+
+**Design.**
+- Frozen rule, fixed from §40's rows before any new row was read: Cond = steer (Steer-all, layer 29, α 2) iff A refuses
+  (the step-0 argmax on the unsteered pass is ' unknown', id 9788) and s_proj ≥ τ; otherwise A's output.
+  τ = −18.896762090918696, the numpy linear 70th percentile of s_proj over §40's 120 R rows (apass sha 388e698b…).
+- The rule was restricted to refusals by the Executor's feasibility note (F1). On §40's rows, s_proj ≥ τ held on 242
+  of the 318 rows where A already answers, including 33 of 40 correct rows. Firing there would have made the damage
+  control fail by design.
+- Fresh set: LoCoMo, seed 42, with §40's 600 + 40 question ids excluded before the shuffle. Disjointness and the pools
+  (923 answerable, 406 adversarial) are asserted. 600 + 40 taken; by category 1 113, 2 132, 3 32, 4 323. This is
+  in distribution (same benchmark, disjoint rows); a cross-benchmark test is a separate step.
+- Pipeline, arms, judge and selection as §40 (R = the first 120 marked A refusals, C = the first 40 marked A answers
+  judged correct).
+- Utility: +1 correct, −λ wrong, 0 for a refusal, degenerate output or soft refusal; λ 1 primary, λ 2 beside; paired
+  bootstrap 10k.
+
+**Population.**
+- On the 600: marker rate 0.772 (463), refusal rate 0.212 (127), judged-correct rate 0.378 (227). R 120, C 40.
+- Judge agreement on the 60 cached rows: 60/60.
+- All 120 R rows refuse at step 0.
+
+**The policy (λ 1; the rule fires on 20 of 120 R rows).**
+
+| claim | estimate (95% CI) | verdict |
+|---|---|---|
+| U: A / B / Steer-all / Cond | 0 / +1 / −6 / −6 | |
+| Claim 1: U(Cond) − U(B) | −0.058 (−0.167, +0.042) | NOT SHOWN |
+| Claim 2: U(Cond) − U(A) | −0.050 (−0.125, +0.025) | NOT SHOWN |
+| Claim 3: U(Cond) − U(Steer-all) | 0.000 (−0.117, +0.117) | NOT SHOWN (beside, U(Steer) − U(A) −0.050) |
+| Claim 4: AUROC(s_proj) for gold(Steer-all) on R | 0.765 (0.678, 0.843) | SHOWN (replicates §41's 0.803) |
+| Control D: gold(Cond) − 1 on C | 0.000; 0 of 40 C rows fire | 0 by construction |
+| Control U: answer rate on 36 adversarial rows | Cond 0.583 (5 fire); A 0.444, B 0.556, Steer-all 0.917 | a cost |
+
+- At λ 2 (beside), U is A 0, B −15, Steer −44, Cond −19.
+  - Claim 3 is SHOWN, +0.208 (+0.033, +0.392). The fixed reading applies: "expected under a net-negative steer; not
+    evidence of a selective signal" (U(Steer) − U(A) −0.367).
+  - Claims 1 and 2 are NOT SHOWN (Cond − A −0.158).
+- Fire precision: the 20 fired rows come out 7 correct and 13 wrong (0.350), against Steer-all's 0.275 over all R. That
+  is above the base rate but below the 0.5 a λ 1 policy needs.
+- The frozen q curve (τ_q from §40's R rows; only q = 0.3 carries a verdict) at λ 1 reads −3, −3, −6, −5, −2, −4, −1,
+  −3, −4 for q = 0.1 … 0.9. A post hoc top-q curve on these rows is negative throughout. No frozen or post hoc threshold
+  is positive.
+- By type: Cond fires 14 times on single-hop rows and scores −6 there, against B's +7.
+
+**Mechanism: s_proj ranks extractability, not answerability.**
+- On the 36 marked adversarial rows, the rule fires on 5 of the 20 step-0 refusals (0.25). On the answerable rows it
+  fires on 20 of 127 (0.157).
+- The AUROC of s_proj for answerable-refusal against unanswerable-refusal is 0.443.
+- So the signal is no higher when an answer exists; it tracks how ready the state is to produce an answer-shaped
+  continuation. That is why Control U moves the wrong way, and it is consistent with §34c, where the 3B's late state
+  carried a plausible candidate with or without the evidence.
+
+**§40's readouts on the fresh rows (an unplanned replication).**
+
+| 120 R rows | ans | gold |
+|---|---|---|
+| A | 0 | 0 |
+| B | 0.275 | 0.142 |
+| Steer-all | 0.625 | 0.275 (0.200, 0.358) |
+| Steer-all-cut | 0.442 | 0.042 |
+| A-cut | 0.067 | 0.017 |
+| Random | 0.050 | 0.008 |
+| Steer-0 | 0.625 | 0.258 |
+
+- §40's Claim 1 replicates: +0.233 (+0.150, +0.317). Steer-all's gold of 0.275 is below the rev 1 "meaningful" line of
+  0.30.
+- Control X passes (0.050 ≤ 0.125). Steer-all − B is +0.133 (+0.050, +0.217).
+- Control C: −0.225 (−0.350, −0.100). This is a tie on the bar: the upper bound is exactly −0.100, and the rule is
+  "harmful if UB < −0.10". Pooled over §40 and §42 (80 rows; descriptive, not pre-registered) it is −0.2125 (−0.300,
+  −0.125).
+- Steer-all − Steer-0 on gold is +0.017 (−0.042, +0.075), with the first token identical on 120/120. §40's +0.075
+  qualification of §39/§39b did not replicate on these rows.
+- By type, Steer-all gold: multi-hop 0.429 (n 21), single-hop 0.362 (47), open-domain 0.250 (20), temporal 0.062 (32).
+
+**Found.** A threshold on s_proj, fixed in advance from §40's rows, does not make steering pay on fresh rows. The
+refusals it picks come out right 35% of the time once pushed. That beats the 28% base rate, but loses to saying
+"unknown" once each wrong answer costs as much as a right one gains. The ranking itself replicates (0.765). The push's
+evidence-dependent effect replicates too, at a smaller size (+0.23 against §40's +0.33), with the same costs: about 22
+points on correct rows, and the answer rate on unanswerable questions roughly doubled.
+
+**Why it matters.** The 3B's unsteered state does tell which refusals hide an extractable answer, but not sharply
+enough to act on: at its best, the push is wrong more often than right. The signal ranks extractability rather than
+whether an answer exists, so it cannot protect the questions the model should refuse. For the 3B, Q17 closes negative:
+s_proj is a ranking, not a policy.
+
+**Caveats.** One model, one layer, one α; the same benchmark as §40, disjoint rows; 120 refusal rows, 40 correct rows,
+36 marked adversarial rows. The 7B judge (60/60 on cached rows). Marked rows only (marker rate 0.772).
+
+**Spend.** About $0.12 (12.4 min at $0.59/h). All experiments ≈ $17.94 of $20.
 
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
