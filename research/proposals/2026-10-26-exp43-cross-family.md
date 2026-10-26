@@ -80,3 +80,51 @@ per family). Stage 2: one A40 secure pod per family at the then-current price (l
 at most about $0.59 each, about $0.15–0.30 expected each (a 4B model is slower than Qwen 3B). Programme spend is
 about $17.94 of the $20 cap: two stage-2 pods fit only if both run clean (≤ $18.53 expected, ≤ $19.12 at the hard
 stops). A third family, a failed attempt, or a 7B-partner lens run would need the cap raised; the user decides.
+
+## Amendment 1 (2026-10-26, same day): Part B, the lens readout, and the raised cap
+
+The user, after being told that §34 was measured on Qwen only: "Let's expand then, do those experiments for more
+families. I've extended the budget limit from 20 to 30 too." Part A above (the refusal direction) is unchanged.
+The aim is now **three new families if stage 0 allows** (the user's "at least 2"): Llama 3.2 / 3.1, Gemma 3, Phi-4,
+each at its §24 pair of sizes.
+
+### Part B: where does the small reader lose the answer, per family (§34 recipe)
+
+**Population.** §24's cached `fixed8` prompts and outputs for both sizes of the family (`cache/generations_exp24_*`,
+`runs/exp24_{family}_f{0..4}`, verdicts in `runs/exp24_verdicts.json`): answerable questions with all evidence in
+view, present for both sizes with a judge label, paired by prompt hash, as §34. Development folds 0–1 for the gate
+and any choice; confirmation folds 2–4 read once, after the choices are committed.
+
+**Instrument.** The logit lens `unembed(h_l)` at P1 (the token before the gold's first content token after
+`Answer:`, whitespace teacher-forced, `Answer:` appended directly as in §34) **decides** the claims; it is
+pre-registered as the deciding row because the Qwen 3B's J-lens failed its gate and the logit rows decided §34, and
+because a J-lens fit costs about 90 minutes of pod time per model. A J-lens with 56 WikiText paragraphs is fitted
+for each model **only as time within the pod's hard stop allows**, small model first, and shown beside; it takes a
+verdict role only if it passes the §34 gate (a) and (b) on folds 0–1. k = 10 for A / B / C.
+
+**Claims per family (confirmation folds 2–4; same tests as §34a).**
+- Claim B1 (size): log10 best rank of the gold at P1, small minus large, paired by question, lower bound > 0.
+  Secondary: share of outcome A, small minus large, lower bound > 0.
+- Claim B2 (within the small model): AUC of the gold's P1 rank for wrong against right, lower bound > 0.5.
+- Descriptive, no threshold: the A / B / C decomposition of the small model's in-view failures, split refusal /
+  answered wrong; the median emergence depth (first layer at which the gold enters the top-10, as a fraction of
+  depth) for both sizes, beside Qwen's 0.889 (3B) and 0.464 (7B).
+- Cross-family reading (descriptive): in how many of the four families (Qwen + new) the small model's failures are
+  mostly C (share > 0.5) with an A floor, and in how many the small model's emergence depth is later than the
+  large model's.
+
+**Readings fixed in advance.** C-majority with later emergence in every family: the "answer present, decision late"
+picture is a property of small readers under this prompt, not of Qwen. Mixed: family-dependent, report which, and
+check whether the families that differ are the ones that refuse least (§24's unknown shares). Qwen alone: a Qwen
+fact; the advisor briefing's §34 paragraph is reworded to say so.
+
+My prediction: Llama 3B reproduces the Qwen picture (C-majority, late emergence, refusals); Gemma 4B and Phi-4-mini
+show C-majority too but with wrong answers rather than refusals, and emergence is still late relative to their
+larger partners.
+
+### Budget under the $30 cap
+
+Spend to date about $17.94. Per family: Part A pod ≤ $0.59 (about $0.15–0.30 expected); Part B pod with a 3 h hard
+stop ≤ $1.77 (reads for both sizes take minutes; the J-lens fits take the rest and are cut at the stop; about
+$1.00–1.50 expected). Three families: ≤ $7.08 at the stops, about $3.50–5.50 expected; spend ≤ $25.02 at the stops.
+Every pod is quoted separately and needs the user's own line in the Executor pane. Stage 0 and stage 1 stay free.
