@@ -1,0 +1,38 @@
+{
+ "meta-llama/Llama-3.1-8B-Instruct": {
+  "gated": "manual",
+  "weights_gb": 16.06,
+  "ok": true,
+  "arch": [
+   "LlamaForCausalLM"
+  ],
+  "n_layers": 32,
+  "hidden": 4096,
+  "vocab": 128256,
+  "tie": false
+ },
+ "google/gemma-3-12b-it": {
+  "gated": "manual",
+  "weights_gb": 24.37,
+  "ok": true,
+  "arch": [
+   "Gemma3ForConditionalGeneration"
+  ],
+  "n_layers": 48,
+  "hidden": 3840,
+  "vocab": null,
+  "tie": null
+ },
+ "microsoft/phi-4": {
+  "gated": "False",
+  "weights_gb": 29.32,
+  "ok": true,
+  "arch": [
+   "Phi3ForCausalLM"
+  ],
+  "n_layers": 40,
+  "hidden": 5120,
+  "vocab": 100352,
+  "tie": false
+ }
+}
