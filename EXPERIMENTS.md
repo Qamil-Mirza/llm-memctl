@@ -6732,7 +6732,194 @@ that the model's own computation already ranks below ' unknown'. The content the
 from. Gold is the D1 string rule. One layer and one α. That the forced token is "the answer's own first token" is read
 off the texts, not measured as a rank.
 
+**See §40.** On LoCoMo's 120 refusal rows, the first token under Steer-0 and Steer-all is the same on 120/120, but
+Steer-all is right more often: gold 43 against 34, paired +0.075 (+0.017, +0.142). The refusal decision is still the
+first token; keeping the push on improves the content there.
+
 **Spend.** $0 (laptop; 176 prefills, 204 generations). All experiments ≈ $17.68 of $20.
+
+## 40. Does the fixed layer-29 push transfer to a set it has never seen? The §38 setting on LoCoMo (2026-10-23, pre-registered; pod run 2026-10-23)
+
+**Status: RUN and CONFIRMED on a new set. Claim 1 SHOWN, +0.333 (+0.250, +0.425). Record: the §38 setting, fixed in
+advance, on a set it had never seen.** Pre-registration
+`research/proposals/2026-10-23-exp40-fixed-setting-validation.md` (Advisor; rev 0 3e7c349, rev 1 877f86d after the
+Executor's feasibility note, rev 2 61f9f6b after attempt 1). Decisions: D-33 (programme), D-34 (pod approval at $0.59;
+the user's yes typed in the Executor pane for attempt 1, and again for attempt 2). Reviews:
+`research/reviews/2026-10-23-exp40-build.md` (ACCEPT, 456dd11) and `research/reviews/2026-10-23-exp40-results.md`
+(ACCEPT, 8b12f27). Code: `memctl/locomo_view.py`, `memctl/analysis/exp40.py`, `scripts/exp40_pod_run.py`,
+`scripts/exp40_pod.sh`, `scripts/exp40_bundle.sh`, `scripts/exp40_d30.sh`, `scripts/exp40_report.py` (d4f7fc3,
+64 tokens c4df0d1, §41 block 3c5f9d2, rev 2 smoke 7b37aba); tests `tests/test_exp40.py` (24). Rows `runs/exp40_pod/`;
+report `runs/exp40_pod/exp40_report_confirm.md` (08fc63e); attempt-1 logs `runs/exp40_pod_attempt1/` (78f2c07).
+
+**Why.** §38's working setting (layer 29, α 2) was chosen on development labels and confirmed once, on folds 2–4 of the
+same prompt family. §40 asks whether the same intervention, with nothing re-chosen, lifts the 3B's refusals into
+correct answers on data it has never touched.
+
+**Design.**
+- Direction and setting: v_29 from the laptop `directions.npz` byte-exact (sha a7f967ec…), 2·v_29 added at the ':' of
+  `Answer:` and at every generated token, cast to bf16 (cosine 0.999999). The script accepts layer 29 and α 2 only.
+- New set: LoCoMo (`data/locomo/locomo10.json`), on which no LLM had run in this programme. 600 answerable questions,
+  drawn after excluding 17 with no, too many (> 8) or unresolved evidence turns, in a seed-40 shuffle (category 1 99,
+  2 114, 3 34, 4 353), and 40 adversarial (category 5) questions.
+- Prompt: the §23 fixed8 template, the memory being every evidence turn plus a BM25 fill to 8 lines from the same
+  conversation, in arrival order, as "speaker, date: content" lines with the session date and photo captions as
+  "[shares a photo: …]". The 3B writes its own note (batched greedy, 256 tokens); A = frozen note + `Answer:`; B adds
+  §35's "do not reply unknown" line.
+- Selection, from A outputs and the judge only, before any steered arm: R = the first 120 marked A refusals, C = the
+  first 40 marked A answers the judge marks correct. Arms on R: A, B, Steer-all, Steer-all-cut (evidence ablated, own
+  N-cut note), A-cut, Random (seeded rng [40, 29], same norm), Steer-0 (descriptive). On C: Steer-all.
+- Judge: Qwen2.5-7B-Instruct, HF bf16, the LongMemEval per-type prompts mapped by category (4 single-session-user,
+  1 multi-session, 2 temporal-reasoning, 3 default). Its agreement with 60 frozen cached §35 verdicts was checked
+  before any arm (bar 0.90).
+- Engine: transformers 5.17.0 bf16 on one A40, greedy, 64 new tokens, newline/EOS stop.
+
+**Attempts.**
+- Attempt 1 (pod b0qnmah0utqvh2, about 3 min, about $0.03) stopped at the D-22 smoke. The rev-1 check required an
+  `Answer:` marker in at least 4 of 5 batched notes, and only 3 of 5 had one. Batched and single-sequence notes agreed
+  on all 5 rows, so it was not batching drift; the 3B skipped the format on 2 rows and answered in one sentence.
+- Rev 2 made the smoke a batching-drift check only (same first token, and the same marker outcome batched vs single,
+  on ≥ 4 of 5) and printed the absolute marker rate.
+- Attempt 2 (pod 0jurb616nv389v, about 12 min, about $0.12) ran to the end in 653 s with nothing cut. Smoke: first
+  token 5/5, marker agreement 5/5 (absolute 3/5).
+
+**Population.**
+- On the 600: marker rate 0.737 (442), refusal rate 0.207 (124), judged-correct rate 0.347 (208). R 120 and C 40, both
+  at cap.
+- R and C are marked rows only, as in §35 and §38. The 3B skips the note-and-`Answer:` format on 26% of LoCoMo rows,
+  a finding about the prompt family on this set.
+- Judge agreement on the 60 cached rows: 60/60.
+
+| 120 R rows | ans | gold (95% CI) |
+|---|---|---|
+| A (unsteered) | 0.000 | 0.000 |
+| B (the §35 line) | 0.400 | 0.217 (0.150, 0.292) |
+| Steer-all | 0.758 | 0.358 (0.275, 0.450) |
+| Steer-all-cut | 0.525 | 0.025 (0.000, 0.058) |
+| A-cut | 0.075 | 0.017 |
+| Random | 0.058 | 0.017 |
+| Steer-0 (descriptive) | 0.758 | 0.283 (0.200, 0.367) |
+
+| claim / control | estimate | verdict |
+|---|---|---|
+| Claim 1: gold(Steer-all) − gold(Steer-all-cut), n 120 | +0.333 (+0.250, +0.425) | SHOWN, meaningful (0.358 ≥ 0.30) |
+| Control X: ans(Random) ≤ 0.2 × ans(Steer-all) | 7 rows ≤ 18.2 (0.058 ≤ 0.152) | passes |
+| Control C: gold(Steer-all) − gold(A) on 40 C rows | −0.200 (−0.325, −0.075) | a 20-point loss on correct rows, below the pre-registered harm bar (UB < −0.10) by a small margin |
+| Claim 2 (descriptive): gold(Steer-all) − gold(B) on R | +0.142 (+0.058, +0.225) | descriptive |
+
+By type, gold Steer-all / Steer-all-cut / B:
+
+| type | n | Steer-all | Steer-all-cut | B |
+|---|---|---|---|---|
+| single-hop | 47 | 0.511 | 0.021 | 0.340 |
+| multi-hop | 25 | 0.320 | 0.040 | 0.280 |
+| temporal | 28 | 0.250 | 0.000 | 0.107 |
+| open-domain | 20 | 0.200 | 0.050 | 0.000 |
+
+Soft refusals (§41 rev 1 pattern) among the answers: Steer-all 0.050, Steer-all-cut 0.117.
+
+**Steer-all against Steer-0 (a qualification of §39 and §39b).** On the 120 R rows:
+- the first generated token is the same under both on 120/120, and the whole text on 53/120;
+- both answer on 91 rows;
+- gold is 43 against 34: paired +0.075 (+0.017, +0.142).
+
+On LoCoMo the refusal decision is still the first token at ':', but keeping the push on during generation improves the
+content by about 7 points. §39's "one position does as much" holds for whether the model answers, not, on this set, for
+how often it is right.
+
+**Costs.**
+- Correct rows: on 40 rows the 3B already had right, the push loses 8 (−0.200). The pre-registered bar was set when §38
+  showed −0.056, and it is missed by 0.025.
+- Unanswerable questions: on the 37 marked adversarial rows, the answer rate goes from 0.324 (A) to 0.730 (Steer-all),
+  against 0.541 for the instruction line. The push removes abstention where abstention is right.
+- Net: at +1 per correct and −1 per wrong answer on the refusal rows, unconditional steering scores −1 against the
+  instruction line's +4 (the §41 block below).
+
+**Found.** The §38 setting, fixed in advance with nothing chosen on LoCoMo, works on a set and a conversation style it
+never saw. It opens 76% of the 3B's refusals, and 36% of them come out right, against 2.5% when the evidence is cut
+from the prompt. A random push of the same size opens 6%. It beats the instruction line by 14 points. What comes out is
+read from the evidence in view.
+
+**Why it matters.** The answer-vs-refuse direction is not an artefact of the LongMemEval prompts or of the rows it was
+chosen on. The 3B's refusals on LoCoMo hide answers it can extract once the refusal is lifted. But the push is blunt.
+It also breaks a fifth of the correct answers and makes the model answer questions it should refuse, so as an
+unconditional policy it does not beat the instruction line once wrong answers count.
+
+**Caveats.**
+1. One model, one layer, one α, one prompt family.
+2. R and C are marked rows only (marker rate 0.737).
+3. The judge is the same 7B that labelled §35 (agreement 60/60 on cached rows). LoCoMo golds are short strings, and the
+   judge prompt is the LongMemEval one, mapped by category.
+4. 120 refusal rows, 40 correct rows, 37 adversarial rows.
+
+**Spend.** Attempt 1 ≈ $0.03, attempt 2 ≈ $0.12. All experiments ≈ $17.82 of $20.
+
+## 41. Can a signal at ':' say when steering will help? Conditional steering (2026-10-23, pre-registered; development fit on the laptop, confirmation on §40's pod)
+
+**Status: RUN. The frozen development rule failed on §40 (Claims 1–3 NOT SHOWN at λ 1). Claim 4 SHOWN: the projection
+of the unsteered ':' state on the direction ranks which opened refusals come out right, AUROC 0.803 (0.724, 0.875). A
+signal exists; the development fit did not find it.** Pre-registration
+`research/proposals/2026-10-23-exp41-conditional-steering.md` (Advisor; rev 0 3e7c349, rev 1 877f86d, amendment 1
+0bda490). Reviews: `research/reviews/2026-10-23-exp41-build.md` (ACCEPT, 288b93f),
+`research/reviews/2026-10-23-exp41-dev.md` (ACCEPT of the frozen rule, 0bda490) and the §41 block of
+`research/reviews/2026-10-23-exp40-results.md` (8b12f27). Code: `memctl/analysis/conditional.py`, `scripts/exp41_dev.py`,
+`scripts/exp41_report.py` (73c3371); tests `tests/test_exp41.py` (19). Dev rows `runs/exp41_dev/qwen3b/`; frozen rule
+`runs/exp41_dev/qwen3b/rule.json` (30f891a, sha af0cbe98…); dev report `runs/exp41_report_dev.md`.
+
+**Why.** Unconditional steering opens almost every refusal, but about half the opened answers are wrong. Can a signal
+read off the unsteered forward pass at ':' say, row by row, when steering will produce a correct answer?
+
+**Design.** Three signals from unsteered prefills:
+- s_margin: the ' unknown' logit (id 9788, the only refusal start in the §38 dev rows) minus the best other logit at ':';
+- s_proj: the projection of the layer-29 residual at ':' on v_29;
+- s_evid: s_margin with the evidence in view minus s_margin with it cut.
+
+Utility per row: +1 correct, −λ wrong, 0 for a refusal, degenerate output or soft refusal; λ = 1 primary, λ = 2
+beside. One (signal, sign, τ) was fitted on 67 development rows (R 28, C 39, C weighted to C:R = 1:3) and frozen by
+commit before §40. Development gate: Cond ≥ Steer + 3 weighted units. Dev labels: the cached §35 verdict where a text
+equals a cached A or B answer, D1 otherwise.
+
+**Development fit (laptop, folds 0–1, $0).**
+- Weighted utility at λ 1: A 9.094, B 11.855, Steer −0.060, Cond 9.855.
+- Frozen rule: s_evid > 2.218, firing on 6 of 67. The gate passes (+9.915 ≥ 3).
+- The dev utility is optimistic by construction (the best of 6 families × about 70 thresholds on the same rows). The
+  gate was nearly vacuous because Steer scored about 0 under D1 labels.
+- Amendment 1, written before any §40 row was read, added Claim 3 (Cond − A) and Claim 4 (AUROC of s_proj), and a
+  reading rule for Claim 1.
+
+**Confirmation on §40's 120 R rows (7B judge).**
+
+| | λ 1 | λ 2 |
+|---|---|---|
+| U: A / B / Steer / Cond | 0 / +4 / −1 / +1 | 0 / −18 / −44 / −2 |
+| Claim 1: Cond − Steer | +0.017 (−0.125, +0.158): NOT SHOWN | +0.350 (+0.133, +0.567): SHOWN, but explained by a net-negative steer (Steer − A −0.367) |
+| Claim 2: Cond − B | −0.025 (−0.142, +0.092): NOT SHOWN | +0.133 (−0.042, +0.308): NOT SHOWN |
+| Claim 3: Cond − A | +0.008 (−0.033, +0.050): NOT SHOWN | −0.017: NOT SHOWN |
+
+At λ 1, U(Steer) − U(A) = −0.008, so the pre-registered reading applies to Claim 1: "expected under a net-negative
+steer; not evidence of a selective signal".
+
+- The rule fires on 11 of 120. Gold among the fired rows is 0.364, against Steer-all's overall 0.358, so it does not
+  select.
+- Adversarial answer rate under Cond: 0.324, the same as A.
+- **Claim 4:** the AUROC of s_proj for gold(Steer-all) on R is 0.803 (0.724, 0.875), SHOWN. Beside it, s_margin 0.185
+  (0.111, 0.269) and s_evid 0.232 (0.140, 0.332), both ranking the other way.
+
+**Post hoc (descriptive; a hypothesis, not a result).** Steering only the top fraction q of R rows by s_proj would have
+scored, at λ 1, +9 for q = 0.1–0.3, against +4 for B and −1 for Steer; at λ 2, +8 at q = 0.1. This is a hypothesis for
+a pre-registration on another new set.
+
+**Found.** The development rule (s_evid) is useless on new data. Its few fires are right at the base rate. One of the
+logged signals, how far the 3B's unsteered state already lies along the push direction, ranks well which refusals the
+push will turn into correct answers (0.80). A signal exists; the development fit did not find it, because 67 rows with
+string-match labels chose the wrong signal.
+
+**Why it matters.** It answers "can the model's own state say when to push?" with yes for ranking, not yet as a policy.
+A threshold on s_proj, fixed in advance, is the next test, on rows neither §40 nor the fit has seen.
+
+**Caveats.** The development labels were D1 for new texts, which biased the fit against steering. Claim 4 has 120 rows.
+One model, one layer, one direction. The top-q curve is post hoc.
+
+**Spend.** Development $0 (laptop); confirmation rode on §40's pod at no extra cost.
 
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
