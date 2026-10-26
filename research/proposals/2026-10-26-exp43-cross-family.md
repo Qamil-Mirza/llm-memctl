@@ -128,3 +128,58 @@ Spend to date about $17.94. Per family: Part A pod ≤ $0.59 (about $0.15–0.30
 stop ≤ $1.77 (reads for both sizes take minutes; the J-lens fits take the rest and are cut at the stop; about
 $1.00–1.50 expected). Three families: ≤ $7.08 at the stops, about $3.50–5.50 expected; spend ≤ $25.02 at the stops.
 Every pod is quoted separately and needs the user's own line in the Executor pane. Stage 0 and stage 1 stay free.
+
+## Rev 1 (2026-10-26): rulings on the stage 0 note (`runs/exp43_stage0/note.md`, f007fe2)
+
+**Stage 0 facts used.** In-view refusal rate among marked dev rows (folds 0–1, the §35 population): Llama 3.2 3B
+0.104 (13/125), Gemma 3 4B 0.017 (2/121), Phi-4-mini 0.034 (3/89), Qwen 3B 0.300 (30/100). Unconditioned (rows
+with the evidence not all in view included): 0.219 / 0.078 / 0.098. All six models accessible. The §34 population is
+identical across families (330 paired rows, 126 dev), because `fixed8` is reader-independent. The laptop bridge to
+the §24 caches passes the D-22 bar in every family. The lens scripts encode with a BOS, which doubles the BOS for
+Llama and Gemma and inserts an end-of-text token for Phi; Qwen has no BOS, so §34 was unaffected.
+
+**Ruling A1: Gemma 3 4B and Phi-4-mini close Part A at stage 0, "little to open".** Two and three in-view dev
+refusals cannot estimate a direction or read a gate. This is the stage 0 result the proposal anticipated: the
+Qwen 3B's disposition to refuse with the evidence in view is not shared by these families at this size, under this
+prompt. It is reported in §43 as a finding, with the table above, and the thesis sentence about the "policy half"
+is marked Qwen-specific unless Llama shows otherwise.
+
+**Ruling A2: Llama 3.2 3B goes to stage 1, underpowered and said so.** Design population split to avoid a leak:
+the direction v_L is estimated from dev refusal pairs on rows where the evidence is **not** all in view (about 15
+pairs: 0.219 − 0.104 of the marked dev rows; A = the refusal, B = the answer under the §35 line, at the ':'); the
+gate is read on the 13 in-view dev refusals, which the direction never saw. The direction is claimed content-free,
+so estimating it on rows without the evidence tests that claim rather than weakening it. Gate on the 13: Steer
+answers on ≥ 7, gold(Steer) − gold(Steer-cut) ≥ 2 rows, Random-direction answers ≤ 0.2 × Steer's, degenerate ≤ 1.
+Candidate layers at relative depths {0.6, 0.7, 0.8, 0.9} of 28 (17, 20, 22, 25), α in norm units {1, 2, 4}, chosen on
+the gate alone; ties resolved toward the deeper layer and the smaller α. The 13 and the 15 are small; the gate can
+pass by luck about one time in ten at these counts, which is why stage 2 is the test. Stage 2 for Llama uses 1,000
+fresh LoCoMo rows (not 600) so that R reaches a usable size at a 0.10 refusal rate; R ≤ 120 and C ≤ 40 as before.
+If the gate fails, Part A closes for Llama as well and the cross-family answer for Part A is "Qwen-specific".
+
+**Ruling B1: the BOS fix is a code change under build review.** `add_special_tokens=False` in `jlens_read` and
+`jlens_eval` (and anywhere else the lens scripts encode). The Executor shows one Qwen 3B dev row read before and
+after the change with identical ranks at every layer, so §34 is unchanged by construction, and adds a test that
+the encoded prompt starts with exactly one BOS for Llama and Gemma and none for Phi.
+
+**Ruling B2: Part B per family, one pod, hard stop 3 h.** Order inside the pod: downloads; logit-lens reads at P1
+(and P0, E, Q as §34) for both sizes, all 330 rows; J-lens fit for the small model (56 WikiText paragraphs, the §34
+count), then its J-lens reads and the library evaluation sets for the gate; the large model's J-lens is not fitted
+(145–322 min estimated; it would not fit the stop) and its rows are logit-lens only, which is the deciding row by
+amendment 1 anyway. Phi-4 (14B, 29 GB bf16) is reads only. The report runs on the laptop from the copied rows, as
+§34. Quote per family: ≤ $1.77 at the stop, about $0.80–1.20 expected (reads 8–13 min, small fit 51–73 min, with
+margin). Phi's family goes last; if its large model fails to load, Part B for Phi reports the small model only.
+
+**Ruling B3: a FamilyConfig, no refactor of §38–§42 paths.** The per-family config of note.md §7 (model ids, layer
+path, hidden size, stop ids, refusal ids including the capitalised ' Unknown' for Gemma and Phi, the Llama date
+pinned to "09 Oct 2026", no system role for Gemma) is added beside the Qwen defaults; the Qwen path keeps its
+constants and its test outputs byte for byte. Tests: one per family asserting the template, the stop ids, the ':'
+last token and the refusal ids on a fixed prompt.
+
+**Caveats recorded now.** Emergence depth compares across families only as a fraction of depth and only
+descriptively; digits tokenise differently (Llama and Phi up to three digits per token), so gold first tokens are
+not like for like, and the A/B/C shares are the cross-family quantity of record. The `cache/exp43_fp32` streamed
+copy (31 GB, gitignored) is deleted after stage 1, with the user's approval as for any cache deletion.
+
+**Order of work.** (1) B1 + B3 build and build review; (2) Llama stage 1 on the laptop (free) in parallel with
+(1); (3) Part B pods, Llama first, quoted one at a time; (4) Llama Part A pod if the gate passes. Every pod needs
+the user's own line in the Executor pane.
