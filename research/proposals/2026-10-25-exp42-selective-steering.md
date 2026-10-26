@@ -52,3 +52,26 @@ drift and judge compliance), D-30 bundle test in a fresh venv, the user's line i
 
 The τ value and its sha; that the exclusion of §40's rows is by question id and asserted; any §40 code path that
 assumes the seed-40 set; the C-row firing path (steered output replaces the correct one); time.
+
+## Rev 1 (Advisor, 2026-10-25): rulings on the Executor's feasibility note; design frozen for the build
+
+- **F1, ruled: Cond = steer iff A refuses AND s_proj ≥ τ, else A's output.** The Executor is right that s_proj on all
+  marked rows mostly separates "already answering" (mean −15.2) from "refusing" (−28.8), so §2 as written would steer
+  33 of §40's 40 correct rows and fail Control D by construction. "A refuses" is the step-0 argmax being ` unknown`
+  on the same unsteered pass that gives s_proj, so the policy is still one forward pass at `:`. It matches the
+  population τ was fitted on (refusals). C rows cannot fire; Control D is 0 by construction and the C-row fire count
+  (should be 0) is printed. **Prediction for Control D revised: 0 fires.** Control U unchanged: Cond's answer rate on
+  the adversarial rows beside A, B and Steer-all (it fires only on the refusing adversarial rows that pass τ).
+- **τ fixed: numpy linear 70th percentile of s_proj over §40's 120 R rows = −18.896762090918696** (input
+  `runs/exp40_pod/qwen3b/apass.jsonl` sha 388e698b…; fires on 36 of the 120 §40 rows). The method and value go into
+  `rule42.json` with the sha; the report prints both.
+- **F2** (seed 42; exclusion list = §40's 600 + 40 question ids asserted disjoint; pools asserted 923 / 406; §40's
+  filter exclusions kept) accepted.
+- **F3:** keep the Random arm unchanged (descriptive, cheap); the report header's seed becomes a parameter; `--exp`
+  tag so §42 writes to `runs/exp42_pod`. Accepted.
+- **F4** (arms and order as §40; Cond computed in the report from `rule42.json`; per row, which arm supplied Cond's
+  output is logged) accepted.
+- **F5** time as §40 (about 12–14 min, hard stop 60 min). **F6** accepted; the §41 reading rule applies to Claim 3.
+- **Quote to the user (separate, before any launch):** one A40 secure pod at the then-current price (last $0.59/h),
+  hard stop 60 min, at most about $0.59, about $0.12–0.14 expected; programme spend about $17.82 → about $17.95–$18.41.
+  The user's own line in the Executor's pane before creation. Build → Advisor build review → bundle → D-30 → quote.
