@@ -9,6 +9,8 @@
 #   ENGINE=stub INSTALL=1 PYTHON=<venv>/bin/python bash scripts/exp40_pod.sh   # D-30: the SAME install line, then stub
 #   ENGINE=stub STUB_JUDGE=silent bash scripts/exp40_pod.sh       # the smoke must fail (exit 5)
 #   ENGINE=stub STUB_JUDGE=disagree bash scripts/exp40_pod.sh     # the agreement check must fail (exit 7)
+#   EXP=exp42 ...                                                # §42 (proposal 2026-10-25 rev 1): seed 42, §40's
+#                                                                # 640 ids excluded, rule42.json; out runs/exp42_pod
 #
 # Chain: preflight inputs -> install -> GPU check -> self-stop watchdog -> run (one process: the set and the direction
 # asserts, both models loaded, D-22 smoke [exit 5], judge agreement on 60 cached §35 rows [exit 7, then the pod stops
@@ -32,14 +34,17 @@ SELF_STOP_S="${SELF_STOP_S:-3300}"
 JUDGE_RESERVE_S="${JUDGE_RESERVE_S:-300}"
 STUB_JUDGE="${STUB_JUDGE:-d1}"
 RULE="${RULE:-runs/exp41_dev/qwen3b/rule.json}"
+EXP="${EXP:-exp40}"
+RULE42="${RULE42:-runs/exp42_inputs/rule42.json}"
+case "$EXP" in exp40|exp42) ;; *) echo "EXP must be exp40 or exp42, not $EXP" >&2; exit 2;; esac
 export RUNPOD_POD_ID="${RUNPOD_POD_ID:-}"
 if [ "$ENGINE" != stub ] && [ -z "$RUNPOD_POD_ID" ]; then
   echo "warning: RUNPOD_POD_ID is empty; the in-pod self-stop cannot fire. Pass RUNPOD_POD_ID=<id> in the launch command." >&2
 fi
 if [ "$ENGINE" = stub ]; then
-  OUT="${OUT:-runs/exp40_stub}"; PY="${PYTHON:-.venv/bin/python}"; BACKEND=stub; REPORT="${REPORT:-$OUT/exp40_report_stub.md}"
+  OUT="${OUT:-runs/${EXP}_stub}"; PY="${PYTHON:-.venv/bin/python}"; BACKEND=stub; REPORT="${REPORT:-$OUT/${EXP}_report_stub.md}"
 else
-  OUT="${OUT:-runs/exp40_pod}"; PY="${PYTHON:-python}"; BACKEND=hf; REPORT="${REPORT:-$OUT/exp40_report_confirm.md}"
+  OUT="${OUT:-runs/${EXP}_pod}"; PY="${PYTHON:-python}"; BACKEND=hf; REPORT="${REPORT:-$OUT/${EXP}_report_confirm.md}"
 fi
 DONE_FILE="$OUT/pod.done"
 mkdir -p "$OUT"
@@ -47,7 +52,7 @@ rm -f "$DONE_FILE"
 T0=$(date +%s)
 DEADLINE=$(( T0 + HARD_STOP_S ))
 trap 'rc=$?; echo "exit=$rc engine=$ENGINE at $(date -u +%FT%TZ)" > "$DONE_FILE"' EXIT
-echo "§40 pod chain; engine $ENGINE; RUNPOD_POD_ID ${RUNPOD_POD_ID:+set}${RUNPOD_POD_ID:-EMPTY}; hard stop +${HARD_STOP_S} s, self-stop +${SELF_STOP_S} s" | tee -a "$OUT/pod.log"
+echo "$EXP pod chain; engine $ENGINE; RUNPOD_POD_ID ${RUNPOD_POD_ID:+set}${RUNPOD_POD_ID:-EMPTY}; hard stop +${HARD_STOP_S} s, self-stop +${SELF_STOP_S} s" | tee -a "$OUT/pod.log"
 
 stop_pod_now() {  # what the watchdog does, now
   echo "self-stop ($1) at $(date -u +%FT%TZ)" | tee -a "$OUT/pod.log"
@@ -74,6 +79,7 @@ INPUTS=(data/locomo/locomo10.json runs/exp38_dev/qwen3b/directions.npz runs/exp4
         scripts/exp40_pod_run.py scripts/exp40_report.py scripts/exp38_pod_run.py scripts/exp35_generate.py
         memctl/locomo_view.py memctl/analysis/exp40.py memctl/analysis/steering.py memctl/analysis/conditional.py
         memctl/analysis/answer_selection.py pyproject.toml)
+if [ "$EXP" = exp42 ]; then INPUTS+=("$RULE42" runs/exp40_pod/qwen3b/view.json); fi
 for f in "${INPUTS[@]}"; do test -e "$f" || missing "$f"; done
 if [ -e "$RULE" ]; then echo "preflight: §41 rule present ($RULE)" | tee -a "$OUT/pod.log"
 else echo "preflight: no §41 rule at $RULE: signals are logged, the rule is not scored" | tee -a "$OUT/pod.log"; fi
@@ -120,7 +126,7 @@ BUDGET=$(( DEADLINE - $(date +%s) ))
 if [ "$BUDGET" -le 0 ]; then echo "deadline reached before the run" | tee -a "$OUT/pod.log"; exit 124; fi
 set +e
 timeout "$BUDGET" $PY scripts/exp40_pod_run.py run --out "$OUT" --backend "$BACKEND" --stub-judge "$STUB_JUDGE" \
-  --rule "$RULE" --deadline "$DEADLINE" --judge-reserve "$JUDGE_RESERVE_S" 2>&1 | tee -a "$OUT/run.log"
+  --rule "$RULE" --exp "$EXP" --rule42 "$RULE42" --deadline "$DEADLINE" --judge-reserve "$JUDGE_RESERVE_S" 2>&1 | tee -a "$OUT/run.log"
 RC=${PIPESTATUS[0]}
 set -e
 stage_done run
@@ -134,7 +140,7 @@ if [ "$RC" -eq 124 ]; then echo "run stage cut by the deadline; reporting the ro
 if [ "$RC" -ne 0 ] && [ "$RC" -ne 124 ]; then echo "run stage failed: exit $RC" | tee -a "$OUT/pod.log"; exit "$RC"; fi
 # The report is CPU only; it runs after the deadline if need be (before the self-stop), also on partial rows.
 set +e
-timeout 600 $PY scripts/exp40_report.py --run-dir "$OUT/qwen3b" --confirm --rule "$RULE" --out "$REPORT" > "$OUT/report.log" 2>&1
+timeout 600 $PY scripts/exp40_report.py --run-dir "$OUT/qwen3b" --confirm --rule "$RULE" --exp "$EXP" --rule42 "$RULE42" --out "$REPORT" > "$OUT/report.log" 2>&1
 REP=$?
 set -e
 echo "report exit $REP: $REPORT" | tee -a "$OUT/pod.log"

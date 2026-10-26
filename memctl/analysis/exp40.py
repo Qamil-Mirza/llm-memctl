@@ -163,3 +163,112 @@ def agreement(replies: list[str], cached: list[bool], bar: float = AGREEMENT_BAR
     rate = agree / n if n else None
     return {"n": n, "agree": agree, "rate": rate, "bar": bar, "unparseable": sum(v is None for v in verdicts),
             "pass": rate is not None and rate >= bar}
+
+
+# --- §42: selective steering by s_proj on fresh rows (proposal 2026-10-25, rev 1 at 8fd2613) -----------------------
+# Cond = Steer-all (layer 29, alpha 2) iff A refuses (step-0 argmax ' unknown', id 9788, on the unsteered A pass) AND
+# s_proj >= tau, else A's output. tau = numpy linear 70th percentile of s_proj over §40's 120 R rows (fixed from §40's
+# rows before any §42 row is read). The rows are fresh: seed 42, §40's 600 + 40 question ids excluded by id.
+
+EXPS = {"exp40": {"seed": 40, "out": "runs/exp40_pod"}, "exp42": {"seed": 42, "out": "runs/exp42_pod"}}
+RULE42_PATH = "runs/exp42_inputs/rule42.json"
+EXCLUDE_VIEW = "runs/exp40_pod/qwen3b/view.json"          # §40's 600 + 40 question ids (the exclusion list)
+VIEW40_SHA256 = "51cecdcb42991990acdd1385f52d7b45004b4e49447719d463cdbfb15f9997a8"
+APASS40 = "runs/exp40_pod/qwen3b/apass.jsonl"
+APASS40_SHA256 = "388e698b9b76dfee96922470300c424406d3ab660237ab566cfdcb1c1647ca38"
+SELECTION40 = "runs/exp40_pod/qwen3b/selection.json"
+TAU42 = -18.896762090918696
+PCT42 = 70                     # steer the top 30% (q = 0.3)
+Q42 = 0.3
+TAU_METHOD = "numpy.percentile(s_proj over §40's 120 R rows, 70, method='linear')"
+POOLS42 = (923, 406)           # eligible answerable / adversarial after the exclusion
+REFUSAL_ID42 = 9788            # ' unknown' (Qwen2.5 tokenizer)
+RULE42_TEXT = ("Cond = steer (Steer-all, layer 29, α 2) iff A refuses (step-0 argmax ' unknown', id 9788, on the "
+               "unsteered pass) AND s_proj ≥ τ, else A's output")
+IN_DISTRIBUTION = ("in distribution: the same benchmark (LoCoMo), disjoint rows (seed 42, §40's 600 + 40 question ids "
+                   "excluded); a cross-benchmark test is a separate step")
+CURVE_PCTS = tuple(range(90, 0, -10))   # q = 0.1 ... 0.9 <-> percentile 90 ... 10 (integers: no float drift)
+
+
+def tau_at(values, pct: int) -> float:
+    """numpy linear percentile in float64."""
+    return float(np.percentile(np.asarray(list(values), dtype=np.float64), pct, method="linear"))
+
+
+def compute_rule42(apass_rows: list[dict], R: list[str], apass_sha: str) -> dict:
+    """rule42.json from §40's A-pass rows and its R list."""
+    by = {r["question_id"]: r for r in apass_rows if r["pop"] == "all" and r["kind"] == "A"
+          and r["setting"]["key"] == "none"}
+    vals = [float(by[q]["s_proj"]) for q in R]
+    if len(vals) != R_CAP:
+        raise ValueError(f"§40 R has {len(vals)} rows, expected {R_CAP}")
+    tau = tau_at(vals, PCT42)
+    curve = {f"{(100 - p) / 100:.1f}": tau_at(vals, p) for p in CURVE_PCTS}
+    if curve[f"{Q42:.1f}"] != tau:
+        raise ValueError("the q curve's 0.3 point differs from tau")
+    return {"experiment": "§42 selective steering by s_proj (proposal 2026-10-25 rev 1, frozen before any §42 row)",
+            "rule": RULE42_TEXT, "policy": "Cond", "steer_setting": "steer_all", "layer": LAYER, "alpha": ALPHA,
+            "unit": UNIT, "refusal_test": "step-0 argmax == refusal_id on the unsteered A pass",
+            "refusal_id": REFUSAL_ID42, "refusal_token": " unknown", "signal": "s_proj", "comparator": ">=",
+            "tau": tau, "tau_method": TAU_METHOD, "percentile": PCT42, "q": Q42,
+            "input": APASS40, "input_sha256": apass_sha, "R_source": SELECTION40, "n_R": len(vals),
+            "fires_on_40_R": sum(v >= tau for v in vals), "tau_curve": curve,
+            "tau_curve_rule": "q -> numpy linear percentile 100(1 - q) of the same 120 values; descriptive except q 0.3",
+            "lambda": 1, "lambda_beside": 2, "distribution": IN_DISTRIBUTION}
+
+
+def check_rule42(rule: dict) -> None:
+    """The pod accepts only the pinned rule (the stub accepts any, for tests)."""
+    want = {"tau": TAU42, "input_sha256": APASS40_SHA256, "refusal_id": REFUSAL_ID42, "comparator": ">=",
+            "signal": "s_proj", "layer": LAYER, "alpha": ALPHA, "steer_setting": "steer_all", "rule": RULE42_TEXT}
+    bad = {k: rule.get(k) for k, v in want.items() if rule.get(k) != v}
+    if bad:
+        raise ValueError(f"REFUSED: rule42 differs from the pinned rule: {bad}")
+
+
+def cond42_fires(argmax: int, s_proj: float, tau: float, refusal_id: int) -> bool:
+    """A refuses (step-0 argmax == refusal_id) AND s_proj >= tau."""
+    if s_proj is None or not np.isfinite(float(s_proj)):
+        raise ValueError(f"s_proj is {s_proj!r}; Cond needs a finite value")
+    return int(argmax) == int(refusal_id) and float(s_proj) >= float(tau)
+
+
+def cond42_of(a_row: dict, tau: float, refusal_id: int) -> dict:
+    """What a row logs: the step-0 argmax, whether A refuses by it, s_proj, whether Cond fires, which arm supplies
+    Cond's output."""
+    argmax = int(a_row["step0"]["argmax"])
+    f = cond42_fires(argmax, a_row["s_proj"], tau, refusal_id)
+    return {"argmax": argmax, "a_refuses": argmax == int(refusal_id), "s_proj": float(a_row["s_proj"]),
+            "tau": float(tau), "refusal_id": int(refusal_id), "fires": f, "source": "steer_all" if f else "A"}
+
+
+def exclusion_ids(view40: dict) -> list[str]:
+    ids = list(view40["rows"]) + list(view40["adversarial"])
+    if len(ids) != len(set(ids)) or len(view40["rows"]) != 600 or len(view40["adversarial"]) != 40:
+        raise ValueError(f"§40 view: {len(view40['rows'])} + {len(view40['adversarial'])} ids, "
+                         f"{len(set(ids))} distinct; expected 600 + 40 distinct")
+    return ids
+
+
+def check_fresh(rows: list[str], adversarial: list[str], counts: dict, excluded: list[str],
+                pools: tuple[int, int] = POOLS42) -> dict:
+    """Disjoint from the exclusion list by question id; the pools are 923 / 406."""
+    ex_ = set(excluded)
+    hit = sorted((set(rows) | set(adversarial)) & ex_)
+    if hit:
+        raise ValueError(f"REFUSED: {len(hit)} fresh rows are §40 rows (e.g. {hit[:3]})")
+    if len(set(rows)) != len(rows) or len(set(adversarial)) != len(adversarial) or set(rows) & set(adversarial):
+        raise ValueError("REFUSED: duplicate question ids in the fresh set")
+    got = (counts.get("pool_answerable"), counts.get("pool_adversarial"))
+    if got != tuple(pools):
+        raise ValueError(f"REFUSED: pools {got}, expected {tuple(pools)}")
+    return {"disjoint": True, "pools": list(got), "excluded": len(ex_)}
+
+
+# the §42 fresh set at full size (seed 42, §40's 640 ids excluded), pinned at the build; the pod asserts them
+VIEW42_SHAS = {"locomo10.json": "79fa87e90f04081343b8c8debecb80a9a6842b76a7aa537dc9fdf651ea698ff4",
+               "rows": "60fda934c8537e5d4bb890beceb3f9b728f17b2168f4fe409666ef2bb93bc886",
+               "adversarial": "dc66b27924b4bdd7dfaa8bb47015b4d1035f2a5dfce752bd32ec3692984cb11e",
+               "row_ids": "f43090cc840fa52f586691183c07ad29fc980f4046506ea6326167f0cb3bc76b",
+               "adversarial_ids": "259b8a31e9b7d1f38b5fe7ee7866695302090b9f06ee2a5fa09c360e99040aeb",
+               "exclude_ids": "7f7b72bf6482bc71af3a3a33bc86070cc3d430c898aada86ccdc37ce7c767996"}

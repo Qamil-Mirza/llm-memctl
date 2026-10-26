@@ -21,6 +21,8 @@ Pure logic, no model. From data/locomo/locomo10.json:
 - Rows: answerable = categories 1-4. A seeded shuffle (random.Random(40)) of the eligible answerable questions in file
   order takes 600 (`N_ROWS`); a separate random.Random(40) shuffle of the eligible category-5 questions takes 40
   (`N_ADVERSARIAL`), the descriptive adversarial block (answer rate only, no judge).
+- §42 (proposal 2026-10-25 rev 1 F2): the same builder with seed 42 and §40's 600 + 40 question ids removed from
+  both eligible pools before the shuffles (`build_set(seed=, exclude_ids=)`; the defaults are §40's set, unchanged).
 - Judge type map (rev 1 iv): 4 -> single-session-user, 1 -> multi-session, 2 -> temporal-reasoning, 3 -> default.
   (LONGMEMEVAL_PROMPTS has no single-session-user or multi-session entry, so those fall to the default prompt; only
   category 2 gets a different wording, the temporal off-by-one clause.)
@@ -195,14 +197,28 @@ class LocomoSet:
         return {r.question_id: r for r in self.rows + self.adversarial}
 
 
-def build_set(path: str = LOCOMO_PATH, n_rows: int = N_ROWS, n_adv: int = N_ADVERSARIAL, seed: int = SEED) -> LocomoSet:
-    """Filters, then the two seeded shuffles (file order in), then the views of the selected questions only."""
+def question_id(samples: list[dict], cand: Candidate) -> str:
+    return f"{samples[cand.sample]['sample_id']}_q{cand.qa_index}"
+
+
+def build_set(path: str = LOCOMO_PATH, n_rows: int = N_ROWS, n_adv: int = N_ADVERSARIAL, seed: int = SEED,
+              exclude_ids=None) -> LocomoSet:
+    """Filters, then the two seeded shuffles (file order in), then the views of the selected questions only.
+
+    §42 (rev 1 F2): `exclude_ids` (question ids, e.g. §40's 600 + 40) are removed from both eligible pools BEFORE the
+    shuffles; `seed` seeds both shuffles. The defaults (seed 40, no exclusion) give §40's set byte-identically; only
+    with `exclude_ids` given do the counts gain the pool keys and the shas the exclusion sha."""
     agent = LLMAgent(dict(AGENT_CONFIG))
     samples = load(path)
     cands, excluded, total = candidates(samples)
     answerable = [c for c in cands if c.category in ANSWERABLE]
     adversarial = [c for c in cands if c.category == ADVERSARIAL]
     eligible_a, eligible_x = len(answerable), len(adversarial)
+    if exclude_ids is not None:
+        drop = set(exclude_ids)
+        answerable = [c for c in answerable if question_id(samples, c) not in drop]
+        adversarial = [c for c in adversarial if question_id(samples, c) not in drop]
+    pool_a, pool_x = len(answerable), len(adversarial)
     random.Random(seed).shuffle(answerable)
     random.Random(seed).shuffle(adversarial)
     if len(answerable) < n_rows or len(adversarial) < n_adv:
@@ -218,9 +234,15 @@ def build_set(path: str = LOCOMO_PATH, n_rows: int = N_ROWS, n_adv: int = N_ADVE
               "zero_fill_rows": sum(r.n_zero_fill > 0 for r in rows + adv),
               "evidence_turns_hist": {str(n): sum(len(r.evidence_ids) == n for r in rows) for n in range(1, 9)},
               "prompt_chars_max": max(len(r.prompt) for r in rows + adv)}
+    if exclude_ids is not None:
+        counts.update({"seed": seed, "exclude_ids": len(set(exclude_ids)),
+                       "excluded_from_answerable": eligible_a - pool_a, "excluded_from_adversarial": eligible_x - pool_x,
+                       "pool_answerable": pool_a, "pool_adversarial": pool_x})
     shas = {"locomo10.json": file_sha256(path),
             "rows": sha256(json.dumps([r.to_dict() for r in rows], sort_keys=True)),
             "adversarial": sha256(json.dumps([r.to_dict() for r in adv], sort_keys=True)),
             "row_ids": sha256(json.dumps([r.question_id for r in rows])),
             "adversarial_ids": sha256(json.dumps([r.question_id for r in adv]))}
+    if exclude_ids is not None:
+        shas["exclude_ids"] = sha256(json.dumps(sorted(set(exclude_ids))))
     return LocomoSet(rows, adv, counts, shas)

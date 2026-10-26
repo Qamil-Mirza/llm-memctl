@@ -36,6 +36,14 @@ cache, rows, classifier v2), memctl/analysis/conditional.py (the §41 signals). 
   8. the judge on every R and C output (and anything not yet judged), until the deadline.
 Rows are sha-stamped (input, wording, engine, vector) and the run resumes from its files; a row on disk from another
 input, engine or vector is refused. Exit codes: 2 setting refused, 3 input missing or wrong, 5 smoke, 7 agreement.
+
+§42 (`--exp exp42`; proposal 2026-10-25 rev 1 at 8fd2613): the same chain and arms (Random kept) on fresh rows: the
+set is built with seed 42 after removing §40's 600 + 40 question ids (read from runs/exp40_pod/qwen3b/view.json, sha
+asserted), asserted disjoint by id with pools 923 / 406 (and, at full size on the pod, the pinned set shas); the
+frozen rule runs/exp42_inputs/rule42.json is loaded (pinned values asserted on the pod) and, on every A-pass row, the
+step-0 argmax, whether A refuses by it, s_proj and whether Cond fires (and so which arm supplies Cond's output) are
+logged (the row's `cond42` field, cond42.jsonl, the run log). Cond itself is scored in the report. Out:
+runs/exp42_pod by default.
 """
 from __future__ import annotations
 
@@ -102,7 +110,8 @@ class LocomoStub(st.StubEngine):
         if sel.B_INSTRUCTION in continuation:
             return f" {self._word(prompt)}"
         note_answer = sel.final_answer(self.canned(prompt, "")) or "unknown"     # A repeats the N output's answer
-        return " unknown" if sel.is_refusal_answer(note_answer) else f" {note_answer}"
+        # an answer starts without the space so the byte stub's step-0 argmax tells a refusal (' ') from an answer (§42)
+        return " unknown" if sel.is_refusal_answer(note_answer) else f"{note_answer}"
 
     def prepare(self, item: st.SteerInput) -> st.Prepared:
         prepared = st.HookedEngine.prepare(self, item)
@@ -215,7 +224,7 @@ def note_row(q: str, pop: str, kind: str, prompt: str, res: dict, engine, mode: 
 
 class Run:
     def __init__(self, engine, view: lv.LocomoSet, out: Path, direction: dict, rule: dict | None, deadline: float | None,
-                 judge_reserve: float) -> None:
+                 judge_reserve: float, rule42: dict | None = None) -> None:
         self.engine, self.view, self.dir = engine, view, out / READER
         self.dir.mkdir(parents=True, exist_ok=True)
         self.by_q = view.by_q()
@@ -230,6 +239,10 @@ class Run:
         self.ids = list(rule["refusal_start_ids"]) if rule else list(ex.DEFAULT_REFUSAL_IDS)
         if engine.name == "stub":
             self.ids = [engine.encode(" unknown")[0]]
+        self.rule42 = rule42
+        # §42: the rule's refusal id (9788, ' unknown'); the byte stub's ' unknown' starts with its own id
+        self.refusal42 = None if rule42 is None else (engine.encode(" unknown")[0] if engine.name == "stub"
+                                                      else int(rule42["refusal_id"]))
         self.deadline, self.reserve = deadline, judge_reserve
         self.wsha = st.sha256(json.dumps(ex.WORDING, sort_keys=True))
         self.plan: dict = {"arms": {}, "cut": [], "skipped": []}
@@ -286,8 +299,9 @@ class Run:
         p = self.path("manifest.json")
         if p.exists():
             old = json.loads(p.read_text())
-            for k in ("engine", "model", "layer", "alpha", "wording_sha256", "refusal_ids", "view_shas", "vectors"):
-                if old.get(k) != m.get(k):
+            for k in ("engine", "model", "layer", "alpha", "wording_sha256", "refusal_ids", "view_shas", "vectors",
+                      "exp", "seed", "rule42"):
+                if (k in old or k in m) and old.get(k) != m.get(k):
                     raise SystemExit(f"REFUSED: {p} has {k} = {old.get(k)!r}, this run {m.get(k)!r}; move it aside")
         self.write_json("manifest.json", m)
 
@@ -360,6 +374,8 @@ class Run:
                 np.save(self.resid_dir(kind) / f"{q}.npy", h.astype(np.float32))
                 row["step0"] = cd.step0_summary(gen.logits0, self.ids)
                 row["s_proj"] = cd.projection(h, self.v29)
+                if self.rule42 is not None and kind == "A":
+                    row["cond42"] = ex.cond42_of(row, self.rule42["tau"], self.refusal42)
             new.append(row)
             out[s] = row
         append_jsonl(self.path(name), new)
@@ -609,7 +625,7 @@ def setup(args):
         log(f"REFUSED: --n-rows / --n-adv are for stub tests only (exit {ex.EXIT_SETTING})")
         raise SystemExit(ex.EXIT_SETTING)
     t0 = time.perf_counter()
-    view = lv.build_set(args.locomo, n_rows=args.n_rows, n_adv=args.n_adv)
+    view, args.fresh = fresh_set(args)
     log(f"LoCoMo set: {view.counts['rows']} rows + {view.counts['adversarial']} adversarial in {time.perf_counter() - t0:.0f} s;"
         f" excluded {view.counts['excluded']}; eligible answerable {view.counts['eligible_answerable']}; by category "
         f"{view.counts['rows_by_category']}; zero-fill rows {view.counts['zero_fill_rows']}")
@@ -623,22 +639,79 @@ def setup(args):
     return view, direction, casts, rule, rule_info
 
 
+def load_rule42(args) -> tuple[dict | None, dict | None]:
+    """§42: the frozen rule (exp42 only); the pod accepts only the pinned values."""
+    if args.exp != "exp42":
+        return None, None
+    p = Path(args.rule42)
+    if not p.exists():
+        log(f"input missing: {p} (exit {ex.EXIT_INPUT})")
+        raise SystemExit(ex.EXIT_INPUT)
+    rule = json.loads(p.read_text())
+    if args.backend != "stub":
+        try:
+            ex.check_rule42(rule)
+        except ValueError as exc:
+            log(str(exc))
+            raise SystemExit(ex.EXIT_INPUT) from None
+    info = {"path": str(p), "sha256": file_sha256(p), "tau": rule["tau"], "tau_method": rule.get("tau_method"),
+            "refusal_id": rule["refusal_id"], "comparator": rule.get("comparator"), "rule": rule.get("rule"),
+            "input_sha256": rule.get("input_sha256")}
+    bi = Path("bundle_info.json")
+    if bi.exists():
+        info["commit"] = json.loads(bi.read_text()).get("rule42_commit")
+    log(f"§42 rule: tau {rule['tau']!r} ({rule.get('tau_method')}), refusal id {rule['refusal_id']}, sha "
+        f"{info['sha256'][:12]}...; {rule.get('rule')}")
+    return rule, info
+
+
+def fresh_set(args) -> tuple[lv.LocomoSet, dict | None]:
+    """The set: §40's (seed 40) or §42's (seed 42, §40's 600 + 40 ids excluded, asserted disjoint, pools 923 / 406)."""
+    seed = ex.EXPS[args.exp]["seed"]
+    if args.exp != "exp42":
+        return lv.build_set(args.locomo, n_rows=args.n_rows, n_adv=args.n_adv, seed=seed), None
+    p = Path(args.exclude_view)
+    if not p.exists():
+        log(f"input missing: {p} (exit {ex.EXIT_INPUT})")
+        raise SystemExit(ex.EXIT_INPUT)
+    vsha = file_sha256(p)
+    try:
+        if vsha != ex.VIEW40_SHA256:
+            raise ValueError(f"REFUSED: {p} sha {vsha}, expected {ex.VIEW40_SHA256}")
+        excluded = ex.exclusion_ids(json.loads(p.read_text()))
+        view = lv.build_set(args.locomo, n_rows=args.n_rows, n_adv=args.n_adv, seed=seed, exclude_ids=excluded)
+        fresh = ex.check_fresh([r.question_id for r in view.rows], [r.question_id for r in view.adversarial],
+                               view.counts, excluded)
+        if (args.n_rows, args.n_adv) == (lv.N_ROWS, lv.N_ADVERSARIAL) and view.shas != ex.VIEW42_SHAS:
+            raise ValueError(f"REFUSED: the §42 set shas {view.shas} differ from the pinned {ex.VIEW42_SHAS}")
+    except ValueError as exc:
+        log(str(exc))
+        raise SystemExit(ex.EXIT_INPUT) from None
+    fresh.update({"exclude_view": str(p), "exclude_view_sha256": vsha, "seed": seed})
+    log(f"§42 fresh set: seed {seed}; {fresh['excluded']} §40 ids excluded; disjoint by question id; pools "
+        f"{fresh['pools'][0]} answerable / {fresh['pools'][1]} adversarial")
+    return view, fresh
+
+
 def cmd_run(args) -> int:
     t_start = time.perf_counter()
     view, direction, casts, rule, rule_info = setup(args)
+    rule42, rule42_info = load_rule42(args)
     agreement_rows = load_agreement(AGREEMENT)
     known = {r["judge_prompt"]: r["cached_verdict"] for r in agreement_rows}
     t = time.perf_counter()
     engine = build_engine(args.backend, args.threads)
     load_3b = time.perf_counter() - t
-    run = Run(engine, view, Path(args.out), direction, rule, args.deadline, args.judge_reserve)
+    run = Run(engine, view, Path(args.out), direction, rule, args.deadline, args.judge_reserve, rule42)
     if args.backend == "stub":
         engine.gold_of = {r.prompt_sha256: r.gold for r in view.rows + view.adversarial}
     run.stage_s["load_3b"] = load_3b
     run.write_json("view.json", {"counts": view.counts, "shas": view.shas, "rows": run.order, "adversarial": run.adv})
     run.manifest({"view_shas": view.shas, "vectors": {k: direction[k] for k in ("v_sha256", "steer_sha256",
                   "random_sha256")}, "npz_sha256": direction["npz_sha256"], "bf16_cast": casts, "rule": rule_info,
-                  "random_seed": [ex.RANDOM_SEED, ex.LAYER]})
+                  "random_seed": [ex.RANDOM_SEED, ex.LAYER], "exp": args.exp, "seed": ex.EXPS[args.exp]["seed"],
+                  **({"rule42": {**rule42_info, "refusal_id_used": run.refusal42}, "fresh": args.fresh}
+                     if rule42 is not None else {})})
     t = time.perf_counter()
     judge = build_judge(args.backend, args.stub_judge, known)
     run.stage_s["load_judge"] = time.perf_counter() - t
@@ -679,9 +752,19 @@ def cmd_run(args) -> int:
                 log(f"  A pass {pop}: CUT by the deadline")
                 break
             if q in notes and notes[q]["marker"]:
-                run.generate("apass.jsonl", pop, "A", q, ["none"], capture=True, done=done)
+                row = run.generate("apass.jsonl", pop, "A", q, ["none"], capture=True, done=done)["none"]
+                if rule42 is not None:
+                    c = row["cond42"]
+                    log(f"  cond42 {pop} {q}: step-0 argmax {c['argmax']} (A refuses: {c['a_refuses']}), s_proj "
+                        f"{c['s_proj']:.4f} vs tau {c['tau']:.4f} -> {'FIRES (Steer-all)' if c['fires'] else 'A'}")
                 n += 1
         log(f"  A pass {pop}: {n} marked rows")
+    if rule42 is not None:
+        logged = [{"question_id": r["question_id"], "pop": r["pop"], **r["cond42"]}
+                  for r in read_jsonl(run.path("apass.jsonl")) if "cond42" in r]
+        write_jsonl(run.path("cond42.jsonl"), logged)
+        log(f"  cond42: {sum(c['fires'] for c in logged)} of {len(logged)} marked rows fire "
+            f"({sum(c['a_refuses'] for c in logged)} refuse at step 0)")
     run.stage("apass", t)
 
     log("== judge on the A answers of the 600")
@@ -707,6 +790,12 @@ def cmd_run(args) -> int:
         f"({counts['judged_correct']}); no verdict {counts['no_verdict']}")
     log(f"selected R {len(R)} (cap {ex.R_CAP}), C {len(C)} (cap {ex.C_CAP}); adversarial marked {len(adv_marked)}"
         + ("" if len(R) >= ex.R_MIN_FOR_CLAIMS else f"; R < {ex.R_MIN_FOR_CLAIMS}: the claims will be descriptive"))
+    if rule42 is not None:
+        allA = {r["question_id"]: r for r in read_jsonl(run.path("apass.jsonl"))}
+        f = {k: sum(allA[q]["cond42"]["fires"] for q in qs if q in allA) for k, qs in
+             (("R", R), ("C", C), ("adv", adv_marked))}
+        log(f"cond42 fires (logged; scored in the report): R {f['R']}/{len(R)}, C {f['C']}/{len(C)} (expected 0), "
+            f"adversarial {f['adv']}/{len(adv_marked)}")
 
     log(f"== arms; {run.time_left():.0f} s left before the judge reserve")
     t = time.perf_counter()
@@ -745,7 +834,10 @@ def cmd_judge(args) -> int:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("command", choices=("run", "judge"))
-    ap.add_argument("--out", default="runs/exp40_pod")
+    ap.add_argument("--exp", default="exp40", choices=tuple(ex.EXPS), help="exp40 (seed 40) or exp42 (seed 42, fresh)")
+    ap.add_argument("--out", default=None, help="default runs/<exp>_pod")
+    ap.add_argument("--rule42", default=ex.RULE42_PATH, help="§42 only: the frozen rule")
+    ap.add_argument("--exclude-view", default=ex.EXCLUDE_VIEW, help="§42 only: §40's view.json (the exclusion list)")
     ap.add_argument("--locomo", default=lv.LOCOMO_PATH)
     ap.add_argument("--rule", default=RULE)
     ap.add_argument("--backend", default="hf", choices=("hf", "stub"))
@@ -759,6 +851,8 @@ def main(argv=None) -> int:
     ap.add_argument("--judge-reserve", type=float, default=300.0,
                     help="seconds kept free before --deadline for the final judge pass (the 7B is already loaded)")
     args = ap.parse_args(argv)
+    args.out = args.out or ex.EXPS[args.exp]["out"]
+    args.fresh = None
     try:
         return {"run": cmd_run, "judge": cmd_judge}[args.command](args)
     except SystemExit as exc:
