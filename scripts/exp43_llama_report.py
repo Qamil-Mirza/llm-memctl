@@ -54,7 +54,7 @@ def fmt(x) -> str:
 
 
 def markdown(t: dict, order: list[str], n: int, chosen: str | None, alt: str | None, a_cut: dict | None) -> str:
-    lines = [f"Gate on {n} reproduced in-view dev refusals (rev 1 A2): Steer answers >= {dev.ANS_MIN}; "
+    lines = [f"Gate on {n} reproduced in-view dev refusals (rev 1 A2): Steer answers >= ceil({dev.ANS_SHARE} x {n}) = {dev.ans_min(n)}; "
              f"gold(Steer) - gold(Steer-cut) >= {dev.GOLD_DIFF_MIN}; Random answers <= {dev.RANDOM_SHARE} x Steer's; "
              f"degenerate <= {dev.DEGEN_MAX}. Rows in rule order (deeper layer, then smaller alpha). Gold: D1, provisional.",
              "",
@@ -105,6 +105,23 @@ def main(argv=None) -> int:
            "table": t, "order": order, "chosen": chosen, "alt_rule_choice": alt, "a_cut": a_cut,
            "gate_json_agrees": agrees, "gold": "D1 string rule, provisional"}
     md = markdown(t, order, len(G), chosen, alt, a_cut)
+    # descriptive (build review c7157f9): per gate row, whether the gold is already in Llama's cached note, so a FAIL
+    # on the gold bar can be read against how many rows could carry it at all
+    gin = manifest.get("G_gold_in_cached_note", {})
+    sweep_idx = {st.row_key(r): r for r in files["sweep"]}
+    show = chosen or (order[0] if order else None)
+    md += ("\n\n## Gate rows: gold in the cached note (descriptive)\n\n"
+           f"Gold (D1) in Llama's cached note on {sum(bool(gin.get(q)) for q in manifest['G'])} of {len(manifest['G'])} "
+           f"G rows. Steer column: the {'chosen' if chosen else 'first-in-order'} setting {show}.\n\n"
+           "| question | reproduced | gold in cached note | Steer class | Steer gold (D1) |\n|---|---|---|---|---|\n")
+    for q in manifest["G"]:
+        r = sweep_idx.get(("G", "A", show, q)) if show else None
+        md += (f"| {q} | {'yes' if q in G else 'no'} | {fmt(gin.get(q))} | {fmt(None if r is None else r['cls'])} | "
+               f"{fmt(None if r is None else bool(r['gold_d1_provisional']))} |\n")
+    dropped = json.loads(gate_path.read_text()).get("G_dropped") if gate_path.exists() else None
+    if dropped:
+        md += "\nDropped G rows: " + "; ".join(f"{d['question_id']} ({d['reason']})" for d in dropped) + ".\n"
+    out["G_gold_in_cached_note"] = gin
     (run_dir / "report.json").write_text(json.dumps(out, indent=1, default=float))
     (run_dir / "report.md").write_text(md + "\n")
     print(f"pairs {out['n_pairs']} of {out['n_P0']} candidates; gate rows {len(G)} (dropped {out['G_dropped']}); "

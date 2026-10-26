@@ -48,6 +48,7 @@ def test_setting_gate_arithmetic():
     assert dev.setting_gate(c(8, 0, 4), None, None)["pass"] is None
     assert dev.setting_gate(c(3), None, None)["pass"] is False
     assert dev.needs_cut(c(7, 1)) and not dev.needs_cut(c(6)) and not dev.needs_cut(c(9, 2))
+    assert dev.ans_min(13) == 7 and dev.ans_min(12) == 6 and dev.ans_min(11) == 6 and dev.MIN_PAIRS == 5
 
 
 def test_choice_rule_is_deeper_layer_then_smaller_alpha():
@@ -68,7 +69,7 @@ def stub_run(tmp_path_factory):
         pytest.skip("§24 runs not on disk")
     out = tmp_path_factory.mktemp("exp43")
     with pytest.MonkeyPatch.context() as mp:
-        for name, value in (("ANS_MIN", 0), ("GOLD_DIFF_MIN", -100), ("DEGEN_MAX", 100), ("MAX_NEW_FULL", 8192)):
+        for name, value in (("ANS_SHARE", 0), ("GOLD_DIFF_MIN", -100), ("DEGEN_MAX", 100), ("MAX_NEW_FULL", 8192)):
             mp.setattr(dev, name, value)
         assert dev.main(["--run", "--backend", "stub", "--out", str(out)]) == 0
     return out
@@ -100,7 +101,7 @@ def test_stub_run_writes_every_stage_sha_stamped(stub_run):
 def test_stub_run_resumes_without_new_rows(stub_run):
     before = _lines(stub_run / "llama3b")
     with pytest.MonkeyPatch.context() as mp:
-        for name, value in (("ANS_MIN", 0), ("GOLD_DIFF_MIN", -100), ("DEGEN_MAX", 100), ("MAX_NEW_FULL", 8192)):
+        for name, value in (("ANS_SHARE", 0), ("GOLD_DIFF_MIN", -100), ("DEGEN_MAX", 100), ("MAX_NEW_FULL", 8192)):
             mp.setattr(dev, name, value)
         assert dev.main(["--run", "--backend", "stub", "--out", str(stub_run)]) == 0
     assert _lines(stub_run / "llama3b") == before
@@ -108,7 +109,7 @@ def test_stub_run_resumes_without_new_rows(stub_run):
 
 def test_report_recomputes_the_gate_and_agrees(stub_run, monkeypatch, capsys):
     from scripts import exp43_llama_report as rep
-    for name, value in (("ANS_MIN", 0), ("GOLD_DIFF_MIN", -100), ("DEGEN_MAX", 100)):
+    for name, value in (("ANS_SHARE", 0), ("GOLD_DIFF_MIN", -100), ("DEGEN_MAX", 100)):
         monkeypatch.setattr(dev, name, value)
     assert rep.main(["--run-dir", str(stub_run / "llama3b")]) == 0
     out = json.loads((stub_run / "llama3b" / "report.json").read_text())

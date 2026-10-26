@@ -44,6 +44,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 import time
@@ -67,11 +68,11 @@ MAX_NEW = st.MAX_NEW_TOKENS_LAPTOP          # 16, the steered and A/B phrases
 MAX_NEW_FULL = 256                           # N and N-cut (as §23/§35)
 N_CHECK = 5
 # rev 1 A2 gate, in rows of the reproduced G population
-ANS_MIN = 7
+ANS_SHARE = 0.5          # Steer answers >= ceil(ANS_SHARE x reproduced G rows): 7 of 13 (build review c7157f9)
 GOLD_DIFF_MIN = 2
 RANDOM_SHARE = st.RANDOM_SHARE               # 0.2
 DEGEN_MAX = 1
-MIN_PAIRS = 2
+MIN_PAIRS = 5            # fewer pairs: Part A closes for Llama as 'too few pairs' (build review c7157f9)
 EXPECT_G = 13
 EXIT_REPRO, EXIT_SANITY, EXIT_NCHECK, EXIT_PAIRS = 3, 4, 6, 7
 GATE_RULE = ("rev 1 A2: Steer answers >= 7; gold(Steer) - gold(Steer-cut) >= 2 rows (D1 provisional); "
@@ -146,10 +147,16 @@ def counts(rows: list[dict]) -> dict:
             "gold": sum(bool(r["gold_d1_provisional"]) for r in rows)}
 
 
+def ans_min(n: int) -> int:
+    """The answer bar on n reproduced G rows: ceil(ANS_SHARE x n), 7 when all 13 reproduce."""
+    return math.ceil(ANS_SHARE * n)
+
+
 def setting_gate(steer: dict, cut: dict | None, rnd: dict | None) -> dict:
-    """One setting's gate arithmetic from row counts (None: that arm not run). Criteria in rev 1 order."""
-    out = {"steer": steer, "cut": cut, "random": rnd,
-           "ans_ok": steer["ans"] >= ANS_MIN, "degen_ok": steer["degenerate"] <= DEGEN_MAX}
+    """One setting's gate arithmetic from row counts (None: that arm not run). Criteria in rev 1 order; the answer
+    bar scales with the reproduced rows (steer['n'])."""
+    out = {"steer": steer, "cut": cut, "random": rnd, "ans_min": ans_min(steer["n"]),
+           "ans_ok": steer["ans"] >= ans_min(steer["n"]), "degen_ok": steer["degenerate"] <= DEGEN_MAX}
     out["gold_diff"] = None if cut is None else steer["gold"] - cut["gold"]
     out["gold_ok"] = None if cut is None else out["gold_diff"] >= GOLD_DIFF_MIN
     out["random_bound"] = RANDOM_SHARE * steer["ans"]
@@ -160,7 +167,7 @@ def setting_gate(steer: dict, cut: dict | None, rnd: dict | None) -> dict:
 
 
 def needs_cut(steer: dict) -> bool:
-    return steer["ans"] >= ANS_MIN and steer["degenerate"] <= DEGEN_MAX
+    return steer["ans"] >= ans_min(steer["n"]) and steer["degenerate"] <= DEGEN_MAX
 
 
 # --- full generation (N, N-cut) ----------------------------------------------------------------------------------
@@ -220,7 +227,8 @@ class Run:
         m = {"engine": self.engine.name, "model": self.engine.model, "family": FAMILY.stamp(), "layers": self.layers,
              "alphas": self.alphas, "unit": UNIT, "max_new_tokens": MAX_NEW, "max_new_full": MAX_NEW_FULL,
              "wording_sha256": self.wsha, "classifier": st.CLASSIFIER_VERSION, "gate_rule": GATE_RULE,
-             "G": self.p.G, "P0": self.p.P0, "n_check": self.n_check}
+             "G": self.p.G, "P0": self.p.P0, "n_check": self.n_check,
+             "G_gold_in_cached_note": {q: bool(sel.gold_in_note(self.p.by_q[q])) for q in self.p.G}}
         path = self.dir / "manifest.json"
         if path.exists():
             old = json.loads(path.read_text())
@@ -623,7 +631,10 @@ def main(argv=None) -> int:
 
     log(f"== (v) sweep, cut, random on {len(G)} reproduced gate rows")
     gate = run.sweep(G)
-    gate.update({"n_pairs": len(pairs), "pairs": pairs, "G_ok": G, "repro_rate": rep["rate"], "sanity_pass": san["pass"]})
+    gate.update({"n_pairs": len(pairs), "pairs": pairs, "G_ok": G, "repro_rate": rep["rate"], "sanity_pass": san["pass"],
+                 "ans_min": ans_min(len(G)),
+                 "G_dropped": [{"question_id": q, "reason": "regenerated A does not refuse (cached refusal not reproduced)",
+                                "A_first_match": v["first_match"]} for q, v in rep["G"].items() if not v["ok"]]})
     run.write_json("gate.json", gate)
     for k in gate["order"]:
         e = gate["table"][k]
