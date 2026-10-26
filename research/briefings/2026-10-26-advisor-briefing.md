@@ -127,3 +127,55 @@ the same disposition, and whether selectivity turns the direction into a policy 
   7B-judged result for a thesis chapter, or should we budget for a human-labelled subset?
 
 Spend to date: about $17.82 of the $20 programme cap. Code, rows and reviews are in `~/Code/llm-memctl`.
+
+## Appendix (added 2026-10-26): the layer-by-layer profile of the gold answer at the answer position
+
+Recomputed from the §34 read files (`runs/exp34_jlens/`), all five folds, the §34 population (330 questions with
+all evidence in view, paired across the two Qwen readers), position P1, k = 10. Share of questions whose gold first
+token is inside the top-10 of the lens at that layer, and the median rank among successes.
+
+| depth | Qwen 3B layer (of 36) | logit: gold in top-10 | logit: median rank, successes | J-lens: gold in top-10 | unknown is top-1 on refusals (logit) |
+|---|---|---|---|---|---|
+| 0.03–0.78 | 0–27 | 0.00–0.02 | tens of thousands | 0.00 | 0.00 |
+| 0.83 | 29 | 0.03 | 50,711 | 0.01 | 0.00 |
+| 0.86 | 30 | 0.06 | 11,749 | 0.04 | 0.04 |
+| 0.89 | 31 | 0.09 | 4,287 | 0.06 | 0.41 |
+| 0.92 | 32 | 0.19 | 61 | 0.25 | 0.63 |
+| 0.94 | 33 | 0.32 | 11 | 0.43 | 0.66 |
+| 0.97 | 34 | 0.60 | 3 | 0.53 | 0.74 |
+| 1.00 | 35 | 0.68 | 2 | 0.68 | 0.66 |
+
+| depth | Qwen 7B layer (of 28) | logit: gold in top-10 | logit: median rank, successes | J-lens: gold in top-10 | unknown is top-1 on refusals (logit) |
+|---|---|---|---|---|---|
+| 0.04–0.14 | 0–3 | 0.00 | tens of thousands | 0.00 | 0.00 |
+| 0.29 | 7 | 0.00 | 8,431 | 0.28 | 0.00 |
+| 0.43 | 11 | 0.00 | 11,853 | 0.22 | 0.00 |
+| 0.57 | 15 | 0.00 | 22,596 | 0.21 | 0.00 |
+| 0.71–0.79 | 19–21 | 0.01–0.05 | 15,080 → 4,000 | 0.00–0.02 | 0.00 |
+| 0.82 | 22 | 0.20 | 162 | 0.03 | 0.00 |
+| 0.86 | 23 | 0.38 | 14 | 0.16 | 0.50 |
+| 0.89 | 24 | 0.51 | 4 | 0.35 | 0.39 |
+| 0.93 | 25 | 0.68 | 2 | 0.74 | 0.44 |
+| 0.96 | 26 | 0.83 | 1 | 0.78 | 0.50 |
+| 1.00 | 27 | 0.88 | 1 | 0.88 | 0.50 |
+
+Readings (descriptive):
+- With the logit lens neither model shows the gold anywhere in the first four-fifths of its layers. Emergence is a
+  steep climb over the last four to six layers: layers 31–35 in the 3B, 22–27 in the 7B. The 7B's climb starts
+  about one tenth of the depth earlier (0.82 against 0.89) and ends higher (0.88 against 0.68 of questions with the
+  gold in the final top-10; top-1: 0.56 against 0.30).
+- Once the gold enters the top-10 it stays: on the logit lens it is in the top-10 at 0.94 (3B) / 0.88 (7B) of the
+  remaining layers and at the final layer for 0.96 / 0.99 of the questions that emerged.
+- The "7B has the answer by mid-stack" sentence of §34 (median J-lens depth 0.464, here 0.50 on all folds) rests on
+  a J-lens-only bump at depths 0.29–0.57 that holds the gold in the top-10 for about a fifth to a quarter of
+  questions, vanishes again at 0.71–0.82, and is not seen by the logit lens. The J-lens emergence distribution for
+  the 7B is bimodal (q1 0.286, q3 0.893). The robust cross-size statement is the late climb, earlier and steeper in
+  the 7B; the mid-stack presence is a lens-dependent minority signal.
+- On the 3B's refusals ` unknown` reaches top-1 at layers 31–32 (0.41 → 0.63 of refusals), one or two layers before
+  the gold enters the top-10 (0.10 at layer 32, 0.57 at layer 35). At the final layer the gold sits at median rank 5
+  under ` unknown` at rank 1. In the 7B's 18 refusals, ` unknown` and the gold rise together at layer 23.
+- In failures the gold is in the final top-10 nearly as often as in successes on the 3B (answered wrong 0.71,
+  refusal 0.57, success 0.73): the answer is readable at the end in most failures and the final choice goes elsewhere,
+  which is the C class of §34.
+- Caveat: the median emergence depths quoted in the main text (0.889 against 0.464) are J-lens figures on the
+  confirmation folds; the logit-lens medians are 0.944 against 0.857. Both orderings agree; the sizes differ by lens.
