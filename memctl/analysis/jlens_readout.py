@@ -68,19 +68,29 @@ def _token_at_char(offsets: list[tuple[int, int]], char: int) -> int:
     return best
 
 
+def encode_chat_ids(tokenizer, text: str, max_length: int) -> list[int]:
+    """§43 rev 1 B1: how every lens script encodes a chat text. The chat template already writes the BOS as text
+    (Llama, Gemma) or has none (Qwen, Phi), so special tokens are never added: jlens's `LensModel.encode` adds a
+    second BOS (Llama, Gemma) or an <|endoftext|> (Phi). Truncated at `max_length`, so a guard comparing these ids
+    to the readout's sees an over-long sequence. Identical to `encode` for Qwen (no BOS token)."""
+    encoded = tokenizer(text, add_special_tokens=False, truncation=True, max_length=max_length)
+    return list(encoded.input_ids)
+
+
 def readout_for(tokenizer, prompt: str, memory_lines: tuple[str, ...], evidence_lines: tuple[str, ...], gold: str,
-                own_output: str | None = None) -> Readout:
+                own_output: str | None = None, chat_text_fn=None) -> Readout:
     """Readout positions for one cached prompt.
 
     Forced mode (own_output None): `Answer:` is appended right after the chat, so P1 is a forced immediate answer
     with no reasoning (the §34 main readout). Own mode (own_output = the reader's cached output): the output up to and
     including its last `Answer:` marker is teacher-forced instead, so P1 is the position at which the reader wrote
     its own answer after its own reasoning; an output without the marker answers from its first token, so nothing
-    is appended (answer_marker False). P0, E and Q are prompt positions and are identical in both modes."""
+    is appended (answer_marker False). P0, E and Q are prompt positions and are identical in both modes.
+    `chat_text_fn(prompt) -> chat text` (§43): a family's template with its pinned arguments; None is `wrap_chat`."""
     missing = [l for l in evidence_lines if l not in memory_lines]
     if missing:
         raise ValueError(f"evidence line not among the memory lines: {missing[0][:60]!r}")
-    chat = wrap_chat(tokenizer, prompt)
+    chat = wrap_chat(tokenizer, prompt) if chat_text_fn is None else chat_text_fn(prompt)
     encoded = tokenizer(chat, add_special_tokens=False, return_offsets_mapping=True)
     chat_ids = list(encoded["input_ids"])
     offsets = [tuple(o) for o in encoded["offset_mapping"]]

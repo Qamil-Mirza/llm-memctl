@@ -28,11 +28,14 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from memctl.analysis.jacobian import ablate_evidence
-from memctl.analysis.jlens_readout import (POSITION_NAMES, file_sha256, question_measures, rank_table,  # noqa: E402
-                                           readout_for, topk_table)
-from memctl.jacobian_data import PromptRecord, load_records  # noqa: E402
+from memctl.analysis import families  # noqa: E402
+from memctl.analysis.jlens_readout import (POSITION_NAMES, encode_chat_ids, file_sha256,  # noqa: E402
+                                           question_measures, rank_table, readout_for, topk_table)
+from memctl.jacobian_data import PromptRecord, load_family_records, load_records  # noqa: E402
 
 MODEL_IDS = {"qwen05b": "Qwen/Qwen2.5-0.5B-Instruct", "qwen3b": "Qwen/Qwen2.5-3B-Instruct", "qwen7b": "Qwen/Qwen2.5-7B-Instruct"}
+# §43: other families' small readers (memctl/analysis/families.py); records from their §24 runs, template pinned
+FAMILY_READERS = ("llama3b", "gemma4b", "phi4mini")
 MAX_SEQ_LEN = 4096
 TRACKED = ("gold", "unknown_sp", "unknown")
 DEV_FOLDS = {0, 1}
@@ -90,23 +93,28 @@ def lens_to(lens, device) -> None:
 
 
 def read_record(lens, lens_model, tokenizer, record: PromptRecord, k: int = 10,
-                position_mode: str = "forced") -> tuple[dict, dict[str, np.ndarray]]:
+                position_mode: str = "forced", family=None) -> tuple[dict, dict[str, np.ndarray]]:
+    """`family` (a FamilyConfig, §43): the chat text is the family's template with its pinned arguments; None (every
+    §34 read) is `wrap_chat`."""
     import torch
     from jlens.hooks import ActivationRecorder
+
+    chat_fn = None if family is None else (lambda p: families.chat_text(tokenizer, family, p))
 
     started = time.perf_counter()
     if position_mode == "ablated":
         # §34c: the same prompt with every evidence line cut out (exact spans), forced position, no evidence positions
         prompt = ablate_evidence(record.prompt, record.memory_lines, record.evidence_lines)
         memory = tuple(l for l in record.memory_lines if l not in set(record.evidence_lines))
-        readout = readout_for(tokenizer, prompt, memory, (), record.gold)
+        readout = readout_for(tokenizer, prompt, memory, (), record.gold, chat_text_fn=chat_fn)
     else:
         prompt = record.prompt
         readout = readout_for(tokenizer, record.prompt, record.memory_lines, record.evidence_lines, record.gold,
-                              own_output=record.output if position_mode == "own" else None)
-    chat_ids = lens_model.encode(readout.chat_text, max_length=MAX_SEQ_LEN)       # truncation guard only
-    if chat_ids[0].tolist() != list(readout.input_ids[:readout.n_chat]) or len(readout.input_ids) > MAX_SEQ_LEN:
-        raise ValueError(f"{record.question_id}: lens encode of the chat text ({chat_ids.shape[1]} ids) differs from the "
+                              own_output=record.output if position_mode == "own" else None, chat_text_fn=chat_fn)
+    # truncation guard only; no special tokens (§43 B1: the chat text carries its own BOS, or none)
+    chat_ids = encode_chat_ids(lens_model.tokenizer, readout.chat_text, MAX_SEQ_LEN)
+    if chat_ids != list(readout.input_ids[:readout.n_chat]) or len(readout.input_ids) > MAX_SEQ_LEN:
+        raise ValueError(f"{record.question_id}: lens encode of the chat text ({len(chat_ids)} ids) differs from the "
                          f"readout's chat ids ({readout.n_chat}) or the sequence exceeds {MAX_SEQ_LEN}; truncated or retokenised")
     input_ids = torch.tensor([list(readout.input_ids)], dtype=torch.long, device=lens_model.input_device)
     final = lens_model.n_layers - 1
@@ -142,11 +150,13 @@ def read_record(lens, lens_model, tokenizer, record: PromptRecord, k: int = 10,
                "tracked": dict(readout.tracked), "gold_token_text": readout.gold_token_text,
                "position_mode": position_mode, "answer_marker": readout.answer_marker,
                "measures": measures, "elapsed_s": time.perf_counter() - started}
+    if family is not None:
+        payload["family"] = family.stamp()
     return payload, arrays
 
 
 def run_records(lens, lens_model, tokenizer, records, out: Path, *, k: int, model_id: str, lens_path: str,
-                lens_sha256: str, position_mode: str = "forced") -> dict[str, float]:
+                lens_sha256: str, position_mode: str = "forced", family=None) -> dict[str, float]:
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
     failed_path = out / "_failed.json"
@@ -158,7 +168,8 @@ def run_records(lens, lens_model, tokenizer, records, out: Path, *, k: int, mode
         if is_done(out, record.question_id, lens_sha256):
             continue
         try:
-            payload, arrays = read_record(lens, lens_model, tokenizer, record, k=k, position_mode=position_mode)
+            payload, arrays = read_record(lens, lens_model, tokenizer, record, k=k, position_mode=position_mode,
+                                          family=family)
         except (ValueError, RuntimeError) as error:
             failed[record.question_id] = repr(error)
             write_json(failed_path, failed)
@@ -185,16 +196,20 @@ LENS_MISMATCH = 7
 ALL_FAILED = 8
 
 
-def load_model(model_id: str, device: str, dtype: str):
-    """(jlens LensModel, tokenizer) for a Hugging Face model id."""
+def load_model(model_id: str, device: str, dtype: str, family=None, weights: str | None = None):
+    """(jlens LensModel, tokenizer) for a Hugging Face model id. With a family (§43): the weights from `weights`
+    (e.g. the laptop's fp32 copy) or the model id, the tokenizer from the model id, jlens's fit-time BOS flag from
+    the config (reads never use it: the chat ids are encoded without special tokens)."""
     import jlens
     import torch
     import transformers
 
-    hf = transformers.AutoModelForCausalLM.from_pretrained(model_id, dtype=getattr(torch, dtype)).to(device)
+    hf = transformers.AutoModelForCausalLM.from_pretrained(weights or model_id, dtype=getattr(torch, dtype)).to(device)
     hf.eval()
     tok = transformers.AutoTokenizer.from_pretrained(model_id)
-    return jlens.from_hf(hf, tok), tok
+    if family is None:
+        return jlens.from_hf(hf, tok), tok
+    return jlens.from_hf(hf, tok, force_bos=family.lens_force_bos), tok
 
 
 def lens_mismatch(lens, lens_model) -> str | None:
@@ -209,7 +224,8 @@ def lens_mismatch(lens, lens_model) -> str | None:
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--reader", required=True, choices=sorted(MODEL_IDS))
+    p.add_argument("--reader", required=True, choices=sorted(MODEL_IDS) + list(FAMILY_READERS))
+    p.add_argument("--weights", default=None, help="§43 families: a local copy of the weights (e.g. cache/exp43_fp32/...)")
     p.add_argument("--records-from", default=None, help="reader whose §23 prompts to read (default: --reader)")
     p.add_argument("--lens", required=True)
     p.add_argument("--folds", default="0,1,2,3,4")
@@ -224,11 +240,16 @@ def main(argv=None) -> int:
                         " cached reasoning (§34b); ablated: forced position on the prompt with the evidence lines cut (§34c);"
                         " default --out runs/exp34_jlens_<mode>/<reader> for own and ablated")
     args = p.parse_args(argv)
-    out = Path(args.out or (f"runs/exp34_jlens/{args.reader}" if args.position_mode == "forced" else f"runs/exp34_jlens_{args.position_mode}/{args.reader}"))
+    family = families.get(args.reader) if args.reader in FAMILY_READERS else None
+    if family is not None and args.records_from not in (None, args.reader):
+        p.error("--records-from is a Qwen option; a family reads its own §24 records")
+    base = "runs/exp43_jlens" if family is not None else "runs/exp34_jlens"
+    out = Path(args.out or (f"{base}/{args.reader}" if args.position_mode == "forced" else f"{base}_{args.position_mode}/{args.reader}"))
     out.mkdir(parents=True, exist_ok=True)
     records, dropped = [], {}
     for fold in (int(f) for f in args.folds.split(",")):
-        rs, d = load_records(args.records_from or args.reader, fold)
+        rs, d = (load_family_records(family, fold) if family is not None
+                 else load_records(args.records_from or args.reader, fold))
         records.extend(rs[: args.limit] if args.limit else rs)
         dropped[str(fold)] = d
     write_json(out / "_dropped.json", dropped)
@@ -240,9 +261,10 @@ def main(argv=None) -> int:
     import jlens
     import torch
 
-    model_id = args.model_id or MODEL_IDS[args.reader]
+    model_id = args.model_id or (family.model_id if family is not None else MODEL_IDS[args.reader])
     device = ("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device
-    lens_model, tok = load_model(model_id, device, args.dtype)
+    lens_model, tok = (load_model(model_id, device, args.dtype) if family is None
+                       else load_model(model_id, device, args.dtype, family=family, weights=args.weights))
     lens = jlens.JacobianLens.load(args.lens)
     problem = lens_mismatch(lens, lens_model)
     if problem:
@@ -251,7 +273,7 @@ def main(argv=None) -> int:
     lens_to(lens, device)
     started = time.perf_counter()
     timing = run_records(lens, lens_model, tok, records, out, k=args.k, model_id=model_id, lens_path=args.lens,
-                         lens_sha256=lens_hash, position_mode=args.position_mode)
+                         lens_sha256=lens_hash, position_mode=args.position_mode, family=family)
     summary = {"model_id": model_id, "lens": args.lens, "lens_sha256": lens_hash, "device": device, "dtype": args.dtype, "questions": len(timing),
                "seconds_per_question": (sum(timing.values()) / len(timing)) if timing else None,
                "wall_s": time.perf_counter() - started,

@@ -674,23 +674,44 @@ class HookedEngine:
 class HFEngine(HookedEngine):
     """transformers; fp32 on CPU (the laptop), bf16 on CUDA (the pod)."""
 
-    def __init__(self, model: str, threads: int = 8) -> None:
+    def __init__(self, model: str, threads: int = 8, family=None, weights: str | None = None) -> None:
+        """`family` (a memctl.analysis.families.FamilyConfig, §43) is None for every §38-§42 path, which keeps the
+        Qwen behaviour unchanged. With a family: the tokenizer comes from `model` (the HF id), the weights from
+        `weights` or `family.weights` (a local fp32 copy) or `model`; the layers from `family.layer_path`, the width
+        from the text config; stop ids, chat template arguments and refusal ids from the config, checked at load."""
         import torch
         import transformers
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
         torch.set_num_threads(threads)
-        self.torch, self.model = torch, model
+        self.torch, self.model, self.family = torch, model, family
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         dtype = torch.bfloat16 if self.device == "cuda" else torch.float32
         self.name = f"hf-transformers-{transformers.__version__}-{self.device}-{str(dtype).split('.')[-1]}"
         self.tokenizer = AutoTokenizer.from_pretrained(model)
-        self.net = AutoModelForCausalLM.from_pretrained(model, dtype=dtype).to(self.device).eval()
-        self.layers = self.net.model.layers
-        self.n_layers, self.hidden = len(self.layers), self.net.config.hidden_size
-        self.stop_ids = {self.tokenizer.convert_tokens_to_ids("<|im_end|>"), self.tokenizer.eos_token_id}
+        if family is None:
+            self.net = AutoModelForCausalLM.from_pretrained(model, dtype=dtype).to(self.device).eval()
+            self.layers = self.net.model.layers
+            self.n_layers, self.hidden = len(self.layers), self.net.config.hidden_size
+            self.stop_ids = {self.tokenizer.convert_tokens_to_ids("<|im_end|>"), self.tokenizer.eos_token_id}
+            return
+        from memctl.analysis import families as fam
+        source = weights or (family.weights if self.device == "cpu" else None) or model
+        self.weights = source
+        self.net = AutoModelForCausalLM.from_pretrained(source, dtype=dtype).to(self.device).eval()
+        self.layers = self.net.get_submodule(family.layer_path)
+        self.n_layers, self.hidden = len(self.layers), self.net.config.get_text_config().hidden_size
+        if (self.n_layers, self.hidden) != (family.n_layers, family.hidden):
+            raise ValueError(f"{family.key}: model has {self.n_layers} layers / width {self.hidden}, config says "
+                             f"{family.n_layers} / {family.hidden}")
+        self.stop_ids = fam.stop_ids(self.tokenizer, family, self.net.generation_config.eos_token_id)
+        fam.check_refusal_ids(self.encode, family)
+        fam.check_bos(self.tokenizer, family, self.encode(self.chat_text("x")))
 
     def chat_text(self, prompt: str) -> str:
+        if getattr(self, "family", None) is not None:
+            from memctl.analysis import families as fam
+            return fam.chat_text(self.tokenizer, self.family, prompt)
         from memctl.analysis.jacobian import wrap_chat
         return wrap_chat(self.tokenizer, prompt)
 
@@ -823,11 +844,11 @@ class ForcedArm:
         return {"mode": "forced", "layer": None, "alpha": None, "unit": None, "key": self.key, "arm": self.name}
 
 
-def build_engine(backend: str, model: str, threads: int = 8):
+def build_engine(backend: str, model: str, threads: int = 8, family=None):
     if backend == "stub":
         return StubEngine(model)
     if backend == "hf":
-        return HFEngine(model, threads)
+        return HFEngine(model, threads) if family is None else HFEngine(model, threads, family=family)
     raise ValueError(f"unknown backend {backend!r} (known: hf, stub)")
 
 

@@ -22,7 +22,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from memctl.analysis import families  # noqa: E402
+
 MODEL_IDS = {"qwen05b": "Qwen/Qwen2.5-0.5B-Instruct", "qwen3b": "Qwen/Qwen2.5-3B-Instruct", "qwen7b": "Qwen/Qwen2.5-7B-Instruct"}
+FAMILY_READERS = ("llama3b", "gemma4b", "phi4mini")       # §43 (memctl/analysis/families.py)
 JLENS_DIR = Path(__file__).resolve().parents[1] / "external" / "jacobian-lens"
 
 
@@ -126,7 +129,8 @@ def sidecar(reader, model_id, *, n_prompts, n_target, n_minimum, settings, wall_
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--reader", required=True, choices=sorted(MODEL_IDS))
+    p.add_argument("--reader", required=True, choices=sorted(MODEL_IDS) + list(FAMILY_READERS))
+    p.add_argument("--weights", default=None, help="§43 families: a local copy of the weights")
     p.add_argument("--model-id", default=None)
     p.add_argument("--n-prompts", type=int, default=128)
     p.add_argument("--min-prompts", type=int, default=32)
@@ -146,7 +150,8 @@ def main(argv=None) -> int:
 
     import torch, transformers, jlens
 
-    model_id = args.model_id or MODEL_IDS[args.reader]
+    family = families.get(args.reader) if args.reader in FAMILY_READERS else None
+    model_id = args.model_id or (family.model_id if family is not None else MODEL_IDS[args.reader])
     out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
     paragraphs = load_corpus(args.corpus)
     prompts = select_prompts(paragraphs, args.n_prompts, seed=args.seed)
@@ -157,13 +162,16 @@ def main(argv=None) -> int:
                                       "source_layers": args.source_layers, "skip_first": args.skip_first,
                                       "prompt_sha256s": prompt_sha256s})
     device = ("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device
-    hf = transformers.AutoModelForCausalLM.from_pretrained(model_id, dtype=getattr(torch, args.dtype)).to(device)
+    hf = transformers.AutoModelForCausalLM.from_pretrained(args.weights or model_id, dtype=getattr(torch, args.dtype)).to(device)
     tok = transformers.AutoTokenizer.from_pretrained(model_id)
-    model = jlens.from_hf(hf, tok)
+    # §43: the family's fit-time BOS for the raw WikiText (Phi off: its chat prompts carry no BOS); Qwen as §34
+    model = jlens.from_hf(hf, tok) if family is None else jlens.from_hf(hf, tok, force_bos=family.lens_force_bos)
     source_layers = None if args.source_layers == "all" else list(range(*map(int, args.source_layers.split(":"))))
     settings = {"dim_batch": args.dim_batch, "max_seq_len": args.max_seq_len, "skip_first": args.skip_first,
                 "source_layers": args.source_layers, "seed": args.seed, "chunk": args.chunk, "max_minutes": args.max_minutes,
                 "device": device, "dtype": args.dtype}
+    if family is not None:
+        settings["force_bos"] = family.lens_force_bos
     print(f"{model} fitting on {len(prompts)} prompts (min {args.min_prompts}, box {args.max_minutes} min)", flush=True)
     started = time.perf_counter()
     lens, upto = fit_under_time_box(model, prompts, max_minutes=args.max_minutes, chunk=args.chunk,

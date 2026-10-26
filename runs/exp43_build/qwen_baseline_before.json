@@ -1,0 +1,29 @@
+{
+ "qwen_chat_sha": "db8dee3e93bc58970742bfe5b562747c611caeed1e6f83f0daf7a36b4b8bfd7d",
+ "qwen_ids_sha": "d0aba84c1db75b6be1360d31a51ae901dc12211b20513b97654369f1e89a03f3",
+ "qwen_n_ids": 71,
+ "qwen_stop_ids": [
+  151645
+ ],
+ "stub38": {
+  "controls.jsonl": {
+   "n": 96,
+   "sha": "1d42531239d52bd3bc73d548c027cc252326896e0db3698887cd1c49999091ab"
+  },
+  "repro.jsonl": {
+   "n": 64,
+   "sha": "0c591cf0540a321e1c3d9cb5499e5048f6d7d78497c32623d8974aa8722e7155"
+  },
+  "sanity.jsonl": {
+   "n": 117,
+   "sha": "5aea140be32e01818564225de4d88cc2a7d5812f8e9b6a14a198b3bfa5d15d9f"
+  },
+  "sweep.jsonl": {
+   "n": 448,
+   "sha": "408fdbb8c6ae452cf584bab57498966e930c0af4af234ad46a601c1f42dfb7cf"
+  },
+  "directions.json": "a7d58df41ba39d5bbc2026c06b5fc44c745c0e788cc3036455ac1b7516ad8dc7",
+  "gate.json": "dbad6c43c6cdc01fadefea4e53a34a38b91b2489204529b44df65cc7f5d7b125",
+  "sanity.json": "1d0c36e3b22082b9d9481d4fef1ce85e433e9c052399781c357eb1eace255220"
+ }
+}

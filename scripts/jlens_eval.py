@@ -35,9 +35,12 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from memctl.analysis.jlens_readout import _token_at_char, file_sha256, rank_table, tracked_token_ids  # noqa: E402
+from memctl.analysis import families  # noqa: E402
+from memctl.analysis.jlens_readout import (_token_at_char, encode_chat_ids, file_sha256, rank_table,  # noqa: E402
+                                           tracked_token_ids)
 
 MODEL_IDS = {"qwen05b": "Qwen/Qwen2.5-0.5B-Instruct", "qwen3b": "Qwen/Qwen2.5-3B-Instruct", "qwen7b": "Qwen/Qwen2.5-7B-Instruct"}
+FAMILY_READERS = ("llama3b", "gemma4b", "phi4mini")       # §43 (memctl/analysis/families.py)
 SETS = ("association", "multihop", "multilingual", "order-ops", "poetry", "typo")
 DATA = Path("external/jacobian-lens/data/evaluations")
 MAX_SEQ_LEN = 4096
@@ -70,14 +73,29 @@ def lens_to(lens, device) -> None:
     lens.jacobians = {layer: J.to(device) for layer, J in lens.jacobians.items()}
 
 
-def logits_at(lens, lens_model, text: str, position: int):
-    """One forward; J-lens and logit-lens logits [vocab] per lens layer at `position`, plus the model logits."""
+def eval_ids(tokenizer, text: str, raw_bos: bool) -> tuple[list[int], int]:
+    """(ids, offset) for an evaluation text (§43 B1): encoded without special tokens, so a chat-template text keeps
+    exactly its own BOS (Llama, Gemma) or none (Qwen, Phi). A raw (non-chat) text gets the tokenizer's BOS prepended
+    when `raw_bos` (the family's fit-time flag, so it is read the way the lens was fitted) and the tokenizer has
+    one; `offset` (0 or 1) shifts the readout position. Qwen has no BOS token: ids == _ids(text), offset 0."""
+    ids = encode_chat_ids(tokenizer, text, MAX_SEQ_LEN)
+    bos = getattr(tokenizer, "bos_token_id", None)
+    if raw_bos and bos is not None and not (ids and ids[0] == bos):
+        return [bos] + ids, 1
+    return ids, 0
+
+
+def logits_at(lens, lens_model, text: str, position: int, raw_bos: bool = True):
+    """One forward; J-lens and logit-lens logits [vocab] per lens layer at `position` (an index into _ids(text)),
+    plus the model logits."""
     import torch
     from jlens.hooks import ActivationRecorder
 
-    input_ids = lens_model.encode(text, max_length=MAX_SEQ_LEN)
-    if input_ids[0].tolist() != _ids(lens_model.tokenizer, text):
+    ids, offset = eval_ids(lens_model.tokenizer, text, raw_bos)
+    if ids[offset:] != _ids(lens_model.tokenizer, text):
         raise ValueError("lens encode differs from the tokenizer ids; the readout position would be off")
+    input_ids = torch.tensor([ids], dtype=torch.long, device=lens_model.input_device)
+    position = position + offset
     final = lens_model.n_layers - 1
     layers = sorted(set(lens.source_layers) | {final})
     with torch.no_grad(), ActivationRecorder(lens_model.layers, at=layers) as recorder:
@@ -94,7 +112,8 @@ def logits_at(lens, lens_model, text: str, position: int):
     return jl, ll, model_logits
 
 
-def score_set(lens, lens_model, tokenizer, items: list[dict], set_name: str, band: tuple[int, int], k: int) -> dict:
+def score_set(lens, lens_model, tokenizer, items: list[dict], set_name: str, band: tuple[int, int], k: int,
+              raw_bos: bool = True) -> dict:
     scores, skipped = {f"{v}{m}": [] for v in ("jlens", "logit") for m in ("", "_all")}, 0
     for item in items:
         text, position = readout_position(tokenizer, item, set_name)
@@ -102,7 +121,7 @@ def score_set(lens, lens_model, tokenizer, items: list[dict], set_name: str, ban
             skipped += 1
             continue
         token_ids = [tracked_token_ids(tokenizer, w)[0]["gold"] for w in item["intermediates"]]
-        jl, ll, model_logits = logits_at(lens, lens_model, text, position)
+        jl, ll, model_logits = logits_at(lens, lens_model, text, position, raw_bos)
         for variant, logits in (("jlens", jl), ("logit", ll)):
             ranks, layers = rank_table({l: v[None] for l, v in logits.items()}, model_logits[None], lens_model.n_layers, token_ids)
             mask = np.array([band[0] <= l < band[1] for l in layers])
@@ -114,21 +133,24 @@ def score_set(lens, lens_model, tokenizer, items: list[dict], set_name: str, ban
             "pass_at_k_all": {v: mean[f"{v}_all"] for v in ("jlens", "logit")}}
 
 
-def load_model(model_id: str, device: str, dtype: str):
-    """(jlens LensModel, tokenizer) for a Hugging Face model id."""
+def load_model(model_id: str, device: str, dtype: str, family=None, weights: str | None = None):
+    """(jlens LensModel, tokenizer) for a Hugging Face model id (a §43 family: weights may be a local copy)."""
     import jlens
     import torch
     import transformers
 
-    hf = transformers.AutoModelForCausalLM.from_pretrained(model_id, dtype=getattr(torch, dtype)).to(device)
+    hf = transformers.AutoModelForCausalLM.from_pretrained(weights or model_id, dtype=getattr(torch, dtype)).to(device)
     hf.eval()
     tok = transformers.AutoTokenizer.from_pretrained(model_id)
-    return jlens.from_hf(hf, tok), tok
+    if family is None:
+        return jlens.from_hf(hf, tok), tok
+    return jlens.from_hf(hf, tok, force_bos=family.lens_force_bos), tok
 
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--reader", required=True, choices=sorted(MODEL_IDS))
+    p.add_argument("--reader", required=True, choices=sorted(MODEL_IDS) + list(FAMILY_READERS))
+    p.add_argument("--weights", default=None, help="§43 families: a local copy of the weights")
     p.add_argument("--lens", required=True)
     p.add_argument("--sets", default="all")
     p.add_argument("--band", default="auto", help="auto = [n_layers//3, 2*n_layers//3), or a:b")
@@ -146,9 +168,12 @@ def main(argv=None) -> int:
     import jlens
     import torch
 
-    model_id = args.model_id or MODEL_IDS[args.reader]
+    family = families.get(args.reader) if args.reader in FAMILY_READERS else None
+    model_id = args.model_id or (family.model_id if family is not None else MODEL_IDS[args.reader])
     device = ("cuda" if torch.cuda.is_available() else "cpu") if args.device == "auto" else args.device
-    lens_model, tok = load_model(model_id, device, args.dtype)
+    lens_model, tok = (load_model(model_id, device, args.dtype) if family is None
+                       else load_model(model_id, device, args.dtype, family=family, weights=args.weights))
+    raw_bos = True if family is None else family.lens_force_bos
     lens = jlens.JacobianLens.load(args.lens)
     lens_to(lens, device)
     n = lens_model.n_layers
@@ -157,7 +182,8 @@ def main(argv=None) -> int:
     sets = {}
     for name in names:
         items = json.loads((DATA / f"lens-eval-{name}.json").read_text())["items"]
-        sets[name] = score_set(lens, lens_model, tok, items[: args.limit] if args.limit else items, name, band, args.k)
+        sets[name] = score_set(lens, lens_model, tok, items[: args.limit] if args.limit else items, name, band, args.k,
+                               raw_bos)
         print(name, json.dumps(sets[name]), flush=True)
     mean, mean_all = ({v: float(np.mean([s[key][v] for s in sets.values() if s[key][v] is not None]))
                        for v in ("jlens", "logit")} for key in ("pass_at_k", "pass_at_k_all"))
