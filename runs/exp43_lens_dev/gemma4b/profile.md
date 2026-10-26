@@ -111,3 +111,9 @@ Classes (§34 `classes_of`, judge labels): success / refusal (judge `unknown`) /
 - Prompt text identical (sha256) for 126 of 126 rows.
 - Gold first-token text identical (stripped) for 121 of 126 rows; final-layer gold in top-10 on that subset: gemma4b 0.83, qwen3b 0.69.
 - Digit tokenisation caveat: Llama 3.2 and Phi-4-mini put up to 3 digits in one token, Qwen 2.5 and Gemma 3 one digit per token. On the 53 rows whose gold starts with a digit the 'gold first token' is the whole number (up to 3 digits) for Llama/Phi and only its first digit for Qwen/Gemma, so a top-k hit is a harder target for Llama/Phi there. Final-layer gold in top-10 on numeric golds: gemma4b 1.00, qwen3b 0.98.
+- Article-first golds (caveat, a reporting split; the §34 target token is unchanged): when the gold's first token is an article (' The', ' A', ' a', ...), the final layer often predicts the content word instead and the article drops out of the top-10, which shows up as a B (or A) row. Of gemma4b's 12 B rows, 9 have an article-first gold. Split (final top-10 / final top-1 / A / B):
+
+| reader | article n | top-10 | top-1 | A | B | non-article n | top-10 | top-1 | A | B |
+|---|---|---|---|---|---|---|---|---|---|---|
+| gemma4b | 15 | 0.267 | 0.067 | 0.133 | 0.600 | 111 | 0.901 | 0.568 | 0.072 | 0.027 |
+| qwen3b | 15 | 0.467 | 0.000 | 0.467 | 0.067 | 111 | 0.712 | 0.351 | 0.270 | 0.018 |

@@ -38,6 +38,9 @@ CLASS_ORDER = ("success", "refusal", "answered wrong", "all failures")
 
 # --- pure arithmetic (tested in tests/test_exp43_lens_profile.py) --------------------------------------------------
 
+ARTICLES = {"The", "the", "A", "a", "An", "an"}
+
+
 def layer_profile(rows: list[dict], cls: dict[str, str], n_layers: int, refusal_ids, k: int = K) -> list[dict]:
     """rows: {qid, gold_ranks [L], top1 [L]}; cls: qid -> 'success' | 'refusal' | 'answered wrong'."""
     refusal_ids = set(int(i) for i in refusal_ids)
@@ -171,6 +174,22 @@ def build(family: str, read_root: str = "runs/exp43_lens_dev", qwen_dir: str = Q
                                                "qwen3b": final_topk([b for _, b in same_tok])},
               "final_topk_numeric_subset": {family: final_topk([a for a, _ in numeric]),
                                             "qwen3b": final_topk([b for _, b in numeric])}}
+    # article-first golds (Advisor's caveat on the Gemma profile, 88fa7b5): the §34 target is the gold's first token,
+    # and when that is an article the final layer often predicts the content word instead, so the article drops out of
+    # the top-10 late (a B row) or never enters it (an A row). A reporting split; the read protocol is unchanged.
+    def art_split(rs):
+        if not rs:
+            return {"n": 0}
+        outs = [outcome(np.asarray(r["gold_ranks"]), K) for r in rs]
+        return {"n": len(rs), "final_top10": final_topk(rs),
+                "final_top1": float(np.mean([int(r["gold_ranks"][-1]) == 1 for r in rs])),
+                "A": outs.count("A") / len(rs), "B": outs.count("B") / len(rs)}
+    is_art = lambda r: r["gold_token_text"].strip() in ARTICLES  # noqa: E731
+    checks["article_split"] = {name: {"article": art_split([r for r in rs if is_art(r)]),
+                                      "non_article": art_split([r for r in rs if not is_art(r)])}
+                               for name, rs in ((family, rows), ("qwen3b", qrows))}
+    b_rows = [r for r in rows if outcome(np.asarray(r["gold_ranks"]), K) == "B"]
+    checks["B_rows_article_first"] = {"B": len(b_rows), "article": sum(is_art(r) for r in b_rows)}
     payload = {"family": family, "folds": list(DEV_FOLDS), "k": K, "lens": "logit (identity; no J-lens fitted)",
                "depth_convention": "layer / n_layers (§34 emergence_depth)", "profiles": profiles, "checks": checks}
 
@@ -201,7 +220,19 @@ def build(family: str, read_root: str = "runs/exp43_lens_dev", qwen_dir: str = Q
            f"the whole number (up to 3 digits) for Llama/Phi and only its first digit for Qwen/Gemma, so a top-k hit is "
            f"a harder target for Llama/Phi there. Final-layer gold in top-10 on numeric golds: {family} "
            f"{_f(checks['final_topk_numeric_subset'][family])}, qwen3b {_f(checks['final_topk_numeric_subset']['qwen3b'])}.",
-           ""]
+           f"- Article-first golds (caveat, a reporting split; the §34 target token is unchanged): when the gold's first "
+           f"token is an article (' The', ' A', ' a', ...), the final layer often predicts the content word instead and "
+           f"the article drops out of the top-10, which shows up as a B (or A) row. Of {family}'s "
+           f"{checks['B_rows_article_first']['B']} B rows, {checks['B_rows_article_first']['article']} have an "
+           f"article-first gold. Split (final top-10 / final top-1 / A / B):",
+           "", "| reader | article n | top-10 | top-1 | A | B | non-article n | top-10 | top-1 | A | B |",
+           "|---|---|---|---|---|---|---|---|---|---|---|"]
+    for name, sp in checks["article_split"].items():
+        a, n_ = sp["article"], sp["non_article"]
+        cells = lambda d: [str(d["n"])] + ([_f(d.get(x), 3) for x in ("final_top10", "final_top1", "A", "B")]  # noqa: E731
+                                          if d["n"] else ["-"] * 4)
+        md.append("| " + " | ".join([name] + cells(a) + cells(n_)) + " |")
+    md += [""]
     return "\n".join(md), payload
 
 
