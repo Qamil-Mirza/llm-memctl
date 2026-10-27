@@ -28,6 +28,7 @@ REFUSAL_PROBE = "Some note.\nAnswer:"          # the continuation the refusal id
 REFUSAL_TEXTS = (" unknown", " Unknown")
 LAPTOP_ENV = {"MALLOC_ARENA_MAX": "2", "HF_ENABLE_PARALLEL_LOADING": "false"}
 LLAMA_DATE = "09 Oct 2026"
+LLAMA31_DATE = "26 Jul 2024"            # Llama 3.1's template default (no strftime branch)
 
 
 @dataclass(frozen=True)
@@ -103,6 +104,51 @@ PHI4MINI = FamilyConfig(
     stop_tokens=("<|end|>", "<|endoftext|>"), refusal_ids=(17927, 41855),
     bos_in_chat=False, bos_token=None, lens_force_bos=False, laptop_env=LAPTOP_ENV)
 
+# --- §43 Part B: the large partners (rev 1 ruling B2; logit-lens reads only, no fit, no steering) ----------------
+# Facts from the cached tokenizer and config files only (no weights; tests/test_exp43_lens_pod.py re-derives them):
+# - Llama 3.1 8B: same tokenizer as 3.2 (vocab 128256, the same refusal ids), 32 layers, width 4096. Its template has
+#   no strftime branch: an unset date renders "26 Jul 2024", which is what §24's vLLM pod rendered; it is pinned to
+#   that string so the chat text never depends on the machine.
+# - Gemma 3 12B: the same tokenizer and template as the 4B (Gemma3ForConditionalGeneration, layers under
+#   model.language_model), 48 layers, width 3840; no generation_config in the cache, so the stop ids come from the
+#   config and the tokenizer's eos (<eos>).
+# - Phi-4 (14B): NOT the mini's tokenizer. A ChatML-style template (<|im_start|>user<|im_sep|>...<|im_end|>), vocab
+#   100352, eos <|im_end|>, no BOS in the chat text (its "BOS" piece is <|endoftext|>), 40 layers, width 5120. Its
+#   refusal ids after "Answer:" are (9987, 22435), equal to Llama's by coincidence of the BPE. The gold first token of
+#   a question can differ between phi4mini and phi4 (different vocabularies): Part B compares each model's rank of
+#   its own gold first token, so the pairing is by question, not by token.
+# A partner's `partner_key` names its small model (the pair read backwards).
+
+LLAMA8B = FamilyConfig(
+    key="llama8b", model_id="meta-llama/Llama-3.1-8B-Instruct", weights=None,
+    partner_key="llama3b", partner_model_id="meta-llama/Llama-3.2-3B-Instruct",
+    exp_tag="exp24", verdicts="runs/exp24_verdicts.json", verdict_arm="fixed8",
+    layer_path="model.layers", n_layers=32, hidden=4096,
+    template_kwargs={"date_string": LLAMA31_DATE},
+    stop_tokens=("<|eot_id|>", "<|end_of_text|>", "<|eom_id|>"), refusal_ids=(9987, 22435),
+    bos_in_chat=True, bos_token="<|begin_of_text|>", lens_force_bos=True)
+
+GEMMA12B = FamilyConfig(
+    key="gemma12b", model_id="google/gemma-3-12b-it", weights=None,
+    partner_key="gemma4b", partner_model_id="google/gemma-3-4b-it",
+    exp_tag="exp24", verdicts="runs/exp24_verdicts.json", verdict_arm="fixed8",
+    layer_path="model.language_model.layers", n_layers=48, hidden=3840,
+    system_role=False,
+    stop_tokens=("<end_of_turn>", "<eos>"), refusal_ids=(11908, 60355),
+    bos_in_chat=True, bos_token="<bos>", lens_force_bos=True)
+
+PHI4 = FamilyConfig(
+    key="phi4", model_id="microsoft/phi-4", weights=None,
+    partner_key="phi4mini", partner_model_id="microsoft/Phi-4-mini-instruct",
+    exp_tag="exp24", verdicts="runs/exp24_verdicts.json", verdict_arm="fixed8",
+    layer_path="model.layers", n_layers=40, hidden=5120,
+    stop_tokens=("<|im_end|>", "<|endoftext|>"), refusal_ids=(9987, 22435),
+    bos_in_chat=False, bos_token=None, lens_force_bos=False)
+
+PARTNERS = {"llama3b": LLAMA8B, "gemma4b": GEMMA12B, "phi4mini": PHI4}
+# Part B pod families: --family name -> (small, large)
+PAIRS = {"llama": ("llama3b", "llama8b"), "gemma": ("gemma4b", "gemma12b"), "phi": ("phi4mini", "phi4")}
+
 # The Qwen reference, for comparison and tests only: the §38-§42 code paths never read it (their constants stay put).
 QWEN3B = FamilyConfig(
     key="qwen3b", model_id="Qwen/Qwen2.5-3B-Instruct", weights=None,
@@ -112,7 +158,14 @@ QWEN3B = FamilyConfig(
     stop_tokens=("<|im_end|>",), refusal_ids=(9788, 21693),
     bos_in_chat=False, bos_token=None, lens_force_bos=True, laptop_env={})
 
-FAMILIES = {c.key: c for c in (LLAMA3B, GEMMA4B, PHI4MINI, QWEN3B)}
+FAMILIES = {c.key: c for c in (LLAMA3B, GEMMA4B, PHI4MINI, QWEN3B, LLAMA8B, GEMMA12B, PHI4)}
+
+
+def pair(family: str) -> tuple[FamilyConfig, FamilyConfig]:
+    """(small, large) configs of a Part B family name (llama | gemma | phi)."""
+    if family not in PAIRS:
+        raise KeyError(f"unknown Part B family {family!r} (known: {sorted(PAIRS)})")
+    return tuple(FAMILIES[k] for k in PAIRS[family])
 
 
 def get(key: str) -> FamilyConfig:
