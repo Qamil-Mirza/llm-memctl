@@ -1,0 +1,8 @@
+[transformers] Ignoring clean_up_tokenization_spaces=True for BPE tokenizer TokenizersBackend. The clean_up_tokenization post-processing step is designed for WordPiece tokenizers and is destructive for BPE (it strips spaces before punctuation). Set clean_up_tokenization_spaces=False to suppress this warning, or set clean_up_tokenization_spaces_for_bpe_even_though_it_will_corrupt_output=True to force cleanup anyway.
+association {"n_items": 102, "n_skipped": 0, "pass_at_k": {"jlens": 0.08823529411764706, "logit": 0.058823529411764705}, "pass_at_k_all": {"jlens": 0.17647058823529413, "logit": 0.1568627450980392}}
+multihop {"n_items": 93, "n_skipped": 0, "pass_at_k": {"jlens": 0.3279569892473118, "logit": 0.15053763440860216}, "pass_at_k_all": {"jlens": 0.5268817204301075, "logit": 0.46236559139784944}}
+multilingual {"n_items": 107, "n_skipped": 0, "pass_at_k": {"jlens": 0.32242990654205606, "logit": 0.205607476635514}, "pass_at_k_all": {"jlens": 0.48130841121495327, "logit": 0.4392523364485981}}
+order-ops {"n_items": 55, "n_skipped": 0, "pass_at_k": {"jlens": 0.0, "logit": 0.0}, "pass_at_k_all": {"jlens": 0.0, "logit": 0.0}}
+poetry {"n_items": 98, "n_skipped": 0, "pass_at_k": {"jlens": 0.061224489795918366, "logit": 0.04081632653061224}, "pass_at_k_all": {"jlens": 0.08163265306122448, "logit": 0.07142857142857142}}
+typo {"n_items": 96, "n_skipped": 0, "pass_at_k": {"jlens": 0.8229166666666666, "logit": 0.84375}, "pass_at_k_all": {"jlens": 0.84375, "logit": 0.9583333333333334}}
+{"out": "runs/exp43_lens_pod_llama/jl/eval/llama3b.json", "band": [9, 18], "mean_pass_at_k": {"jlens": 0.27046055772826666, "logit": 0.2165891611644155}, "mean_pass_at_k_all": {"jlens": 0.35167389549026323, "logit": 0.3480404296177319}}

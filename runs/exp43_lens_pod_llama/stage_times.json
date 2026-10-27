@@ -1,0 +1,98 @@
+{
+ "family": "llama",
+ "hard_stop_s": 9900,
+ "self_stop_s": 10500,
+ "engine": "hf",
+ "stages": [
+  {
+   "stage": "install",
+   "status": "ok",
+   "elapsed_s": 31,
+   "t_offset_s": 0,
+   "rc": 0,
+   "note": "",
+   "estimate_s": 60
+  },
+  {
+   "stage": "population",
+   "status": "ok",
+   "elapsed_s": 21,
+   "t_offset_s": 31,
+   "rc": 0,
+   "note": "",
+   "estimate_s": null
+  },
+  {
+   "stage": "download",
+   "status": "ok",
+   "elapsed_s": 16,
+   "t_offset_s": 52,
+   "rc": 0,
+   "note": "",
+   "estimate_s": 170
+  },
+  {
+   "stage": "smoke_small",
+   "status": "ok",
+   "elapsed_s": 18,
+   "t_offset_s": 68,
+   "rc": 0,
+   "note": "",
+   "estimate_s": 200
+  },
+  {
+   "stage": "smoke_large",
+   "status": "ok",
+   "elapsed_s": 21,
+   "t_offset_s": 86,
+   "rc": 0,
+   "note": "",
+   "estimate_s": 200
+  },
+  {
+   "stage": "logit_small",
+   "status": "ok",
+   "elapsed_s": 114,
+   "t_offset_s": 107,
+   "rc": 0,
+   "note": "",
+   "estimate_s": 240
+  },
+  {
+   "stage": "logit_large",
+   "status": "ok",
+   "elapsed_s": 169,
+   "t_offset_s": 221,
+   "rc": 0,
+   "note": "",
+   "estimate_s": 300
+  },
+  {
+   "stage": "fit",
+   "status": "ok",
+   "elapsed_s": 2929,
+   "t_offset_s": 390,
+   "rc": 0,
+   "note": "\"n_prompts\": 56",
+   "estimate_s": 3780
+  },
+  {
+   "stage": "jread",
+   "status": "ok",
+   "elapsed_s": 172,
+   "t_offset_s": 3319,
+   "rc": 0,
+   "note": "",
+   "estimate_s": 300
+  },
+  {
+   "stage": "eval",
+   "status": "ok",
+   "elapsed_s": 77,
+   "t_offset_s": 3491,
+   "rc": 0,
+   "note": "",
+   "estimate_s": 150
+  }
+ ]
+}

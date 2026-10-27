@@ -1,0 +1,333 @@
+llama3b jlens: 330 rows, 330 to read
+[transformers] Ignoring clean_up_tokenization_spaces=True for BPE tokenizer TokenizersBackend. The clean_up_tokenization post-processing step is designed for WordPiece tokenizers and is destructive for BPE (it strips spaces before punctuation). Set clean_up_tokenization_spaces=False to suppress this warning, or set clean_up_tokenization_spaces_for_bpe_even_though_it_will_corrupt_output=True to force cleanup anyway.
+[1/330] 00ca467f f0 0.90s n_tokens=853 P1 gold logit=C final_rank=5
+[2/330] 06db6396 f0 0.42s n_tokens=854 P1 gold logit=C final_rank=1
+[3/330] 0bb5a684 f0 0.44s n_tokens=1069 P1 gold logit=C final_rank=8
+[4/330] 0db4c65d f0 0.43s n_tokens=952 P1 gold logit=C final_rank=2
+[5/330] 15745da0 f0 0.37s n_tokens=778 P1 gold logit=C final_rank=1
+[6/330] 1b9b7252 f0 0.43s n_tokens=1498 P1 gold logit=C final_rank=2
+[7/330] 21d02d0d f0 0.43s n_tokens=1024 P1 gold logit=C final_rank=2
+[8/330] 22d2cb42 f0 0.74s n_tokens=1242 P1 gold logit=C final_rank=9
+[9/330] 2698e78f f0 0.42s n_tokens=873 P1 gold logit=C final_rank=2
+[10/330] 28dc39ac f0 0.58s n_tokens=1003 P1 gold logit=C final_rank=2
+[11/330] 37f165cf f0 0.43s n_tokens=857 P1 gold logit=A final_rank=549
+[12/330] 3fe836c9 f0 0.42s n_tokens=833 P1 gold logit=C final_rank=1
+[13/330] 4100d0a0 f0 0.38s n_tokens=832 P1 gold logit=A final_rank=29
+[14/330] 41275add f0 0.40s n_tokens=1046 P1 gold logit=C final_rank=6
+[15/330] 4adc0475 f0 0.42s n_tokens=743 P1 gold logit=C final_rank=1
+[16/330] 4d6b87c8 f0 0.45s n_tokens=1083 P1 gold logit=C final_rank=1
+[17/330] 4f54b7c9 f0 0.43s n_tokens=959 P1 gold logit=C final_rank=4
+[18/330] 58470ed2 f0 0.48s n_tokens=2087 P1 gold logit=A final_rank=280
+[19/330] 59524333 f0 0.43s n_tokens=956 P1 gold logit=C final_rank=1
+[20/330] 5d3d2817 f0 0.37s n_tokens=840 P1 gold logit=C final_rank=5
+[21/330] 60bf93ed f0 0.43s n_tokens=944 P1 gold logit=C final_rank=1
+[22/330] 60d45044 f0 0.51s n_tokens=2590 P1 gold logit=A final_rank=20
+[23/330] 69fee5aa f0 0.42s n_tokens=832 P1 gold logit=C final_rank=2
+[24/330] 6a27ffc2 f0 0.42s n_tokens=853 P1 gold logit=C final_rank=1
+[25/330] 71017276 f0 0.38s n_tokens=877 P1 gold logit=C final_rank=4
+[26/330] 71a3fd6b f0 0.40s n_tokens=783 P1 gold logit=C final_rank=4
+[27/330] 75832dbd f0 0.38s n_tokens=827 P1 gold logit=A final_rank=64
+[28/330] 76d63226 f0 0.40s n_tokens=1011 P1 gold logit=C final_rank=1
+[29/330] 7e00a6cb f0 0.39s n_tokens=1004 P1 gold logit=A final_rank=15
+[30/330] 94f70d80 f0 0.41s n_tokens=1239 P1 gold logit=C final_rank=1
+[31/330] 95bcc1c8 f0 0.39s n_tokens=951 P1 gold logit=C final_rank=1
+[32/330] 982b5123 f0 0.47s n_tokens=1370 P1 gold logit=A final_rank=231
+[33/330] 9ea5eabc f0 0.43s n_tokens=872 P1 gold logit=A final_rank=350
+[34/330] 9ee3ecd6 f0 0.46s n_tokens=1345 P1 gold logit=C final_rank=3
+[35/330] a4996e51 f0 0.49s n_tokens=1770 P1 gold logit=C final_rank=1
+[36/330] ac031881 f0 0.38s n_tokens=876 P1 gold logit=C final_rank=2
+[37/330] b320f3f8 f0 0.38s n_tokens=814 P1 gold logit=C final_rank=8
+[38/330] b86304ba f0 0.40s n_tokens=933 P1 gold logit=C final_rank=8
+[39/330] ba61f0b9 f0 0.48s n_tokens=1532 P1 gold logit=C final_rank=1
+[40/330] bbf86515 f0 0.49s n_tokens=1096 P1 gold logit=C final_rank=1
+[41/330] c14c00dd f0 0.40s n_tokens=915 P1 gold logit=C final_rank=7
+[42/330] c5e8278d f0 0.38s n_tokens=848 P1 gold logit=C final_rank=1
+[43/330] c7cf7dfd f0 0.42s n_tokens=1174 P1 gold logit=C final_rank=1
+[44/330] c8c3f81d f0 0.42s n_tokens=1321 P1 gold logit=C final_rank=1
+[45/330] d6062bb9 f0 0.42s n_tokens=876 P1 gold logit=C final_rank=2
+[46/330] e493bb7c f0 0.44s n_tokens=1039 P1 gold logit=A final_rank=11
+[47/330] e4e14d04 f0 0.44s n_tokens=1011 P1 gold logit=A final_rank=18
+[48/330] e66b632c f0 0.45s n_tokens=1095 P1 gold logit=C final_rank=1
+[49/330] fca70973 f0 0.37s n_tokens=823 P1 gold logit=A final_rank=43
+[50/330] fca762bc f0 0.40s n_tokens=1108 P1 gold logit=C final_rank=2
+[51/330] fea54f57 f0 0.41s n_tokens=1050 P1 gold logit=C final_rank=2
+[52/330] gpt4_18c2b244 f0 0.50s n_tokens=1119 P1 gold logit=A final_rank=22
+[53/330] gpt4_213fd887 f0 0.45s n_tokens=1038 P1 gold logit=C final_rank=5
+[54/330] gpt4_4929293a f0 0.42s n_tokens=860 P1 gold logit=C final_rank=1
+[55/330] gpt4_4ef30696 f0 0.42s n_tokens=769 P1 gold logit=A final_rank=19
+[56/330] gpt4_70e84552 f0 0.47s n_tokens=1335 P1 gold logit=C final_rank=4
+[57/330] gpt4_7bc6cf22 f0 0.39s n_tokens=933 P1 gold logit=A final_rank=16
+[58/330] gpt4_85da3956 f0 0.43s n_tokens=1022 P1 gold logit=C final_rank=3
+[59/330] gpt4_88806d6e f0 0.42s n_tokens=863 P1 gold logit=C final_rank=2
+[60/330] gpt4_8e165409 f0 0.45s n_tokens=1124 P1 gold logit=C final_rank=4
+[61/330] gpt4_98f46fc6 f0 0.52s n_tokens=1924 P1 gold logit=C final_rank=8
+[62/330] 07741c44 f1 0.45s n_tokens=1081 P1 gold logit=C final_rank=3
+[63/330] 0862e8bf f1 0.38s n_tokens=889 P1 gold logit=C final_rank=3
+[64/330] 08f4fc43 f1 0.43s n_tokens=996 P1 gold logit=A final_rank=30
+[65/330] 0ddfec37 f1 0.43s n_tokens=948 P1 gold logit=C final_rank=1
+[66/330] 0e4e4c46 f1 0.47s n_tokens=1539 P1 gold logit=C final_rank=1
+[67/330] 0f05491a f1 0.41s n_tokens=848 P1 gold logit=C final_rank=2
+[68/330] 118b2229 f1 0.37s n_tokens=730 P1 gold logit=C final_rank=1
+[69/330] 19b5f2b3 f1 0.38s n_tokens=894 P1 gold logit=C final_rank=1
+[70/330] 1c549ce4 f1 0.45s n_tokens=1233 P1 gold logit=C final_rank=2
+[71/330] 2133c1b5 f1 0.43s n_tokens=972 P1 gold logit=C final_rank=1
+[72/330] 28bcfaac f1 0.40s n_tokens=1052 P1 gold logit=C final_rank=1
+[73/330] 29f2956b f1 0.38s n_tokens=895 P1 gold logit=C final_rank=1
+[74/330] 2bf43736 f1 0.48s n_tokens=2034 P1 gold logit=C final_rank=1
+[75/330] 2ebe6c90 f1 0.43s n_tokens=965 P1 gold logit=C final_rank=1
+[76/330] 36580ce8 f1 0.38s n_tokens=752 P1 gold logit=C final_rank=1
+[77/330] 3ba21379 f1 0.48s n_tokens=1601 P1 gold logit=C final_rank=1
+[78/330] 3f1e9474 f1 0.41s n_tokens=1207 P1 gold logit=C final_rank=1
+[79/330] 3fdac837 f1 0.44s n_tokens=1108 P1 gold logit=C final_rank=10
+[80/330] 42ec0761 f1 0.46s n_tokens=1286 P1 gold logit=C final_rank=1
+[81/330] 4388e9dd f1 0.42s n_tokens=1312 P1 gold logit=C final_rank=1
+[82/330] 4bc144e2 f1 0.45s n_tokens=1163 P1 gold logit=C final_rank=1
+[83/330] 51b23612 f1 0.40s n_tokens=1085 P1 gold logit=C final_rank=3
+[84/330] 5831f84d f1 0.43s n_tokens=968 P1 gold logit=C final_rank=1
+[85/330] 618f13b2 f1 0.45s n_tokens=1169 P1 gold logit=C final_rank=6
+[86/330] 66f24dbb f1 0.39s n_tokens=984 P1 gold logit=C final_rank=4
+[87/330] 6a1eabeb f1 0.52s n_tokens=2060 P1 gold logit=C final_rank=2
+[88/330] 6ade9755 f1 0.43s n_tokens=1435 P1 gold logit=C final_rank=1
+[89/330] 7401057b f1 0.48s n_tokens=1576 P1 gold logit=A final_rank=23
+[90/330] 7527f7e2 f1 0.39s n_tokens=899 P1 gold logit=C final_rank=1
+[91/330] 7a8d0b71 f1 0.43s n_tokens=1484 P1 gold logit=C final_rank=1
+[92/330] 85fa3a3f f1 0.48s n_tokens=970 P1 gold logit=C final_rank=1
+[93/330] 86f00804 f1 0.38s n_tokens=860 P1 gold logit=C final_rank=2
+[94/330] 89527b6b f1 0.49s n_tokens=2283 P1 gold logit=C final_rank=2
+[95/330] 8979f9ec f1 0.47s n_tokens=1398 P1 gold logit=C final_rank=1
+[96/330] 89941a94 f1 0.47s n_tokens=1362 P1 gold logit=C final_rank=3
+[97/330] 8cf51dda f1 0.42s n_tokens=1325 P1 gold logit=C final_rank=3
+[98/330] 8ebdbe50 f1 0.38s n_tokens=876 P1 gold logit=C final_rank=1
+[99/330] 993da5e2 f1 0.45s n_tokens=1140 P1 gold logit=C final_rank=3
+[100/330] b3c15d39 f1 0.45s n_tokens=1168 P1 gold logit=C final_rank=7
+[101/330] b6019101 f1 0.42s n_tokens=832 P1 gold logit=C final_rank=1
+[102/330] b6025781 f1 0.38s n_tokens=789 P1 gold logit=A final_rank=138
+[103/330] b9cfe692 f1 0.53s n_tokens=883 P1 gold logit=C final_rank=1
+[104/330] bb7c3b45 f1 0.46s n_tokens=1196 P1 gold logit=C final_rank=1
+[105/330] c2ac3c61 f1 0.47s n_tokens=1346 P1 gold logit=C final_rank=1
+[106/330] c9f37c46 f1 0.43s n_tokens=979 P1 gold logit=C final_rank=3
+[107/330] caf03d32 f1 0.45s n_tokens=753 P1 gold logit=A final_rank=28
+[108/330] cc539528 f1 0.41s n_tokens=1122 P1 gold logit=A final_rank=34
+[109/330] cc6d1ec1 f1 0.44s n_tokens=910 P1 gold logit=A final_rank=41
+[110/330] d52b4f67 f1 0.41s n_tokens=1157 P1 gold logit=C final_rank=2
+[111/330] d7c942c3 f1 0.42s n_tokens=881 P1 gold logit=C final_rank=2
+[112/330] d905b33f f1 0.43s n_tokens=975 P1 gold logit=C final_rank=1
+[113/330] e01b8e2f f1 0.43s n_tokens=1565 P1 gold logit=C final_rank=2
+[114/330] e48988bc f1 0.42s n_tokens=1333 P1 gold logit=C final_rank=1
+[115/330] f0e564bc f1 0.44s n_tokens=909 P1 gold logit=C final_rank=2
+[116/330] gpt4_1d80365e f1 0.42s n_tokens=848 P1 gold logit=C final_rank=1
+[117/330] gpt4_1e4a8aeb f1 0.42s n_tokens=871 P1 gold logit=C final_rank=3
+[118/330] gpt4_468eb064 f1 0.42s n_tokens=1306 P1 gold logit=C final_rank=1
+[119/330] gpt4_4cd9eba1 f1 0.43s n_tokens=1011 P1 gold logit=A final_rank=18
+[120/330] gpt4_5438fa52 f1 0.49s n_tokens=1725 P1 gold logit=C final_rank=6
+[121/330] gpt4_74aed68e f1 0.43s n_tokens=875 P1 gold logit=A final_rank=15
+[122/330] gpt4_78cf46a3 f1 0.46s n_tokens=1272 P1 gold logit=A final_rank=206
+[123/330] gpt4_a1b77f9c f1 0.64s n_tokens=939 P1 gold logit=C final_rank=6
+[124/330] gpt4_af6db32f f1 0.38s n_tokens=891 P1 gold logit=A final_rank=46
+[125/330] gpt4_b0863698 f1 0.44s n_tokens=1618 P1 gold logit=C final_rank=5
+[126/330] gpt4_b5700ca9 f1 0.41s n_tokens=1207 P1 gold logit=A final_rank=20
+[127/330] 0100672e f2 0.48s n_tokens=1484
+[128/330] 07741c45 f2 0.45s n_tokens=1077
+[129/330] 08e075c7 f2 0.44s n_tokens=1095
+[130/330] 10d9b85a f2 0.45s n_tokens=1177
+[131/330] 16c90bf4 f2 0.39s n_tokens=898
+[132/330] 18bc8abd f2 0.50s n_tokens=1450
+[133/330] 1d4da289 f2 0.41s n_tokens=1158
+[134/330] 1de5cff2 f2 0.39s n_tokens=940
+[135/330] 1faac195 f2 0.38s n_tokens=809
+[136/330] 2311e44b f2 0.47s n_tokens=1469
+[137/330] 2318644b f2 0.43s n_tokens=924
+[138/330] 3d86fd0a f2 0.36s n_tokens=628
+[139/330] 3e321797 f2 0.43s n_tokens=1346
+[140/330] 45dc21b6 f2 0.42s n_tokens=820
+[141/330] 4b24c848 f2 0.43s n_tokens=912
+[142/330] 4baee567 f2 0.41s n_tokens=1204
+[143/330] 4fd1909e f2 0.40s n_tokens=1029
+[144/330] 51a45a95 f2 0.40s n_tokens=1053
+[145/330] 5a7937c8 f2 0.47s n_tokens=930
+[146/330] 5c40ec5b f2 0.44s n_tokens=1171
+[147/330] 60036106 f2 0.50s n_tokens=1795
+[148/330] 6222b6eb f2 0.43s n_tokens=1520
+[149/330] 6aeb4375 f2 0.45s n_tokens=1255
+[150/330] 6b168ec8 f2 0.39s n_tokens=979
+[151/330] 6c49646a f2 0.43s n_tokens=977
+[152/330] 6e984301 f2 0.44s n_tokens=1102
+[153/330] 6f9b354f f2 0.43s n_tokens=1338
+[154/330] 70b3e69b f2 0.43s n_tokens=1514
+[155/330] 71315a70 f2 0.42s n_tokens=868
+[156/330] 72e3ee87 f2 0.46s n_tokens=1327
+[157/330] 7405e8b1 f2 0.53s n_tokens=2101
+[158/330] 75f70248 f2 0.41s n_tokens=1132
+[159/330] 853b0a1d f2 0.43s n_tokens=1293
+[160/330] 86b68151 f2 0.44s n_tokens=1595
+[161/330] 87f22b4a f2 0.42s n_tokens=887
+[162/330] 8e9d538c f2 0.47s n_tokens=1585
+[163/330] 91b15a6e f2 0.44s n_tokens=1029
+[164/330] 9a707b81 f2 0.43s n_tokens=928
+[165/330] 9aaed6a3 f2 0.43s n_tokens=1020
+[166/330] a1eacc2a f2 0.43s n_tokens=976
+[167/330] a3045048 f2 0.43s n_tokens=952
+[168/330] a40e080f f2 0.40s n_tokens=1076
+[169/330] a89d7624 f2 0.44s n_tokens=1026
+[170/330] aae3761f f2 0.48s n_tokens=1071
+[171/330] ad7109d1 f2 0.38s n_tokens=871
+[172/330] bc8a6e93 f2 0.40s n_tokens=924
+[173/330] bcbe585f f2 0.40s n_tokens=931
+[174/330] c960da58 f2 0.43s n_tokens=1540
+[175/330] ceb54acb f2 0.41s n_tokens=1113
+[176/330] cf22b7bf f2 0.45s n_tokens=1054
+[177/330] e9327a54 f2 0.41s n_tokens=1257
+[178/330] ed4ddc30 f2 0.42s n_tokens=892
+[179/330] ef66a6e5 f2 0.41s n_tokens=775
+[180/330] f685340e f2 0.41s n_tokens=844
+[181/330] gpt4_0a05b494 f2 0.43s n_tokens=946
+[182/330] gpt4_0b2f1d21 f2 0.46s n_tokens=1303
+[183/330] gpt4_1916e0ea f2 0.43s n_tokens=918
+[184/330] gpt4_2487a7cb f2 0.47s n_tokens=1470
+[185/330] gpt4_2c50253f f2 0.41s n_tokens=755
+[186/330] gpt4_4edbafa2 f2 0.42s n_tokens=881
+[187/330] gpt4_4fc4f797 f2 0.49s n_tokens=1709
+[188/330] gpt4_68e94287 f2 0.42s n_tokens=861
+[189/330] gpt4_93f6379c f2 0.57s n_tokens=1604
+[190/330] gpt4_c27434e8 f2 0.46s n_tokens=1236
+[191/330] gpt4_fa19884c f2 0.48s n_tokens=1246
+[192/330] gpt4_fa19884d f2 0.44s n_tokens=926
+[193/330] 099778bb f3 0.48s n_tokens=1568
+[194/330] 10e09553 f3 0.47s n_tokens=1566
+[195/330] 1192316e f3 0.48s n_tokens=1648
+[196/330] 184da446 f3 0.45s n_tokens=1162
+[197/330] 18dcd5a5 f3 0.43s n_tokens=1618
+[198/330] 1f2b8d4f f3 0.45s n_tokens=1224
+[199/330] 27016adc f3 0.47s n_tokens=1563
+[200/330] 311778f1 f3 0.39s n_tokens=985
+[201/330] 32260d93 f3 0.37s n_tokens=709
+[202/330] 370a8ff4 f3 0.42s n_tokens=884
+[203/330] 3b6f954b f3 0.42s n_tokens=1298
+[204/330] 4c36ccef f3 0.39s n_tokens=969
+[205/330] 4dfccbf7 f3 0.45s n_tokens=1140
+[206/330] 5025383b f3 0.43s n_tokens=896
+[207/330] 545bd2b5 f3 0.42s n_tokens=1309
+[208/330] 577d4d32 f3 0.41s n_tokens=1064
+[209/330] 58bf7951 f3 0.40s n_tokens=1053
+[210/330] 58ef2f1c f3 0.37s n_tokens=854
+[211/330] 5a4f22c0 f3 0.53s n_tokens=2281
+[212/330] 60472f9c f3 0.62s n_tokens=1155
+[213/330] 65240037 f3 0.49s n_tokens=2168
+[214/330] 681a1674 f3 0.42s n_tokens=895
+[215/330] 8077ef71 f3 0.38s n_tokens=882
+[216/330] 8464fc84 f3 0.40s n_tokens=934
+[217/330] 8a2466db f3 0.38s n_tokens=802
+[218/330] 8b9d4367 f3 0.41s n_tokens=1234
+[219/330] 8cf4d046 f3 0.46s n_tokens=1119
+[220/330] 8fb83627 f3 0.49s n_tokens=1085
+[221/330] a06e4cfe f3 0.44s n_tokens=1785
+[222/330] a2f3aa27 f3 0.48s n_tokens=1647
+[223/330] a82c026e f3 0.38s n_tokens=864
+[224/330] a96c20ee f3 0.42s n_tokens=858
+[225/330] af8d2e46 f3 0.41s n_tokens=1212
+[226/330] affe2881 f3 0.44s n_tokens=1066
+[227/330] b0479f84 f3 0.41s n_tokens=879
+[228/330] b29f3365 f3 0.42s n_tokens=875
+[229/330] b5ef892d f3 0.48s n_tokens=1083
+[230/330] c4ea545c f3 0.44s n_tokens=1033
+[231/330] c6853660 f3 0.46s n_tokens=1367
+[232/330] c8090214 f3 0.47s n_tokens=1481
+[233/330] c8f1aeed f3 0.44s n_tokens=1587
+[234/330] caf9ead2 f3 0.41s n_tokens=1049
+[235/330] cc06de0d f3 0.45s n_tokens=1134
+[236/330] cc5ded98 f3 0.45s n_tokens=1050
+[237/330] ccb36322 f3 0.38s n_tokens=798
+[238/330] db467c8c f3 0.41s n_tokens=822
+[239/330] dcfa8644 f3 0.44s n_tokens=935
+[240/330] e56a43b9 f3 0.41s n_tokens=803
+[241/330] e8a79c70 f3 0.42s n_tokens=1346
+[242/330] e982271f f3 0.40s n_tokens=1027
+[243/330] f0853d11 f3 0.43s n_tokens=901
+[244/330] f523d9fe f3 0.39s n_tokens=975
+[245/330] f9e8c073 f3 0.46s n_tokens=1390
+[246/330] faba32e5 f3 0.37s n_tokens=849
+[247/330] gpt4_1a1dc16d f3 0.44s n_tokens=1107
+[248/330] gpt4_1d4ab0c9 f3 0.41s n_tokens=760
+[249/330] gpt4_21adecb5 f3 0.42s n_tokens=793
+[250/330] gpt4_2d58bcd6 f3 0.45s n_tokens=1099
+[251/330] gpt4_385a5000 f3 0.45s n_tokens=1078
+[252/330] gpt4_59149c77 f3 0.47s n_tokens=1406
+[253/330] gpt4_6dc9b45b f3 0.38s n_tokens=866
+[254/330] gpt4_76048e76 f3 0.44s n_tokens=965
+[255/330] gpt4_7a0daae1 f3 0.42s n_tokens=860
+[256/330] gpt4_7ddcf75f f3 0.39s n_tokens=892
+[257/330] gpt4_d31cdae3 f3 0.43s n_tokens=1013
+[258/330] gpt4_d9af6064 f3 0.46s n_tokens=1296
+[259/330] gpt4_e414231e f3 0.42s n_tokens=889
+[260/330] gpt4_fe651585 f3 0.41s n_tokens=832
+[261/330] 001be529 f4 0.38s n_tokens=880
+[262/330] 01493427 f4 0.41s n_tokens=812
+[263/330] 031748ae f4 0.43s n_tokens=927
+[264/330] 09ba9854 f4 0.47s n_tokens=1554
+[265/330] 0e5e2d1a f4 0.42s n_tokens=1303
+[266/330] 0ea62687 f4 0.43s n_tokens=981
+[267/330] 195a1a1b f4 0.39s n_tokens=904
+[268/330] 1da05512 f4 0.42s n_tokens=796
+[269/330] 1e043500 f4 0.37s n_tokens=755
+[270/330] 21436231 f4 0.44s n_tokens=1782
+[271/330] 26bdc477 f4 0.44s n_tokens=1108
+[272/330] 2a1811e2 f4 0.41s n_tokens=843
+[273/330] 3249768e f4 0.42s n_tokens=1334
+[274/330] 352ab8bd f4 0.48s n_tokens=2093
+[275/330] 37d43f65 f4 0.46s n_tokens=1793
+[276/330] 488d3006 f4 0.42s n_tokens=1293
+[277/330] 50635ada f4 0.44s n_tokens=1157
+[278/330] 55241a1f f4 0.47s n_tokens=1462
+[279/330] 57f827a0 f4 0.39s n_tokens=907
+[280/330] 5809eb10 f4 0.49s n_tokens=2183
+[281/330] 5e1b23de f4 0.38s n_tokens=967
+[282/330] 60159905 f4 0.43s n_tokens=966
+[283/330] 603deb26 f4 0.47s n_tokens=1060
+[284/330] 6071bd76 f4 0.47s n_tokens=1285
+[285/330] 6456829e f4 0.42s n_tokens=857
+[286/330] 6ae235be f4 0.47s n_tokens=1811
+[287/330] 6b7dfb22 f4 0.40s n_tokens=913
+[288/330] 7161e7e2 f4 0.50s n_tokens=2351
+[289/330] 720133ac f4 0.44s n_tokens=1020
+[290/330] 726462e0 f4 0.41s n_tokens=1063
+[291/330] 778164c6 f4 0.40s n_tokens=1075
+[292/330] 7a87bd0c f4 0.44s n_tokens=1170
+[293/330] 852ce960 f4 0.41s n_tokens=764
+[294/330] 8550ddae f4 0.40s n_tokens=1062
+[295/330] 8a137a7f f4 0.41s n_tokens=1149
+[296/330] 8aef76bc f4 0.40s n_tokens=1106
+[297/330] 8c18457d f4 0.49s n_tokens=1036
+[298/330] a11281a2 f4 0.47s n_tokens=1508
+[299/330] af082822 f4 0.38s n_tokens=890
+[300/330] b01defab f4 0.48s n_tokens=1505
+[301/330] b46e15ee f4 0.54s n_tokens=934
+[302/330] b759caee f4 0.41s n_tokens=1249
+[303/330] c19f7a0b f4 0.39s n_tokens=975
+[304/330] c7dc5443 f4 0.42s n_tokens=877
+[305/330] ce6d2d27 f4 0.41s n_tokens=771
+[306/330] d596882b f4 0.43s n_tokens=1441
+[307/330] dccbc061 f4 0.43s n_tokens=1422
+[308/330] dd2973ad f4 0.45s n_tokens=1168
+[309/330] e25c3b8d f4 0.43s n_tokens=963
+[310/330] e6041065 f4 0.45s n_tokens=1110
+[311/330] e831120c f4 0.51s n_tokens=1904
+[312/330] ec81a493 f4 0.37s n_tokens=751
+[313/330] f4f1d8a4 f4 0.40s n_tokens=1051
+[314/330] f8c5f88b f4 0.40s n_tokens=1097
+[315/330] gpt4_2312f94c f4 0.45s n_tokens=1151
+[316/330] gpt4_2f584639 f4 0.47s n_tokens=1323
+[317/330] gpt4_468eb063 f4 0.41s n_tokens=1143
+[318/330] gpt4_483dd43c f4 0.45s n_tokens=1226
+[319/330] gpt4_61e13b3c f4 0.42s n_tokens=867
+[320/330] gpt4_6ed717ea f4 0.42s n_tokens=857
+[321/330] gpt4_7ca326fa f4 0.51s n_tokens=1074
+[322/330] gpt4_7de946e7 f4 0.46s n_tokens=1386
+[323/330] gpt4_8279ba02 f4 0.39s n_tokens=899
+[324/330] gpt4_a2d1d1f6 f4 0.38s n_tokens=868
+[325/330] gpt4_b4a80587 f4 0.44s n_tokens=897
+[326/330] gpt4_b5700ca0 f4 0.38s n_tokens=832
+[327/330] gpt4_cd90e484 f4 0.43s n_tokens=1019
+[328/330] gpt4_e072b769 f4 0.43s n_tokens=1486
+[329/330] gpt4_e414231f f4 0.54s n_tokens=1003
+[330/330] gpt4_f49edff3 f4 0.49s n_tokens=918
+{"reader": "llama3b", "model_id": "meta-llama/Llama-3.2-3B-Instruct", "variant": "jlens", "smoke": false, "device": "cuda", "dtype": "bfloat16", "load_s": 6.177177406963892, "questions": 330, "seconds_per_question": 0.435447794226859, "wall_s": 144.70748319209088, "deadline_cut": false, "peak_rss_mb": 5631.75390625, "peak_gpu_mb": 7686.4443359375, "n_layers": 28, "d_model": 3072}
