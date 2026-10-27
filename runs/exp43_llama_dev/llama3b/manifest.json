@@ -1,0 +1,102 @@
+{
+ "engine": "hf-transformers-5.17.0-cpu-float32",
+ "model": "meta-llama/Llama-3.2-3B-Instruct",
+ "family": {
+  "key": "llama3b",
+  "model_id": "meta-llama/Llama-3.2-3B-Instruct",
+  "template_kwargs": {
+   "date_string": "09 Oct 2026"
+  },
+  "system_text": null,
+  "system_role": true,
+  "stop_tokens": [
+   "<|eot_id|>",
+   "<|end_of_text|>",
+   "<|eom_id|>"
+  ],
+  "refusal_ids": [
+   9987,
+   22435
+  ]
+ },
+ "layers": [
+  17,
+  20,
+  22,
+  25
+ ],
+ "alphas": [
+  1.0,
+  2.0,
+  4.0
+ ],
+ "unit": "vnorm",
+ "max_new_tokens": 16,
+ "max_new_full": 256,
+ "wording_sha256": "a20ca9fbd69a053a4ce392c38cf1bc7bda31463ab1e7e1511e510b2c1fe4ac58",
+ "classifier": "v2: refusal = \u00a723 rule on the phrase; degenerate = empty / no alnum / a run of >= 8 identical ids",
+ "gate_rule": "rev 1 A2: Steer answers >= 7; gold(Steer) - gold(Steer-cut) >= 2 rows (D1 provisional); Random answers <= 0.2 x Steer answers; degenerate <= 1; choice on the gate alone, ties -> deeper layer, then smaller alpha",
+ "G": [
+  "0862e8bf",
+  "2ebe6c90",
+  "37f165cf",
+  "58470ed2",
+  "60d45044",
+  "71017276",
+  "7401057b",
+  "76d63226",
+  "7e00a6cb",
+  "b86304ba",
+  "c14c00dd",
+  "c9f37c46",
+  "fca70973"
+ ],
+ "P0": [
+  "09d032c9",
+  "0a995998",
+  "0edc2aef",
+  "1568498a",
+  "157a136e",
+  "1903aded",
+  "1a1907b4",
+  "1cea1afa",
+  "3c1045c8",
+  "6d550036",
+  "73d42213",
+  "81507db6",
+  "95228167",
+  "9d25d4e0",
+  "a3838d2b",
+  "a9f6b44c",
+  "b46e15ed",
+  "c4a1ceb8",
+  "c4f10528",
+  "d01c6aa8",
+  "d3ab962e",
+  "edced276",
+  "gpt4_1e4a8aec",
+  "gpt4_2f8be40d",
+  "gpt4_45189cb4",
+  "gpt4_4929293b",
+  "gpt4_731e37d7",
+  "gpt4_7abb270c",
+  "gpt4_a56e767c",
+  "gpt4_d6585ce9"
+ ],
+ "n_check": 5,
+ "G_gold_in_cached_note": {
+  "0862e8bf": true,
+  "2ebe6c90": false,
+  "37f165cf": false,
+  "58470ed2": false,
+  "60d45044": false,
+  "71017276": false,
+  "7401057b": false,
+  "76d63226": false,
+  "7e00a6cb": false,
+  "b86304ba": false,
+  "c14c00dd": true,
+  "c9f37c46": false,
+  "fca70973": false
+ }
+}

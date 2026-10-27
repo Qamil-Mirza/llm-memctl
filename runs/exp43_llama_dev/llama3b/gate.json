@@ -1,0 +1,372 @@
+{
+ "rule": "rev 1 A2: Steer answers >= 7; gold(Steer) - gold(Steer-cut) >= 2 rows (D1 provisional); Random answers <= 0.2 x Steer answers; degenerate <= 1; choice on the gate alone, ties -> deeper layer, then smaller alpha",
+ "n_G": 13,
+ "table": {
+  "steer:L17:a1:vnorm": {
+   "layer": 17,
+   "alpha": 1.0,
+   "steer": {
+    "n": 13,
+    "ans": 3,
+    "degenerate": 0,
+    "refusal": 10,
+    "gold": 1
+   },
+   "cut": null,
+   "random": null,
+   "ans_min": 7,
+   "ans_ok": false,
+   "degen_ok": true,
+   "gold_diff": null,
+   "gold_ok": null,
+   "random_bound": 0.6000000000000001,
+   "random_ok": null,
+   "pass": false
+  },
+  "steer:L17:a2:vnorm": {
+   "layer": 17,
+   "alpha": 2.0,
+   "steer": {
+    "n": 13,
+    "ans": 7,
+    "degenerate": 0,
+    "refusal": 6,
+    "gold": 2
+   },
+   "cut": {
+    "n": 13,
+    "ans": 3,
+    "degenerate": 0,
+    "refusal": 10,
+    "gold": 0
+   },
+   "random": {
+    "n": 13,
+    "ans": 0,
+    "degenerate": 0,
+    "refusal": 13,
+    "gold": 0
+   },
+   "ans_min": 7,
+   "ans_ok": true,
+   "degen_ok": true,
+   "gold_diff": 2,
+   "gold_ok": true,
+   "random_bound": 1.4000000000000001,
+   "random_ok": true,
+   "pass": true
+  },
+  "steer:L17:a4:vnorm": {
+   "layer": 17,
+   "alpha": 4.0,
+   "steer": {
+    "n": 13,
+    "ans": 12,
+    "degenerate": 0,
+    "refusal": 1,
+    "gold": 3
+   },
+   "cut": {
+    "n": 13,
+    "ans": 7,
+    "degenerate": 0,
+    "refusal": 6,
+    "gold": 0
+   },
+   "random": null,
+   "ans_min": 7,
+   "ans_ok": true,
+   "degen_ok": true,
+   "gold_diff": 3,
+   "gold_ok": true,
+   "random_bound": 2.4000000000000004,
+   "random_ok": null,
+   "pass": null
+  },
+  "steer:L20:a1:vnorm": {
+   "layer": 20,
+   "alpha": 1.0,
+   "steer": {
+    "n": 13,
+    "ans": 3,
+    "degenerate": 0,
+    "refusal": 10,
+    "gold": 0
+   },
+   "cut": null,
+   "random": null,
+   "ans_min": 7,
+   "ans_ok": false,
+   "degen_ok": true,
+   "gold_diff": null,
+   "gold_ok": null,
+   "random_bound": 0.6000000000000001,
+   "random_ok": null,
+   "pass": false
+  },
+  "steer:L20:a2:vnorm": {
+   "layer": 20,
+   "alpha": 2.0,
+   "steer": {
+    "n": 13,
+    "ans": 7,
+    "degenerate": 0,
+    "refusal": 6,
+    "gold": 1
+   },
+   "cut": {
+    "n": 13,
+    "ans": 3,
+    "degenerate": 0,
+    "refusal": 10,
+    "gold": 0
+   },
+   "random": null,
+   "ans_min": 7,
+   "ans_ok": true,
+   "degen_ok": true,
+   "gold_diff": 1,
+   "gold_ok": false,
+   "random_bound": 1.4000000000000001,
+   "random_ok": null,
+   "pass": false
+  },
+  "steer:L20:a4:vnorm": {
+   "layer": 20,
+   "alpha": 4.0,
+   "steer": {
+    "n": 13,
+    "ans": 12,
+    "degenerate": 0,
+    "refusal": 1,
+    "gold": 1
+   },
+   "cut": {
+    "n": 13,
+    "ans": 10,
+    "degenerate": 0,
+    "refusal": 3,
+    "gold": 0
+   },
+   "random": null,
+   "ans_min": 7,
+   "ans_ok": true,
+   "degen_ok": true,
+   "gold_diff": 1,
+   "gold_ok": false,
+   "random_bound": 2.4000000000000004,
+   "random_ok": null,
+   "pass": false
+  },
+  "steer:L22:a1:vnorm": {
+   "layer": 22,
+   "alpha": 1.0,
+   "steer": {
+    "n": 13,
+    "ans": 3,
+    "degenerate": 0,
+    "refusal": 10,
+    "gold": 0
+   },
+   "cut": null,
+   "random": null,
+   "ans_min": 7,
+   "ans_ok": false,
+   "degen_ok": true,
+   "gold_diff": null,
+   "gold_ok": null,
+   "random_bound": 0.6000000000000001,
+   "random_ok": null,
+   "pass": false
+  },
+  "steer:L22:a2:vnorm": {
+   "layer": 22,
+   "alpha": 2.0,
+   "steer": {
+    "n": 13,
+    "ans": 6,
+    "degenerate": 0,
+    "refusal": 7,
+    "gold": 1
+   },
+   "cut": null,
+   "random": null,
+   "ans_min": 7,
+   "ans_ok": false,
+   "degen_ok": true,
+   "gold_diff": null,
+   "gold_ok": null,
+   "random_bound": 1.2000000000000002,
+   "random_ok": null,
+   "pass": false
+  },
+  "steer:L22:a4:vnorm": {
+   "layer": 22,
+   "alpha": 4.0,
+   "steer": {
+    "n": 13,
+    "ans": 13,
+    "degenerate": 0,
+    "refusal": 0,
+    "gold": 1
+   },
+   "cut": {
+    "n": 13,
+    "ans": 13,
+    "degenerate": 0,
+    "refusal": 0,
+    "gold": 0
+   },
+   "random": null,
+   "ans_min": 7,
+   "ans_ok": true,
+   "degen_ok": true,
+   "gold_diff": 1,
+   "gold_ok": false,
+   "random_bound": 2.6,
+   "random_ok": null,
+   "pass": false
+  },
+  "steer:L25:a1:vnorm": {
+   "layer": 25,
+   "alpha": 1.0,
+   "steer": {
+    "n": 13,
+    "ans": 4,
+    "degenerate": 0,
+    "refusal": 9,
+    "gold": 1
+   },
+   "cut": null,
+   "random": null,
+   "ans_min": 7,
+   "ans_ok": false,
+   "degen_ok": true,
+   "gold_diff": null,
+   "gold_ok": null,
+   "random_bound": 0.8,
+   "random_ok": null,
+   "pass": false
+  },
+  "steer:L25:a2:vnorm": {
+   "layer": 25,
+   "alpha": 2.0,
+   "steer": {
+    "n": 13,
+    "ans": 9,
+    "degenerate": 0,
+    "refusal": 4,
+    "gold": 3
+   },
+   "cut": {
+    "n": 13,
+    "ans": 3,
+    "degenerate": 0,
+    "refusal": 10,
+    "gold": 0
+   },
+   "random": {
+    "n": 13,
+    "ans": 2,
+    "degenerate": 0,
+    "refusal": 11,
+    "gold": 0
+   },
+   "ans_min": 7,
+   "ans_ok": true,
+   "degen_ok": true,
+   "gold_diff": 3,
+   "gold_ok": true,
+   "random_bound": 1.8,
+   "random_ok": false,
+   "pass": false
+  },
+  "steer:L25:a4:vnorm": {
+   "layer": 25,
+   "alpha": 4.0,
+   "steer": {
+    "n": 13,
+    "ans": 13,
+    "degenerate": 0,
+    "refusal": 0,
+    "gold": 4
+   },
+   "cut": {
+    "n": 13,
+    "ans": 11,
+    "degenerate": 0,
+    "refusal": 2,
+    "gold": 0
+   },
+   "random": {
+    "n": 13,
+    "ans": 4,
+    "degenerate": 0,
+    "refusal": 9,
+    "gold": 0
+   },
+   "ans_min": 7,
+   "ans_ok": true,
+   "degen_ok": true,
+   "gold_diff": 4,
+   "gold_ok": true,
+   "random_bound": 2.6,
+   "random_ok": false,
+   "pass": false
+  }
+ },
+ "order": [
+  "steer:L25:a1:vnorm",
+  "steer:L25:a2:vnorm",
+  "steer:L25:a4:vnorm",
+  "steer:L22:a1:vnorm",
+  "steer:L22:a2:vnorm",
+  "steer:L22:a4:vnorm",
+  "steer:L20:a1:vnorm",
+  "steer:L20:a2:vnorm",
+  "steer:L20:a4:vnorm",
+  "steer:L17:a1:vnorm",
+  "steer:L17:a2:vnorm",
+  "steer:L17:a4:vnorm"
+ ],
+ "chosen": "steer:L17:a2:vnorm",
+ "alt_rule_choice": "steer:L17:a2:vnorm",
+ "a_cut": {
+  "n": 13,
+  "ans": 0,
+  "degenerate": 0,
+  "refusal": 13,
+  "gold": 0
+ },
+ "status": "chosen",
+ "n_pairs": 8,
+ "pairs": [
+  "0edc2aef",
+  "1cea1afa",
+  "6d550036",
+  "73d42213",
+  "81507db6",
+  "9d25d4e0",
+  "a9f6b44c",
+  "gpt4_a56e767c"
+ ],
+ "G_ok": [
+  "0862e8bf",
+  "2ebe6c90",
+  "37f165cf",
+  "58470ed2",
+  "60d45044",
+  "71017276",
+  "7401057b",
+  "76d63226",
+  "7e00a6cb",
+  "b86304ba",
+  "c14c00dd",
+  "c9f37c46",
+  "fca70973"
+ ],
+ "repro_rate": 1.0,
+ "sanity_pass": true,
+ "ans_min": 7,
+ "G_dropped": []
+}
