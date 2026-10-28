@@ -7059,10 +7059,12 @@ rows, on the 126 dev population rows (the §35 rule):
 
 | model | in-view refusals | marker rate | judged correct |
 |---|---|---|---|
-| Qwen 2.5 3B (reference) | 0.300 (30/100) | 1.00 | 0.390 |
-| Llama 3.2 3B | 0.104 (13/125) | 0.992 | 0.563 |
-| gemma-3-4b | 0.017 (2/121) | 0.960 | 0.659 |
-| Phi-4-mini | 0.034 (3/89) | 0.706 | 0.468 |
+| Qwen 2.5 3B (reference) | 0.300 (30/100) | 1.00 | 0.390 (39/100 marked rows) |
+| Llama 3.2 3B | 0.104 (13/125) | 0.992 | 0.563 (71/126) |
+| gemma-3-4b | 0.017 (2/121) | 0.960 | 0.659 (83/126) |
+| Phi-4-mini | 0.034 (3/89) | 0.706 | 0.468 (59/126) |
+
+On the same 126 rows Qwen 3B is judged correct on 54/126 = 0.429, so the four readers compare on one denominator.
 
 All three are under the pre-registered ~15% line. **Gemma and Phi close Part A at stage 0 as "little to open"**, a
 result in itself. The Qwen 3B habit of refusing with the evidence in view is not shared at this size: the other
@@ -7128,7 +7130,7 @@ A/B/C on failures, logit lens:
 - By class, the 3B's refusals (n 32) are A 0.219 and C 0.750; its wrong answers (n 63) are A 0.302 and C 0.651.
 - Median logit emergence depth is 0.750 for both sizes (quartiles 0.679–0.884 and 0.688–0.844); J-lens on the 3B, 0.714.
 - Article caveat: on the 31 article-first golds, the 3B's final top-10 is 0.516 (A 0.484), against the 8B's 0.935.
-- Digit caveat: Llama keeps up to three digits per token, so on the 84 digit-first golds the target is the whole number.
+- Digit caveat: Llama keeps up to three digits per token, so on the 84 digit-first golds of the 204 confirmation rows the target is the whole number.
 
 **Found (Llama).**
 - The 8B holds the answer more clearly than the 3B at the answer position, and the 3B is more often the reader in which
@@ -7136,12 +7138,15 @@ A/B/C on failures, logit lens:
 - Within the 3B, how weakly the gold ranks separates its wrong answers from its right ones (0.68). Both lenses agree.
 - Most of the 3B's failures still have the gold in the final top-10 (C 0.68), with an A floor of about a quarter, as in
   Qwen.
-- Unlike Qwen (J-lens median 0.889 against 0.464), the two Llama sizes do not differ in how early the gold appears. The
-  8B's advantage is in rank, not depth.
+- On the logit lens, at the same depth convention on the same 330-row population, Qwen's small reader finds the gold
+  later than its large one (median 0.917 against 0.821, a gap of 0.10 of depth, about 3.5 layers; identical on the 204
+  confirmation rows). The two Llama sizes do not differ (0.750 and 0.750). The 8B's advantage is in rank, not depth.
+- Aside, J-lens (lens-dependent): Qwen's J-lens medians are 0.889 against 0.464; the 7B's low figure rests on the §34
+  mid-stack bump the logit lens does not see.
 
 **Why it matters.** "C-majority with an A floor" holds in a second family, and so does "the larger reader holds the
-answer more clearly". The "small reader finds it later" half of the §34 picture is family-dependent so far: mixed,
-pending Gemma and Phi.
+answer more clearly". The "small reader finds it later" half of the §34 picture is family-dependent so far: on the
+logit lens Qwen's small reader is later by 0.10 of depth and Llama's by 0.00. Mixed, pending Gemma and Phi.
 
 **Caveats.** One prompt family (§23 `fixed8` on LongMemEval), one judge (Qwen 2.5 7B, from §24). The gold first token
 differs by tokenizer (digits, articles). P1 is a forced position. The Llama Part A gate is on 13 rows.
