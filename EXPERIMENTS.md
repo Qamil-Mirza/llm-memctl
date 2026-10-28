@@ -7029,6 +7029,126 @@ s_proj is a ranking, not a policy.
 
 **Spend.** About $0.12 (12.4 min at $0.59/h). All experiments ≈ $17.94 of $20.
 
+## 43. Does the refusal-direction result hold in other model families? Llama 3.2, Gemma 3, Phi-4 (2026-10-26, pre-registered; in progress)
+
+**Status: IN PROGRESS.**
+- **Part A (the refusal direction):** closed at stage 0 for Gemma 3 4B and Phi-4-mini as "little to open". Llama 3.2 3B
+  passes its stage-1 gate on the bars, on development data only, and its Part A pod is not recommended.
+- **Part B (the lens readout):** Llama done, with Claims B1 and B2 SHOWN. Gemma and Phi are pending.
+
+Pre-registration `research/proposals/2026-10-26-exp43-cross-family.md` (Advisor; rev 0, amendment 1 21e4e35, rev 1
+9490d07). Decisions: D-39 (the user's order: "run it on at least 2 more model families") and D-40 (cap raised to $30;
+Part B added). Reviews:
+- `research/reviews/2026-10-26-exp43-build.md` (c7157f9, addendum e39bd62);
+- `research/reviews/2026-10-26-exp43-llama-stage1.md` (66ecf2a);
+- `research/reviews/2026-10-26-exp43-partB-build.md` (67f05fe);
+- `research/reviews/2026-10-27-exp43-partB-llama-results.md` (ACCEPT, f951bf5).
+
+Code: `memctl/analysis/families.py` (a per-family config beside the Qwen defaults; the Qwen outputs are byte-identical),
+the lens BOS fix in `memctl/analysis/jlens_readout.py` (ccaff40), `scripts/exp43_llama_dev.py`, `scripts/exp43_llama_report.py`
+(6342460, 511eb32), `scripts/exp43_lens_dev.py` and `scripts/exp43_lens_profile.py` (7c74932, 3698bc1),
+`scripts/exp43_lens_pod.sh`, `scripts/exp43_lens_pod_run.py` and `scripts/exp43_lens_report.py` (7444d11).
+
+**Why.** §38–§42 are one family: Qwen 2.5 3B, judged by Qwen 2.5 7B. The question is whether the refusal disposition and
+the lens picture belong to small instruction-tuned readers or to Qwen.
+
+**Stage 0: feasibility (laptop, $0, folds 0–1).** It used §24's cached `fixed8` outputs and judge labels for each
+family. Every model is accessible on HF, including Llama 3.2 3B, which returned 403 in §24. The three small models load
+in fp32 on the laptop and reproduce the §24 cache (A arm first token ≥ 4/5 for each). In-view refusal rate among marked
+rows, on the 126 dev population rows (the §35 rule):
+
+| model | in-view refusals | marker rate | judged correct |
+|---|---|---|---|
+| Qwen 2.5 3B (reference) | 0.300 (30/100) | 1.00 | 0.390 |
+| Llama 3.2 3B | 0.104 (13/125) | 0.992 | 0.563 |
+| gemma-3-4b | 0.017 (2/121) | 0.960 | 0.659 |
+| Phi-4-mini | 0.034 (3/89) | 0.706 | 0.468 |
+
+All three are under the pre-registered ~15% line. **Gemma and Phi close Part A at stage 0 as "little to open"**, a
+result in itself. The Qwen 3B habit of refusing with the evidence in view is not shared at this size: the other
+families answer and get more right. Llama's high §24 unknown share came from rows where the evidence was not all in
+view (0.219 over all rows).
+
+**Llama Part A, stage 1 (laptop, $0, development only).**
+- The direction was estimated from 8 pairs: dev rows with the evidence not all in view, where A refuses and the §35
+  line answers.
+- It was gated on the 13 in-view dev refusals the estimation never saw. Every row reproduced (43/43).
+- Bars: Steer answers ≥ 7, gold(Steer) − gold(cut) ≥ 2, Random ≤ 0.2 × Steer, degenerate ≤ 1.
+- The gate passes on the bars at layer 17, α 2: 7/13 answers, gold 2 against 0 with the evidence cut, Random 0/13.
+- At layer 25 the direction opens 9–13 of 13, but a random vector of the same norm opens 2–4, the same specificity
+  failure as Qwen's pre-registered §38 setting.
+- The gold half is at its ceiling. Llama's own cached note holds the gold on 2 of the 13 gate rows, and those are
+  exactly the 2 rows the push gets right; no setting gets a row right whose note lacks the gold. So the pass does not
+  show that the direction lets Llama read the evidence.
+- For contrast, Qwen 3B's notes held the gold on 7/28 dev and 23/60 pod refusal rows, and its §38 push got 31 of the 60
+  right.
+- A Llama Part A pod is not recommended. If run, its Claim 1 would be re-framed as the answer rate (Steer − Random),
+  with gold beside the note-gold ceiling.
+
+**Laptop logit-lens profiles (dev folds 0–1, 126 rows, logit lens only; descriptive).** Median emergence depth of the
+gold (first layer in the top-10 at P1, depth = layer / n_layers) and the final-layer top-10 rate:
+
+| model | layers | median emergence | final top-10 | A / B / C, all failures |
+|---|---|---|---|---|
+| gemma-3-4b | 34 | 0.647 | 0.83 | 0.163 / 0.186 / 0.651 |
+| Llama 3.2 3B | 28 | 0.750 | 0.80 | 0.382 / 0.000 / 0.618 |
+| Qwen 2.5 3B | 36 | 0.917 | 0.68 | 0.319 / 0.042 / 0.639 |
+| Phi-4-mini | 32 | 0.938 | 0.78 | 0.299 / 0.015 / 0.687 |
+
+- Gemma's apparent B class is mostly a target-token artefact. 9 of its 12 B rows have an article-first gold (' The',
+  ' A', ' a'): the final layer predicts the content word, and the article drops out of the top-10. On content-first
+  golds Gemma's B is 0.027, like the others'.
+- Llama and Phi put up to three digits in one token, while Qwen and Gemma use one, so the "gold first token" is not like
+  for like across families on digit-first golds (53 of 126).
+
+**Llama Part B pod (A40, 62 min, about $0.61).**
+- Logit reads at P1/P0/E/Q for Llama 3.2 3B and Llama 3.1 8B on the 330 §34-population rows (paired, the same prompts
+  and judge labels for both sizes; 126 dev, 204 confirmation).
+- A J-lens fitted on the 3B (56 paragraphs), plus its reads and the library evaluation sets.
+- The J-lens gate on folds 0–1 passes: (a) logit − J-lens +1.458 (+1.285, +1.623); (b) pass@k 0.270 against 0.217. The
+  J-lens row therefore takes its verdict role beside the logit row, which decides.
+- Confirmation folds 2–4 were read once, after the development report was committed.
+
+| claim (folds 2–4, 204 rows) | estimate (95% CI) | verdict |
+|---|---|---|
+| B1: log10 best rank of the gold at P1, 3B − 8B (positive = 8B better) | +0.181 (+0.106, +0.259) | SHOWN |
+| B1 secondary: share of outcome A, 3B − 8B | +0.078 (+0.029, +0.132) | SHOWN |
+| B2: AUC of the 3B's P1 log10 best rank, wrong against right (logit) | 0.677 (0.605, 0.746) | SHOWN |
+| B2, J-lens (verdict role, gate PASS) | 0.682 (0.610, 0.751) | SHOWN |
+
+The development-fold B2 (0.847) is higher; the confirmation figure is the one of record.
+
+A/B/C on failures, logit lens:
+
+| reader | n | A | B | C |
+|---|---|---|---|---|
+| Llama 3B | 95 | 0.274 | 0.042 | 0.684 |
+| Llama 8B | 70 | 0.171 | 0.014 | 0.814 |
+
+- By class, the 3B's refusals (n 32) are A 0.219 and C 0.750; its wrong answers (n 63) are A 0.302 and C 0.651.
+- Median logit emergence depth is 0.750 for both sizes (quartiles 0.679–0.884 and 0.688–0.844); J-lens on the 3B, 0.714.
+- Article caveat: on the 31 article-first golds, the 3B's final top-10 is 0.516 (A 0.484), against the 8B's 0.935.
+- Digit caveat: Llama keeps up to three digits per token, so on the 84 digit-first golds the target is the whole number.
+
+**Found (Llama).**
+- The 8B holds the answer more clearly than the 3B at the answer position, and the 3B is more often the reader in which
+  the gold never reaches the top-10.
+- Within the 3B, how weakly the gold ranks separates its wrong answers from its right ones (0.68). Both lenses agree.
+- Most of the 3B's failures still have the gold in the final top-10 (C 0.68), with an A floor of about a quarter, as in
+  Qwen.
+- Unlike Qwen (J-lens median 0.889 against 0.464), the two Llama sizes do not differ in how early the gold appears. The
+  8B's advantage is in rank, not depth.
+
+**Why it matters.** "C-majority with an A floor" holds in a second family, and so does "the larger reader holds the
+answer more clearly". The "small reader finds it later" half of the §34 picture is family-dependent so far: mixed,
+pending Gemma and Phi.
+
+**Caveats.** One prompt family (§23 `fixed8` on LongMemEval), one judge (Qwen 2.5 7B, from §24). The gold first token
+differs by tokenizer (digits, articles). P1 is a forced position. The Llama Part A gate is on 13 rows.
+
+**Spend so far.** Stage 0, stage 1 and the dev reads: $0 (laptop). Llama Part B pod: about $0.61. All experiments
+≈ $18.55 of $30.
+
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
 **Status: STOPPED at the regeneration sanity check; no gradient was computed.** Secondary to §34 (the J-lens
