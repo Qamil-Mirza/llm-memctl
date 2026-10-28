@@ -7034,7 +7034,8 @@ s_proj is a ranking, not a policy.
 **Status: IN PROGRESS.**
 - **Part A (the refusal direction):** closed at stage 0 for Gemma 3 4B and Phi-4-mini as "little to open". Llama 3.2 3B
   passes its stage-1 gate on the bars, on development data only, and its Part A pod is not recommended.
-- **Part B (the lens readout):** Llama done, with Claims B1 and B2 SHOWN. Gemma and Phi are pending.
+- **Part B (the lens readout):** Llama done (B1 and B2 SHOWN); Gemma done (B1 NOT SHOWN, B2 SHOWN, J-lens gate FAIL).
+  Phi is pending.
 
 Pre-registration `research/proposals/2026-10-26-exp43-cross-family.md` (Advisor; rev 0, amendment 1 21e4e35, rev 1
 9490d07). Decisions: D-39 (the user's order: "run it on at least 2 more model families") and D-40 (cap raised to $30;
@@ -7148,11 +7149,48 @@ A/B/C on failures, logit lens:
 answer more clearly". The "small reader finds it later" half of the §34 picture is family-dependent so far: on the
 logit lens Qwen's small reader is later by 0.10 of depth and Llama's by 0.00. Mixed, pending Gemma and Phi.
 
+**Gemma Part B pod (A40, 77 min, about $0.75).** The same design: gemma-3-4b and gemma-3-12b-it on the 330 rows,
+with a J-lens fitted on the 4B.
+- **The J-lens gate on folds 0–1 FAILS:** (a) logit − J-lens −0.671 (−0.907, −0.450); (b) pass@k 0.126 against 0.171.
+  The logit row alone decides, and the J-lens row is shown beside it only.
+- Confirmation folds 2–4 were read once, after the development report was committed.
+
+| claim (folds 2–4, 204 rows) | estimate (95% CI) | verdict |
+|---|---|---|
+| B1: log10 best rank of the gold at P1, 4B − 12B | +0.019 (−0.020, +0.059) | NOT SHOWN |
+| B1 secondary: share of outcome A, 4B − 12B | −0.005 (−0.039, +0.034) | NOT SHOWN |
+| B2: AUC of the 4B's P1 log10 best rank, wrong against right (logit) | 0.698 (0.631, 0.764) | SHOWN |
+| B2, J-lens (beside only, gate FAIL) | 0.714 (0.645, 0.779) | not a verdict |
+
+B1 is a tight null: in Gemma the 12B holds the gold no more clearly than the 4B.
+
+A/B/C on failures, logit lens:
+
+| reader | n | A | B | C |
+|---|---|---|---|---|
+| Gemma 4B | 80 | 0.125 | 0.113 | 0.762 |
+| Gemma 12B | 55 | 0.218 | 0.055 | 0.727 |
+
+- The 4B's B on failures is the article artefact again: 8 of its 9 B failure rows have an article-first gold.
+- Median logit emergence: 4B 0.618 (0.559–0.676), 12B 0.667 (0.542–0.792). The small reader is earlier, not later, by
+  0.05 of depth.
+- Gemma splits digits like Qwen; digit-first golds are in the final top-10 for both sizes (1.000).
+- Article-first golds (n 31): 4B final top-10 0.484, 12B 0.645.
+
+**Scorecard after three families (Qwen, Llama, Gemma; descriptive).**
+
+| reading | Qwen | Llama | Gemma | count |
+|---|---|---|---|---|
+| Failures C-majority (the gold is in the final top-10 but loses) | yes | yes | yes | 3/3 |
+| B2: a weaker gold rank separates wrong from right in the small reader | yes | yes | yes | 3/3 |
+| The larger reader holds the gold more clearly (B1) | yes | yes | no | 2/3 |
+| The small reader finds the gold later (logit lens) | yes | no | no | 1/3 |
+
 **Caveats.** One prompt family (§23 `fixed8` on LongMemEval), one judge (Qwen 2.5 7B, from §24). The gold first token
 differs by tokenizer (digits, articles). P1 is a forced position. The Llama Part A gate is on 13 rows.
 
-**Spend so far.** Stage 0, stage 1 and the dev reads: $0 (laptop). Llama Part B pod: about $0.61. All experiments
-≈ $18.55 of $30.
+**Spend so far.** Stage 0, stage 1 and the dev reads: $0 (laptop). Llama Part B pod: about $0.61; Gemma Part B pod:
+about $0.75. All experiments ≈ $19.31 of $30.
 
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
