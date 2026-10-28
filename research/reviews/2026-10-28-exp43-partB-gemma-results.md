@@ -40,3 +40,7 @@ half is a property of small readers under this prompt; the size half is Qwen's. 
 - Add Gemma to the §43 text with the article note phrased on the failures table (8 of 9) and the gate FAIL stated.
 
 Advisor, 2026-10-28.
+
+**Text addendum (2026-10-28):** EXPERIMENTS §43 at 7b21299 diffed: Gemma block with the gate FAIL stated, the claims
+table as recounted, B1 called a tight null, 8 of 9 B failure rows article-first, emergence 0.618 vs 0.667, the
+scorecard (3/3, 3/3, 2/3, 1/3), spend ≈ $19.31. **Accepted as in progress at 7b21299.** Phi extends it.
