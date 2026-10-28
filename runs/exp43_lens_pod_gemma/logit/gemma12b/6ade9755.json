@@ -1,0 +1,242 @@
+{
+ "question_id": "6ade9755",
+ "fold": 1,
+ "reader": "gemma12b",
+ "n_tokens": 1518,
+ "n_leading_ws": 0,
+ "prompt_sha256": "cb5319c14165ce220ee4dc1e18c13c2e964e040f3bc1f5a349de86632155d7bb",
+ "intact_prompt_sha256": "cb5319c14165ce220ee4dc1e18c13c2e964e040f3bc1f5a349de86632155d7bb",
+ "n_evidence_lines_cut": 0,
+ "n_bos": 1,
+ "positions": {
+  "P1": [
+   1517
+  ],
+  "P0": [
+   1515
+  ],
+  "E": [
+   858
+  ],
+  "Q": [
+   1507
+  ],
+  "P1_raw": [
+   1517
+  ]
+ },
+ "tracked_names": [
+  "gold",
+  "unknown_sp",
+  "Unknown_sp",
+  "unknown"
+ ],
+ "tracked": {
+  "gold": 4028,
+  "unknown_sp": 11908,
+  "Unknown_sp": 60355,
+  "unknown": 20774
+ },
+ "gold_token_text": " Ser",
+ "position_mode": "forced",
+ "answer_marker": true,
+ "variants": [
+  "logit"
+ ],
+ "read_tag": "exp43_lens_pod_v1",
+ "measures": {
+  "logit": {
+   "k": 10,
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47
+   ],
+   "P1": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 1,
+     "emergence_depth": 0.8541666666666666,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 129,
+     "final_rank": 640,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 59,
+     "final_rank": 59,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 12127,
+     "final_rank": 20721,
+     "first_top1_depth": null
+    }
+   },
+   "P0": {
+    "gold": {
+     "best_rank": 9,
+     "final_rank": 269,
+     "emergence_depth": 0.9375,
+     "outcome": "B"
+    },
+    "unknown_sp": {
+     "best_rank": 3827,
+     "final_rank": 61906,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 6687,
+     "final_rank": 83228,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 6948,
+     "final_rank": 13460,
+     "first_top1_depth": null
+    }
+   },
+   "E": [
+    {
+     "gold": {
+      "best_rank": 253,
+      "final_rank": 253,
+      "emergence_depth": null,
+      "outcome": "A"
+     },
+     "unknown_sp": {
+      "best_rank": 1390,
+      "final_rank": 12723,
+      "first_top1_depth": null
+     },
+     "Unknown_sp": {
+      "best_rank": 828,
+      "final_rank": 828,
+      "first_top1_depth": null
+     },
+     "unknown": {
+      "best_rank": 8732,
+      "final_rank": 18262,
+      "first_top1_depth": null
+     }
+    }
+   ],
+   "Q": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 13,
+     "emergence_depth": 0.8541666666666666,
+     "outcome": "B"
+    },
+    "unknown_sp": {
+     "best_rank": 651,
+     "final_rank": 663,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 429,
+     "final_rank": 429,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 3214,
+     "final_rank": 4625,
+     "first_top1_depth": null
+    }
+   },
+   "P1_raw": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 1,
+     "emergence_depth": 0.8541666666666666,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 129,
+     "final_rank": 640,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 59,
+     "final_rank": 59,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 12127,
+     "final_rank": 20721,
+     "first_top1_depth": null
+    }
+   }
+  }
+ },
+ "family": {
+  "key": "gemma12b",
+  "model_id": "google/gemma-3-12b-it",
+  "template_kwargs": {},
+  "system_text": null,
+  "system_role": false,
+  "stop_tokens": [
+   "<end_of_turn>",
+   "<eos>"
+  ],
+  "refusal_ids": [
+   11908,
+   60355
+  ]
+ },
+ "elapsed_s": 1.0757991169812158,
+ "model_id": "google/gemma-3-12b-it",
+ "weights": null,
+ "size": "large",
+ "device": "cuda",
+ "dtype": "bfloat16",
+ "lens": "identity (logit lens)",
+ "lens_sha256": null
+}

@@ -1,0 +1,228 @@
+{
+ "question_id": "7e00a6cb",
+ "fold": 0,
+ "reader": "gemma4b",
+ "n_tokens": 1060,
+ "n_leading_ws": 0,
+ "prompt_sha256": "e859cd425b25a501f7a95a604f28c8fe79422e0c493446489f6218c67a74cdbf",
+ "intact_prompt_sha256": "e859cd425b25a501f7a95a604f28c8fe79422e0c493446489f6218c67a74cdbf",
+ "n_evidence_lines_cut": 0,
+ "n_bos": 1,
+ "positions": {
+  "P1": [
+   1059
+  ],
+  "P0": [
+   1057
+  ],
+  "E": [
+   746
+  ],
+  "Q": [
+   1049
+  ],
+  "P1_raw": [
+   1059
+  ]
+ },
+ "tracked_names": [
+  "gold",
+  "unknown_sp",
+  "Unknown_sp",
+  "unknown"
+ ],
+ "tracked": {
+  "gold": 5785,
+  "unknown_sp": 11908,
+  "Unknown_sp": 60355,
+  "unknown": 20774
+ },
+ "gold_token_text": " International",
+ "position_mode": "forced",
+ "answer_marker": true,
+ "variants": [
+  "logit"
+ ],
+ "read_tag": "exp43_lens_pod_v1",
+ "measures": {
+  "logit": {
+   "k": 10,
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33
+   ],
+   "P1": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 1,
+     "emergence_depth": 0.6764705882352942,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 15,
+     "final_rank": 253,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 11,
+     "final_rank": 25,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 652,
+     "final_rank": 9367,
+     "first_top1_depth": null
+    }
+   },
+   "P0": {
+    "gold": {
+     "best_rank": 731,
+     "final_rank": 17171,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 3314,
+     "final_rank": 73340,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 4450,
+     "final_rank": 45485,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 4199,
+     "final_rank": 7651,
+     "first_top1_depth": null
+    }
+   },
+   "E": [
+    {
+     "gold": {
+      "best_rank": 409,
+      "final_rank": 3998,
+      "emergence_depth": null,
+      "outcome": "A"
+     },
+     "unknown_sp": {
+      "best_rank": 4942,
+      "final_rank": 17853,
+      "first_top1_depth": null
+     },
+     "Unknown_sp": {
+      "best_rank": 2559,
+      "final_rank": 2559,
+      "first_top1_depth": null
+     },
+     "unknown": {
+      "best_rank": 18907,
+      "final_rank": 23786,
+      "first_top1_depth": null
+     }
+    }
+   ],
+   "Q": {
+    "gold": {
+     "best_rank": 300,
+     "final_rank": 1631,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 1701,
+     "final_rank": 5020,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 403,
+     "final_rank": 828,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 8008,
+     "final_rank": 8008,
+     "first_top1_depth": null
+    }
+   },
+   "P1_raw": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 1,
+     "emergence_depth": 0.6764705882352942,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 15,
+     "final_rank": 253,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 11,
+     "final_rank": 25,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 652,
+     "final_rank": 9367,
+     "first_top1_depth": null
+    }
+   }
+  }
+ },
+ "family": {
+  "key": "gemma4b",
+  "model_id": "google/gemma-3-4b-it",
+  "template_kwargs": {},
+  "system_text": null,
+  "system_role": false,
+  "stop_tokens": [
+   "<end_of_turn>",
+   "<eos>"
+  ],
+  "refusal_ids": [
+   11908,
+   60355
+  ]
+ },
+ "elapsed_s": 0.5070226169191301,
+ "model_id": "google/gemma-3-4b-it",
+ "weights": null,
+ "size": "small",
+ "device": "cuda",
+ "dtype": "bfloat16",
+ "lens": "identity (logit lens)",
+ "lens_sha256": null
+}

@@ -1,0 +1,228 @@
+{
+ "question_id": "e01b8e2f",
+ "fold": 1,
+ "reader": "gemma4b",
+ "n_tokens": 1749,
+ "n_leading_ws": 0,
+ "prompt_sha256": "14abfd2f6fcca27c9bcac5230b9e81d2f8a41fdd15fcc3755760ad03c8f9c728",
+ "intact_prompt_sha256": "14abfd2f6fcca27c9bcac5230b9e81d2f8a41fdd15fcc3755760ad03c8f9c728",
+ "n_evidence_lines_cut": 0,
+ "n_bos": 1,
+ "positions": {
+  "P1": [
+   1748
+  ],
+  "P0": [
+   1746
+  ],
+  "E": [
+   314
+  ],
+  "Q": [
+   1738
+  ],
+  "P1_raw": [
+   1748
+  ]
+ },
+ "tracked_names": [
+  "gold",
+  "unknown_sp",
+  "Unknown_sp",
+  "unknown"
+ ],
+ "tracked": {
+  "gold": 30666,
+  "unknown_sp": 11908,
+  "Unknown_sp": 60355,
+  "unknown": 20774
+ },
+ "gold_token_text": " Hawaii",
+ "position_mode": "forced",
+ "answer_marker": true,
+ "variants": [
+  "logit"
+ ],
+ "read_tag": "exp43_lens_pod_v1",
+ "measures": {
+  "logit": {
+   "k": 10,
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33
+   ],
+   "P1": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 1,
+     "emergence_depth": 0.6764705882352942,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 66,
+     "final_rank": 864,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 443,
+     "final_rank": 508,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 1733,
+     "final_rank": 23058,
+     "first_top1_depth": null
+    }
+   },
+   "P0": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 3,
+     "emergence_depth": 0.6764705882352942,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 36,
+     "final_rank": 72462,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 960,
+     "final_rank": 99721,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 582,
+     "final_rank": 1658,
+     "first_top1_depth": null
+    }
+   },
+   "E": [
+    {
+     "gold": {
+      "best_rank": 14,
+      "final_rank": 57,
+      "emergence_depth": null,
+      "outcome": "A"
+     },
+     "unknown_sp": {
+      "best_rank": 6302,
+      "final_rank": 23995,
+      "first_top1_depth": null
+     },
+     "Unknown_sp": {
+      "best_rank": 5527,
+      "final_rank": 6226,
+      "first_top1_depth": null
+     },
+     "unknown": {
+      "best_rank": 34071,
+      "final_rank": 121488,
+      "first_top1_depth": null
+     }
+    }
+   ],
+   "Q": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 3,
+     "emergence_depth": 0.6764705882352942,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 1067,
+     "final_rank": 5315,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 213,
+     "final_rank": 390,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 3447,
+     "final_rank": 10168,
+     "first_top1_depth": null
+    }
+   },
+   "P1_raw": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 1,
+     "emergence_depth": 0.6764705882352942,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 66,
+     "final_rank": 864,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 443,
+     "final_rank": 508,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 1733,
+     "final_rank": 23058,
+     "first_top1_depth": null
+    }
+   }
+  }
+ },
+ "family": {
+  "key": "gemma4b",
+  "model_id": "google/gemma-3-4b-it",
+  "template_kwargs": {},
+  "system_text": null,
+  "system_role": false,
+  "stop_tokens": [
+   "<end_of_turn>",
+   "<eos>"
+  ],
+  "refusal_ids": [
+   11908,
+   60355
+  ]
+ },
+ "elapsed_s": 0.5687728240154684,
+ "model_id": "google/gemma-3-4b-it",
+ "weights": null,
+ "size": "small",
+ "device": "cuda",
+ "dtype": "bfloat16",
+ "lens": "identity (logit lens)",
+ "lens_sha256": null
+}

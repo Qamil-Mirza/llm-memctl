@@ -1,0 +1,21 @@
+{
+ "runs": [
+  {
+   "reader": "gemma12b",
+   "model_id": "google/gemma-3-12b-it",
+   "variant": "logit",
+   "smoke": true,
+   "device": "cuda",
+   "dtype": "bfloat16",
+   "load_s": 10.039350811042823,
+   "questions": 5,
+   "seconds_per_question": 1.034816363384016,
+   "wall_s": 5.191356402006932,
+   "deadline_cut": false,
+   "peak_rss_mb": 5632.84765625,
+   "peak_gpu_mb": 23883.037109375,
+   "n_layers": 48,
+   "d_model": 3840
+  }
+ ]
+}
