@@ -253,3 +253,45 @@ Rulings on the builder's choices:
 
 After rulings 2 and 3 the eligible set is recomputed (it can only shrink by the "no substitute" exclusion); the
 verdict stands if ≥ 85 eligible and ≥ 40 failures remain, else the Advisor re-reads the gate as rev 3.
+
+## Rev 3 (2026-10-29): re-read of the recomputed gate (88b2a19) and one measurement correction
+
+After rulings 2–3 the Qwen 3B swap set is 82 eligible / 39 failures (dev 32, folds 2–4 50; labels on 2–4: 24 / 14 /
+12), under the rev 2 re-read bar (85 / 40). The loss is a measurement artefact, not a shortage of rows: under the
+tighter subtypes every currency gold and its substitute start with the same "$" token, so the "different first token"
+rule excluded them (Qwen lost $800, $2,000, $6 and $400,000; 7 first-token-equal exclusions against 4 in rev 1).
+
+**Correction (applies uniformly to every row, fixed now).** Let the *shared prefix* be the longest common token
+prefix of the gold and the substitute under the family tokenizer (after the leading-whitespace tokens). The
+"different first token" rule becomes "different first token *after* the shared prefix", the shared prefix is
+teacher-forced in every run of that row (clean, swap, cut, patched), and Δ, F, T and the ranks are read at the position
+that predicts the first divergent token. For rows with an empty shared prefix (the large majority) nothing changes.
+`check_alignment` extends to the forced prefix; the sanity bounds apply unchanged. The gate is recomputed once more
+with this rule.
+
+**Verdict rule for that recount: POOL regardless.** The 85 / 40 bar was a re-read trigger, not a stop; the stop
+conditions remain §A's (< 50 eligible on folds 2–4 or < 15 failures), which are far from binding. The recounted
+numbers are recorded here as rev 4 before `POOL_AUTHORISED` is set. With about 86 / 41 the S1(c) half-width sits at
+its 0.15 edge; a (c) failure is the documented outcome, and no criterion moves.
+
+Type diversity: on folds 2–4 only single-session-assistant keeps ≥ 15 rows; by ruling 7 the pooled read carries a
+type-diversity caveat in the report.
+
+### Rulings on the S/U build (dbd813e; 42 tests pass on the Advisor's machine)
+
+1. U = §35 arm B exactly (cached note, the B instruction, `Answer:`, greedy 64 tokens; D1 on the phrase): **accepted**.
+   U differs from the §38 arm A rows by the instruction only, which is the right contrast for the artefact share.
+   No-note rows excluded and counted.
+2. S2 push = §38 Steer on arm A, unsteered A beside; Steer-under-U at every step; vector hashes match: accepted.
+3. Mismatched donor = nearest earlier swap row (cyclic) whose gold and substitute first ids both differ from the
+   row's; patched into the clean run only; the ±0.5 nat bound on the mean shift per layer: **accepted**, with the
+   per-row shifts kept in the rows for the review.
+4. Random control seeded [44, row, layer] at the norm of h_swap(l): accepted.
+5. Self-overwrite checked at layers 0, L//2, L−1: accepted.
+6. Sanity |T(L−1) − 1| < 0.01, |T(0)| < 0.05, exit 3 on any patched row: accepted.
+7. log p(unknown) = log-sum-exp over the two refusal ids, each logged: accepted.
+8. Cap on D1-normalised strings, counted once eligible; unit-less numbers "bare": accepted.
+
+Order: rev 0 7B finishes (laptop) → gate recount with the shared-prefix rule (data only, send counts) → rev 4 recorded,
+`POOL_AUTHORISED` set by the Executor on the Advisor's word → 10-row S0 smoke → Qwen 3B S then U (≈ 4.3 h) → Llama 3B
+(≈ 3.4 h) → report → results review.
