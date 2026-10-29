@@ -220,3 +220,36 @@ over all failures. One benchmark and prompt family; one forced position; first-t
 may be less plausible than the gold (the mismatched-donor control bounds this only for patching, not for F); the 7B
 in bf16; the §38 push comparison in S2 reuses a setting chosen on development rows of §38, not of §44. Thirteen
 Llama refusals in total make the Llama contrast descriptive whatever S1 says for it.
+
+## Rev 2 (2026-10-29): swap-gate verdict and rulings on the gate build (63882c1, `runs/exp44_swapgate/`)
+
+**Verdict: POOL for Qwen 3B.** Folds 2–4: 54 eligible (≥ 50), two types of ≥ 15 (single-session-assistant 16,
+single-session-user 16), 27 in-view failures (15 refusals, 12 wrong): the 15–29 band. Claims S0–S3 and U1 are read
+on all 330 rows: 90 eligible, 43 failures (21 refusals, 22 wrong), 47 successes. 43 failures give a binomial
+half-width of ≈ 0.15 at p = 0.5, so S1(c) is at its edge; a failure of (c) is the documented outcome. No development
+choice is made for S/U (the gate used labels only to count). **Llama 3B: descriptive only** (folds 2–4: 56 eligible
+but 12 failures; pooled 95 / 24): S0 and the class shares are reported, S1–S2 are not read. **Qwen 7B:** the same 90
+rows; condition S run after both 3Bs if time allows, descriptive beside. Counts recounted by the Advisor from
+`eligible_qwen3b.jsonl` (90; 54 / 27 / 43 as reported).
+
+Rulings on the builder's choices:
+1. Verbatim = the gold's D1 tokens as a contiguous run of whole tokens: **accepted** (stricter than D1's substring
+   branch; used for every absence check).
+2. Substitute assignment: **changed.** One global shuffle concentrates the substitutes (19 distinct over 90 rows,
+   "Nike" ×21, "8" ×18), which would let one substitute's own prior drive F and the mismatched-donor control. Rule:
+   per-row draw with seed 44 + the row's index in (fold, id) order, walking that row's own shuffled candidate list,
+   and a cap of 3 uses per substitute string across the family's eligible rows (round-robin: a candidate at its cap is
+   skipped). Report the resulting distinct count and the maximum multiplicity.
+3. Surface types: **tightened.** "number" splits into currency (leading $ or a currency word), percent, duration
+   (number + time unit), bare number; substitutes must share the subtype. "other" substitutes are drawn from rows of
+   the same LongMemEval question type with the same first-character capitalisation and ±1 token length. Implausible
+   swaps that remain are what S0 is for.
+4. Same leading-whitespace tokens as the gold: accepted.
+5. First token = §34's tracked id; continuation-split as a consistency check only: accepted.
+6. Every match in the one line replaced, affixes absorbed, outside the line byte-identical, alignment 0 failures:
+   accepted.
+7. Gate edge case (≥ 50 eligible, < 2 types of ≥ 15): **proceed with a type-diversity caveat**, not stop; the
+   diversity condition is a reporting requirement. Did not arise.
+
+After rulings 2 and 3 the eligible set is recomputed (it can only shrink by the "no substitute" exclusion); the
+verdict stands if ≥ 85 eligible and ≥ 40 failures remain, else the Advisor re-reads the gate as rev 3.
