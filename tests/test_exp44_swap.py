@@ -111,6 +111,21 @@ def test_controls_arithmetic():
     assert sw.self_layers(36) == (0, 18, 35)
 
 
+def test_rev6_difference_controls_arithmetic():
+    rng = np.random.default_rng(0)
+    hc, hs = rng.standard_normal(16).astype(np.float32), rng.standard_normal(16).astype(np.float32)
+    dc, ds = rng.standard_normal(16).astype(np.float32), rng.standard_normal(16).astype(np.float32)
+    assert np.allclose(sw.difference_patch(hc, dc, ds), hc + (ds - dc), atol=1e-6)
+    assert np.array_equal(sw.difference_patch(hc, dc, dc), hc)              # zero donor difference: h_clean unchanged
+    v, n = sw.difference_perturbation(hc, hs, row_index=3, layer=2)
+    assert n == pytest.approx(float(np.linalg.norm(hs.astype(np.float64) - hc)))
+    assert np.linalg.norm(v.astype(np.float64) - hc) == pytest.approx(n, rel=1e-5)   # eps added, norm = diff norm
+    direction = sw.random_overwrite(1.0, 16, 3, 2)                          # same seeded [44, row, layer] direction
+    assert np.allclose((v - hc) / n, direction, atol=1e-5)
+    v0, n0 = sw.difference_perturbation(hc, hc, 3, 2)
+    assert n0 == 0 and np.array_equal(v0, hc)
+
+
 # --- the passes on a real (tiny) model --------------------------------------------------------------------------
 
 def test_inputs_align_and_differ_only_in_the_line(engine):
@@ -130,7 +145,7 @@ def test_base_and_patch_passes(engine):
     assert row["F"] == pytest.approx(row["clean"]["delta"] - row["swap"]["delta"])
     assert row["cls"]["1"] == sw.failure_class(row["clean"]["delta"], row["swap"]["delta"])
     assert set(row["follows"]) == {"0.5", "1", "2"} and state["h_clean"].shape == (L, engine.hidden)
-    donor = state["h_swap"] * 0.5
+    donor = (state["h_clean"] * 0.9, state["h_swap"] * 0.5)
     row = sw.patch_passes(engine, x, row, state, donor, row_index=0)
     assert row["patched"] and len(row["T_fwd"]) == L and len(row["T_rev"]) == L
     assert abs(row["T_fwd"][-1] - 1) < 1e-4 and abs(row["T_rev"][-1] - 1) < 1e-4     # final residual fixes logits
@@ -141,9 +156,39 @@ def test_base_and_patch_passes(engine):
     assert row["control_mismatch"]["shift"][0] == pytest.approx(row["clean"]["delta"]
                                                                  - row["control_mismatch"]["delta"][0])
     assert row["timing"]["n_patch_passes"] == 4 * L + 3
+    assert row["control_mismatch"]["kind"] == "difference_patch"
+    assert row["control_random"]["kind"] == "difference_norm_perturbation"
+    diff = np.linalg.norm(state["h_swap"].astype(np.float64) - state["h_clean"], axis=1)
+    assert row["control_random"]["eps_norm"] == pytest.approx(list(diff), rel=1e-6)
+    assert row["control_mismatch"]["donor_diff_norm"] == pytest.approx(
+        list(np.linalg.norm(donor[1].astype(np.float64) - donor[0], axis=1)), rel=1e-5)
     # the caches are copied, not consumed: a second base pass reproduces the clean Delta
     again, _ = sw.base_passes(engine, x)
     assert again["clean"]["delta"] == pytest.approx(row["clean"]["delta"], abs=1e-6)
+
+
+def test_rev6_zero_donor_difference_gives_zero_shift(engine):
+    x = swap_inputs(engine)
+    row, state = sw.base_passes(engine, x)
+    self_donor = (state["h_clean"], state["h_clean"])                  # donor difference of zero
+    row = sw.patch_passes(engine, x, row, state, self_donor, row_index=0)
+    assert all(abs(v) < 1e-5 for v in row["control_mismatch"]["shift"])
+    assert all(n == pytest.approx(0, abs=1e-6) for n in row["control_mismatch"]["donor_diff_norm"])
+
+
+def test_rev6_pass_count_per_patched_row_unchanged(engine, monkeypatch):
+    """Rev 6 replaces the controls in place: 4L + 3 forward passes with a donor, 3L + 3 without, as before."""
+    x = swap_inputs(engine)
+    L = engine.n_layers
+    for donor_on, want in ((True, 4 * L + 3), (False, 3 * L + 3)):
+        row, state = sw.base_passes(engine, x)
+        donor = (state["h_clean"] * 0.9, state["h_swap"]) if donor_on else None
+        n = []
+        real = pt._p1_logits
+        monkeypatch.setattr(pt, "_p1_logits", lambda *a, **k: n.append(1) or real(*a, **k))
+        row = sw.patch_passes(engine, x, row, state, donor, row_index=0)
+        monkeypatch.setattr(pt, "_p1_logits", real)
+        assert len(n) == want == row["timing"]["n_patch_passes"]
 
 
 def test_patch_sanity_check():
@@ -243,15 +288,43 @@ def test_s2_threshold_and_difference():
     assert not s["readable"] and s["shown"] is None and s["reading"].startswith("descriptive")
 
 
+def _prow(d, shift, fwd_shift=None, dc=4.0):
+    fwd_shift = fwd_shift or [0.0] * len(shift)
+    return {"d_T_fwd": d, "d_T_rev": d + 0.1, "control_mismatch": {"shift": shift}, "clean": {"delta": dc},
+            "fwd": {"delta": [dc - v for v in fwd_shift]}, "control_random": {"shift": [0.0] * len(shift)}}
+
+
 def test_s3_donor_bound():
-    def prow(d, shift):
-        return {"d_T_fwd": d, "d_T_rev": d + 0.1, "control_mismatch": {"shift": shift},
-                "control_random": {"shift": [0.0, 0.0]}}
-    s = sw.s3([prow(0.5, [0.1, 0.4]), prow(0.7, [-0.1, 0.5])], samples=200)
+    s = sw.s3([_prow(0.5, [0.1, 0.4]), _prow(0.7, [-0.1, 0.5])], samples=200)
     assert s["read"] and s["mismatch_max_abs_mean_shift"] == pytest.approx(0.45)
+    assert s["validity"].startswith("primary") and not s["fallback_used"]
     assert s["d_T_fwd"]["value"] == pytest.approx(0.6) and s["asymmetry_median"] == pytest.approx(-0.1)
-    s = sw.s3([prow(0.5, [0.1, 0.9]), prow(0.7, [0.1, 0.5])], samples=200)
-    assert not s["read"] and s["mismatch_within_bound"] is False
+    s = sw.s3([_prow(0.5, [0.1, 0.9]), _prow(0.7, [0.1, 0.5])], samples=200)
+    assert not s["read"] and s["mismatch_within_bound"] is False and s["validity"].startswith("not read")
+
+
+def test_s3_fallback_specificity_ratio():
+    # L = 4; median d_T = 0.5 -> l0 = ceil(0.5 * 4) = 2: layers 2, 3 checked
+    # donor mean shift per layer [3, 3, 1, 2]: primary fails (|3| > 0.5)
+    # forward mean shift per layer [0, 1, 8, 10]: 1 <= 0.25*8 = 2, 2 <= 0.25*10 = 2.5 -> fallback passes
+    a = _prow(0.25, [4.0, 4.0, 0.0, 2.0], [0.0, 1.0, 6.0, 10.0])
+    b = _prow(0.75, [2.0, 2.0, 2.0, 2.0], [0.0, 1.0, 10.0, 10.0])
+    s = sw.s3([a, b], samples=200)
+    assert s["mismatch_mean_shift_per_layer"] == pytest.approx([3, 3, 1, 2])
+    assert s["forward_mean_shift_per_layer"] == pytest.approx([0, 1, 8, 10])
+    assert s["mismatch_within_bound"] is False and s["mismatch_max_abs_mean_shift"] == pytest.approx(3)
+    assert s["fallback"]["l0"] == 2 and s["fallback"]["pass"] and s["fallback_used"] and s["read"]
+    assert s["validity"].startswith("fallback")
+    assert s["fallback"]["donor_over_forward"] == pytest.approx([1 / 8, 2 / 10])
+    # layer 3 donor 3.0 > 0.25 * 10: fallback fails -> not read (layers before l0 never count)
+    b2 = _prow(0.75, [2.0, 2.0, 2.0, 4.0], [0.0, 1.0, 10.0, 10.0])
+    s = sw.s3([a, b2], samples=200)
+    assert s["fallback"]["pass"] is False and s["fallback"]["failing_layers"] == [3] and not s["read"]
+    assert s["validity"].startswith("not read")
+    # l0 rounding: median 0.6 * 4 = 2.4 -> l0 = 3
+    assert sw.s3_fallback([9, 9, 9, 1], [0, 0, 0, 4], 0.6)["l0"] == 3
+    assert sw.s3_fallback([9, 9, 9, 1], [0, 0, 0, 4], 0.6)["pass"] is True
+    assert sw.s3_fallback([], [], None)["pass"] is None
 
 
 def test_u1_readings():
@@ -343,6 +416,13 @@ def test_srun_resume_and_forced_patch(engine, tmp_path, monkeypatch):
     (tmp_path / "S" / "qb.json").write_text(json.dumps(stale))
     ex.SRun(engine, "qwen3b", {r.question_id: r for r in recs}, order, tmp_path, "sha", log=lambda s: None).run()
     assert calls[3:] == ["qb"]
+    assert all(r["control_mismatch"]["kind"] == "difference_patch" for r in rows.values())
+    old = json.loads((tmp_path / "S" / "qa.json").read_text())         # rev 6: an old-method row is refused, not redone
+    old["stamp"]["method_sha256"] = "rev1"
+    (tmp_path / "S" / "qa.json").write_text(json.dumps(old))
+    with pytest.raises(SystemExit) as e:
+        ex.SRun(engine, "qwen3b", {r.question_id: r for r in recs}, order, tmp_path, "sha", log=lambda s: None).run()
+    assert e.value.code == ex.OLD_METHOD and len(calls) == 4
     bad = dict(order[0], swap_prompt_sha256="x")
     with pytest.raises(SystemExit) as e:
         ex.rebuild_swap(recs[0], bad)
@@ -359,7 +439,8 @@ def test_report_build(tmp_path):
     for i, (lab, dc, ds) in enumerate(rows):
         r = {"question_id": f"q{i}", "fold": i % 2, **_row(lab, dc, ds), "patched": sw.follows(dc, ds),
              "d_T_fwd": 0.5, "d_T_rev": 0.6, "donor": "q0", "control_mismatch": {"shift": [0.1, 0.0]},
-             "control_random": {"shift": [0.0, 0.0]}}
+             "control_random": {"shift": [0.0, 0.0]}, "fwd": {"delta": [dc, ds]}, "clean": {"delta": dc},
+             "stamp": {"method_sha256": sw.method_sha256()}}
         (S / f"q{i}.json").write_text(json.dumps(r))
         if lab == "refusal":
             (U / f"q{i}.json").write_text(json.dumps({"question_id": f"q{i}", "fold": i % 2, "in_swap_subset": True,
@@ -373,6 +454,13 @@ def test_report_build(tmp_path):
     assert s["claims"]["S1"]["shares"]["1"]["answer_production"] == pytest.approx(4 / 6)
     assert s["claims"]["U1"]["value"] == 1.0 and s["claims"]["S2"]["n_a"] == 4
     assert s["status"]["S1"] == "descriptive" and "S0" in text
+    assert s["claims"]["S3"]["validity"].startswith("primary") and "Absolute check (primary)" in text
+    old = json.loads((S / "q0.json").read_text())
+    (S / "q0.json").write_text(json.dumps({**old, "stamp": {"method_sha256": "rev1"}}))
+    with pytest.raises(SystemExit) as e:                               # rev 6: old-method rows are never pooled
+        rep.build(tmp_path, "qwen3b", (0, 1), samples=10)
+    assert e.value.code == rep.OLD_METHOD
+    (S / "q0.json").write_text(json.dumps(old))
     unpatched = json.loads((S / "q10.json").read_text())
     unpatched["patched"] = False
     (S / "q10.json").write_text(json.dumps(unpatched))

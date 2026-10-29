@@ -16,12 +16,16 @@ opened. Llama 3B: descriptive (rev 2): S0 and the class shares are reported, S1-
   "answer-production majority", <= 0.25 "evidence-use majority", else mixed.
 - S2: refusal rows of the swap subset: p(A_steer gold | AP) - p(A_steer gold | EU), CI lower > 0, read only with >= 8
   rows per class.
-- S3: median forward d_T with CI, reverse beside; mismatched-donor mean shift within +-0.5 nat at every layer, else not
-  read. Beside: rev 0's d_c (runs/exp44_patch) and the §34 lens depths (Qwen; runs/exp34_jlens), where on disk.
+- S3: median forward d_T with CI, reverse beside. Validity (rev 6, 31553f6): primary = the mismatched donor's (difference
+  patch) mean shift within +-0.5 nat at every layer; pre-declared fallback if the primary fails = at every layer from
+  ceil(median d_T * L) on, donor mean shift <= 0.25 x the forward patch's mean shift at that layer (named when used);
+  else not read. shift(l) = Delta_clean - Delta_patched(l) (positive = toward S), mean over the patched (following)
+  rows, the same quantity for donor, random and forward. The absolute check is printed in every case. Beside: rev 0's d_c (runs/exp44_patch) and the §34 lens depths (Qwen; runs/exp34_jlens), where on disk.
 - U1: refusals that become gold under U (full population in scope; the swap subset beside): >= 0.50 with lower > 0.40
   "mostly a prompt artefact", <= 0.25 with upper < 0.35 "not the format", else partial; Steer-under-U - U beside.
 Percentile bootstrap, 10,000 draws (--samples). Writes <root>/<model>/report_<tag>.{md,json}.
-Exit 2: scope refused. Exit 6: a following row is not patched (or lacks its donor control).
+Exit 2: scope refused. Exit 6: a following row is not patched (or lacks its donor control). Exit 7: an S row is
+stamped with another method_sha256 (e.g. the rev 1 full-overwrite controls): rows of two methods are never pooled.
 """
 
 from __future__ import annotations
@@ -39,7 +43,7 @@ from memctl.analysis import swap as sw  # noqa: E402
 DEV_FOLDS = (0, 1)
 POOL_AUTHORISED = True    # rev 4 (f9952b2): POOL on all 330 rows; the swap set is fixed from here
 READ_CLAIMS = {"qwen3b": True, "llama3b": False}       # rev 2: Llama descriptive (S0 and shares only)
-REFUSED, UNPATCHED = 2, 6
+REFUSED, UNPATCHED, OLD_METHOD = 2, 6, 7
 
 
 def check_scope(folds, pooled: bool) -> None:
@@ -82,6 +86,11 @@ def build(root: Path, model: str, folds, samples: int = sw.BOOT_SAMPLES, patch_r
           exp34: Path = Path("runs/exp34_jlens")) -> tuple[str, dict]:
     S = load_dir(root / model / "S", folds)
     U = load_dir(root / model / "U", folds)
+    stale = [r["question_id"] for r in S if r.get("stamp", {}).get("method_sha256") != sw.method_sha256()]
+    if stale:
+        print(f"exp44_swap_report: {len(stale)} rows of another method (e.g. {stale[0]}): not pooled with rev 6 rows",
+              file=sys.stderr)
+        raise SystemExit(OLD_METHOD)
     for r in S:
         if r["follows"]["1"] and (not r.get("patched") or (r.get("donor") and not r.get("control_mismatch"))):
             print(f"exp44_swap_report: {r['question_id']} follows but is not fully patched", file=sys.stderr)
@@ -145,11 +154,17 @@ def markdown(s: dict) -> str:
          f"**S2** refusal rows: AP n={c['S2']['n_a']} p={_f(c['S2']['p_ap'])}, EU n={c['S2']['n_b']} "
          f"p={_f(c['S2']['p_eu'])}; difference {_ci(c['S2'])} -> {c['S2']['reading']}", "",
          f"**S3** d_T forward median {_ci(c['S3']['d_T_fwd'])} (n={c['S3']['d_T_fwd']['n']}), reverse "
-         f"{_ci(c['S3']['d_T_rev'])}; asymmetry median {_f(c['S3']['asymmetry_median'])}; mismatched-donor max |mean "
-         f"shift| {_f(c['S3']['mismatch_max_abs_mean_shift'])} (bound 0.5) -> within {c['S3']['mismatch_within_bound']}"
-         f"; beside {json.dumps(c['S3']['beside'])}", "",
+         f"{_ci(c['S3']['d_T_rev'])}; asymmetry median {_f(c['S3']['asymmetry_median'])}; beside {json.dumps(c['S3']['beside'])}", "",
+         f"S3 validity -> {c['S3']['validity']}. Shift: {c['S3']['shift_definition']}.",
+         f"Absolute check (primary): mismatched-donor (difference patch) max |mean shift| "
+         f"{_f(c['S3']['mismatch_max_abs_mean_shift'])} (bound 0.5) -> within {c['S3']['mismatch_within_bound']}",
+         f"Fallback (specificity ratio 0.25, layers >= l0 = {c['S3']['fallback']['l0']}): pass "
+         f"{c['S3']['fallback']['pass']}, failing layers {c['S3']['fallback']['failing_layers']}"
+         + (" -- FALLBACK USED" if c['S3']['fallback_used'] else ""), "",
          f"Mismatched-donor mean shift per layer: {[round(v, 3) for v in c['S3']['mismatch_mean_shift_per_layer']]}",
-         f"Random-overwrite mean shift per layer: {[round(v, 3) for v in c['S3']['random_mean_shift_per_layer']]}", "",
+         f"Forward-patch mean shift per layer: {[round(v, 3) for v in c['S3']['forward_mean_shift_per_layer']]}",
+         f"Random (difference-norm perturbation) mean shift per layer: "
+         f"{[round(v, 3) for v in c['S3']['random_mean_shift_per_layer']]}", "",
          f"**U1** (full population refusals in scope) gold under U {_ci(c['U1'])} (n={c['U1']['n']}, no marker "
          f"{c['U1']['n_no_marker']}); U_steer share {_f(c['U1']['u_steer_share'])}; Steer-under-U - U "
          f"{_ci(c['U1']['steer_minus_u'])}; U still refuses {_f(c['U1']['u_refusal_share'])} -> {c['U1']['reading']}",

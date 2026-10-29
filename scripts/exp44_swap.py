@@ -18,6 +18,10 @@ residual must be on disk, so a row whose donor is not done yet is patched in a f
 the full population in scope: U and U_steer; swap-subset refusal rows add A and A_steer for S2). --smoke: S only.
 Outputs runs/exp44_swap/<model>/{S/<qid>.json, resid/<qid>.npz, U/<qid>.json, _timing.json, _failed.json}.
 Exit 3: a sanity bound failed on a patched row (the row is written first). Exit 5: the gate's swap prompt sha differs.
+Exit 7 (rev 6): the output directory holds S / U rows stamped with another method_sha256 (e.g. the rev 1 full-overwrite
+controls of runs/exp44_swap/smoke/): resume REFUSES rather than redoing them, so old-control rows are never mixed with
+or overwritten by new ones; use a fresh --out. The --smoke default is now runs/exp44_swap/smoke_rev6/<model> (the rev 1
+smoke under runs/exp44_swap/smoke/ stays as the record).
 """
 
 from __future__ import annotations
@@ -46,7 +50,26 @@ GATE_DIR = Path("runs/exp44_swapgate")
 OUT = Path("runs/exp44_swap")
 DEV_FOLDS = (0, 1)
 POOL_AUTHORISED = True    # rev 4 (f9952b2): POOL on all 330 rows; the swap set is fixed from here
-REFUSED, SANITY, GATE_MISMATCH = 2, 3, 5
+REFUSED, SANITY, GATE_MISMATCH, OLD_METHOD = 2, 3, 5, 7
+SMOKE_DIR = "smoke_rev6"     # rev 6: new controls; runs/exp44_swap/smoke/ keeps the rev 1 smoke
+
+
+def check_method(out: Path) -> None:
+    """Refuse (exit 7) if any S / U row under `out` carries a method_sha256 other than the current one."""
+    want = sw.method_sha256()
+    stale = []
+    for sub in ("S", "U"):
+        for path in sorted((out / sub).glob("*.json")) if (out / sub).exists() else []:
+            try:
+                got = json.loads(path.read_text()).get("stamp", {}).get("method_sha256")
+            except json.JSONDecodeError:
+                continue
+            if got != want:
+                stale.append(f"{sub}/{path.name}")
+    if stale:
+        print(f"exp44_swap: {out} holds {len(stale)} rows of another method (e.g. {stale[0]}); the rev 6 controls are "
+              f"not mixed with them: use a fresh --out", file=sys.stderr, flush=True)
+        raise SystemExit(OLD_METHOD)
 
 
 def write_json(path: Path, payload) -> None:
@@ -143,13 +166,15 @@ class SRun:
     def donor(self, i: int) -> int | None:
         return sw.choose_donor(self.order, i)
 
-    def donor_resid(self, j: int | None) -> np.ndarray | None:
+    def donor_resid(self, j: int | None) -> tuple[np.ndarray, np.ndarray] | None:
+        """(h_clean_donor, h_swap_donor) from the donor's resid file (rev 6 difference patch), once its row is done."""
         if j is None:
             return None
         row = read_row(self.path(j), self.want(j))
         if row is None or not self.resid(j).exists():
             return None
-        return np.load(self.resid(j))["swap"]
+        r = np.load(self.resid(j))
+        return r["clean"], r["swap"]
 
     def needs_patch(self, row: dict, i: int) -> bool:
         if not row["follows"]["1"]:
@@ -192,6 +217,7 @@ class SRun:
                 "h_clean": r["clean"], "h_swap": r["swap"]}
 
     def run(self) -> None:
+        check_method(self.out)
         deferred = []
         for i, e in enumerate(self.order):
             t0 = time.perf_counter()
@@ -307,7 +333,7 @@ def main(argv=None) -> int:
     folds = list(range(5)) if args.pooled else [int(f) for f in args.folds.split(",")]
     if not args.check_inputs:              # the input check runs no model and reads no outcome: any fold
         check_folds(folds, args.pooled)
-    out = Path(args.out or (OUT / ("smoke" if args.smoke else "") / args.model))
+    out = Path(args.out or (OUT / (SMOKE_DIR if args.smoke else "") / args.model))
     population = [r for r in load_population(args.model) if r.fold in folds]
     records = {r.question_id: r for r in population}
     eligible, eligible_sha = load_eligible(args.model)
@@ -315,6 +341,7 @@ def main(argv=None) -> int:
     order = order[: args.limit] if args.limit else order
     if args.check_inputs:
         return check_inputs(args.model, records, order)
+    check_method(out)
     from memctl.analysis.steering import HFEngine
 
     t0 = time.perf_counter()

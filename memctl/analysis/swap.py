@@ -18,10 +18,15 @@ Patching (rows that follow at 1 nat only): forward = the clean run with its P1 r
   clean residual, T_rev(l) = (Delta_p - Delta_swap) / (Delta_clean - Delta_swap). d_T = (first l with T >= 0.5) / L.
   Sanity, asserted on every patched row: |T(L-1) - 1| < 0.01 (construction), |T(0)| < 0.05 (empirical bound).
 Controls (every patched row, forward direction, into the clean run):
-  mismatched donor: the swap-run P1 residual of a different swap row (`choose_donor`) at the same layer; reported as
-    the Delta shift toward S, shift(l) = Delta_clean - Delta_p(l) (positive = toward S), expected ~ 0;
+  mismatched donor (rev 6, difference patch): the clean P1 residual at layer l set to
+    h_clean(l) + (h_swap_donor(l) - h_clean_donor(l)), the donor row's (`choose_donor`) own swap-minus-clean
+    difference at the scale of the real patch; reported as the Delta shift toward S, shift(l) = Delta_clean -
+    Delta_p(l) (positive = toward S), expected ~ 0;
   self-overwrite: the clean residual into the clean run at layers 0, L//2, L-1: T = 0 (asserted, |shift| < 1e-4);
-  random: a seeded Gaussian vector with the norm of the forward patch's donor (h_swap(l)) overwritten at layer l.
+  random (rev 6, difference-norm perturbation): h_clean(l) + eps, eps the seeded Gaussian direction [44, row, layer]
+    scaled to ||h_swap(l) - h_clean(l)||, added to (not replacing) the clean residual.
+  Rev 6 (31553f6) drops the rev 1 full-state overwrites (donor h_swap_donor(l); random of norm ||h_swap(l)||): they
+  measured generic disruption at 10-100x the patch scale. The pass count per row is unchanged.
 Condition U: the §35 frozen-note arm B input (cached note + newline + B_INSTRUCTION ("... Do not reply unknown.") +
   newline + "Answer:"), greedy, 64 new tokens, on in-view refusal rows; gold = D1 on the phrase (provisional, as §38's
   laptop gold). Also under the §38 Steer setting (add alpha * v_L at every step: Qwen 3B L29 alpha 2, Llama 3B L17
@@ -38,6 +43,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import random
 import time
 from dataclasses import dataclass
@@ -65,6 +71,7 @@ S1_IND_MAX, S1_MARGIN_SHIFT, S1_HALF_WIDTH = 0.20, 0.15, 0.15
 S1_AP_MAJORITY, S1_EU_MAJORITY = 0.50, 0.25
 S2_MIN_PER_CLASS = 8
 S3_DONOR_BOUND = 0.5
+S3_SPECIFICITY_RATIO = 0.25          # rev 6 ruling 3, the pre-declared fallback
 U1_HIGH, U1_HIGH_LB, U1_LOW, U1_LOW_UB = 0.50, 0.40, 0.25, 0.35
 BOOT_SAMPLES = pt.BOOT_SAMPLES
 U_MAX_NEW = 64
@@ -80,8 +87,10 @@ METHOD = {"spec": "research/proposals/2026-10-29-exp44-patching.md rev 1 amendme
                     "position predicting the first divergent token",
           "follows": "F = Delta_clean - Delta_swap >= 1 and Delta_clean > 0 > Delta_swap",
           "patch": "steering.overwrite_spec(l, h_donor(l)) at P1, one layer per pass, forward and reverse",
-          "controls": "mismatched donor (previous cyclic swap row with other first ids), self at 0/L//2/L-1, "
-                      "random Gaussian [44, row, layer] with ||h_swap(l)||",
+          "controls": "rev 6 (31553f6): mismatched donor (previous cyclic swap row with other first ids) as a "
+                      "difference patch h_clean(l) + (h_swap_donor(l) - h_clean_donor(l)); self at 0/L//2/L-1; "
+                      "random = h_clean(l) + Gaussian direction [44, row, layer] of norm ||h_swap(l) - h_clean(l)||",
+          "controls_rev": 6,
           "unknown": "log-sum-exp of log p over the family's refusal ids", "residual": "decoder layer output"}
 
 
@@ -149,6 +158,21 @@ def random_overwrite(norm: float, hidden: int, row_index: int, layer: int, seed:
     """A seeded Gaussian direction per (row, layer) scaled to `norm`."""
     g = np.random.default_rng([seed, row_index, layer]).standard_normal(hidden)
     return (g / np.linalg.norm(g) * norm).astype(np.float32)
+
+
+def difference_patch(h_clean: np.ndarray, donor_clean: np.ndarray, donor_swap: np.ndarray) -> np.ndarray:
+    """Rev 6 mismatched donor at one layer (or all, row-wise): h_clean + (h_swap_donor - h_clean_donor)."""
+    return (np.asarray(h_clean, np.float64) + (np.asarray(donor_swap, np.float64)
+                                               - np.asarray(donor_clean, np.float64))).astype(np.float32)
+
+
+def difference_perturbation(h_clean: np.ndarray, h_swap: np.ndarray, row_index: int, layer: int,
+                            seed: int = RANDOM_SEED) -> tuple[np.ndarray, float]:
+    """Rev 6 random control at one layer: (h_clean + eps, ||eps||), eps the seeded [44, row, layer] direction scaled to
+    the row's own difference norm ||h_swap - h_clean|| at that layer."""
+    norm = float(np.linalg.norm(np.asarray(h_swap, np.float64) - np.asarray(h_clean, np.float64)))
+    eps = random_overwrite(norm, len(h_clean), row_index, layer, seed)
+    return (np.asarray(h_clean, np.float32) + eps).astype(np.float32), norm
 
 
 def choose_donor(order: list[dict], i: int) -> int | None:
@@ -303,9 +327,10 @@ def _sweep(engine, prep, vectors: dict[int, np.ndarray], x: SwapInputs) -> dict[
             for l, v in vectors.items()}
 
 
-def patch_passes(engine, x: SwapInputs, row: dict, state: dict, donor_swap_resid: np.ndarray | None,
-                 row_index: int) -> dict:
-    """Forward and reverse sweeps over every layer, then the three controls; updates and returns `row`."""
+def patch_passes(engine, x: SwapInputs, row: dict, state: dict,
+                 donor_resid: tuple[np.ndarray, np.ndarray] | None, row_index: int) -> dict:
+    """Forward and reverse sweeps over every layer, then the three controls; updates and returns `row`.
+    `donor_resid` = (h_clean_donor, h_swap_donor), the donor row's (L, hidden) P1 residuals, or None (no donor)."""
     started = time.perf_counter()
     L = engine.n_layers
     h_clean, h_swap = state["h_clean"], state["h_swap"]
@@ -325,23 +350,30 @@ def patch_passes(engine, x: SwapInputs, row: dict, state: dict, donor_swap_resid
                            "T": {str(l): (selfr[l]["delta"] - dc) / (ds - dc) if abs(ds - dc) > MIN_GAP else None
                                  for l in self_layers(L)},
                            "pass": all(abs(v) < SELF_TOL for v in self_shift.values())}
-    rnd_vecs = {l: random_overwrite(float(np.linalg.norm(h_swap[l])), h_swap.shape[1], row_index, l) for l in range(L)}
+    rnd_vecs, rnd_norms = {}, []
+    for l in range(L):
+        rnd_vecs[l], n = difference_perturbation(h_clean[l], h_swap[l], row_index, l)
+        rnd_norms.append(n)
     rnd = _sweep(engine, state["clean_prep"], rnd_vecs, x)
     d_rnd = [rnd[l]["delta"] for l in range(L)]
-    out["control_random"] = {"delta": d_rnd, "shift": shift_toward_s(d_rnd, dc), "T": transfer(d_rnd, dc, ds),
-                             "top1": [rnd[l]["top1"] for l in range(L)]}
-    if donor_swap_resid is not None:
-        mm = _sweep(engine, state["clean_prep"], {l: donor_swap_resid[l] for l in range(L)}, x)
+    out["control_random"] = {"kind": "difference_norm_perturbation", "delta": d_rnd,
+                             "shift": shift_toward_s(d_rnd, dc), "T": transfer(d_rnd, dc, ds),
+                             "top1": [rnd[l]["top1"] for l in range(L)], "eps_norm": rnd_norms}
+    if donor_resid is not None:
+        donor_clean, donor_swap = donor_resid
+        mm = _sweep(engine, state["clean_prep"],
+                    {l: difference_patch(h_clean[l], donor_clean[l], donor_swap[l]) for l in range(L)}, x)
         d_mm = [mm[l]["delta"] for l in range(L)]
-        out["control_mismatch"] = {"delta": d_mm, "shift": shift_toward_s(d_mm, dc), "T": transfer(d_mm, dc, ds),
-                                   "top1": [mm[l]["top1"] for l in range(L)],
-                                   "donor_norm": [float(np.linalg.norm(v)) for v in donor_swap_resid]}
+        out["control_mismatch"] = {"kind": "difference_patch", "delta": d_mm, "shift": shift_toward_s(d_mm, dc),
+                                   "T": transfer(d_mm, dc, ds), "top1": [mm[l]["top1"] for l in range(L)],
+                                   "donor_diff_norm": [float(np.linalg.norm(donor_swap[l].astype(np.float64)
+                                                                            - donor_clean[l])) for l in range(L)]}
     else:
         out["control_mismatch"] = None
     row.update(out)
     row["patched"] = True
     row["timing"]["patch_s"] = time.perf_counter() - started
-    row["timing"]["n_patch_passes"] = 4 * L + len(self_layers(L)) - (0 if donor_swap_resid is not None else L)
+    row["timing"]["n_patch_passes"] = 4 * L + len(self_layers(L)) - (0 if donor_resid is not None else L)
     return row
 
 
@@ -494,22 +526,53 @@ def s2(refusal_rows: list[dict], samples: int = BOOT_SAMPLES) -> dict:
 
 
 def s3(patched_rows: list[dict], samples: int = BOOT_SAMPLES) -> dict:
-    """Median forward transfer depth with CI, the reverse depth beside; the mismatched-donor mean Delta shift (toward
-    S) must stay within +-0.5 nat at every layer, else S3 is not read."""
+    """Median forward transfer depth with CI, the reverse depth beside, and the S3 validity check (rev 6 ruling 3).
+
+    shift(l) = Delta_clean - Delta_patched(l) (toward S positive), the same quantity for the donor control, the random
+    control and the forward patch. Mean over the patched (following) rows, per layer.
+    Primary: the donor's mean shift within +-0.5 nat at every layer. Pre-declared fallback (used only if the primary
+    fails): at every layer l >= l0 = ceil(median d_T_fwd * L), donor mean shift(l) <= 0.25 * forward mean shift(l)
+    (signed, as written). S3 is read iff either holds; the absolute check is reported in both cases."""
     fwd = [r["d_T_fwd"] for r in patched_rows if r.get("d_T_fwd") is not None]
     rev = [r["d_T_rev"] for r in patched_rows if r.get("d_T_rev") is not None]
     mm = [r["control_mismatch"]["shift"] for r in patched_rows if r.get("control_mismatch")]
     per_layer = [float(np.mean(col)) for col in zip(*mm)] if mm else []
     within = bool(per_layer) and all(abs(v) <= S3_DONOR_BOUND for v in per_layer)
     rnd = [r["control_random"]["shift"] for r in patched_rows if r.get("control_random")]
+    fwd_shift = [shift_toward_s(r["fwd"]["delta"], r["clean"]["delta"]) for r in patched_rows
+                 if r.get("control_mismatch") and r.get("fwd")]
+    fwd_per_layer = [float(np.mean(col)) for col in zip(*fwd_shift)] if fwd_shift else []
+    fb = s3_fallback(per_layer, fwd_per_layer, median(fwd) if fwd else None)
+    fallback_used = (not within) and fb["pass"] is True
+    read = within or fallback_used
     return {"d_T_fwd": pt.bootstrap(fwd, median, samples), "d_T_rev": pt.bootstrap(rev, median, samples),
             "asymmetry_median": float(median([a - b for a, b in zip(fwd, rev)])) if fwd and len(fwd) == len(rev)
             else None,
+            "shift_definition": "shift(l) = Delta_clean - Delta_patched(l), positive = toward S; mean over the "
+                                "patched (following) rows; same quantity for donor, random and forward patch",
             "mismatch_mean_shift_per_layer": per_layer,
             "mismatch_max_abs_mean_shift": max((abs(v) for v in per_layer), default=None),
             "mismatch_within_bound": within if mm else None,
+            "forward_mean_shift_per_layer": fwd_per_layer,
+            "fallback": fb, "fallback_used": fallback_used,
+            "validity": ("primary (|donor mean shift| <= 0.5 at every layer)" if within
+                         else "fallback (specificity ratio <= 0.25 from the median d_T onward)" if fallback_used
+                         else "not read (primary and fallback both fail)"),
             "random_mean_shift_per_layer": [float(np.mean(col)) for col in zip(*rnd)] if rnd else [],
-            "read": within, "n_rows": len(patched_rows), "n_with_donor": len(mm)}
+            "read": read, "n_rows": len(patched_rows), "n_with_donor": len(mm)}
+
+
+def s3_fallback(donor_per_layer: list[float], fwd_per_layer: list[float], median_d_t: float | None,
+                ratio: float = S3_SPECIFICITY_RATIO) -> dict:
+    """Rev 6 ruling 3 fallback: at every layer from l0 = ceil(median d_T * L) on, donor <= ratio * forward."""
+    L = len(donor_per_layer)
+    if not L or len(fwd_per_layer) != L or median_d_t is None:
+        return {"pass": None, "l0": None, "ratio": ratio, "failing_layers": None}
+    l0 = min(L - 1, math.ceil(median_d_t * L - 1e-9))
+    failing = [l for l in range(l0, L) if not donor_per_layer[l] <= ratio * fwd_per_layer[l]]
+    return {"pass": not failing, "l0": l0, "ratio": ratio, "failing_layers": failing,
+            "donor_over_forward": [donor_per_layer[l] / fwd_per_layer[l] if fwd_per_layer[l] else None
+                                   for l in range(l0, L)]}
 
 
 def u1(u_rows: list[dict], samples: int = BOOT_SAMPLES) -> dict:
