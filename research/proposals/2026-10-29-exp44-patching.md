@@ -355,3 +355,42 @@ empirical bound must not halt a five-hour run.
 
 This change was made on development rows only (folds 0–1); no confirmation row has been read by anyone. The
 development d_c medians were seen during the recount and did not enter the choice of margin.
+
+## Rev 6 (2026-10-29): the S3 negative controls are mis-scaled — difference-matched controls replace them
+
+**What the S0 smoke showed** (Qwen 3B, 10 development rows, `runs/exp44_swap/smoke/qwen3b/`, decides nothing; Advisor
+recount of the 7 patched rows). The forward patch at layer 0 shifts Δ by ≤ 0.006 nat on every row, and its median
+shift across layers is ≤ 0.2 nat: the swap residual is a near copy of the clean one until the content arrives. The
+two controls are not: the mismatched donor's median shift toward S per row runs from −2.7 to +17.6 nat and the random
+overwrite's from −1.0 to +21.9 nat, at every layer including layer 0. From the stored residuals, the swap-minus-clean
+difference at layer 18 has norm 0.2–8.6 against a residual norm of about 55 (0.3–13 %), while overwriting with a
+donor row's residual moves the state by 10–68. The controls replace the whole P1 state with a foreign one and so
+measure generic disruption at ten to a hundred times the scale of the real patch. The ±0.5 nat bound of §B cannot be
+met by construction; on two rows the donor's shift (16.8, 17.6 nat) approaches the forward shift at d_T (23.3, 20.7),
+so a full-state overwrite could by itself clear T ≥ 0.5. The §B controls, as built, test nothing about specificity.
+
+**Rulings.**
+1. **Mismatched donor becomes a difference patch.** At layer l the clean run's P1 residual is set to
+   h_clean(l) + (h_swap_donor(l) − h_clean_donor(l)): the donor row's own swap-minus-clean difference, which carries the
+   donor's substitute at the same scale as the real patch (donor difference norms 0.2–8.6 at layer 18, the same range
+   as own differences). Donor choice unchanged (rev 3 ruling 3, nearest earlier cyclic, both read ids outside the
+   row's); both donor residuals are already on disk (`resid/*.npz`, clean and swap). The full-overwrite donor is
+   dropped, not kept beside, so the pass count per row does not change.
+2. **Random control becomes a difference-norm perturbation.** h_clean(l) + ε with ε a seeded Gaussian direction
+   ([44, row, layer], unchanged) of norm ‖h_swap(l) − h_clean(l)‖, added to the clean residual, not replacing it.
+   Reported like §38's Random, no bound. The full-norm replacement is dropped.
+3. **S3 validity.** Primary, unchanged: the donor control's mean shift toward S over following rows within ±0.5 nat
+   at every layer. Pre-declared fallback if the absolute bound fails: S3 is still read if, at every layer from the
+   median d_T onward, the donor's mean shift is at most 0.25 × the forward patch's mean shift at that layer (the
+   specificity ratio), and the fallback is named in the report. Otherwise S3 is not read, as before. The absolute
+   check is printed in both cases.
+4. Executor options (a) and (c) are rejected: (a) subtracts a disruption measured at the wrong scale, (c) removes the
+   only specificity check S3 has. (b) is what ruling 1 achieves without needing matched prompts.
+5. Self-overwrite, the T sanity bounds, the following rule, the classes and S0–S2 / U1 are unchanged. The smoke's
+   full-overwrite numbers stay on disk as the record of why the controls changed.
+6. Tests to add before the S run: a donor difference of zero (donor = self) gives zero shift; the random vector's
+   norm equals the difference norm at that layer; the pass count per patched row is unchanged.
+
+Development-only observations, not readings: S0 following 4/6 among successes; d_T forward 0.889, reverse 0.889, on
+rows whose rev 0 d_c is about 0.75; two non-following successes are indeterminate (Δ moves, no flip). All on
+folds 0–1; no confirmation row has been read.
