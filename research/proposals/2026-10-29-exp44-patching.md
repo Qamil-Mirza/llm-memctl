@@ -295,3 +295,20 @@ type-diversity caveat in the report.
 Order: rev 0 7B finishes (laptop) → gate recount with the shared-prefix rule (data only, send counts) → rev 4 recorded,
 `POOL_AUTHORISED` set by the Executor on the Advisor's word → 10-row S0 smoke → Qwen 3B S then U (≈ 4.3 h) → Llama 3B
 (≈ 3.4 h) → report → results review.
+
+## Rev 4 (2026-10-29): recount under the shared-prefix rule (0dcb155) — the fixed swap set; POOL authorised
+
+**Qwen 3B: 89 eligible (dev 35, folds 2–4 54, all 89); 43 in-view failures (21 refusals, 22 wrong), 46 successes;
+folds 2–4: 29 failures (16 / 13), 25 successes.** Recounted by the Advisor from `eligible_qwen3b.jsonl` (89 / 54 /
+46-22-21; 71 distinct substitutes, maximum multiplicity 3; 12 rows with a non-empty shared prefix). Two types keep
+≥ 15 rows on folds 2–4, so no diversity caveat. Exclusions: zero evidence lines 180, several 5, in the question 11,
+elsewhere in the prompt 39, no substitute 6, first-token-equal 0, alignment 0. Seven rows gained against rev 2, none
+lost; the substitute changed on 5 rows by the per-row draw. **Verdict: POOL, all 330 rows; `POOL_AUTHORISED` may be
+set.** S1(c) at 43 failures: half-width ≈ 0.15 at p = 0.5, at the bar; documented outcome if it fails.
+
+Prefix rows (12): " $" ×4 (currency), "6:" ×2 (clock times), a shared leading digit ×2 (Qwen splits digits), articles
+×4 (" a" ×2, " The", " the"; the content word is what is read, which also resolves the §43 article artefact for these
+rows). Llama 3B: 90 eligible, 24 failures (12 / 12), 66 successes, 9 prefix rows, descriptive only.
+
+The swap set is now fixed. Any further change to the eligible rows, substitutes or prefixes after this point is a
+protocol deviation and must be recorded as such.
