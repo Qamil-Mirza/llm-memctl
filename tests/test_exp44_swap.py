@@ -289,8 +289,10 @@ def _eligible(engine, rec, sub):
     _, place = G.place_gold(rec, G.Checker())
     prompt, _, _ = G.swap_prompt(rec, place, sub)
     gi, si = G.token_info(engine.tokenizer, rec.gold), G.token_info(engine.tokenizer, sub)
+    prefix, gd, sd = sw.shared_prefix(gi["content"], si["content"])
     return {"question_id": rec.question_id, "fold": rec.fold, "substitute": sub, "surface_type": "name",
-            "gold_first_id": gi["first_id"], "substitute_first_id": si["first_id"],
+            "gold_first_id": gi["first_id"], "substitute_first_id": si["first_id"], "shared_prefix_ids": list(prefix),
+            "gold_read_id": gd, "substitute_read_id": sd,
             "evidence_line_index": place["line_index"], "clean_prompt_sha256": pt.sha256_text(rec.prompt),
             "swap_prompt_sha256": pt.sha256_text(prompt)}
 
@@ -363,3 +365,79 @@ def test_report_build(tmp_path):
     with pytest.raises(SystemExit) as e:
         rep.build(tmp_path, "qwen3b", (0, 1), samples=10)
     assert e.value.code == rep.UNPATCHED
+
+
+# --- rev 3: the shared-prefix rule ------------------------------------------------------------------------------
+
+def money_record(qid="m1", gold="$800"):
+    lines = ("user, d1: turn a", f"user, d2: The sofa cost me {gold} last week.", "user, d3: turn c")
+    prompt = ("Use only the memory.\n\n## Memory\n" + "\n".join(lines) + "\n\n## Current input\nQuestion: (asked on "
+              "2023/05/30) How much did the sofa cost?\n\nNote:")
+    return PromptRecord(qid, 0, "qwen3b", prompt, OUTPUT, gold, "single-session-user", True, lines, (lines[1],),
+                        True, False, True)
+
+
+def test_shared_prefix_arithmetic():
+    assert sw.shared_prefix((5, 8, 0), (5, 2, 9, 0)) == ((5,), 8, 2)
+    assert sw.shared_prefix((7,), (9,)) == ((), 7, 9)                  # empty prefix: the first tokens
+    assert sw.shared_prefix((7,), (7, 3)) == ((7,), None, 3)           # gold is a token-prefix of S: no divergence
+    assert sw.shared_prefix((7, 1), (7, 1)) == ((7, 1), None, None)
+
+
+def test_dollar_prefix_is_forced_and_read_after(engine):
+    tok = engine.tokenizer
+    rec = money_record()
+    old = rec.memory_lines[1]
+    new = old.replace("$800", "$2,000")
+    x = sw.build_swap_inputs(tok, rec, rec.prompt.replace(old, new), old, new, "$2,000", (9788,))
+    assert tok.decode(list(x.prefix_ids)) == " $" and x.g_first_id == x.prefix_ids[0]
+    assert tok.decode([x.g_id]) == "8" and tok.decode([x.s_id]) == "2"
+    for ids in (x.clean_ids, x.swap_ids, x.cut_ids):                   # the prefix ends every sequence
+        assert ids[-len(x.prefix_ids):] == x.prefix_ids
+        assert tok.decode(list(ids[-3:])).endswith("Answer: $")
+    from memctl.analysis.jlens_readout import readout_for
+    plain = readout_for(tok, rec.prompt, rec.memory_lines, rec.evidence_lines, rec.gold)
+    assert x.clean_ids == tuple(plain.input_ids) + x.prefix_ids
+    row, state = sw.base_passes(engine, x)
+    assert row["prefix_ids"] == list(x.prefix_ids) and row["g_id"] == x.g_id
+    row = sw.patch_passes(engine, x, row, state, None, 0)
+    assert abs(row["T_fwd"][-1] - 1) < 1e-4 and abs(row["T_rev"][-1] - 1) < 1e-4
+
+
+def test_empty_prefix_reproduces_rev2_inputs(engine):
+    from memctl.analysis.jlens_readout import readout_for, tracked_token_ids
+    tok = engine.tokenizer
+    rec = record()
+    x = swap_inputs(engine)
+    assert x.prefix_ids == () and x.g_id == x.g_first_id
+    clean = readout_for(tok, rec.prompt, rec.memory_lines, rec.evidence_lines, rec.gold)
+    assert x.clean_ids == tuple(clean.input_ids) and x.g_id == clean.tracked["gold"]
+    assert x.s_id == tracked_token_ids(tok, "Paris")[0]["gold"]
+    new = LINES[2].replace("Leeds", "Paris")
+    swap = readout_for(tok, x.swap_prompt, tuple(new if l == LINES[2] else l for l in LINES), (new,), rec.gold)
+    assert x.swap_ids == tuple(swap.input_ids)
+
+
+def test_gate_rev3_first_token_after_prefix(engine):
+    import exp44_swap_gate as G
+    tok = engine.tokenizer
+    r = money_record("a", "$800")
+    pool = [r, money_record("b", "$2,000")]
+    tinfo = {x.question_id: G.token_info(tok, x.gold) for x in pool}
+    types = {x.question_id: G.type_key(x.gold) for x in pool}
+    _, place = G.place_gold(r, G.Checker())
+    assert G.choose_substitute(r, place, pool, tinfo, types, G.Checker(), uses=G.Counter(), rev=2)[1] == \
+        "first_token_equal"
+    cand, why, _, _ = G.choose_substitute(r, place, pool, tinfo, types, G.Checker(), uses=G.Counter(), rev=3)
+    assert why is None and cand.question_id == "b"
+    # a candidate whose content tokens extend the gold's has no divergent token: first_token_equal
+    lr = record("c", gold="Leeds")
+    pool2 = [lr, record("d", gold="Paris")]
+    ti = {x.question_id: G.token_info(tok, x.gold) for x in pool2}
+    ti["d"] = dict(ti["d"], content=ti["c"]["content"] + (5,), first_id=ti["c"]["first_id"])
+    ty = {x.question_id: G.type_key(x.gold) for x in pool2}
+    _, pl = G.place_gold(lr, G.Checker())
+    assert G.choose_substitute(lr, pl, pool2, ti, ty, G.Checker(), uses=G.Counter(), rev=3)[1] == "first_token_equal"
+    del ti["d"]["content"], ti["d"]["first_id"]
+    ti["d"] = G.token_info(tok, "Paris")
+    assert G.choose_substitute(lr, pl, pool2, ti, ty, G.Checker(), uses=G.Counter(), rev=3)[0].question_id == "d"

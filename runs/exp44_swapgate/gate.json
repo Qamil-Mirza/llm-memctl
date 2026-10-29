@@ -1,6 +1,6 @@
 {
- "spec": "research/proposals/2026-10-29-exp44-patching.md rev 1 §A (D-45) + rev 2 rulings 2-3 (5146f5b)",
- "rev": 2,
+ "spec": "research/proposals/2026-10-29-exp44-patching.md rev 1 §A (D-45) + rev 2 rulings 2-3 (5146f5b) + rev 3 shared-prefix rule (7acce03)",
+ "rev": 3,
  "seed": 44,
  "rules": {
   "verbatim": "the gold's D1 tokens (answer_selection._tokens) as a contiguous whole-token run of the text's D1 tokens (ASCII case-insensitive regex, cross-checked against the normalised form); stricter than D1's substring branch, no all-tokens branch",
@@ -57,6 +57,10 @@
     "duration": "a word in (seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|nights?|weeks?|months?|years?|yrs?|decades?|centur(?:y|ies))",
     "bare": "every other number-type gold (incl. a number with a non-time, non-currency unit)"
    }
+  },
+  "rev3": {
+   "first_token": "different first token after the shared prefix (longest common content-token prefix of G and S after the leading whitespace); no divergent token -> first_token_equal",
+   "alignment": "memctl.analysis.swap.build_swap_inputs: clean / swap / cut with the prefix forced; it ends every sequence, identical"
   }
  },
  "families": {
@@ -68,46 +72,46 @@
      "all": 330
     },
     "eligible": {
-     "dev": 32,
-     "confirmation": 50,
-     "all": 82
+     "dev": 35,
+     "confirmation": 54,
+     "all": 89
     },
     "by_question_type": {
      "dev": {
-      "knowledge-update": 10,
+      "knowledge-update": 11,
       "multi-session": 0,
-      "single-session-assistant": 6,
+      "single-session-assistant": 7,
       "single-session-preference": 0,
-      "single-session-user": 15,
+      "single-session-user": 16,
       "temporal-reasoning": 1
      },
      "confirmation": {
-      "knowledge-update": 13,
-      "multi-session": 4,
+      "knowledge-update": 14,
+      "multi-session": 5,
       "single-session-assistant": 15,
       "single-session-preference": 0,
-      "single-session-user": 14,
+      "single-session-user": 16,
       "temporal-reasoning": 4
      },
      "all": {
-      "knowledge-update": 23,
-      "multi-session": 4,
-      "single-session-assistant": 21,
+      "knowledge-update": 25,
+      "multi-session": 5,
+      "single-session-assistant": 22,
       "single-session-preference": 0,
-      "single-session-user": 29,
+      "single-session-user": 32,
       "temporal-reasoning": 5
      }
     },
     "by_label": {
      "confirmation": {
-      "success": 24,
-      "refusal": 14,
-      "wrong": 12
+      "success": 25,
+      "refusal": 16,
+      "wrong": 13
      },
      "all": {
-      "success": 43,
-      "refusal": 19,
-      "wrong": 20
+      "success": 46,
+      "refusal": 21,
+      "wrong": 22
      }
     },
     "by_surface_type": {
@@ -115,23 +119,27 @@
       "number:duration": 3,
       "name": 12,
       "other": 8,
-      "number:bare": 9
+      "date": 1,
+      "number:bare": 9,
+      "number:currency": 2
      },
      "confirmation": {
       "number:duration": 4,
       "name": 16,
+      "other": 10,
       "number:bare": 18,
-      "other": 9,
       "number:percent": 1,
-      "date": 2
+      "date": 3,
+      "number:currency": 2
      },
      "all": {
       "number:duration": 7,
       "name": 28,
-      "other": 17,
+      "other": 18,
+      "date": 4,
       "number:bare": 27,
-      "number:percent": 1,
-      "date": 2
+      "number:currency": 4,
+      "number:percent": 1
      }
     },
     "population_surface_types": {
@@ -146,8 +154,8 @@
     "by_surface_type_and_label_all": {
      "date": {
       "success": 0,
-      "refusal": 1,
-      "wrong": 1
+      "refusal": 2,
+      "wrong": 2
      },
      "name": {
       "success": 14,
@@ -158,6 +166,11 @@
       "success": 15,
       "refusal": 4,
       "wrong": 8
+     },
+     "number:currency": {
+      "success": 2,
+      "refusal": 1,
+      "wrong": 1
      },
      "number:duration": {
       "success": 7,
@@ -170,7 +183,7 @@
       "wrong": 0
      },
      "other": {
-      "success": 7,
+      "success": 8,
       "refusal": 6,
       "wrong": 4
      }
@@ -181,7 +194,7 @@
      "gold_in_question": 11,
      "gold_elsewhere": 39,
      "no_substitute": 6,
-     "first_token_equal": 7,
+     "first_token_equal": 0,
      "alignment_failure": 0
     },
     "exclusion_steps": [
@@ -212,23 +225,19 @@
      },
      {
       "exclusion": "first_token_equal",
-      "removed": 7,
-      "remaining": 82
+      "removed": 0,
+      "remaining": 89
      },
      {
       "exclusion": "alignment_failure",
       "removed": 0,
-      "remaining": 82
+      "remaining": 89
      }
     ],
-    "distinct_substitutes": 63,
-    "distinct_substitute_strings": 63,
+    "distinct_substitutes": 71,
+    "distinct_substitute_strings": 71,
     "max_substitute_multiplicity": 3,
     "top_substitutes": [
-     [
-      "3",
-      3
-     ],
      [
       "emma",
       3
@@ -239,6 +248,10 @@
      ],
      [
       "a mix of irish and italian",
+      2
+     ],
+     [
+      "3",
       2
      ],
      [
@@ -259,17 +272,141 @@
      ]
     ],
     "cap_stats": {},
+    "shared_prefix": {
+     "n_nonempty": 12,
+     "prefixes": {
+      "6:": 2,
+      "1": 2,
+      " $": 4,
+      " The": 1,
+      " a": 2,
+      " the": 1
+     },
+     "rows": [
+      {
+       "question_id": "59524333",
+       "fold": 0,
+       "label": "wrong",
+       "gold": "6:00 pm",
+       "substitute": "6:45 AM",
+       "prefix": "6:",
+       "gold_read": "0",
+       "substitute_read": "4"
+      },
+      {
+       "question_id": "0e4e4c46",
+       "fold": 1,
+       "label": "wrong",
+       "gold": "132 points",
+       "substitute": "17",
+       "prefix": "1",
+       "gold_read": "3",
+       "substitute_read": "7"
+      },
+      {
+       "question_id": "0f05491a",
+       "fold": 1,
+       "label": "wrong",
+       "gold": "120",
+       "substitute": "15",
+       "prefix": "1",
+       "gold_read": "2",
+       "substitute_read": "5"
+      },
+      {
+       "question_id": "7527f7e2",
+       "fold": 1,
+       "label": "success",
+       "gold": "$800",
+       "substitute": "$0.75",
+       "prefix": " $",
+       "gold_read": "8",
+       "substitute_read": "0"
+      },
+      {
+       "question_id": "7a8d0b71",
+       "fold": 1,
+       "label": "success",
+       "gold": "$2,000",
+       "substitute": "$400,000",
+       "prefix": " $",
+       "gold_read": "2",
+       "substitute_read": "4"
+      },
+      {
+       "question_id": "86f00804",
+       "fold": 1,
+       "label": "success",
+       "gold": "The Seven Husbands of Evelyn Hugo",
+       "substitute": "The Sugar Factory at Icon Park.",
+       "prefix": " The",
+       "gold_read": " Seven",
+       "substitute_read": " Sugar"
+      },
+      {
+       "question_id": "3d86fd0a",
+       "fold": 2,
+       "label": "success",
+       "gold": "a coffee shop in the city",
+       "substitute": "a blue Snaggletooth",
+       "prefix": " a",
+       "gold_read": " coffee",
+       "substitute_read": " blue"
+      },
+      {
+       "question_id": "bc8a6e93",
+       "fold": 2,
+       "label": "wrong",
+       "gold": "a lemon blueberry cake",
+       "substitute": "a coffee shop in the city",
+       "prefix": " a",
+       "gold_read": " lemon",
+       "substitute_read": " coffee"
+      },
+      {
+       "question_id": "cc06de0d",
+       "fold": 3,
+       "label": "refusal",
+       "gold": "$6",
+       "substitute": "$50",
+       "prefix": " $",
+       "gold_read": "6",
+       "substitute_read": "5"
+      },
+      {
+       "question_id": "852ce960",
+       "fold": 4,
+       "label": "wrong",
+       "gold": "$400,000",
+       "substitute": "$25,000",
+       "prefix": " $",
+       "gold_read": "4",
+       "substitute_read": "2"
+      },
+      {
+       "question_id": "b46e15ee",
+       "fold": 4,
+       "label": "wrong",
+       "gold": "the 'Walk for Hunger' charity event",
+       "substitute": "the woman selling jam at the farmer's market",
+       "prefix": " the",
+       "gold_read": " '",
+       "substitute_read": " woman"
+      },
+      {
+       "question_id": "c19f7a0b",
+       "fold": 4,
+       "label": "refusal",
+       "gold": "6:30 pm",
+       "substitute": "6:00 pm",
+       "prefix": "6:",
+       "gold_read": "3",
+       "substitute_read": "0"
+      }
+     ]
+    },
     "alignment_failures": [],
     "substitute_exclusions": [
-     {
-      "question_id": "59524333",
-      "fold": 0,
-      "label": "wrong",
-      "question_type": "knowledge-update",
-      "gold": "6:00 pm",
-      "type": "date",
-      "exclusion": "first_token_equal"
-     },
      {
       "question_id": "71a3fd6b",
       "fold": 0,
@@ -307,42 +444,6 @@
       "exclusion": "no_substitute"
      },
      {
-      "question_id": "7527f7e2",
-      "fold": 1,
-      "label": "success",
-      "question_type": "single-session-user",
-      "gold": "$800",
-      "type": "number:currency",
-      "exclusion": "first_token_equal"
-     },
-     {
-      "question_id": "7a8d0b71",
-      "fold": 1,
-      "label": "success",
-      "question_type": "single-session-assistant",
-      "gold": "$2,000",
-      "type": "number:currency",
-      "exclusion": "first_token_equal"
-     },
-     {
-      "question_id": "3d86fd0a",
-      "fold": 2,
-      "label": "success",
-      "question_type": "single-session-user",
-      "gold": "a coffee shop in the city",
-      "type": "other",
-      "exclusion": "first_token_equal"
-     },
-     {
-      "question_id": "cc06de0d",
-      "fold": 3,
-      "label": "refusal",
-      "question_type": "multi-session",
-      "gold": "$6",
-      "type": "number:currency",
-      "exclusion": "first_token_equal"
-     },
-     {
       "question_id": "37d43f65",
       "fold": 4,
       "label": "success",
@@ -352,15 +453,6 @@
       "exclusion": "no_substitute"
      },
      {
-      "question_id": "852ce960",
-      "fold": 4,
-      "label": "wrong",
-      "question_type": "knowledge-update",
-      "gold": "$400,000",
-      "type": "number:currency",
-      "exclusion": "first_token_equal"
-     },
-     {
       "question_id": "b759caee",
       "fold": 4,
       "label": "success",
@@ -368,40 +460,32 @@
       "gold": "@jessica_poole_jewellery",
       "type": "other",
       "exclusion": "no_substitute"
-     },
-     {
-      "question_id": "c19f7a0b",
-      "fold": 4,
-      "label": "refusal",
-      "question_type": "single-session-user",
-      "gold": "6:30 pm",
-      "type": "date",
-      "exclusion": "first_token_equal"
      }
     ],
     "regex_vs_normalised": {
-     "checks": 1169,
+     "checks": 1055,
      "disagreements": 0
     },
     "continuation_split_unstable": 0
    },
    "gate": {
-    "eligible_folds_2_4": 50,
+    "eligible_folds_2_4": 54,
     "question_types_ge_15_folds_2_4": {
-     "single-session-assistant": 15
+     "single-session-assistant": 15,
+     "single-session-user": 16
     },
-    "n_question_types_ge_15": 1,
-    "inview_failures_folds_2_4": 26,
-    "inview_failures_all_330": 39,
-    "verdict": "pool (claims read on all 330) + type-diversity caveat (fewer than two question types of >= 15 on folds 2-4; rev 2 ruling 7)",
+    "n_question_types_ge_15": 2,
+    "inview_failures_folds_2_4": 29,
+    "inview_failures_all_330": 43,
+    "verdict": "pool (claims read on all 330)",
     "rev2_check": {
-     "eligible_all": 82,
-     "failures_all": 39,
+     "eligible_all": 89,
+     "failures_all": 43,
      "need": {
       "eligible_all": 85,
       "failures_all": 40
      },
-     "result": "FLAG: Advisor re-reads the gate (rev 3)"
+     "result": "recorded for rev 4 (rev 3: POOL regardless; the 85 / 40 bar was a re-read trigger)"
     }
    },
    "eligible": [
@@ -425,6 +509,13 @@
      "surface_type": "other",
      "gold": "every week",
      "substitute": "under my bed"
+    },
+    {
+     "question_id": "59524333",
+     "fold": 0,
+     "surface_type": "date",
+     "gold": "6:00 pm",
+     "substitute": "6:45 AM"
     },
     {
      "question_id": "5d3d2817",
@@ -522,14 +613,14 @@
      "fold": 1,
      "surface_type": "number:bare",
      "gold": "132 points",
-     "substitute": "20"
+     "substitute": "17"
     },
     {
      "question_id": "0f05491a",
      "fold": 1,
      "surface_type": "number:bare",
      "gold": "120",
-     "substitute": "3"
+     "substitute": "15"
     },
     {
      "question_id": "19b5f2b3",
@@ -595,11 +686,25 @@
      "substitute": "five"
     },
     {
+     "question_id": "7527f7e2",
+     "fold": 1,
+     "surface_type": "number:currency",
+     "gold": "$800",
+     "substitute": "$0.75"
+    },
+    {
+     "question_id": "7a8d0b71",
+     "fold": 1,
+     "surface_type": "number:currency",
+     "gold": "$2,000",
+     "substitute": "$400,000"
+    },
+    {
      "question_id": "86f00804",
      "fold": 1,
      "surface_type": "name",
      "gold": "The Seven Husbands of Evelyn Hugo",
-     "substitute": "Patagonia and Southwest Airlines."
+     "substitute": "The Sugar Factory at Icon Park."
     },
     {
      "question_id": "b6019101",
@@ -649,6 +754,13 @@
      "surface_type": "name",
      "gold": "Denver",
      "substitute": "Emma"
+    },
+    {
+     "question_id": "3d86fd0a",
+     "fold": 2,
+     "surface_type": "other",
+     "gold": "a coffee shop in the city",
+     "substitute": "a blue Snaggletooth"
     },
     {
      "question_id": "3e321797",
@@ -704,7 +816,7 @@
      "fold": 2,
      "surface_type": "other",
      "gold": "a lemon blueberry cake",
-     "substitute": "the sports store downtown"
+     "substitute": "a coffee shop in the city"
     },
     {
      "question_id": "cf22b7bf",
@@ -803,6 +915,13 @@
      "surface_type": "number:bare",
      "gold": "32",
      "substitute": "220"
+    },
+    {
+     "question_id": "cc06de0d",
+     "fold": 3,
+     "surface_type": "number:currency",
+     "gold": "$6",
+     "substitute": "$50"
     },
     {
      "question_id": "ccb36322",
@@ -917,6 +1036,13 @@
      "substitute": "5.5 weeks"
     },
     {
+     "question_id": "852ce960",
+     "fold": 4,
+     "surface_type": "number:currency",
+     "gold": "$400,000",
+     "substitute": "$25,000"
+    },
+    {
      "question_id": "8aef76bc",
      "fold": 4,
      "surface_type": "other",
@@ -928,7 +1054,14 @@
      "fold": 4,
      "surface_type": "other",
      "gold": "the 'Walk for Hunger' charity event",
-     "substitute": "'Data Analysis using Python' webinar"
+     "substitute": "the woman selling jam at the farmer's market"
+    },
+    {
+     "question_id": "c19f7a0b",
+     "fold": 4,
+     "surface_type": "date",
+     "gold": "6:30 pm",
+     "substitute": "6:00 pm"
     },
     {
      "question_id": "c7dc5443",
@@ -989,46 +1122,46 @@
      "all": 330
     },
     "eligible": {
-     "dev": 34,
-     "confirmation": 51,
-     "all": 85
+     "dev": 36,
+     "confirmation": 54,
+     "all": 90
     },
     "by_question_type": {
      "dev": {
       "knowledge-update": 11,
       "multi-session": 0,
-      "single-session-assistant": 7,
+      "single-session-assistant": 8,
       "single-session-preference": 0,
-      "single-session-user": 15,
+      "single-session-user": 16,
       "temporal-reasoning": 1
      },
      "confirmation": {
-      "knowledge-update": 13,
-      "multi-session": 4,
+      "knowledge-update": 14,
+      "multi-session": 5,
       "single-session-assistant": 15,
       "single-session-preference": 0,
-      "single-session-user": 15,
+      "single-session-user": 16,
       "temporal-reasoning": 4
      },
      "all": {
-      "knowledge-update": 24,
-      "multi-session": 4,
-      "single-session-assistant": 22,
+      "knowledge-update": 25,
+      "multi-session": 5,
+      "single-session-assistant": 23,
       "single-session-preference": 0,
-      "single-session-user": 30,
+      "single-session-user": 32,
       "temporal-reasoning": 5
      }
     },
     "by_label": {
      "confirmation": {
-      "success": 40,
+      "success": 42,
       "refusal": 6,
-      "wrong": 5
+      "wrong": 6
      },
      "all": {
-      "success": 62,
+      "success": 66,
       "refusal": 12,
-      "wrong": 11
+      "wrong": 12
      }
     },
     "by_surface_type": {
@@ -1037,22 +1170,25 @@
       "name": 12,
       "other": 9,
       "date": 1,
-      "number:bare": 9
+      "number:bare": 9,
+      "number:currency": 2
      },
      "confirmation": {
       "number:duration": 4,
       "name": 16,
+      "other": 10,
       "number:bare": 18,
-      "other": 9,
       "number:percent": 1,
-      "date": 3
+      "date": 3,
+      "number:currency": 2
      },
      "all": {
       "number:duration": 7,
       "name": 28,
-      "other": 18,
+      "other": 19,
       "date": 4,
       "number:bare": 27,
+      "number:currency": 4,
       "number:percent": 1
      }
     },
@@ -1081,6 +1217,11 @@
       "refusal": 4,
       "wrong": 5
      },
+     "number:currency": {
+      "success": 3,
+      "refusal": 0,
+      "wrong": 1
+     },
      "number:duration": {
       "success": 5,
       "refusal": 0,
@@ -1092,7 +1233,7 @@
       "wrong": 0
      },
      "other": {
-      "success": 13,
+      "success": 14,
       "refusal": 3,
       "wrong": 2
      }
@@ -1103,7 +1244,7 @@
      "gold_in_question": 11,
      "gold_elsewhere": 39,
      "no_substitute": 5,
-     "first_token_equal": 5,
+     "first_token_equal": 0,
      "alignment_failure": 0
     },
     "exclusion_steps": [
@@ -1134,17 +1275,17 @@
      },
      {
       "exclusion": "first_token_equal",
-      "removed": 5,
-      "remaining": 85
+      "removed": 0,
+      "remaining": 90
      },
      {
       "exclusion": "alignment_failure",
       "removed": 0,
-      "remaining": 85
+      "remaining": 90
      }
     ],
-    "distinct_substitutes": 66,
-    "distinct_substitute_strings": 65,
+    "distinct_substitutes": 71,
+    "distinct_substitute_strings": 70,
     "max_substitute_multiplicity": 3,
     "top_substitutes": [
      [
@@ -1153,10 +1294,6 @@
      ],
      [
       "harvard university",
-      2
-     ],
-     [
-      "2 am",
       2
      ],
      [
@@ -1178,9 +1315,115 @@
      [
       "techcorp",
       2
+     ],
+     [
+      "over a year",
+      2
      ]
     ],
     "cap_stats": {},
+    "shared_prefix": {
+     "n_nonempty": 9,
+     "prefixes": {
+      "6:": 1,
+      " $": 4,
+      " The": 1,
+      " a": 2,
+      " the": 1
+     },
+     "rows": [
+      {
+       "question_id": "59524333",
+       "fold": 0,
+       "label": "success",
+       "gold": "6:00 pm",
+       "substitute": "6:45 AM",
+       "prefix": "6:",
+       "gold_read": "00",
+       "substitute_read": "45"
+      },
+      {
+       "question_id": "7527f7e2",
+       "fold": 1,
+       "label": "success",
+       "gold": "$800",
+       "substitute": "$0.75",
+       "prefix": " $",
+       "gold_read": "800",
+       "substitute_read": "0"
+      },
+      {
+       "question_id": "7a8d0b71",
+       "fold": 1,
+       "label": "success",
+       "gold": "$2,000",
+       "substitute": "$400,000",
+       "prefix": " $",
+       "gold_read": "2",
+       "substitute_read": "400"
+      },
+      {
+       "question_id": "86f00804",
+       "fold": 1,
+       "label": "success",
+       "gold": "The Seven Husbands of Evelyn Hugo",
+       "substitute": "The Sugar Factory at Icon Park.",
+       "prefix": " The",
+       "gold_read": " Seven",
+       "substitute_read": " Sugar"
+      },
+      {
+       "question_id": "3d86fd0a",
+       "fold": 2,
+       "label": "success",
+       "gold": "a coffee shop in the city",
+       "substitute": "a blue Snaggletooth",
+       "prefix": " a",
+       "gold_read": " coffee",
+       "substitute_read": " blue"
+      },
+      {
+       "question_id": "bc8a6e93",
+       "fold": 2,
+       "label": "success",
+       "gold": "a lemon blueberry cake",
+       "substitute": "a coffee shop in the city",
+       "prefix": " a",
+       "gold_read": " lemon",
+       "substitute_read": " coffee"
+      },
+      {
+       "question_id": "cc06de0d",
+       "fold": 3,
+       "label": "success",
+       "gold": "$6",
+       "substitute": "$50",
+       "prefix": " $",
+       "gold_read": "6",
+       "substitute_read": "50"
+      },
+      {
+       "question_id": "852ce960",
+       "fold": 4,
+       "label": "wrong",
+       "gold": "$400,000",
+       "substitute": "$0.75",
+       "prefix": " $",
+       "gold_read": "400",
+       "substitute_read": "0"
+      },
+      {
+       "question_id": "b46e15ee",
+       "fold": 4,
+       "label": "refusal",
+       "gold": "the 'Walk for Hunger' charity event",
+       "substitute": "the woman selling jam at the farmer's market",
+       "prefix": " the",
+       "gold_read": " '",
+       "substitute_read": " woman"
+      }
+     ]
+    },
     "alignment_failures": [],
     "substitute_exclusions": [
      {
@@ -1211,42 +1454,6 @@
       "exclusion": "no_substitute"
      },
      {
-      "question_id": "7527f7e2",
-      "fold": 1,
-      "label": "success",
-      "question_type": "single-session-user",
-      "gold": "$800",
-      "type": "number:currency",
-      "exclusion": "first_token_equal"
-     },
-     {
-      "question_id": "7a8d0b71",
-      "fold": 1,
-      "label": "success",
-      "question_type": "single-session-assistant",
-      "gold": "$2,000",
-      "type": "number:currency",
-      "exclusion": "first_token_equal"
-     },
-     {
-      "question_id": "3d86fd0a",
-      "fold": 2,
-      "label": "success",
-      "question_type": "single-session-user",
-      "gold": "a coffee shop in the city",
-      "type": "other",
-      "exclusion": "first_token_equal"
-     },
-     {
-      "question_id": "cc06de0d",
-      "fold": 3,
-      "label": "success",
-      "question_type": "multi-session",
-      "gold": "$6",
-      "type": "number:currency",
-      "exclusion": "first_token_equal"
-     },
-     {
       "question_id": "37d43f65",
       "fold": 4,
       "label": "success",
@@ -1254,15 +1461,6 @@
       "gold": "16GB",
       "type": "other",
       "exclusion": "no_substitute"
-     },
-     {
-      "question_id": "852ce960",
-      "fold": 4,
-      "label": "wrong",
-      "question_type": "knowledge-update",
-      "gold": "$400,000",
-      "type": "number:currency",
-      "exclusion": "first_token_equal"
      },
      {
       "question_id": "b759caee",
@@ -1275,20 +1473,20 @@
      }
     ],
     "regex_vs_normalised": {
-     "checks": 1262,
+     "checks": 1107,
      "disagreements": 0
     },
     "continuation_split_unstable": 0
    },
    "gate": {
-    "eligible_folds_2_4": 51,
+    "eligible_folds_2_4": 54,
     "question_types_ge_15_folds_2_4": {
      "single-session-assistant": 15,
-     "single-session-user": 15
+     "single-session-user": 16
     },
     "n_question_types_ge_15": 2,
-    "inview_failures_folds_2_4": 11,
-    "inview_failures_all_330": 23,
+    "inview_failures_folds_2_4": 12,
+    "inview_failures_all_330": 24,
     "verdict": "stop"
    },
    "eligible": [
@@ -1318,7 +1516,7 @@
      "fold": 0,
      "surface_type": "date",
      "gold": "6:00 pm",
-     "substitute": "2 AM"
+     "substitute": "6:45 AM"
     },
     {
      "question_id": "5d3d2817",
@@ -1496,11 +1694,25 @@
      "substitute": "five"
     },
     {
+     "question_id": "7527f7e2",
+     "fold": 1,
+     "surface_type": "number:currency",
+     "gold": "$800",
+     "substitute": "$0.75"
+    },
+    {
+     "question_id": "7a8d0b71",
+     "fold": 1,
+     "surface_type": "number:currency",
+     "gold": "$2,000",
+     "substitute": "$400,000"
+    },
+    {
      "question_id": "86f00804",
      "fold": 1,
      "surface_type": "name",
      "gold": "The Seven Husbands of Evelyn Hugo",
-     "substitute": "Patagonia and Southwest Airlines."
+     "substitute": "The Sugar Factory at Icon Park."
     },
     {
      "question_id": "b6019101",
@@ -1550,6 +1762,13 @@
      "surface_type": "name",
      "gold": "Denver",
      "substitute": "Emma"
+    },
+    {
+     "question_id": "3d86fd0a",
+     "fold": 2,
+     "surface_type": "other",
+     "gold": "a coffee shop in the city",
+     "substitute": "a blue Snaggletooth"
     },
     {
      "question_id": "3e321797",
@@ -1605,7 +1824,7 @@
      "fold": 2,
      "surface_type": "other",
      "gold": "a lemon blueberry cake",
-     "substitute": "the sports store downtown"
+     "substitute": "a coffee shop in the city"
     },
     {
      "question_id": "cf22b7bf",
@@ -1704,6 +1923,13 @@
      "surface_type": "number:bare",
      "gold": "32",
      "substitute": "220"
+    },
+    {
+     "question_id": "cc06de0d",
+     "fold": 3,
+     "surface_type": "number:currency",
+     "gold": "$6",
+     "substitute": "$50"
     },
     {
      "question_id": "ccb36322",
@@ -1818,6 +2044,13 @@
      "substitute": "5.5 weeks"
     },
     {
+     "question_id": "852ce960",
+     "fold": 4,
+     "surface_type": "number:currency",
+     "gold": "$400,000",
+     "substitute": "$0.75"
+    },
+    {
      "question_id": "8aef76bc",
      "fold": 4,
      "surface_type": "other",
@@ -1829,7 +2062,7 @@
      "fold": 4,
      "surface_type": "other",
      "gold": "the 'Walk for Hunger' charity event",
-     "substitute": "'Data Analysis using Python' webinar"
+     "substitute": "the woman selling jam at the farmer's market"
     },
     {
      "question_id": "c19f7a0b",

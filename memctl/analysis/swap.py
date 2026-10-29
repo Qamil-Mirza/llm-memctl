@@ -26,6 +26,11 @@ Condition U: the §35 frozen-note arm B input (cached note + newline + B_INSTRUC
   newline + "Answer:"), greedy, 64 new tokens, on in-view refusal rows; gold = D1 on the phrase (provisional, as §38's
   laptop gold). Also under the §38 Steer setting (add alpha * v_L at every step: Qwen 3B L29 alpha 2, Llama 3B L17
   alpha 2, vnorm) and, for S2, the §38 push itself on arm A (note + "Answer:") with A unsteered beside.
+Rev 3 (7acce03, uniform): the shared prefix = the longest common token prefix of G's and S's content tokens (after
+  the leading whitespace tokens). It is teacher-forced after P1's forced whitespace in every run of the row (clean,
+  swap, cut, patched, donor); G1 / S1 above are then the first divergent tokens, and Delta, F, T, ranks, log p(unknown)
+  and top-1 are read, and the residual patched, at the position that predicts them (the last token). An empty prefix
+  is exactly the rev 2 behaviour. U is unaffected.
 torch is imported lazily (inside the engine calls).
 """
 
@@ -71,6 +76,8 @@ U_KINDS = ("U", "U_steer", "A", "A_steer")          # A / A_steer only on swap-s
 METHOD = {"spec": "research/proposals/2026-10-29-exp44-patching.md rev 1 amendment §B-§C (D-45), rev 2 (5146f5b)",
           "runs": "clean / swap / cut, §34 forced readout_for, prefix cache to P1-1, P1 run with capture on every layer",
           "delta": "logit(G first content token) - logit(S first content token), final logits, float64",
+          "prefix": "rev 3: the shared G/S token prefix teacher-forced after the whitespace; read and patch at the "
+                    "position predicting the first divergent token",
           "follows": "F = Delta_clean - Delta_swap >= 1 and Delta_clean > 0 > Delta_swap",
           "patch": "steering.overwrite_spec(l, h_donor(l)) at P1, one layer per pass, forward and reverse",
           "controls": "mismatched donor (previous cyclic swap row with other first ids), self at 0/L//2/L-1, "
@@ -147,11 +154,13 @@ def random_overwrite(norm: float, hidden: int, row_index: int, layer: int, seed:
 def choose_donor(order: list[dict], i: int) -> int | None:
     """The mismatched donor of row i of `order` (rows with gold_first_id / substitute_first_id, (fold, id) order): the
     nearest earlier row, cyclically, whose gold and substitute first ids are both outside row i's {G1, S1}."""
-    own = {order[i]["gold_first_id"], order[i]["substitute_first_id"]}
+    def ids(e):        # rev 3: the read (first divergent) ids; equal to the first ids for an empty prefix
+        return e.get("gold_read_id", e["gold_first_id"]), e.get("substitute_read_id", e["substitute_first_id"])
+    own = set(ids(order[i]))
     n = len(order)
     for k in range(1, n):
         j = (i - k) % n
-        if order[j]["gold_first_id"] not in own and order[j]["substitute_first_id"] not in own:
+        if not set(ids(order[j])) & own:
             return j
     return None
 
@@ -161,6 +170,25 @@ def self_layers(n_layers: int) -> tuple[int, ...]:
 
 
 # --- inputs -----------------------------------------------------------------------------------------------------
+
+def content_ids(tokenizer, text: str) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    """(leading whitespace-only tokens, content tokens) of ids(" " + text), the §34 split."""
+    from memctl.analysis.jacobian import _ids, _margin_length
+    answer = _ids(tokenizer, " " + text)
+    k = _margin_length(tokenizer, answer)
+    return tuple(answer[:k - 1]), tuple(answer[k - 1:])
+
+
+def shared_prefix(g_content, s_content) -> tuple[tuple[int, ...], int | None, int | None]:
+    """Rev 3: the longest common token prefix of the gold's and the substitute's content tokens, and the first
+    divergent token of each (None when one sequence is a prefix of the other: no divergent token)."""
+    n = 0
+    while n < len(g_content) and n < len(s_content) and g_content[n] == s_content[n]:
+        n += 1
+    g = g_content[n] if n < len(g_content) else None
+    s = s_content[n] if n < len(s_content) else None
+    return tuple(g_content[:n]), g, s
+
 
 @dataclass(frozen=True)
 class SwapInputs:
@@ -178,6 +206,8 @@ class SwapInputs:
     gold_token_text: str
     sub_token_text: str
     n_leading_ws: int
+    prefix_ids: tuple[int, ...] = ()       # rev 3: the shared prefix, teacher-forced after P1's forced whitespace
+    g_first_id: int | None = None          # the gold's first content token (the §34 tracked id)
 
 
 def sha_ids(ids) -> str:
@@ -187,8 +217,11 @@ def sha_ids(ids) -> str:
 def build_swap_inputs(tokenizer, record, swap_prompt: str, old_line: str, new_line: str, substitute: str,
                       refusal_ids, chat_text_fn=None) -> SwapInputs:
     """Clean / swap / cut forced readouts, aligned by role (patching.check_alignment on clean vs swap and clean vs
-    cut); the swap must keep the gold's tracked ids and forced whitespace, and S's first content token must differ
-    from G's and share G's leading whitespace tokens."""
+    cut); the swap must keep the gold's tracked ids and forced whitespace, and S must share G's leading whitespace
+    tokens. Rev 3: the shared prefix of G and S (content tokens) is appended to all three sequences after the forced
+    whitespace; the read / patch position is then the last token (it predicts the first divergent token), g_id / s_id
+    are the divergent tokens, and the alignment check covers the forced prefix (it ends every sequence, identical).
+    No divergent token (one is a prefix of the other) is an AlignmentError. An empty prefix is the rev 2 behaviour."""
     clean = readout_for(tokenizer, record.prompt, record.memory_lines, record.evidence_lines, record.gold,
                         chat_text_fn=chat_text_fn)
     memory = tuple(new_line if l == old_line else l for l in record.memory_lines)
@@ -202,22 +235,31 @@ def build_swap_inputs(tokenizer, record, swap_prompt: str, old_line: str, new_li
                       chat_text_fn=chat_text_fn)
     if cut.tracked != clean.tracked or cut.n_leading_ws != clean.n_leading_ws:
         raise pt.AlignmentError(f"{record.question_id}: tracked ids or forced whitespace differ between clean and cut")
-    for other, p1, q, n_ev in ((swap, swap.positions["P1"][0], swap.positions["Q"][0], 0),
-                               (cut, cut.positions["P1"][0], cut.positions["Q"][0], len(record.evidence_lines))):
-        pt.check_alignment(pt.RowInputs(record.question_id, record.fold, record.prompt, "", tuple(clean.input_ids),
-                                        tuple(other.input_ids), clean.positions["P1"][0], p1, clean.positions["Q"][0],
-                                        q, clean.tracked["gold"], clean.tracked["unknown_sp"], clean.gold_token_text,
-                                        clean.n_leading_ws, n_ev))
-    s_tracked, s_text = tracked_token_ids(tokenizer, substitute)
-    from memctl.analysis.jacobian import _ids, _margin_length
-    s_ans, g_ans = _ids(tokenizer, " " + substitute), _ids(tokenizer, " " + record.gold)
-    if s_ans[:_margin_length(tokenizer, s_ans) - 1] != g_ans[:_margin_length(tokenizer, g_ans) - 1]:
+    g_lead, g_content = content_ids(tokenizer, record.gold)
+    s_lead, s_content = content_ids(tokenizer, substitute)
+    if s_lead != g_lead:
         raise pt.AlignmentError(f"{record.question_id}: the substitute's forced whitespace differs from the gold's")
-    if s_tracked["gold"] == clean.tracked["gold"]:
-        raise pt.AlignmentError(f"{record.question_id}: the substitute's first token equals the gold's")
-    return SwapInputs(record.question_id, record.fold, record.prompt, swap_prompt, cut_prompt, tuple(clean.input_ids),
-                      tuple(swap.input_ids), tuple(cut.input_ids), clean.tracked["gold"], s_tracked["gold"],
-                      tuple(refusal_ids), clean.gold_token_text, s_text, clean.n_leading_ws)
+    prefix, g_div, s_div = shared_prefix(g_content, s_content)
+    if g_div is None or s_div is None:
+        raise pt.AlignmentError(f"{record.question_id}: no divergent token after the shared prefix "
+                                f"({tokenizer.decode(list(prefix))!r})")
+    if g_content[0] != clean.tracked["gold"]:
+        raise pt.AlignmentError(f"{record.question_id}: the gold's first content token differs from the tracked id")
+    ids = {k: tuple(r.input_ids) + prefix for k, r in (("clean", clean), ("swap", swap), ("cut", cut))}
+    for k in ids:
+        if ids[k][len(ids[k]) - len(prefix) - 1] != ids["clean"][len(ids["clean"]) - len(prefix) - 1]:
+            raise pt.AlignmentError(f"{record.question_id}: the forced position before the prefix differs ({k})")
+    for k, other, n_ev in (("swap", swap, 0), ("cut", cut, len(record.evidence_lines))):
+        pt.check_alignment(pt.RowInputs(record.question_id, record.fold, record.prompt, "", ids["clean"], ids[k],
+                                        len(ids["clean"]) - 1, len(ids[k]) - 1, clean.positions["Q"][0],
+                                        other.positions["Q"][0], g_div, clean.tracked["unknown_sp"],
+                                        clean.gold_token_text, clean.n_leading_ws, n_ev))
+    if prefix and not all(v[-len(prefix):] == prefix for v in ids.values()):
+        raise pt.AlignmentError(f"{record.question_id}: the forced prefix does not end every sequence")
+    return SwapInputs(record.question_id, record.fold, record.prompt, swap_prompt, cut_prompt, ids["clean"],
+                      ids["swap"], ids["cut"], int(g_div), int(s_div), tuple(refusal_ids),
+                      tokenizer.decode([g_div]), tokenizer.decode([s_div]), clean.n_leading_ws, prefix,
+                      int(clean.tracked["gold"]))
 
 
 # --- the passes -------------------------------------------------------------------------------------------------
@@ -242,6 +284,7 @@ def base_passes(engine, x: SwapInputs) -> tuple[dict, dict]:
     del cut_prep
     F = clean["delta"] - swap["delta"]
     row = {"question_id": x.question_id, "fold": x.fold, "n_layers": engine.n_layers, "g_id": x.g_id, "s_id": x.s_id,
+           "prefix_ids": list(x.prefix_ids), "g_first_id": x.g_first_id,
            "gold_token_text": x.gold_token_text, "sub_token_text": x.sub_token_text, "n_leading_ws": x.n_leading_ws,
            "refusal_ids": list(x.refusal_ids), "n_tokens": {"clean": len(x.clean_ids), "swap": len(x.swap_ids),
                                                             "cut": len(x.cut_ids)},

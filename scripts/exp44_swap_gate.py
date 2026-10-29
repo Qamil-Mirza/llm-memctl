@@ -16,6 +16,12 @@ Rev 2 (the Advisor's rulings 2 and 3 of the proposal's "Rev 2" record, 5146f5b) 
   first-character capitalisation (surface form, str.isupper of the first character) and |token length diff| <= 1.
   Every other rule (including the +-2 length tolerance for the other types) is the rev 1 rule below.
 
+Rev 3 (7acce03, the default; --rev 2 reproduces 88b2a19): "different first token" becomes "different first token
+after the shared prefix" (the longest common content-token prefix of G and S, after the leading whitespace tokens,
+memctl.analysis.swap.shared_prefix); a candidate that is a token-prefix of the gold or vice versa (no divergent token)
+counts as first_token_equal. The alignment check is memctl.analysis.swap.build_swap_inputs (clean / swap / cut with the
+prefix forced: it ends every sequence, identical). Eligible rows record the prefix and the read (divergent) ids.
+
 Spec: research/proposals/2026-10-29-exp44-patching.md, "Rev 1 amendment" §A (D-45). Population: the §34 330 rows per
 family (126 dev = folds 0-1, 204 confirmation = folds 2-4). Qwen 2.5 3B via scripts/exp44_patch.population (paired
 with the 7B: same rule, same prompts, so the 7B shares these rows); Llama 3.2 3B via load_family_records paired with
@@ -271,6 +277,7 @@ def token_info(tokenizer, text: str) -> dict:
     b = _ids(tokenizer, ANSWER_PREFIX + " " + text)
     stable = b[:len(a)] == a and len(b) > len(a)
     return {"n_tokens": len(answer), "leading": tuple(answer[:k - 1]), "first_id": int(first),
+            "content": tuple(answer[k - 1:]),
             "first_text": tokenizer.decode([first]), "cont_first_id": int(b[len(a)]) if stable else None,
             "cont_tail_equal": stable and b[len(a):] == answer}
 
@@ -331,7 +338,13 @@ def choose_substitute(record, place: dict, pool, tinfo: dict, types: dict, chk: 
             continue
         if c["leading"] != g["leading"]:
             continue
-        if c["first_id"] == g["first_id"]:
+        if rev >= 3:
+            from memctl.analysis.swap import shared_prefix
+            _, gd, sd = shared_prefix(g["content"], c["content"])
+            if gd is None or sd is None:
+                passed_but_first = True
+                continue
+        elif c["first_id"] == g["first_id"]:
             passed_but_first = True
             continue
         if uses is not None and uses[norm(cand.gold)] >= CAP:
@@ -425,7 +438,17 @@ def evaluate(records, tokenizer, chat_text_fn=None, log=print, rev: int = 2) -> 
             cands = pool if rev < 2 else row_candidates(records, i)
             cand, why, prompt, lines = choose_substitute(r, place, cands, tinfo, types, chk, uses=uses, rev=rev,
                                                          stats=stats)
-        if why is None:
+        if why is None and rev >= 3:
+            from memctl.analysis.swap import build_swap_inputs
+            try:
+                x = build_swap_inputs(tokenizer, r, prompt, lines[0], lines[1], cand.gold, (), chat_text_fn)
+                bad = None
+            except Exception as exc:  # noqa: BLE001 - every failure of the check is an exclusion, with its reason
+                bad = f"{type(exc).__name__}: {exc}"
+            if bad is not None:
+                why = "alignment_failure"
+                align_reasons.append({"question_id": r.question_id, "reason": bad})
+        elif why is None:
             bad = alignment(tokenizer, r, prompt, lines[0], lines[1], chat_text_fn)
             if bad is not None:
                 why = "alignment_failure"
@@ -453,6 +476,11 @@ def evaluate(records, tokenizer, chat_text_fn=None, log=print, rev: int = 2) -> 
             "clean_prompt_sha256": hashlib.sha256(r.prompt.encode()).hexdigest(),
             "swap_prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
             "row_index": i, "_label": label23(r)})
+        if rev >= 3:
+            eligible[-1].update({"shared_prefix_ids": list(x.prefix_ids),
+                                 "shared_prefix_text": tokenizer.decode(list(x.prefix_ids)),
+                                 "gold_read_id": x.g_id, "gold_read_text": x.gold_token_text,
+                                 "substitute_read_id": x.s_id, "substitute_read_text": x.sub_token_text})
     cont_disagree = sum(1 for e in eligible for k in ("gold", "substitute")
                         if not tinfo[e["question_id"] if k == "gold" else e["substitute_from"]]["cont_tail_equal"])
     return {"records": records, "eligible": eligible, "removed": removed, "align_reasons": align_reasons,
@@ -486,6 +514,12 @@ def tables(res) -> dict:
     out["max_substitute_multiplicity"] = max(mult.values()) if mult else 0
     out["top_substitutes"] = mult.most_common(8)
     out["cap_stats"] = res.get("cap_stats", {})
+    pre = [e for e in el if e.get("shared_prefix_ids")]
+    out["shared_prefix"] = {"n_nonempty": len(pre), "prefixes": dict(Counter(e["shared_prefix_text"] for e in pre)),
+                            "rows": [{"question_id": e["question_id"], "fold": e["fold"], "label": e["_label"],
+                                      "gold": e["gold"], "substitute": e["substitute"],
+                                      "prefix": e["shared_prefix_text"], "gold_read": e["gold_read_text"],
+                                      "substitute_read": e["substitute_read_text"]} for e in pre]}
     out["alignment_failures"] = res["align_reasons"]
     out["substitute_exclusions"] = [x for x in res.get("removed_rows", [])
                                     if x["exclusion"] in ("no_substitute", "first_token_equal")]
@@ -554,7 +588,8 @@ RULES = {
 
 
 def markdown(per: dict, rev: int = 2) -> str:
-    title = ("# §44 rev 2: swap-subset gate recomputed under rulings 2-3" if rev >= 2
+    title = ("# §44 rev 3: swap-subset gate recomputed with the shared-prefix rule" if rev >= 3
+             else "# §44 rev 2: swap-subset gate recomputed under rulings 2-3" if rev >= 2
              else "# §44 rev 1 §A: swap-subset feasibility gate")
     L = [title, "",
          "Data only (tokenizers, no forward pass). Spec: research/proposals/2026-10-29-exp44-patching.md rev 1 §A"
@@ -592,6 +627,12 @@ def markdown(per: dict, rev: int = 2) -> str:
             L += [f"Rev 2 check (5146f5b: the POOL verdict stands if >= 85 eligible and >= 40 failures on all 330): "
                   f"eligible {c['eligible_all']}, failures {c['failures_all']} -> **{c['result']}**", ""]
         if rev >= 2:
+            if rev >= 3:
+                sp = t["shared_prefix"]
+                L += [f"Rows with a non-empty shared prefix: {sp['n_nonempty']} (prefixes {sp['prefixes']}):", ""]
+                L += [f"- {x['question_id']} f{x['fold']} {x['label']} {x['gold']!r} -> {x['substitute']!r}: prefix "
+                      f"{x['prefix']!r}, read {x['gold_read']!r} vs {x['substitute_read']!r}" for x in sp["rows"]]
+                L.append("")
             L += ["Rows excluded at the substitute step (no_substitute / first_token_equal):", ""]
             L += [f"- {x['question_id']} f{x['fold']} {x['label']} [{x['type']}] {x['gold']!r}: {x['exclusion']}"
                   for x in t["substitute_exclusions"]]
@@ -605,7 +646,7 @@ def markdown(per: dict, rev: int = 2) -> str:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=str(OUT))
-    ap.add_argument("--rev", type=int, default=2, choices=(1, 2))
+    ap.add_argument("--rev", type=int, default=3, choices=(1, 2, 3))
     args = ap.parse_args(argv)
     from transformers import AutoTokenizer
 
@@ -630,7 +671,9 @@ def main(argv=None) -> int:
             fa = t["by_label"]["all"]["refusal"] + t["by_label"]["all"]["wrong"]
             per[fam]["gate"]["rev2_check"] = {
                 "eligible_all": ea, "failures_all": fa, "need": {"eligible_all": 85, "failures_all": 40},
-                "result": "verdict stands (POOL)" if ea >= 85 and fa >= 40 else "FLAG: Advisor re-reads the gate (rev 3)"}
+                "result": ("recorded for rev 4 (rev 3: POOL regardless; the 85 / 40 bar was a re-read trigger)"
+                           if args.rev >= 3 else
+                           "verdict stands (POOL)" if ea >= 85 and fa >= 40 else "FLAG: Advisor re-reads the gate (rev 3)")}
         if args.rev >= 2:
             per[fam]["eligible"] = [{k: e[k] for k in ("question_id", "fold", "surface_type", "gold", "substitute")}
                                     for e in res["eligible"]]
@@ -639,8 +682,15 @@ def main(argv=None) -> int:
                 fh.write(json.dumps({k: v for k, v in e.items() if not k.startswith("_")}) + "\n")
         print(fam, json.dumps(per[fam]["gate"]), flush=True)
     rules = dict(RULES, **({"rev2": RULES_REV2} if args.rev >= 2 else {}))
+    if args.rev >= 3:
+        rules["rev3"] = {"first_token": "different first token after the shared prefix (longest common content-token"
+                                        " prefix of G and S after the leading whitespace); no divergent token ->"
+                                        " first_token_equal",
+                         "alignment": "memctl.analysis.swap.build_swap_inputs: clean / swap / cut with the prefix"
+                                      " forced; it ends every sequence, identical"}
     payload = {"spec": "research/proposals/2026-10-29-exp44-patching.md rev 1 §A (D-45)"
-                       + (" + rev 2 rulings 2-3 (5146f5b)" if args.rev >= 2 else ""), "rev": args.rev, "seed": SEED,
+                       + (" + rev 2 rulings 2-3 (5146f5b)" if args.rev >= 2 else "")
+                       + (" + rev 3 shared-prefix rule (7acce03)" if args.rev >= 3 else ""), "rev": args.rev, "seed": SEED,
                "rules": rules, "families": per,
                "note": "Qwen 2.5 7B shares the Qwen 3B rows and prompts (exp44_patch.population asserts it)."}
     (out / "gate.json").write_text(json.dumps(payload, indent=1, ensure_ascii=False))

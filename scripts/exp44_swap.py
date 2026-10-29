@@ -73,8 +73,8 @@ def load_eligible(model: str, gate_dir: Path = GATE_DIR) -> tuple[list[dict], st
     path = gate_dir / f"eligible_{model}.jsonl"
     rows = [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
     gate = json.loads((gate_dir / "gate.json").read_text())
-    if gate.get("rev") != 2:
-        raise SystemExit(f"exp44_swap: {gate_dir}/gate.json is not the rev 2 gate")
+    if gate.get("rev") != 3:
+        raise SystemExit(f"exp44_swap: {gate_dir}/gate.json is not the rev 3 gate")
     return sorted(rows, key=lambda e: (e["fold"], e["question_id"])), hashlib.sha256(path.read_bytes()).hexdigest()
 
 
@@ -125,8 +125,10 @@ class SRun:
             prompt, old, new = rebuild_swap(rec, e)
             self.inputs[i] = sw.build_swap_inputs(self.engine.tokenizer, rec, prompt, old, new, e["substitute"],
                                                   self.refusal_ids, self.chat_fn)
-            if (self.inputs[i].g_id, self.inputs[i].s_id) != (e["gold_first_id"], e["substitute_first_id"]):
-                raise SystemExit(f"exp44_swap: {e['question_id']}: first ids differ from the gate's")
+            x = self.inputs[i]
+            if ((x.g_id, x.s_id, list(x.prefix_ids)) != (e["gold_read_id"], e["substitute_read_id"],
+                                                         e["shared_prefix_ids"])):
+                raise SystemExit(f"exp44_swap: {e['question_id']}: read ids / shared prefix differ from the gate's")
         return self.inputs[i]
 
     def path(self, i: int) -> Path:
