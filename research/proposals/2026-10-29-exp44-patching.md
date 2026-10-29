@@ -100,19 +100,123 @@ and article token caveats of §43 apply to the gold's first token.
   relaxed (> 3), decided by the development run and recorded here as rev 2 before `FIXED_FILTER` is set. Stage 0's
   preview from the §34c reads: strict 31 / 39, relaxed 58 / 65 (3B / 7B).
 
-## Amendment 1 (proposed 2026-10-29; **pending the user's word**; not part of the development run)
+## Rev 1 amendment (2026-10-29, adopted by the user; supersedes the "proposed" amendment)
 
-Motivated by the user's external review (Liu et al. 2026 *Broken Symmetry*; Ling et al. 2026 *Abstention as a prompt
-artifact*; Deswal 2026 *EviScope*), verified in `research/briefings/2026-10-29-literature-positioning.md`:
+**Thesis question adopted (D-45):** when a small model fails on a question whose evidence is in context, can a
+failure of *evidence use* (the evidence does not reach the answer computation) be distinguished experimentally from a
+failure of *answer production* (evidence-dependent information is available at the answer position but the response
+decision suppresses or overrides it)? Rev 0 (clean → cut patching, C1–C3) is kept intact as the baseline and the lens
+adjudication; this amendment adds the conditions that address the thesis question. Nothing else is added: no new
+probes, no scaling, no routing (the user's scope rule). Models: Qwen 2.5 3B (primary), Llama 3.2 3B (the planned
+contrast, already configured), Qwen 2.5 7B (rev 0 only, plus condition S if the 3B results are readable and time
+allows). Laptop, $0.
 
-- **Condition S (evidence substitution).** On the rows where the gold string appears verbatim in exactly one
-  evidence line, build a donor prompt with the gold replaced by a same-type substitute (a name for a name, a date for
-  a date, drawn from another row's gold of the same question type). Patch the P1 residual from the donor run into the
-  clean run layer by layer and score the **logit difference gold − substitute**: transfer T(l) = (Δ_patched(l) −
-  Δ_clean) / (Δ_donor − Δ_clean). This tests whether the patched state carries evidence-specific content rather than
-  willingness to answer, which clean → cut cannot separate on its own. Claim S1 (per model): median transfer depth
-  (first T ≥ 0.5) with CI, read beside d_c; readings as for C1.
-- **Condition U (no "unknown" option).** The clean prompt with the instruction's "unknown" option removed (the §35
-  frozen-note wording), run on the refusal rows: the share whose final top-1 becomes the gold without any patch is
-  the prompt-artefact share (Ling et al.), reported beside the patching results as a standing control.
-- Cost: laptop, free for the 3B; the 7B adds about the same time again. No pod.
+### A. The swap subset (feasibility gate first, free, no model run)
+
+**Definition (fixed now).** Rows of the §34 population (330 per family; 126 dev, 204 confirmation) where the gold
+string (D1 normalisation) occurs verbatim in exactly one evidence line, and nowhere else in the prompt (not in the
+question, not in a non-evidence memory line). **Substitute:** another row's gold of the same surface type (name /
+date / number / other, by a fixed regex), with a different first token after `Answer:` under the family tokenizer,
+within ±2 tokens of the gold's length, not occurring anywhere in the prompt; chosen deterministically (seed 44, first
+match in fold-then-id order). The swap prompt replaces the gold string in that one evidence line with the substitute;
+everything else is byte-identical.
+
+**Exclusions (fixed now):** gold in zero or several evidence lines (aggregation and multi-hop rows are therefore out
+by construction, and the subset is biased toward extractive single-hop questions; stated as a limit in §F); gold in
+the question; no substitute satisfying the rules; alignment failure (`check_alignment` on clean vs swap: P1 last, same
+token, identical question-to-P1 tail); a gold whose first token equals the substitute's first token.
+
+**Feasibility gate (before any build of S/U):** the Executor counts the swap-eligible rows per family, per fold set
+and per LongMemEval question type, from the data alone. **Proceed** if, for Qwen 3B, folds 2–4 hold ≥ 50 eligible rows
+with at least two question types of ≥ 15 rows each, and the eligible rows contain ≥ 30 of the 3B's in-view failures
+(§23 labels) on folds 2–4. If the failure count is between 15 and 29, the claims are read on all 330 rows (every
+design choice is fixed here, no dev-fold choice is made for S/U, so pooling is legitimate) and the thinness is stated.
+If the gate fails outright (< 50 eligible or < 15 failures), the result is **"the swap design cannot be read on
+LongMemEval"**: recorded in EXPERIMENTS §44 and the programme stops here, per the user's stopping rule; no new
+intervention is invented.
+
+### B. Conditions and measures per swap row
+
+- **clean** (gold G in the evidence), **swap** (substitute S in its place), **cut** (rev 0, no evidence). Forced
+  P1 as §34. Per run: Δ = logit(G's first token) − logit(S's first token) at the final layer; also log p(G), log
+  p(S), rank(G), rank(S), log p(unknown), top-1.
+- **Evidence following (behavioural, no patch):** F = Δ_clean − Δ_swap. The row "follows the evidence" if F ≥ 1
+  nat and Δ_clean > 0 > Δ_swap (the preferred first token flips with the evidence). Margin sensitivity reported at
+  0.5, 1, 2 nats.
+- **Per-row failure class (the central measurement), on the small model's in-view failures (§23 label refusal or
+  wrong):** *answer-production failure* if the row follows the evidence (the answer computation tracks the evidence,
+  the output does not); *evidence-use failure* if |F| < 1 nat (the evidence does not move the answer preference);
+  *indeterminate* otherwise (F ≥ 1 without a sign flip). Successes are classified too, as the reference.
+- **Forward patch (swap → clean):** overwrite the clean run's P1 residual at layer l with the swap run's;
+  T_fwd(l) = (Δ_patched(l) − Δ_clean) / (Δ_swap − Δ_clean). **Reverse patch (clean → swap):** T_rev(l) =
+  (Δ_patched(l) − Δ_swap) / (Δ_clean − Δ_swap). Bidirectional on every patched row (item 3). Transfer depth d_T =
+  first l with T ≥ 0.5 over L; T(L−1) = 1 by construction (asserted); T(0) ≈ 0 empirical (bound 0.05).
+- **Negative controls (every patched row):** (i) *mismatched donor*: the P1 residual of a different swap row's
+  swap run at the same layer (carries a third answer); report Δ shift toward S, expected ≈ 0 at every layer; (ii)
+  *self-overwrite*: the clean residual into the clean run, T = 0 by construction (sanity); (iii) *random vector* of
+  the donor's norm at the same layer (seeded), reported like §38's Random. Rows are patched only if they follow
+  the evidence (|F| ≥ 1 nat, sign flip): T is undefined otherwise.
+- **Condition U (no "unknown" option), item 2:** the clean prompt with the instruction's "unknown" option removed
+  (the §35 frozen-note wording, fixed), generated answers (max 64 new tokens, greedy) on the small model's in-view
+  refusal rows of the swap subset and of the full population; the share that becomes gold (D1) is the
+  **prompt-artefact share** (Ling et al. 2026). U is also run under the §38 Steer setting (layer 29, α 2, Qwen 3B
+  only; L17 α 2 for Llama): Steer-under-U minus U alone is the push's contribution beyond the format. Both
+  descriptive, pre-registered readings in §C.
+
+### C. Claims and success criteria (confirmation folds 2–4, or all 330 under the §A pooling rule)
+
+- **S0 (validity precondition).** Evidence-following rate among the small model's *successes* in the swap subset
+  ≥ 0.80 (CI lower bound ≥ 0.70). If it fails, the swap manipulation does not control the answer on this prompt
+  family and S1–S3 are not read; recorded as "swap not valid", stop.
+- **S1 (separability, the thesis claim).** Among the small model's in-view failures in the swap subset: the share
+  classified answer-production failure, with its 95% CI, and the indeterminate share. **A reliable distinction is
+  established** if (a) the indeterminate share is ≤ 0.20, (b) the answer-production share changes by < 0.15 between
+  the 0.5- and 2-nat margins, and (c) the CI half-width is ≤ 0.15. If (a)–(c) hold, the share itself is read:
+  ≥ 0.50 "answer-production failures are the majority", ≤ 0.25 "evidence-use failures are the majority", else
+  mixed. If any of (a)–(c) fails: **"not reliably distinguishable on these rows"**, documented, no new intervention.
+- **S2 (the two classes differ on an independent measure).** Among refusal rows in the swap subset: the §38 push
+  (Qwen 3B, layer 29 α 2; Llama L17 α 2) turns answer-production refusals into gold answers more often than
+  evidence-use refusals: difference of proportions with CI, lower bound > 0. Prediction: yes for Qwen, undetermined
+  for Llama (few refusals). Read only if each class has ≥ 8 refusal rows; else descriptive.
+- **S3 (localisation).** Median forward transfer depth d_T with CI, beside rev 0's d_c and the lens depths, per
+  model; the reverse depth beside it (asymmetry reported, Liu et al. 2026). Mismatched-donor Δ shift must stay
+  within ±0.5 nat at every layer (else the transfer measure is confounded and S3 is not read). Descriptive readings:
+  the depth at which evidence-specific content is transferable, compared across the two 3Bs.
+- **U1 (prompt artefact).** Share of in-view refusals that become gold under U: ≥ 0.50 (LB > 0.40) → "the refusal
+  disposition is mostly a prompt artefact; the §38 decision-failure claim is restated as format-induced"; ≤ 0.25
+  (UB < 0.35) → "not the format"; else partial, with Steer-under-U − U reported.
+- **Sample counts.** Expected (from the §43 dev profiles): Qwen 3B in-view failure rate ≈ 0.57, refusals ≈ 0.25;
+  Llama 3B failures ≈ 0.44, refusals ≈ 0.10. With 50 eligible confirmation rows that is ≈ 28 Qwen failures and ≈ 12
+  refusals, too few for S1(c) (half-width ≤ 0.15 needs ≈ 40 failures): the §A pooling rule exists for this reason,
+  and S1(c) failing on thin rows is a legitimate "undetermined", not a reason to relax (c).
+
+### D. Order and cost
+
+1. Rev 0 development run continues unchanged (baseline; in progress).
+2. Feasibility gate (§A) from the data, free; the Executor reports counts per family, fold set, question type and
+   failure class **before** building S/U. The Advisor records proceed / pool / stop as rev 2.
+3. Build S/U (clean, swap, cut, forward and reverse patches, three controls, U generation); build review; 10-row
+   smoke of S0 on dev rows (sanity bounds, following rate) — the only dev-fold use, and it decides nothing.
+4. Run on the pre-declared rows; report; results review; EXPERIMENTS §44; record changes.
+   Laptop: Qwen 3B ≈ 3 passes × 2 patch sweeps + controls ≈ 3–4 min/row ≈ 3–4 h for 50 rows; Llama 3B similar; the
+   7B ≈ 3× that if run. No pod.
+
+### E. What the outcomes mean (fixed now)
+
+| outcome | reading |
+|---|---|
+| S0 fails | the swap manipulation does not control the answer on this prompt family; the design is not readable here |
+| S1 establishes a distinction, answer-production majority | the in-view failures of this model are mostly downstream of an evidence-sensitive computation (Qwen prediction) |
+| S1 establishes a distinction, evidence-use majority | the failures are mostly upstream; the §38 push cannot help them (Llama prediction) |
+| S1 not reliable | the two failure kinds are not separable with this manipulation at this sample; documented as the result |
+| U1 ≥ 0.50 | the "decision failure" is a format effect; §38–§42 are restated as such |
+| S3 forward transfer early, rev 0 d_c late | evidence-specific content is at P1 by mid-stack but is not the only thing the final layers need; both lenses partly right |
+
+### F. Interpretation limits (fixed now)
+
+The swap subset is biased toward extractive single-hop rows, so evidence-use failures on aggregation, temporal and
+multi-hop questions are excluded by construction and the S1 share is an upper bound for answer-production failures
+over all failures. One benchmark and prompt family; one forced position; first-token logit differences; a substitute
+may be less plausible than the gold (the mismatched-donor control bounds this only for patching, not for F); the 7B
+in bf16; the §38 push comparison in S2 reuses a setting chosen on development rows of §38, not of §44. Thirteen
+Llama refusals in total make the Llama contrast descriptive whatever S1 says for it.
