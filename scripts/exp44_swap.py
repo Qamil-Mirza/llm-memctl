@@ -45,7 +45,7 @@ MODELS = {"qwen3b": {"id": "Qwen/Qwen2.5-3B-Instruct", "family": None, "refusal"
 GATE_DIR = Path("runs/exp44_swapgate")
 OUT = Path("runs/exp44_swap")
 DEV_FOLDS = (0, 1)
-POOL_AUTHORISED = False
+POOL_AUTHORISED = True    # rev 4 (f9952b2): POOL on all 330 rows; the swap set is fixed from here
 REFUSED, SANITY, GATE_MISMATCH = 2, 3, 5
 
 

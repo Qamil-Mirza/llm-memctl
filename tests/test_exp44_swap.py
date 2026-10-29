@@ -274,14 +274,28 @@ def test_fold_guards():
     import exp44_swap as ex
     import exp44_swap_report as rep
     ex.check_folds([0, 1], pooled=False)
-    for folds, pooled in (([0, 2], False), ([0, 1, 2, 3, 4], True)):
+    # a confirmation fold without --pooled is always refused
+    with pytest.raises(SystemExit) as e:
+        ex.check_folds([0, 2], False)
+    assert e.value.code == ex.REFUSED
+    with pytest.raises(SystemExit) as e:
+        rep.check_scope([0, 2], False)
+    assert e.value.code == rep.REFUSED
+    # rev 4 (f9952b2) authorised the pooled read: all 330 rows with --pooled pass; with the lock off it is refused
+    assert ex.POOL_AUTHORISED is True and rep.POOL_AUTHORISED is True
+    ex.check_folds([0, 1, 2, 3, 4], True)
+    rep.check_scope([0, 1, 2, 3, 4], True)
+    old_ex, old_rep = ex.POOL_AUTHORISED, rep.POOL_AUTHORISED
+    try:
+        ex.POOL_AUTHORISED = rep.POOL_AUTHORISED = False
         with pytest.raises(SystemExit) as e:
-            ex.check_folds(folds, pooled)
+            ex.check_folds([0, 1, 2, 3, 4], True)
         assert e.value.code == ex.REFUSED
         with pytest.raises(SystemExit) as e:
-            rep.check_scope(folds, pooled)
+            rep.check_scope([0, 1, 2, 3, 4], True)
         assert e.value.code == rep.REFUSED
-    assert ex.POOL_AUTHORISED is False and rep.POOL_AUTHORISED is False
+    finally:
+        ex.POOL_AUTHORISED, rep.POOL_AUTHORISED = old_ex, old_rep
 
 
 def _eligible(engine, rec, sub):

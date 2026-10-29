@@ -37,7 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from memctl.analysis import swap as sw  # noqa: E402
 
 DEV_FOLDS = (0, 1)
-POOL_AUTHORISED = False
+POOL_AUTHORISED = True    # rev 4 (f9952b2): POOL on all 330 rows; the swap set is fixed from here
 READ_CLAIMS = {"qwen3b": True, "llama3b": False}       # rev 2: Llama descriptive (S0 and shares only)
 REFUSED, UNPATCHED = 2, 6
 
