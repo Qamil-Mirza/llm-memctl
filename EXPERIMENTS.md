@@ -7147,7 +7147,7 @@ A/B/C on failures, logit lens:
 
 **Why it matters.** "C-majority with an A floor" holds in a second family, and so does "the larger reader holds the
 answer more clearly". The "small reader finds it later" half of the §34 picture is family-dependent so far: on the
-logit lens Qwen's small reader is later by 0.10 of depth and Llama's by 0.00. Mixed, pending Gemma and Phi.
+logit lens Qwen's small reader is later by 0.10 of depth and Llama's by 0.00. Mixed; see the four-family scorecard below.
 
 **Gemma Part B pod (A40, 77 min, about $0.75).** The same design: gemma-3-4b and gemma-3-12b-it on the 330 rows,
 with a J-lens fitted on the 4B.
