@@ -12,8 +12,16 @@ dev report is committed and the Advisor has recorded the fixed filter; `CONFIRM_
 Outputs runs/exp44_patch/<model>/<qid>.json (sha-stamped: method, engine, model, clean and cut input ids; a row is
 done only if all match, otherwise it is redone), _timing.json (appended per run: s/row, peak RSS), _failed.json.
 --timing-only: writes under runs/exp44_stage0/<model>/ instead and prints the projection for 330 rows.
-Exit 2: confirmation folds asked for. Exit 3: a sanity bound failed on an asserted row (the row is written first,
-with its sanity block, then the run stops). Exit 4: the §34 prompt hash on disk differs from the record's.
+
+Rev 5 (filter version `pt.FILTER_VERSION`): which rows get patched (without --patch-all) is the relaxed filter WITH
+the 1-nat gap (`pt.patch_eligible`). The resume stamp is the passes' stamp only (method, engine, model, prompts, ids);
+the filter version is not in it, so a complete row written under rev 0 is never redone. Its stored derived fields
+(eligible, sanity_asserted, ...) are left as written: the report re-derives them from the recorded lp / rank / R
+(`pt.derive`), which is the one source of truth. A complete row is redone only if its stamp differs, or it is
+unpatched and the current rule (or --patch-all) wants it patched.
+Exit 2: confirmation folds asked for. Exit 3: |R(L-1) - 1| >= 0.01 on an eligible patched row (the row is written
+first, with its sanity block, then the run stops). |R(0)| >= 0.05 does not stop the run (rev 5): the row is written
+with r0_flag = True and the run goes on. Exit 4: the §34 prompt hash on disk differs from the record's.
 """
 
 from __future__ import annotations
@@ -96,7 +104,12 @@ def is_done(path: Path, want: dict, patch_all: bool) -> bool:
         return False
     if row.get("stamp") != want:
         return False
-    return not (patch_all and not row.get("patched"))       # a row recorded unpatched is redone under --patch-all
+    if row.get("patched"):
+        return True
+    # a row recorded unpatched is redone under --patch-all, or if the current rule makes it eligible
+    wants_patch = patch_all or pt.patch_eligible(row["rank_clean"], row["rank_corrupt"], row["lp_clean"],
+                                                 row["lp_corrupt"])
+    return not wants_patch
 
 
 def resolve_model(model: str) -> str:
@@ -113,7 +126,7 @@ def run(engine, records, out: Path, model: str, model_id: str, patch_all: bool, 
     out.mkdir(parents=True, exist_ok=True)
     failed_path = out / "_failed.json"
     failed = json.loads(failed_path.read_text()) if failed_path.exists() else {}
-    seconds, sanity_rows = {}, []
+    seconds, sanity_rows, flagged = {}, [], []
     for number, record in enumerate(records):
         try:
             x = pt.build_inputs(engine.tokenizer, record)
@@ -127,27 +140,32 @@ def run(engine, records, out: Path, model: str, model_id: str, patch_all: bool, 
         if is_done(path, want, patch_all):
             continue
         row = pt.patch_row(engine, x, patch=True if patch_all else None)
-        row.update({"model": model, "stamp": want, "sanity_asserted": pt.sanity_asserted(row),
-                    "correct": record.correct, "unknown": record.unknown})
+        row.update(pt.derive(row))
+        row.update({"model": model, "stamp": want, "correct": record.correct, "unknown": record.unknown})
         write_json(path, row)
         failed.pop(record.question_id, None)
         write_json(failed_path, failed)
         seconds[record.question_id] = row["timing"]["total_s"]
         line = (f"[{number + 1}/{len(records)}] {record.question_id} f{record.fold} {row['timing']['total_s']:.1f}s "
                 f"tok={row['n_tokens_clean']}/{row['n_tokens_cut']} rank clean={row['rank_clean']} "
-                f"corrupt={row['rank_corrupt']} lp {row['lp_clean']:.2f}/{row['lp_corrupt']:.2f}")
+                f"corrupt={row['rank_corrupt']} lp {row['lp_clean']:.2f}/{row['lp_corrupt']:.2f}"
+                f"{' eligible' if row['eligible'] else ''}{' GAP<1 (excluded)' if row['gap_excluded_relaxed'] else ''}")
         if row["patched"]:
             s = row["sanity"]
             line += (f" R(0)={s['r_zero']} R(L-1)={s['r_final']} d_c={row['d_c']} "
-                     f"sanity={'PASS' if s['pass'] else 'FAIL'}{'' if row['sanity_asserted'] else ' (not asserted)'}")
-            sanity_rows.append({"question_id": record.question_id, **s, "asserted": row["sanity_asserted"]})
+                     f"R(L-1) {'PASS' if s['final_ok'] else 'FAIL'}{'' if row['sanity_asserted'] else ' (not asserted)'}"
+                     f"{' R0_FLAG (excluded from claims)' if row['r0_flag'] else ''}")
+            sanity_rows.append({"question_id": record.question_id, **s, "asserted": row["sanity_asserted"],
+                                "r0_flag": row["r0_flag"]})
+            if row["r0_flag"]:
+                flagged.append(record.question_id)
         log(line)
         try:
             pt.check_sanity(row)
         except pt.SanityError as error:
             log(f"exp44_patch: {error}")
             raise SystemExit(SANITY)
-    return {"seconds": seconds, "sanity": sanity_rows}
+    return {"seconds": seconds, "sanity": sanity_rows, "r0_flagged": flagged}
 
 
 def main(argv=None) -> int:
@@ -194,7 +212,8 @@ def main(argv=None) -> int:
                "peak_rss_mb_after_load": rss_after_load,
                "peak_rss_mb": resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024,
                "projected_h_330_rows_all_patched": per_row * N_POPULATION / 3600 if per_row else None,
-               "sanity": result["sanity"], "method_sha256": pt.method_sha256()}
+               "sanity": result["sanity"], "r0_flagged": result["r0_flagged"], "method_sha256": pt.method_sha256(),
+               "filter_version": pt.FILTER_VERSION}
     timing_path = out / "_timing.json"
     existing = json.loads(timing_path.read_text()) if timing_path.exists() else {"runs": []}
     existing["runs"].append(summary)

@@ -15,17 +15,27 @@ first content token):
   layer l's output replaced by the clean one; layers > l run on the corrupt cache). m_patched(l) from the final logits.
 
 R(l) = (m_patched(l) - m_corrupt) / (m_clean - m_corrupt), unclipped (`clip_r` for plots only). Causal emergence depth
-d_c = (first l with R(l) >= 0.5) / L. Sanity (spec §2, asserted on every row that the run treats as asserted, see
-`sanity_asserted`): |R(L-1) - 1| < 0.01 and |R(0)| < 0.05.
+d_c = (first l with R(l) >= 0.5) / L. Sanity (spec §2; rev 5): |R(L-1) - 1| < 0.01 is a hard assertion on every
+eligible patched row (`sanity_asserted`, `check_sanity`: a failure is a bug, the run stops). |R(0)| < 0.05 is a recorded
+exclusion since rev 5: an eligible row with |R(0)| >= 0.05 is kept, flagged (`r0_flag`), and left out of the claim
+statistics; the report counts the flags beside every claim and repeats each headline with them included.
 
 Alignment by role: the cut prompt is shorter (the evidence is gone), so P1 is matched as the answer position, not by
 index: both sequences end at their own P1 (= len - 1), the P1 token, the tail from the question line's last token to
 P1 and the tracked gold id are identical (`check_alignment`, raises AlignmentError).
 
-Evidence-dependent filter (spec §3): clean final gold rank <= 10 and corrupt final gold rank > 10. The single
-pre-declared dev relaxation: if fewer than 40 of the 126 dev rows survive for a model, corrupt rank > 3 (recorded in
-rev 1 before any confirmation read). `PATCH_ELIGIBLE` (clean <= 10 and corrupt > 3) is the widest of the two: rows
-outside it can never enter a claim, so by default the run records only their clean and corrupt passes.
+Evidence-dependent filter (spec §3, amended in rev 5): clean final gold rank <= 10, corrupt final gold rank > k
+(k = 10 strict, 3 relaxed) AND lp_clean - lp_corrupt >= GAP_MIN (1 nat) on both filters. The single pre-declared dev
+relaxation: if fewer than 40 of the 126 dev rows survive the strict filter (with the gap) for a model, k = 3. Rows
+inside the rank filter with a gap below 1 nat are recorded and counted (`gap_excluded`), never asserted, never in a
+claim. `patch_eligible` (the relaxed filter with the gap) is the widest: rows outside it can never enter a claim, so by
+default the run records only their clean and corrupt passes.
+
+Derived fields (`derive`): eligibility, evidence dependence, the gap exclusion, the R(0) flag and `sanity_asserted` are
+functions of the row's recorded lp / rank / R. The report re-derives them on every row it opens and never trusts the
+stored copies (rows written before rev 5 carry the rank-only rev 0 values). `FILTER_VERSION` names the rule; it is
+stamped into new rows and the report but is NOT part of `METHOD` / the resume stamp, because the passes themselves are
+unchanged: a resume keeps every complete row on disk as it is.
 torch is imported lazily (inside the engine calls).
 """
 
@@ -64,6 +74,9 @@ C3_EARLY_UPPER = 0.75        # C3: CI upper < 0.75 -> lenses under-read the 3B t
 C3_AGREE = (0.85, 0.92)      # C3: CI contains 0.85-0.92 -> agrees with both lenses
 BOOT_SAMPLES = 10000
 MIN_GAP = 1e-6               # |m_clean - m_corrupt| below this: R undefined (None)
+GAP_MIN = 1.0                # rev 5: lp_clean - lp_corrupt >= 1 nat, required on both filters
+FLAG_REVIEW_FRACTION = 0.10  # rev 5: more than 10% of a model's eligible rows R(0)-flagged -> Advisor review
+FILTER_VERSION = 2           # 1 = rev 0 rank-only filter, R(0) a stop; 2 = rev 5 gap requirement, R(0) a flag
 
 METHOD = {"spec": "research/proposals/2026-10-29-exp44-patching.md rev 0 (6e21476)",
           "clean": "§34 forced readout_for, prefix cache to P1-1, P1 run with capture on every layer",
@@ -118,7 +131,8 @@ def causal_depth(r: list[float] | None, n_layers: int, threshold: float = R_THRE
 
 
 def sanity(r: list[float] | None) -> dict:
-    """The spec's two bounds; `pass` is None when R is undefined."""
+    """The spec's two bounds as recorded; `pass` is None when R is undefined. Since rev 5 only `final_ok` is asserted
+    (`check_sanity`); `zero_ok` False on an eligible row is the R(0) flag."""
     if r is None:
         return {"r_final": None, "r_zero": None, "final_ok": None, "zero_ok": None, "pass": None}
     final_ok = abs(r[-1] - 1.0) < SANITY_FINAL_TOL
@@ -126,23 +140,70 @@ def sanity(r: list[float] | None) -> dict:
     return {"r_final": r[-1], "r_zero": r[0], "final_ok": final_ok, "zero_ok": zero_ok, "pass": final_ok and zero_ok}
 
 
-def evidence_dependent(rank_clean: int, rank_corrupt: int, k_corrupt: int = K_CORRUPT) -> bool:
+def in_rank_filter(rank_clean: int, rank_corrupt: int, k_corrupt: int = K_CORRUPT) -> bool:
+    """The rank part of the filter only (the rev 0 rule): clean rank <= 10 and corrupt rank > k."""
     return rank_clean <= K_CLEAN and rank_corrupt > k_corrupt
 
 
-def patch_eligible(rank_clean: int, rank_corrupt: int) -> bool:
-    """In the widest pre-declared filter (the relaxed one): the only rows any claim can read."""
-    return evidence_dependent(rank_clean, rank_corrupt, K_CORRUPT_RELAXED)
+def gap_ok(lp_clean: float, lp_corrupt: float) -> bool:
+    """Rev 5: the cut must lower the gold's log p by at least GAP_MIN nats."""
+    return lp_clean - lp_corrupt >= GAP_MIN
+
+
+def evidence_dependent(rank_clean: int, rank_corrupt: int, lp_clean: float, lp_corrupt: float,
+                       k_corrupt: int = K_CORRUPT) -> bool:
+    """Spec §3 as amended in rev 5: the rank filter at k AND the 1-nat gap."""
+    return in_rank_filter(rank_clean, rank_corrupt, k_corrupt) and gap_ok(lp_clean, lp_corrupt)
+
+
+def patch_eligible(rank_clean: int, rank_corrupt: int, lp_clean: float, lp_corrupt: float) -> bool:
+    """In the widest pre-declared filter (the relaxed one, with the gap): the only rows any claim can read."""
+    return evidence_dependent(rank_clean, rank_corrupt, lp_clean, lp_corrupt, K_CORRUPT_RELAXED)
+
+
+def row_dependent(row: dict, k_corrupt: int) -> bool:
+    return evidence_dependent(row["rank_clean"], row["rank_corrupt"], row["lp_clean"], row["lp_corrupt"], k_corrupt)
+
+
+def row_gap_excluded(row: dict, k_corrupt: int) -> bool:
+    """Inside the rank filter at k but with a gap below 1 nat: recorded, never asserted, never in a claim."""
+    return in_rank_filter(row["rank_clean"], row["rank_corrupt"], k_corrupt) and not gap_ok(row["lp_clean"],
+                                                                                            row["lp_corrupt"])
+
+
+def r0_flagged(row: dict) -> bool:
+    """An eligible patched row whose |R(0)| >= 0.05 (rev 5: kept, flagged, out of the claim statistics)."""
+    r = row.get("R")
+    return bool(row.get("patched")) and r is not None and abs(r[0]) >= SANITY_ZERO_TOL and \
+        patch_eligible(row["rank_clean"], row["rank_corrupt"], row["lp_clean"], row["lp_corrupt"])
+
+
+def derive(row: dict) -> dict:
+    """The derived fields of a row from its recorded lp / rank / R under FILTER_VERSION (the report re-derives them
+    on every row it opens; the stored copies are write-time only)."""
+    eligible = patch_eligible(row["rank_clean"], row["rank_corrupt"], row["lp_clean"], row["lp_corrupt"])
+    return {"filter_version": FILTER_VERSION, "gap": row["lp_clean"] - row["lp_corrupt"], "eligible": eligible,
+            "evidence_dependent": row_dependent(row, K_CORRUPT),
+            "gap_excluded_strict": row_gap_excluded(row, K_CORRUPT),
+            "gap_excluded_relaxed": row_gap_excluded(row, K_CORRUPT_RELAXED),
+            "sanity_asserted": bool(row.get("patched")) and eligible, "r0_flag": r0_flagged(row)}
 
 
 def choose_filter(dev_rows: list[dict]) -> dict:
-    """Spec §3 on the dev rows of one model: the strict filter unless fewer than 40 of them survive, then the
-    relaxed one. `dev_rows`: per-row outputs (rank_clean, rank_corrupt) of folds 0-1."""
-    strict = [r for r in dev_rows if evidence_dependent(r["rank_clean"], r["rank_corrupt"], K_CORRUPT)]
-    relaxed = [r for r in dev_rows if evidence_dependent(r["rank_clean"], r["rank_corrupt"], K_CORRUPT_RELAXED)]
+    """Spec §3 on the dev rows of one model: the strict filter (with the gap) unless fewer than 40 of them survive,
+    then the relaxed one (with the gap). `dev_rows`: per-row outputs (rank_clean, rank_corrupt, lp_clean,
+    lp_corrupt) of folds 0-1. The rank-only counts and the gap exclusions are returned beside them."""
+    strict = [r for r in dev_rows if row_dependent(r, K_CORRUPT)]
+    relaxed = [r for r in dev_rows if row_dependent(r, K_CORRUPT_RELAXED)]
     relax = len(strict) < RELAX_BELOW
     return {"n_dev": len(dev_rows), "n_strict": len(strict), "n_relaxed": len(relaxed), "relaxed": relax,
-            "k_corrupt": K_CORRUPT_RELAXED if relax else K_CORRUPT}
+            "k_corrupt": K_CORRUPT_RELAXED if relax else K_CORRUPT, "gap_min": GAP_MIN,
+            "filter_version": FILTER_VERSION,
+            "n_strict_rank": sum(in_rank_filter(r["rank_clean"], r["rank_corrupt"], K_CORRUPT) for r in dev_rows),
+            "n_relaxed_rank": sum(in_rank_filter(r["rank_clean"], r["rank_corrupt"], K_CORRUPT_RELAXED)
+                                  for r in dev_rows),
+            "n_gap_excluded_strict": sum(row_gap_excluded(r, K_CORRUPT) for r in dev_rows),
+            "n_gap_excluded_relaxed": sum(row_gap_excluded(r, K_CORRUPT_RELAXED) for r in dev_rows)}
 
 
 def log_softmax(logits: np.ndarray) -> np.ndarray:
@@ -243,7 +304,8 @@ def patch_row(engine, x: RowInputs, patch: bool | None = None) -> dict:
     cut_prep = _prepare(engine, x.cut_ids)
     corrupt = _readout(_p1_logits(engine, cut_prep, [])[0], x.gold_id, x.unknown_id)
     t_base = time.perf_counter() - started
-    do_patch = patch_eligible(clean["rank_gold"], corrupt["rank_gold"]) if patch is None else bool(patch)
+    eligible = patch_eligible(clean["rank_gold"], corrupt["rank_gold"], clean["lp_gold"], corrupt["lp_gold"])
+    do_patch = eligible if patch is None else bool(patch)
     row = {"question_id": x.question_id, "fold": x.fold, "n_layers": L,
            "n_tokens_clean": len(x.clean_ids), "n_tokens_cut": len(x.cut_ids), "p1_clean": x.clean_p1,
            "p1_cut": x.cut_p1, "p1_token": int(x.clean_ids[-1]), "gold_id": x.gold_id, "unknown_id": x.unknown_id,
@@ -252,8 +314,6 @@ def patch_row(engine, x: RowInputs, patch: bool | None = None) -> dict:
            "rank_clean": clean["rank_gold"], "rank_corrupt": corrupt["rank_gold"],
            "lp_unknown_clean": clean["lp_unknown"], "lp_unknown_corrupt": corrupt["lp_unknown"],
            "top1_clean": clean["top1"], "top1_corrupt": corrupt["top1"],
-           "eligible": patch_eligible(clean["rank_gold"], corrupt["rank_gold"]),
-           "evidence_dependent": evidence_dependent(clean["rank_gold"], corrupt["rank_gold"]),
            "patched": do_patch, "resid_norm_clean": [float(np.linalg.norm(captured[l])) for l in range(L)]}
     if do_patch:
         per = [_readout(_p1_logits(engine, cut_prep, [overwrite_spec(l, captured[l])])[0], x.gold_id, x.unknown_id)
@@ -262,23 +322,26 @@ def patch_row(engine, x: RowInputs, patch: bool | None = None) -> dict:
         row.update({"lp_patched": [p["lp_gold"] for p in per], "rank_patched": [p["rank_gold"] for p in per],
                     "lp_unknown_patched": [p["lp_unknown"] for p in per], "top1_patched": [p["top1"] for p in per],
                     "R": r, "d_c": causal_depth(r, L), "sanity": sanity(r)})
+    row.update(derive(row))
     row["timing"] = {"base_s": t_base, "total_s": time.perf_counter() - started,
                      "n_patch_passes": L if do_patch else 0}
     return row
 
 
 def sanity_asserted(row: dict) -> bool:
-    """Spec §2 asserts the bounds on every row; they are asserted on the patched rows inside the widest filter
-    (where the gap is a real cut effect); a row patched outside it (--patch-all) has its bounds recorded only."""
-    return bool(row.get("patched")) and bool(row.get("eligible"))
+    """R(L-1) is asserted on the patched rows inside the widest filter with the gap (eligibility re-derived from the
+    row's lp / rank, never the stored field); a row patched outside it (--patch-all) has its bounds recorded only."""
+    return bool(row.get("patched")) and patch_eligible(row["rank_clean"], row["rank_corrupt"], row["lp_clean"],
+                                                       row["lp_corrupt"])
 
 
 def check_sanity(row: dict) -> None:
+    """Rev 5: only |R(L-1) - 1| < 0.01 stops the run (a construction; a failure is a bug). R(0) is a flag."""
     if not sanity_asserted(row):
         return
     s = row["sanity"]
-    if s["pass"] is not True:
-        raise SanityError(f"{row['question_id']}: sanity failed: R(L-1)={s['r_final']}, R(0)={s['r_zero']}")
+    if s["final_ok"] is not True:
+        raise SanityError(f"{row['question_id']}: sanity failed: R(L-1)={s['r_final']} (R(0)={s['r_zero']})")
 
 
 # --- statistics -------------------------------------------------------------------------------------------------
