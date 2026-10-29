@@ -23,5 +23,4 @@ Ranked by how well each survives scrutiny; prior art beside each; status as of t
 
 **Not novel:** the layer-profile shape; a fitted lens reading earlier than the logit lens.
 
-**Gap:** no literature note for §33–§44 (abstention directions, hidden knowledge, patching). Advisor to write one
-before the §44 result, positioning 1–3.
+**Positioning:** `research/briefings/2026-10-29-literature-positioning.md` (2026-10-29). Closest neighbours: Lavi, Milo & Geva 2025 (arXiv:2509.22449, an unanswerability direction on extractive QA, steers abstention, answers not graded) for item 1; Walters, Chen & Toni 2026 (arXiv:2610.21731, evidence available but not used, layer-wise) and Orgad et al. 2024 / Gekhman et al. 2025 for item 2; Gupta et al. 2025 (lens-vs-patching depth mismatch on Llama-3-8B) for item 3; Song et al. 2024 (generation-verification gap) for item 5. Item 1 must be phrased "a refusal direction is not an answerability direction", not as a contradiction of Lavi et al.

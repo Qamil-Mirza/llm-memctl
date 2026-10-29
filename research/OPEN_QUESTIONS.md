@@ -40,8 +40,10 @@ a pointer to the EXPERIMENTS.md section, instead of deleting it.
   2 = 3: five distinct §19 networks across both heads. Found by the 2026-10-16 audit
   (`research/audits/2026-10-16-thesis-direction-audit.md` §1.8); record notes under §19a and §19d in
   EXPERIMENTS.md at 9289b52 (Executor, hashes re-verified). Resolved.
-- No interpretability or abstention literature note exists for §33–§37 (`docs/literature/` covers memory
-  controllers only).
+- No interpretability or abstention literature note existed for §33–§37. **Resolved 2026-10-29:**
+  `research/briefings/2026-10-29-literature-positioning.md` covers §33–§44 (abstention directions, hidden knowledge,
+  lenses and patching, self-verification, pre-registration); items marked unverified there still need checking before
+  citation.
 - The §32 spot-check file times (Oct 9, about 21:xx local) and the text's date (2026-10-10) differ,
   probably by timezone. Not resolved.
 - EXPERIMENTS.md still names `runs/_aborted*` and `runs/exp22c_peek_quarantine/`, which were deleted
