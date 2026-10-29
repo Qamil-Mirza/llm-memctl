@@ -312,3 +312,46 @@ rows). Llama 3B: 90 eligible, 24 failures (12 / 12), 66 successes, 9 prefix rows
 
 The swap set is now fixed. Any further change to the eligible rows, substitutes or prefixes after this point is a
 protocol deviation and must be recorded as such.
+
+## Rev 5 (2026-10-29): rev 0 filter flaw — the gap requirement; R(0) becomes an exclusion, not a stop
+
+**What happened.** The 3B development run finished (126/126, `--patch-all`, exit 0). The 7B stopped itself at row 11
+of 126 (37f165cf, exit 3): clean rank 8 / corrupt rank 22, log p clean −16.58 against corrupt −14.88, R(0) = −0.110.
+The §3 filter is rank-only: it never required the cut to *lower* the gold's log p. A row whose corrupt log p is above
+its clean one has a negative gap, so R's denominator carries the wrong sign and the sanity bound is meaningless.
+
+**Recount (Advisor, from `runs/exp44_patch/{qwen3b,qwen7b}/*.json`).** 3B: strict 30 / 126, relaxed 57 / 126; of the
+57, five have a gap below 1 nat (71017276 −0.81, ac031881 −1.18, bbf86515 −1.09, gpt4_1e4a8aeb −3.91, gpt4_b0863698
+−0.29), none in the strict 30; no sanity failure on any eligible row; |R(0)| ≤ 0.004 on eligible rows with gap ≥ 1.
+The five 3B sanity failures in the log are all on rows outside the rank filter (gaps −0.36 to 1.85). 7B, 11 rows:
+strict 4, relaxed 8; two under 1 nat (22d2cb42 −9.97, ranks 7 / 4; 37f165cf −1.70, ranks 8 / 22). **The Executor's
+note that the strict filter rules this out is wrong: 37f165cf is a strict row.** Rank order and log p order disagree
+when the two distributions differ in peakedness, so the gap has to be required explicitly on both filters.
+
+Layer-0 patches move the gold's log p by a median 0.008 nat on the 3B, but up to 0.126 nat (6 of 126 rows above
+0.05 nat); on the 7B a row with a real gap already reached |R(0)| = 0.043. The bound |R(0)| < 0.05 is empirical (rev 1
+correction) and divides a fixed-size shift by the row's gap, so a legitimate row with a 1–3 nat gap can fail it. An
+empirical bound must not halt a five-hour run.
+
+**Rulings.**
+1. **Gap requirement, both filters.** Evidence-dependent now means: clean final gold rank ≤ 10, corrupt final gold
+   rank > k (k = 10 strict, 3 relaxed) **and lp_clean − lp_corrupt ≥ 1 nat**. The Executor's 1-nat margin is accepted
+   over "corrupt rank > clean rank": rank alone cannot separate a negligible gap from a real one, and R needs a
+   denominator the layer-0 noise cannot dominate. Rows inside the rank filter with gap < 1 nat are recorded, never
+   asserted, never in a claim; their count is reported per model and fold set.
+2. **R(L−1) stays a hard assertion** (|R(L−1) − 1| < 0.01, exit 3): it is a construction, and a failure is a bug.
+3. **R(0) becomes a recorded exclusion.** |R(0)| ≥ 0.05 on an eligible row no longer stops the run. The row is kept on
+   disk, flagged, excluded from the claim statistics, and the count of such rows is reported beside every claim; the
+   report also gives each claim's headline with them included as a robustness line. If more than 10 % of a model's
+   eligible rows are flagged the result is reviewed before any confirmation read.
+4. **3B filter fixed:** strict 30 < 40, so the 3B reads the **relaxed filter with the gap requirement: 52 development
+   rows**. Re-read of the 3B development rows under the amended filter is free (all 126 are patched) and is ordered.
+5. **7B filter** is decided when its development run finishes (strict 4 of 11 so far projects to about 46 of 126, so
+   the 7B may stay strict; that is the pre-declared per-model rule, and C1–C2 are 7B-only, C3 is 3B-only, so the two
+   models need not share a filter). The 7B resumes keeping its 11 rows.
+6. `FIXED_FILTER` and `CONFIRM_AUTHORISED` stay off until rulings 1–5 are built, the 3B dev report is re-read, the 7B
+   dev report lands with its counts, and the Advisor records the 7B filter (rev 6). No confirmation fold is read before
+   that.
+
+This change was made on development rows only (folds 0–1); no confirmation row has been read by anyone. The
+development d_c medians were seen during the recount and did not enter the choice of margin.
