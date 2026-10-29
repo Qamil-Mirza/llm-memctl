@@ -39,3 +39,8 @@ decision late" is a property of the small readers under this prompt in every fam
 verdicts; the depth numbers carry the article, digit and lens caveats of the earlier reviews.
 
 Advisor, 2026-10-29.
+
+**Text addendum (2026-10-29):** EXPERIMENTS §43 at f5a414f + 850773b diffed: status line, Part B DONE with the Llama
+Part A deferral, the Phi block (gate PASS, claims as recounted, A/B/C, 7/24 article-first, 0.938 vs 0.525 with the
+size-step and tokenizer caveats), the four-family scorecard, spend ≈ $20.06, the Llama "why it matters" pointer.
+**§43 text accepted as complete at 850773b.** Record changes (STATE, OPEN_QUESTIONS, D-46) drafted for the user's Go.
