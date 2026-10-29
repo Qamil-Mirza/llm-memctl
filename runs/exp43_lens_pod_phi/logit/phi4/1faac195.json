@@ -1,0 +1,234 @@
+{
+ "question_id": "1faac195",
+ "fold": 2,
+ "reader": "phi4",
+ "n_tokens": 781,
+ "n_leading_ws": 0,
+ "prompt_sha256": "a9dc4da6008b0f90b24b405501a7abd01350998f54e49295825246cd786ce3ec",
+ "intact_prompt_sha256": "a9dc4da6008b0f90b24b405501a7abd01350998f54e49295825246cd786ce3ec",
+ "n_evidence_lines_cut": 0,
+ "n_bos": 0,
+ "positions": {
+  "P1": [
+   780
+  ],
+  "P0": [
+   778
+  ],
+  "E": [
+   387
+  ],
+  "Q": [
+   772
+  ],
+  "P1_raw": [
+   780
+  ]
+ },
+ "tracked_names": [
+  "gold",
+  "unknown_sp",
+  "Unknown_sp",
+  "unknown"
+ ],
+ "tracked": {
+  "gold": 22898,
+  "unknown_sp": 9987,
+  "Unknown_sp": 22435,
+  "unknown": 16476
+ },
+ "gold_token_text": " Denver",
+ "position_mode": "forced",
+ "answer_marker": true,
+ "variants": [
+  "logit"
+ ],
+ "read_tag": "exp43_lens_pod_v1",
+ "measures": {
+  "logit": {
+   "k": 10,
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39
+   ],
+   "P1": {
+    "gold": {
+     "best_rank": 14,
+     "final_rank": 17,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 1,
+     "final_rank": 3,
+     "first_top1_depth": 0.675
+    },
+    "Unknown_sp": {
+     "best_rank": 2,
+     "final_rank": 2,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 4,
+     "final_rank": 47,
+     "first_top1_depth": null
+    }
+   },
+   "P0": {
+    "gold": {
+     "best_rank": 5609,
+     "final_rank": 71733,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 1919,
+     "final_rank": 14493,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 7486,
+     "final_rank": 27445,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 3638,
+     "final_rank": 4320,
+     "first_top1_depth": null
+    }
+   },
+   "E": [
+    {
+     "gold": {
+      "best_rank": 2978,
+      "final_rank": 19999,
+      "emergence_depth": null,
+      "outcome": "A"
+     },
+     "unknown_sp": {
+      "best_rank": 39,
+      "final_rank": 22812,
+      "first_top1_depth": null
+     },
+     "Unknown_sp": {
+      "best_rank": 45,
+      "final_rank": 33147,
+      "first_top1_depth": null
+     },
+     "unknown": {
+      "best_rank": 50,
+      "final_rank": 155,
+      "first_top1_depth": null
+     }
+    }
+   ],
+   "Q": {
+    "gold": {
+     "best_rank": 6506,
+     "final_rank": 48865,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 13,
+     "final_rank": 14579,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 16,
+     "final_rank": 14658,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 45,
+     "final_rank": 942,
+     "first_top1_depth": null
+    }
+   },
+   "P1_raw": {
+    "gold": {
+     "best_rank": 14,
+     "final_rank": 17,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 1,
+     "final_rank": 3,
+     "first_top1_depth": 0.675
+    },
+    "Unknown_sp": {
+     "best_rank": 2,
+     "final_rank": 2,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 4,
+     "final_rank": 47,
+     "first_top1_depth": null
+    }
+   }
+  }
+ },
+ "family": {
+  "key": "phi4",
+  "model_id": "microsoft/phi-4",
+  "template_kwargs": {},
+  "system_text": null,
+  "system_role": true,
+  "stop_tokens": [
+   "<|im_end|>",
+   "<|endoftext|>"
+  ],
+  "refusal_ids": [
+   9987,
+   22435
+  ]
+ },
+ "elapsed_s": 0.4726319790352136,
+ "model_id": "microsoft/phi-4",
+ "weights": null,
+ "size": "large",
+ "device": "cuda",
+ "dtype": "bfloat16",
+ "lens": "identity (logit lens)",
+ "lens_sha256": null
+}

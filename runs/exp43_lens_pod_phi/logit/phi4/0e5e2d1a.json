@@ -1,0 +1,234 @@
+{
+ "question_id": "0e5e2d1a",
+ "fold": 4,
+ "reader": "phi4",
+ "n_tokens": 1275,
+ "n_leading_ws": 1,
+ "prompt_sha256": "58b829a93130bc0e6ce604ac62984215cd9e8eb9c69d7b56439cebbd0fd36cb6",
+ "intact_prompt_sha256": "58b829a93130bc0e6ce604ac62984215cd9e8eb9c69d7b56439cebbd0fd36cb6",
+ "n_evidence_lines_cut": 0,
+ "n_bos": 0,
+ "positions": {
+  "P1": [
+   1274
+  ],
+  "P0": [
+   1271
+  ],
+  "E": [
+   634
+  ],
+  "Q": [
+   1265
+  ],
+  "P1_raw": [
+   1273
+  ]
+ },
+ "tracked_names": [
+  "gold",
+  "unknown_sp",
+  "Unknown_sp",
+  "unknown"
+ ],
+ "tracked": {
+  "gold": 1987,
+  "unknown_sp": 9987,
+  "Unknown_sp": 22435,
+  "unknown": 16476
+ },
+ "gold_token_text": "38",
+ "position_mode": "forced",
+ "answer_marker": true,
+ "variants": [
+  "logit"
+ ],
+ "read_tag": "exp43_lens_pod_v1",
+ "measures": {
+  "logit": {
+   "k": 10,
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39
+   ],
+   "P1": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 1,
+     "emergence_depth": 0.6,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 35,
+     "final_rank": 5145,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 423,
+     "final_rank": 423,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 353,
+     "final_rank": 6660,
+     "first_top1_depth": null
+    }
+   },
+   "P0": {
+    "gold": {
+     "best_rank": 2287,
+     "final_rank": 4365,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 4696,
+     "final_rank": 37516,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 7773,
+     "final_rank": 64767,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 7485,
+     "final_rank": 7825,
+     "first_top1_depth": null
+    }
+   },
+   "E": [
+    {
+     "gold": {
+      "best_rank": 744,
+      "final_rank": 744,
+      "emergence_depth": null,
+      "outcome": "A"
+     },
+     "unknown_sp": {
+      "best_rank": 256,
+      "final_rank": 12108,
+      "first_top1_depth": null
+     },
+     "Unknown_sp": {
+      "best_rank": 276,
+      "final_rank": 9840,
+      "first_top1_depth": null
+     },
+     "unknown": {
+      "best_rank": 62,
+      "final_rank": 62,
+      "first_top1_depth": null
+     }
+    }
+   ],
+   "Q": {
+    "gold": {
+     "best_rank": 3530,
+     "final_rank": 4860,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 263,
+     "final_rank": 8075,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 263,
+     "final_rank": 10468,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 641,
+     "final_rank": 641,
+     "first_top1_depth": null
+    }
+   },
+   "P1_raw": {
+    "gold": {
+     "best_rank": 18,
+     "final_rank": 119,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 279,
+     "final_rank": 714,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 96,
+     "final_rank": 96,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 1619,
+     "final_rank": 8343,
+     "first_top1_depth": null
+    }
+   }
+  }
+ },
+ "family": {
+  "key": "phi4",
+  "model_id": "microsoft/phi-4",
+  "template_kwargs": {},
+  "system_text": null,
+  "system_role": true,
+  "stop_tokens": [
+   "<|im_end|>",
+   "<|endoftext|>"
+  ],
+  "refusal_ids": [
+   9987,
+   22435
+  ]
+ },
+ "elapsed_s": 0.5965499669546261,
+ "model_id": "microsoft/phi-4",
+ "weights": null,
+ "size": "large",
+ "device": "cuda",
+ "dtype": "bfloat16",
+ "lens": "identity (logit lens)",
+ "lens_sha256": null
+}

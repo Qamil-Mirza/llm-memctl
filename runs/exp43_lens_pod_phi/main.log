@@ -1,0 +1,1053 @@
+exp43 Part B pod chain; family phi (phi4mini + phi4); engine hf; RUNPOD_POD_ID setpb6zhpzw85xmet
+deadlines: HARD_STOP_S=8100 s (all model work ends), SELF_STOP_S=8700 s (the pod stops itself)
+watchdog pid 212: pod stops itself at +8700 s
+preflight ok: 48 files and 2 cache folders present; out runs/exp43_lens_pod_phi
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+torch 2.8.0+cu128 transformers 5.17.0 numpy 2.1.2 scipy 1.18.1 pyarrow 26.0.0
+jlens commit 581d398 (expected 581d398)
+gpu NVIDIA A40 44.4 GiB
+overlay         100G  1.5G   99G   2% /
+stage install (ok, rc 0): elapsed 34 s (total 34 s of 8100)
+population phi: {'0': 61, '1': 65, '2': 66, '3': 68, '4': 70} (expected {0: 61, 1: 65, 2: 66, 3: 68, 4: 70}); fingerprint 32be5fe9a59f7017
+stage population (ok, rc 0): elapsed 21 s (total 55 s of 8100)
+download microsoft/Phi-4-mini-instruct: 11 s -> /root/.cache/huggingface/hub/models--microsoft--Phi-4-mini-instruct/snapshots/cfbefacb99257ffa30c83adab238a50856ac3083
+download microsoft/phi-4: 14 s -> /root/.cache/huggingface/hub/models--microsoft--phi-4/snapshots/2db69c1c3e91a05d2c64a3185acfbaf36f744e25
+stage download (ok, rc 0): elapsed 26 s (total 81 s of 8100)
+phi4mini logit smoke: 5 rows, 5 to read
+[transformers] This model config has set a `rope_parameters['original_max_position_embeddings']` field, to be used together with `max_position_embeddings` to determine a scaling factor. Please set the `factor` field of `rope_parameters`with this ratio instead -- we recommend the use of this field over `original_max_position_embeddings`, as it is compatible with most model architectures.
+[1/5] 00ca467f f0 1.21s n_tokens=791 P1 gold logit=C final_rank=2
+[2/5] 06db6396 f0 0.57s n_tokens=800 P1 gold logit=C final_rank=1
+[3/5] 0bb5a684 f0 0.62s n_tokens=1015 P1 gold logit=A final_rank=19
+[4/5] 0db4c65d f0 0.61s n_tokens=901 P1 gold logit=C final_rank=1
+[5/5] 15745da0 f0 0.37s n_tokens=725 P1 gold logit=C final_rank=4
+{"reader": "phi4mini", "model_id": "microsoft/Phi-4-mini-instruct", "variant": "logit", "smoke": true, "device": "cuda", "dtype": "bfloat16", "load_s": 7.200803768937476, "questions": 5, "seconds_per_question": 0.6759298807941377, "wall_s": 3.3992737090447918, "deadline_cut": false, "peak_rss_mb": 5535.67578125, "peak_gpu_mb": 7591.06982421875, "n_layers": 32, "d_model": 3072}
+smoke ok: phi4mini, 5 rows
+stage smoke_small (ok, rc 0): elapsed 21 s (total 102 s of 8100)
+phi4 logit smoke: 5 rows, 5 to read
+[1/5] 00ca467f f0 0.91s n_tokens=825 P1 gold logit=C final_rank=2
+[2/5] 06db6396 f0 0.51s n_tokens=826 P1 gold logit=C final_rank=1
+[3/5] 0bb5a684 f0 0.59s n_tokens=1041 P1 gold logit=C final_rank=1
+[4/5] 0db4c65d f0 0.54s n_tokens=924 P1 gold logit=C final_rank=1
+[5/5] 15745da0 f0 0.45s n_tokens=750 P1 gold logit=B final_rank=23
+{"reader": "phi4", "model_id": "microsoft/phi-4", "variant": "logit", "smoke": true, "device": "cuda", "dtype": "bfloat16", "load_s": 9.056187949958257, "questions": 5, "seconds_per_question": 0.6002842329908162, "wall_s": 3.015676585957408, "deadline_cut": false, "peak_rss_mb": 5608.0703125, "peak_gpu_mb": 28620.4150390625, "n_layers": 40, "d_model": 5120}
+smoke ok: phi4, 5 rows
+stage smoke_large (ok, rc 0): elapsed 24 s (total 126 s of 8100)
+phi4mini logit: 330 rows, 330 to read
+[transformers] This model config has set a `rope_parameters['original_max_position_embeddings']` field, to be used together with `max_position_embeddings` to determine a scaling factor. Please set the `factor` field of `rope_parameters`with this ratio instead -- we recommend the use of this field over `original_max_position_embeddings`, as it is compatible with most model architectures.
+[1/330] 00ca467f f0 0.88s n_tokens=791 P1 gold logit=C final_rank=2
+[2/330] 06db6396 f0 0.41s n_tokens=800 P1 gold logit=C final_rank=1
+[3/330] 0bb5a684 f0 0.44s n_tokens=1015 P1 gold logit=A final_rank=19
+[4/330] 0db4c65d f0 0.41s n_tokens=901 P1 gold logit=C final_rank=1
+[5/330] 15745da0 f0 0.33s n_tokens=725 P1 gold logit=C final_rank=4
+[6/330] 1b9b7252 f0 0.40s n_tokens=1447 P1 gold logit=C final_rank=1
+[7/330] 21d02d0d f0 0.40s n_tokens=976 P1 gold logit=C final_rank=2
+[8/330] 22d2cb42 f0 0.68s n_tokens=1178 P1 gold logit=C final_rank=4
+[9/330] 2698e78f f0 0.39s n_tokens=819 P1 gold logit=C final_rank=9
+[10/330] 28dc39ac f0 0.53s n_tokens=944 P1 gold logit=B final_rank=25
+[11/330] 37f165cf f0 0.38s n_tokens=811 P1 gold logit=A final_rank=604
+[12/330] 3fe836c9 f0 0.37s n_tokens=786 P1 gold logit=C final_rank=1
+[13/330] 4100d0a0 f0 0.34s n_tokens=781 P1 gold logit=A final_rank=18
+[14/330] 41275add f0 0.35s n_tokens=998 P1 gold logit=C final_rank=3
+[15/330] 4adc0475 f0 0.37s n_tokens=696 P1 gold logit=C final_rank=1
+[16/330] 4d6b87c8 f0 0.41s n_tokens=1030 P1 gold logit=C final_rank=1
+[17/330] 4f54b7c9 f0 0.40s n_tokens=901 P1 gold logit=C final_rank=3
+[18/330] 58470ed2 f0 0.46s n_tokens=2031 P1 gold logit=C final_rank=4
+[19/330] 59524333 f0 0.40s n_tokens=909 P1 gold logit=C final_rank=1
+[20/330] 5d3d2817 f0 0.33s n_tokens=788 P1 gold logit=C final_rank=1
+[21/330] 60bf93ed f0 0.38s n_tokens=885 P1 gold logit=C final_rank=1
+[22/330] 60d45044 f0 0.48s n_tokens=2586 P1 gold logit=C final_rank=1
+[23/330] 69fee5aa f0 0.38s n_tokens=784 P1 gold logit=C final_rank=2
+[24/330] 6a27ffc2 f0 0.39s n_tokens=797 P1 gold logit=C final_rank=1
+[25/330] 71017276 f0 0.34s n_tokens=824 P1 gold logit=C final_rank=3
+[26/330] 71a3fd6b f0 0.33s n_tokens=740 P1 gold logit=C final_rank=2
+[27/330] 75832dbd f0 0.34s n_tokens=777 P1 gold logit=C final_rank=4
+[28/330] 76d63226 f0 0.35s n_tokens=966 P1 gold logit=C final_rank=1
+[29/330] 7e00a6cb f0 0.35s n_tokens=947 P1 gold logit=C final_rank=1
+[30/330] 94f70d80 f0 0.38s n_tokens=1190 P1 gold logit=C final_rank=1
+[31/330] 95bcc1c8 f0 0.38s n_tokens=898 P1 gold logit=C final_rank=1
+[32/330] 982b5123 f0 0.43s n_tokens=1316 P1 gold logit=A final_rank=71
+[33/330] 9ea5eabc f0 0.40s n_tokens=823 P1 gold logit=A final_rank=75
+[34/330] 9ee3ecd6 f0 0.45s n_tokens=1271 P1 gold logit=C final_rank=3
+[35/330] a4996e51 f0 0.48s n_tokens=1700 P1 gold logit=C final_rank=1
+[36/330] ac031881 f0 0.35s n_tokens=830 P1 gold logit=C final_rank=1
+[37/330] b320f3f8 f0 0.35s n_tokens=763 P1 gold logit=C final_rank=7
+[38/330] b86304ba f0 0.35s n_tokens=870 P1 gold logit=C final_rank=1
+[39/330] ba61f0b9 f0 0.46s n_tokens=1477 P1 gold logit=C final_rank=1
+[40/330] bbf86515 f0 0.43s n_tokens=1031 P1 gold logit=C final_rank=1
+[41/330] c14c00dd f0 0.35s n_tokens=862 P1 gold logit=A final_rank=11
+[42/330] c5e8278d f0 0.35s n_tokens=798 P1 gold logit=C final_rank=1
+[43/330] c7cf7dfd f0 0.39s n_tokens=1106 P1 gold logit=C final_rank=1
+[44/330] c8c3f81d f0 0.39s n_tokens=1265 P1 gold logit=C final_rank=1
+[45/330] d6062bb9 f0 0.41s n_tokens=831 P1 gold logit=C final_rank=1
+[46/330] e493bb7c f0 0.42s n_tokens=978 P1 gold logit=A final_rank=26
+[47/330] e4e14d04 f0 0.44s n_tokens=944 P1 gold logit=A final_rank=24
+[48/330] e66b632c f0 0.44s n_tokens=1039 P1 gold logit=C final_rank=2
+[49/330] fca70973 f0 0.35s n_tokens=772 P1 gold logit=C final_rank=6
+[50/330] fca762bc f0 0.38s n_tokens=1052 P1 gold logit=C final_rank=1
+[51/330] fea54f57 f0 0.37s n_tokens=993 P1 gold logit=C final_rank=2
+[52/330] gpt4_18c2b244 f0 0.47s n_tokens=1070 P1 gold logit=A final_rank=12
+[53/330] gpt4_213fd887 f0 0.41s n_tokens=981 P1 gold logit=C final_rank=4
+[54/330] gpt4_4929293a f0 0.39s n_tokens=815 P1 gold logit=C final_rank=1
+[55/330] gpt4_4ef30696 f0 0.39s n_tokens=717 P1 gold logit=C final_rank=1
+[56/330] gpt4_70e84552 f0 0.43s n_tokens=1272 P1 gold logit=C final_rank=2
+[57/330] gpt4_7bc6cf22 f0 0.36s n_tokens=881 P1 gold logit=A final_rank=28
+[58/330] gpt4_85da3956 f0 0.37s n_tokens=969 P1 gold logit=C final_rank=1
+[59/330] gpt4_88806d6e f0 0.40s n_tokens=819 P1 gold logit=C final_rank=2
+[60/330] gpt4_8e165409 f0 0.44s n_tokens=1058 P1 gold logit=A final_rank=15
+[61/330] gpt4_98f46fc6 f0 0.51s n_tokens=1857 P1 gold logit=A final_rank=21
+[62/330] 07741c44 f1 0.42s n_tokens=1021 P1 gold logit=C final_rank=2
+[63/330] 0862e8bf f1 0.35s n_tokens=837 P1 gold logit=C final_rank=1
+[64/330] 08f4fc43 f1 0.42s n_tokens=942 P1 gold logit=A final_rank=23
+[65/330] 0ddfec37 f1 0.42s n_tokens=880 P1 gold logit=C final_rank=1
+[66/330] 0e4e4c46 f1 0.48s n_tokens=1485 P1 gold logit=C final_rank=1
+[67/330] 0f05491a f1 0.40s n_tokens=804 P1 gold logit=C final_rank=1
+[68/330] 118b2229 f1 0.34s n_tokens=674 P1 gold logit=C final_rank=1
+[69/330] 19b5f2b3 f1 0.34s n_tokens=840 P1 gold logit=C final_rank=6
+[70/330] 1c549ce4 f1 0.42s n_tokens=1165 P1 gold logit=C final_rank=1
+[71/330] 2133c1b5 f1 0.41s n_tokens=915 P1 gold logit=C final_rank=1
+[72/330] 28bcfaac f1 0.36s n_tokens=1002 P1 gold logit=C final_rank=1
+[73/330] 29f2956b f1 0.34s n_tokens=843 P1 gold logit=C final_rank=1
+[74/330] 2bf43736 f1 0.45s n_tokens=1986 P1 gold logit=C final_rank=1
+[75/330] 2ebe6c90 f1 0.41s n_tokens=907 P1 gold logit=A final_rank=11
+[76/330] 36580ce8 f1 0.34s n_tokens=708 P1 gold logit=C final_rank=2
+[77/330] 3ba21379 f1 0.44s n_tokens=1535 P1 gold logit=C final_rank=1
+[78/330] 3f1e9474 f1 0.38s n_tokens=1146 P1 gold logit=C final_rank=1
+[79/330] 3fdac837 f1 0.41s n_tokens=1057 P1 gold logit=A final_rank=14
+[80/330] 42ec0761 f1 0.44s n_tokens=1228 P1 gold logit=C final_rank=1
+[81/330] 4388e9dd f1 0.38s n_tokens=1257 P1 gold logit=C final_rank=1
+[82/330] 4bc144e2 f1 0.41s n_tokens=1115 P1 gold logit=C final_rank=2
+[83/330] 51b23612 f1 0.37s n_tokens=1045 P1 gold logit=C final_rank=3
+[84/330] 5831f84d f1 0.40s n_tokens=909 P1 gold logit=C final_rank=1
+[85/330] 618f13b2 f1 0.44s n_tokens=1097 P1 gold logit=A final_rank=16
+[86/330] 66f24dbb f1 0.36s n_tokens=927 P1 gold logit=C final_rank=4
+[87/330] 6a1eabeb f1 0.49s n_tokens=2000 P1 gold logit=C final_rank=2
+[88/330] 6ade9755 f1 0.39s n_tokens=1380 P1 gold logit=C final_rank=2
+[89/330] 7401057b f1 0.44s n_tokens=1499 P1 gold logit=C final_rank=2
+[90/330] 7527f7e2 f1 0.35s n_tokens=843 P1 gold logit=C final_rank=1
+[91/330] 7a8d0b71 f1 0.40s n_tokens=1404 P1 gold logit=C final_rank=1
+[92/330] 85fa3a3f f1 0.47s n_tokens=921 P1 gold logit=C final_rank=3
+[93/330] 86f00804 f1 0.35s n_tokens=808 P1 gold logit=C final_rank=2
+[94/330] 89527b6b f1 0.48s n_tokens=2237 P1 gold logit=C final_rank=2
+[95/330] 8979f9ec f1 0.44s n_tokens=1332 P1 gold logit=C final_rank=1
+[96/330] 89941a94 f1 0.44s n_tokens=1293 P1 gold logit=C final_rank=1
+[97/330] 8cf51dda f1 0.39s n_tokens=1266 P1 gold logit=A final_rank=11
+[98/330] 8ebdbe50 f1 0.35s n_tokens=831 P1 gold logit=C final_rank=1
+[99/330] 993da5e2 f1 0.43s n_tokens=1082 P1 gold logit=A final_rank=25
+[100/330] b3c15d39 f1 0.43s n_tokens=1101 P1 gold logit=C final_rank=1
+[101/330] b6019101 f1 0.40s n_tokens=786 P1 gold logit=C final_rank=1
+[102/330] b6025781 f1 0.34s n_tokens=743 P1 gold logit=A final_rank=11
+[103/330] b9cfe692 f1 0.50s n_tokens=822 P1 gold logit=C final_rank=1
+[104/330] bb7c3b45 f1 0.44s n_tokens=1146 P1 gold logit=C final_rank=1
+[105/330] c2ac3c61 f1 0.45s n_tokens=1302 P1 gold logit=C final_rank=1
+[106/330] c9f37c46 f1 0.42s n_tokens=914 P1 gold logit=C final_rank=2
+[107/330] caf03d32 f1 0.39s n_tokens=704 P1 gold logit=C final_rank=6
+[108/330] cc539528 f1 0.38s n_tokens=1084 P1 gold logit=A final_rank=20
+[109/330] cc6d1ec1 f1 0.40s n_tokens=847 P1 gold logit=A final_rank=22
+[110/330] d52b4f67 f1 0.39s n_tokens=1100 P1 gold logit=C final_rank=2
+[111/330] d7c942c3 f1 0.40s n_tokens=825 P1 gold logit=C final_rank=1
+[112/330] d905b33f f1 0.42s n_tokens=907 P1 gold logit=C final_rank=1
+[113/330] e01b8e2f f1 0.40s n_tokens=1490 P1 gold logit=C final_rank=1
+[114/330] e48988bc f1 0.40s n_tokens=1267 P1 gold logit=C final_rank=1
+[115/330] f0e564bc f1 0.42s n_tokens=853 P1 gold logit=C final_rank=2
+[116/330] gpt4_1d80365e f1 0.40s n_tokens=793 P1 gold logit=C final_rank=4
+[117/330] gpt4_1e4a8aeb f1 0.41s n_tokens=823 P1 gold logit=C final_rank=2
+[118/330] gpt4_468eb064 f1 0.40s n_tokens=1248 P1 gold logit=C final_rank=1
+[119/330] gpt4_4cd9eba1 f1 0.41s n_tokens=949 P1 gold logit=A final_rank=426
+[120/330] gpt4_5438fa52 f1 0.47s n_tokens=1653 P1 gold logit=C final_rank=1
+[121/330] gpt4_74aed68e f1 0.40s n_tokens=823 P1 gold logit=A final_rank=42
+[122/330] gpt4_78cf46a3 f1 0.44s n_tokens=1221 P1 gold logit=B final_rank=12
+[123/330] gpt4_a1b77f9c f1 0.61s n_tokens=888 P1 gold logit=C final_rank=7
+[124/330] gpt4_af6db32f f1 0.35s n_tokens=838 P1 gold logit=A final_rank=35
+[125/330] gpt4_b0863698 f1 0.41s n_tokens=1567 P1 gold logit=C final_rank=10
+[126/330] gpt4_b5700ca9 f1 0.38s n_tokens=1152 P1 gold logit=C final_rank=1
+[127/330] 0100672e f2 0.46s n_tokens=1428
+[128/330] 07741c45 f2 0.42s n_tokens=1021
+[129/330] 08e075c7 f2 0.43s n_tokens=1027
+[130/330] 10d9b85a f2 0.43s n_tokens=1135
+[131/330] 16c90bf4 f2 0.35s n_tokens=845
+[132/330] 18bc8abd f2 0.46s n_tokens=1400
+[133/330] 1d4da289 f2 0.38s n_tokens=1112
+[134/330] 1de5cff2 f2 0.35s n_tokens=892
+[135/330] 1faac195 f2 0.35s n_tokens=755
+[136/330] 2311e44b f2 0.46s n_tokens=1393
+[137/330] 2318644b f2 0.41s n_tokens=870
+[138/330] 3d86fd0a f2 0.33s n_tokens=594
+[139/330] 3e321797 f2 0.40s n_tokens=1285
+[140/330] 45dc21b6 f2 0.39s n_tokens=767
+[141/330] 4b24c848 f2 0.41s n_tokens=860
+[142/330] 4baee567 f2 0.38s n_tokens=1162
+[143/330] 4fd1909e f2 0.36s n_tokens=979
+[144/330] 51a45a95 f2 0.36s n_tokens=996
+[145/330] 5a7937c8 f2 0.47s n_tokens=875
+[146/330] 5c40ec5b f2 0.43s n_tokens=1110
+[147/330] 60036106 f2 0.47s n_tokens=1747
+[148/330] 6222b6eb f2 0.41s n_tokens=1474
+[149/330] 6aeb4375 f2 0.45s n_tokens=1190
+[150/330] 6b168ec8 f2 0.37s n_tokens=927
+[151/330] 6c49646a f2 0.41s n_tokens=920
+[152/330] 6e984301 f2 0.43s n_tokens=1039
+[153/330] 6f9b354f f2 0.39s n_tokens=1275
+[154/330] 70b3e69b f2 0.41s n_tokens=1495
+[155/330] 71315a70 f2 0.40s n_tokens=816
+[156/330] 72e3ee87 f2 0.44s n_tokens=1256
+[157/330] 7405e8b1 f2 0.52s n_tokens=2056
+[158/330] 75f70248 f2 0.38s n_tokens=1062
+[159/330] 853b0a1d f2 0.39s n_tokens=1223
+[160/330] 86b68151 f2 0.41s n_tokens=1527
+[161/330] 87f22b4a f2 0.41s n_tokens=831
+[162/330] 8e9d538c f2 0.46s n_tokens=1521
+[163/330] 91b15a6e f2 0.42s n_tokens=967
+[164/330] 9a707b81 f2 0.41s n_tokens=875
+[165/330] 9aaed6a3 f2 0.41s n_tokens=954
+[166/330] a1eacc2a f2 0.42s n_tokens=912
+[167/330] a3045048 f2 0.40s n_tokens=890
+[168/330] a40e080f f2 0.37s n_tokens=1022
+[169/330] a89d7624 f2 0.41s n_tokens=973
+[170/330] aae3761f f2 0.47s n_tokens=1016
+[171/330] ad7109d1 f2 0.35s n_tokens=813
+[172/330] bc8a6e93 f2 0.36s n_tokens=873
+[173/330] bcbe585f f2 0.36s n_tokens=879
+[174/330] c960da58 f2 0.41s n_tokens=1485
+[175/330] ceb54acb f2 0.38s n_tokens=1065
+[176/330] cf22b7bf f2 0.42s n_tokens=993
+[177/330] e9327a54 f2 0.39s n_tokens=1196
+[178/330] ed4ddc30 f2 0.40s n_tokens=846
+[179/330] ef66a6e5 f2 0.40s n_tokens=720
+[180/330] f685340e f2 0.41s n_tokens=798
+[181/330] gpt4_0a05b494 f2 0.41s n_tokens=895
+[182/330] gpt4_0b2f1d21 f2 0.44s n_tokens=1248
+[183/330] gpt4_1916e0ea f2 0.41s n_tokens=870
+[184/330] gpt4_2487a7cb f2 0.47s n_tokens=1433
+[185/330] gpt4_2c50253f f2 0.39s n_tokens=704
+[186/330] gpt4_4edbafa2 f2 0.40s n_tokens=835
+[187/330] gpt4_4fc4f797 f2 0.48s n_tokens=1669
+[188/330] gpt4_68e94287 f2 0.40s n_tokens=812
+[189/330] gpt4_93f6379c f2 0.58s n_tokens=1540
+[190/330] gpt4_c27434e8 f2 0.43s n_tokens=1173
+[191/330] gpt4_fa19884c f2 0.44s n_tokens=1183
+[192/330] gpt4_fa19884d f2 0.40s n_tokens=876
+[193/330] 099778bb f3 0.47s n_tokens=1508
+[194/330] 10e09553 f3 0.47s n_tokens=1506
+[195/330] 1192316e f3 0.46s n_tokens=1593
+[196/330] 184da446 f3 0.43s n_tokens=1099
+[197/330] 18dcd5a5 f3 0.42s n_tokens=1562
+[198/330] 1f2b8d4f f3 0.44s n_tokens=1176
+[199/330] 27016adc f3 0.46s n_tokens=1498
+[200/330] 311778f1 f3 0.37s n_tokens=930
+[201/330] 32260d93 f3 0.34s n_tokens=667
+[202/330] 370a8ff4 f3 0.41s n_tokens=835
+[203/330] 3b6f954b f3 0.40s n_tokens=1227
+[204/330] 4c36ccef f3 0.36s n_tokens=923
+[205/330] 4dfccbf7 f3 0.43s n_tokens=1079
+[206/330] 5025383b f3 0.40s n_tokens=837
+[207/330] 545bd2b5 f3 0.40s n_tokens=1254
+[208/330] 577d4d32 f3 0.37s n_tokens=1008
+[209/330] 58bf7951 f3 0.37s n_tokens=1003
+[210/330] 58ef2f1c f3 0.35s n_tokens=800
+[211/330] 5a4f22c0 f3 0.54s n_tokens=2241
+[212/330] 60472f9c f3 0.58s n_tokens=1086
+[213/330] 65240037 f3 0.46s n_tokens=2085
+[214/330] 681a1674 f3 0.41s n_tokens=847
+[215/330] 8077ef71 f3 0.35s n_tokens=828
+[216/330] 8464fc84 f3 0.36s n_tokens=877
+[217/330] 8a2466db f3 0.34s n_tokens=756
+[218/330] 8b9d4367 f3 0.40s n_tokens=1170
+[219/330] 8cf4d046 f3 0.43s n_tokens=1067
+[220/330] 8fb83627 f3 0.47s n_tokens=1024
+[221/330] a06e4cfe f3 0.44s n_tokens=1731
+[222/330] a2f3aa27 f3 0.47s n_tokens=1591
+[223/330] a82c026e f3 0.35s n_tokens=817
+[224/330] a96c20ee f3 0.40s n_tokens=812
+[225/330] af8d2e46 f3 0.39s n_tokens=1155
+[226/330] affe2881 f3 0.42s n_tokens=1002
+[227/330] b0479f84 f3 0.35s n_tokens=818
+[228/330] b29f3365 f3 0.40s n_tokens=811
+[229/330] b5ef892d f3 0.48s n_tokens=1041
+[230/330] c4ea545c f3 0.42s n_tokens=965
+[231/330] c6853660 f3 0.44s n_tokens=1304
+[232/330] c8090214 f3 0.46s n_tokens=1443
+[233/330] c8f1aeed f3 0.42s n_tokens=1553
+[234/330] caf9ead2 f3 0.37s n_tokens=988
+[235/330] cc06de0d f3 0.43s n_tokens=1076
+[236/330] cc5ded98 f3 0.42s n_tokens=995
+[237/330] ccb36322 f3 0.35s n_tokens=741
+[238/330] db467c8c f3 0.40s n_tokens=770
+[239/330] dcfa8644 f3 0.41s n_tokens=884
+[240/330] e56a43b9 f3 0.39s n_tokens=755
+[241/330] e8a79c70 f3 0.40s n_tokens=1263
+[242/330] e982271f f3 0.36s n_tokens=983
+[243/330] f0853d11 f3 0.41s n_tokens=852
+[244/330] f523d9fe f3 0.36s n_tokens=934
+[245/330] f9e8c073 f3 0.45s n_tokens=1323
+[246/330] faba32e5 f3 0.35s n_tokens=804
+[247/330] gpt4_1a1dc16d f3 0.43s n_tokens=1056
+[248/330] gpt4_1d4ab0c9 f3 0.39s n_tokens=714
+[249/330] gpt4_21adecb5 f3 0.39s n_tokens=739
+[250/330] gpt4_2d58bcd6 f3 0.42s n_tokens=1044
+[251/330] gpt4_385a5000 f3 0.42s n_tokens=1017
+[252/330] gpt4_59149c77 f3 0.46s n_tokens=1347
+[253/330] gpt4_6dc9b45b f3 0.35s n_tokens=813
+[254/330] gpt4_76048e76 f3 0.41s n_tokens=902
+[255/330] gpt4_7a0daae1 f3 0.40s n_tokens=809
+[256/330] gpt4_7ddcf75f f3 0.37s n_tokens=831
+[257/330] gpt4_d31cdae3 f3 0.42s n_tokens=947
+[258/330] gpt4_d9af6064 f3 0.44s n_tokens=1240
+[259/330] gpt4_e414231e f3 0.40s n_tokens=840
+[260/330] gpt4_fe651585 f3 0.40s n_tokens=785
+[261/330] 001be529 f4 0.35s n_tokens=826
+[262/330] 01493427 f4 0.39s n_tokens=756
+[263/330] 031748ae f4 0.40s n_tokens=876
+[264/330] 09ba9854 f4 0.46s n_tokens=1499
+[265/330] 0e5e2d1a f4 0.39s n_tokens=1236
+[266/330] 0ea62687 f4 0.41s n_tokens=922
+[267/330] 195a1a1b f4 0.35s n_tokens=846
+[268/330] 1da05512 f4 0.39s n_tokens=750
+[269/330] 1e043500 f4 0.34s n_tokens=712
+[270/330] 21436231 f4 0.43s n_tokens=1745
+[271/330] 26bdc477 f4 0.43s n_tokens=1046
+[272/330] 2a1811e2 f4 0.40s n_tokens=794
+[273/330] 3249768e f4 0.39s n_tokens=1282
+[274/330] 352ab8bd f4 0.46s n_tokens=2052
+[275/330] 37d43f65 f4 0.43s n_tokens=1738
+[276/330] 488d3006 f4 0.39s n_tokens=1235
+[277/330] 50635ada f4 0.43s n_tokens=1095
+[278/330] 55241a1f f4 0.45s n_tokens=1423
+[279/330] 57f827a0 f4 0.35s n_tokens=854
+[280/330] 5809eb10 f4 0.47s n_tokens=2123
+[281/330] 5e1b23de f4 0.36s n_tokens=910
+[282/330] 60159905 f4 0.42s n_tokens=911
+[283/330] 603deb26 f4 0.41s n_tokens=998
+[284/330] 6071bd76 f4 0.44s n_tokens=1231
+[285/330] 6456829e f4 0.40s n_tokens=799
+[286/330] 6ae235be f4 0.43s n_tokens=1738
+[287/330] 6b7dfb22 f4 0.35s n_tokens=863
+[288/330] 7161e7e2 f4 0.48s n_tokens=2302
+[289/330] 720133ac f4 0.41s n_tokens=957
+[290/330] 726462e0 f4 0.36s n_tokens=1002
+[291/330] 778164c6 f4 0.37s n_tokens=1026
+[292/330] 7a87bd0c f4 0.43s n_tokens=1111
+[293/330] 852ce960 f4 0.39s n_tokens=713
+[294/330] 8550ddae f4 0.36s n_tokens=999
+[295/330] 8a137a7f f4 0.38s n_tokens=1098
+[296/330] 8aef76bc f4 0.38s n_tokens=1053
+[297/330] 8c18457d f4 0.45s n_tokens=975
+[298/330] a11281a2 f4 0.46s n_tokens=1450
+[299/330] af082822 f4 0.35s n_tokens=835
+[300/330] b01defab f4 0.45s n_tokens=1416
+[301/330] b46e15ee f4 0.49s n_tokens=894
+[302/330] b759caee f4 0.38s n_tokens=1199
+[303/330] c19f7a0b f4 0.36s n_tokens=922
+[304/330] c7dc5443 f4 0.39s n_tokens=825
+[305/330] ce6d2d27 f4 0.39s n_tokens=721
+[306/330] d596882b f4 0.40s n_tokens=1387
+[307/330] dccbc061 f4 0.40s n_tokens=1364
+[308/330] dd2973ad f4 0.43s n_tokens=1115
+[309/330] e25c3b8d f4 0.41s n_tokens=906
+[310/330] e6041065 f4 0.43s n_tokens=1051
+[311/330] e831120c f4 0.50s n_tokens=1855
+[312/330] ec81a493 f4 0.34s n_tokens=705
+[313/330] f4f1d8a4 f4 0.36s n_tokens=996
+[314/330] f8c5f88b f4 0.37s n_tokens=1052
+[315/330] gpt4_2312f94c f4 0.43s n_tokens=1093
+[316/330] gpt4_2f584639 f4 0.44s n_tokens=1248
+[317/330] gpt4_468eb063 f4 0.38s n_tokens=1098
+[318/330] gpt4_483dd43c f4 0.44s n_tokens=1162
+[319/330] gpt4_61e13b3c f4 0.40s n_tokens=814
+[320/330] gpt4_6ed717ea f4 0.40s n_tokens=804
+[321/330] gpt4_7ca326fa f4 0.47s n_tokens=1024
+[322/330] gpt4_7de946e7 f4 0.44s n_tokens=1311
+[323/330] gpt4_8279ba02 f4 0.35s n_tokens=856
+[324/330] gpt4_a2d1d1f6 f4 0.35s n_tokens=816
+[325/330] gpt4_b4a80587 f4 0.39s n_tokens=848
+[326/330] gpt4_b5700ca0 f4 0.35s n_tokens=783
+[327/330] gpt4_cd90e484 f4 0.41s n_tokens=952
+[328/330] gpt4_e072b769 f4 0.41s n_tokens=1416
+[329/330] gpt4_e414231f f4 0.51s n_tokens=943
+[330/330] gpt4_f49edff3 f4 0.44s n_tokens=869
+{"reader": "phi4mini", "model_id": "microsoft/Phi-4-mini-instruct", "variant": "logit", "smoke": false, "device": "cuda", "dtype": "bfloat16", "load_s": 6.474195834016427, "questions": 330, "seconds_per_question": 0.40961289844814347, "wall_s": 136.41989943303633, "deadline_cut": false, "peak_rss_mb": 5571.9453125, "peak_gpu_mb": 8002.54833984375, "n_layers": 32, "d_model": 3072}
+stage logit_small (ok, rc 0): elapsed 162 s (total 288 s of 8100)
+phi4 logit: 330 rows, 330 to read
+[1/330] 00ca467f f0 1.13s n_tokens=825 P1 gold logit=C final_rank=2
+[2/330] 06db6396 f0 0.61s n_tokens=826 P1 gold logit=C final_rank=1
+[3/330] 0bb5a684 f0 0.68s n_tokens=1041 P1 gold logit=C final_rank=1
+[4/330] 0db4c65d f0 0.63s n_tokens=924 P1 gold logit=C final_rank=1
+[5/330] 15745da0 f0 0.53s n_tokens=750 P1 gold logit=B final_rank=23
+[6/330] 1b9b7252 f0 0.67s n_tokens=1470 P1 gold logit=C final_rank=2
+[7/330] 21d02d0d f0 0.54s n_tokens=996 P1 gold logit=C final_rank=1
+[8/330] 22d2cb42 f0 0.80s n_tokens=1214 P1 gold logit=C final_rank=1
+[9/330] 2698e78f f0 0.51s n_tokens=845 P1 gold logit=A final_rank=5480
+[10/330] 28dc39ac f0 0.64s n_tokens=975 P1 gold logit=B final_rank=11
+[11/330] 37f165cf f0 0.50s n_tokens=829 P1 gold logit=A final_rank=636
+[12/330] 3fe836c9 f0 0.50s n_tokens=805 P1 gold logit=B final_rank=13
+[13/330] 4100d0a0 f0 0.47s n_tokens=804 P1 gold logit=B final_rank=23
+[14/330] 41275add f0 0.51s n_tokens=1018 P1 gold logit=C final_rank=1
+[15/330] 4adc0475 f0 0.47s n_tokens=715 P1 gold logit=C final_rank=2
+[16/330] 4d6b87c8 f0 0.59s n_tokens=1055 P1 gold logit=C final_rank=1
+[17/330] 4f54b7c9 f0 0.53s n_tokens=931 P1 gold logit=C final_rank=1
+[18/330] 58470ed2 f0 0.86s n_tokens=2059 P1 gold logit=C final_rank=7
+[19/330] 59524333 f0 0.53s n_tokens=928 P1 gold logit=C final_rank=3
+[20/330] 5d3d2817 f0 0.48s n_tokens=812 P1 gold logit=C final_rank=2
+[21/330] 60bf93ed f0 0.53s n_tokens=916 P1 gold logit=C final_rank=1
+[22/330] 60d45044 f0 1.00s n_tokens=2562 P1 gold logit=C final_rank=1
+[23/330] 69fee5aa f0 0.50s n_tokens=805 P1 gold logit=C final_rank=1
+[24/330] 6a27ffc2 f0 0.50s n_tokens=825 P1 gold logit=C final_rank=1
+[25/330] 71017276 f0 0.48s n_tokens=849 P1 gold logit=C final_rank=3
+[26/330] 71a3fd6b f0 0.44s n_tokens=755 P1 gold logit=C final_rank=4
+[27/330] 75832dbd f0 0.47s n_tokens=799 P1 gold logit=C final_rank=1
+[28/330] 76d63226 f0 0.51s n_tokens=983 P1 gold logit=C final_rank=1
+[29/330] 7e00a6cb f0 0.51s n_tokens=976 P1 gold logit=C final_rank=2
+[30/330] 94f70d80 f0 0.59s n_tokens=1211 P1 gold logit=C final_rank=1
+[31/330] 95bcc1c8 f0 0.51s n_tokens=923 P1 gold logit=C final_rank=1
+[32/330] 982b5123 f0 0.66s n_tokens=1342 P1 gold logit=A final_rank=37
+[33/330] 9ea5eabc f0 0.50s n_tokens=844 P1 gold logit=A final_rank=100
+[34/330] 9ee3ecd6 f0 0.65s n_tokens=1317 P1 gold logit=C final_rank=5
+[35/330] a4996e51 f0 0.77s n_tokens=1742 P1 gold logit=C final_rank=2
+[36/330] ac031881 f0 0.48s n_tokens=848 P1 gold logit=C final_rank=1
+[37/330] b320f3f8 f0 0.47s n_tokens=786 P1 gold logit=B final_rank=13
+[38/330] b86304ba f0 0.51s n_tokens=905 P1 gold logit=C final_rank=1
+[39/330] ba61f0b9 f0 0.69s n_tokens=1504 P1 gold logit=C final_rank=2
+[40/330] bbf86515 f0 0.58s n_tokens=1068 P1 gold logit=C final_rank=1
+[41/330] c14c00dd f0 0.48s n_tokens=887 P1 gold logit=C final_rank=9
+[42/330] c5e8278d f0 0.48s n_tokens=820 P1 gold logit=C final_rank=2
+[43/330] c7cf7dfd f0 0.56s n_tokens=1146 P1 gold logit=C final_rank=2
+[44/330] c8c3f81d f0 0.63s n_tokens=1293 P1 gold logit=C final_rank=1
+[45/330] d6062bb9 f0 0.50s n_tokens=848 P1 gold logit=C final_rank=1
+[46/330] e493bb7c f0 0.54s n_tokens=1011 P1 gold logit=A final_rank=578
+[47/330] e4e14d04 f0 0.53s n_tokens=983 P1 gold logit=A final_rank=23
+[48/330] e66b632c f0 0.59s n_tokens=1067 P1 gold logit=C final_rank=2
+[49/330] fca70973 f0 0.48s n_tokens=795 P1 gold logit=C final_rank=1
+[50/330] fca762bc f0 0.56s n_tokens=1080 P1 gold logit=C final_rank=1
+[51/330] fea54f57 f0 0.51s n_tokens=1022 P1 gold logit=A final_rank=14
+[52/330] gpt4_18c2b244 f0 0.61s n_tokens=1091 P1 gold logit=B final_rank=19
+[53/330] gpt4_213fd887 f0 0.54s n_tokens=1010 P1 gold logit=A final_rank=558
+[54/330] gpt4_4929293a f0 0.50s n_tokens=832 P1 gold logit=C final_rank=2
+[55/330] gpt4_4ef30696 f0 0.46s n_tokens=741 P1 gold logit=C final_rank=2
+[56/330] gpt4_70e84552 f0 0.65s n_tokens=1307 P1 gold logit=C final_rank=4
+[57/330] gpt4_7bc6cf22 f0 0.51s n_tokens=905 P1 gold logit=B final_rank=11
+[58/330] gpt4_85da3956 f0 0.51s n_tokens=994 P1 gold logit=C final_rank=4
+[59/330] gpt4_88806d6e f0 0.51s n_tokens=835 P1 gold logit=C final_rank=4
+[60/330] gpt4_8e165409 f0 0.59s n_tokens=1096 P1 gold logit=C final_rank=1
+[61/330] gpt4_98f46fc6 f0 0.83s n_tokens=1896 P1 gold logit=C final_rank=5
+[62/330] 07741c44 f1 0.59s n_tokens=1053 P1 gold logit=C final_rank=8
+[63/330] 0862e8bf f1 0.49s n_tokens=861 P1 gold logit=C final_rank=2
+[64/330] 08f4fc43 f1 0.54s n_tokens=968 P1 gold logit=C final_rank=6
+[65/330] 0ddfec37 f1 0.54s n_tokens=920 P1 gold logit=C final_rank=1
+[66/330] 0e4e4c46 f1 0.69s n_tokens=1511 P1 gold logit=C final_rank=1
+[67/330] 0f05491a f1 0.50s n_tokens=820 P1 gold logit=C final_rank=3
+[68/330] 118b2229 f1 0.44s n_tokens=702 P1 gold logit=C final_rank=1
+[69/330] 19b5f2b3 f1 0.48s n_tokens=866 P1 gold logit=B final_rank=32
+[70/330] 1c549ce4 f1 0.61s n_tokens=1205 P1 gold logit=C final_rank=3
+[71/330] 2133c1b5 f1 0.53s n_tokens=944 P1 gold logit=C final_rank=1
+[72/330] 28bcfaac f1 0.51s n_tokens=1024 P1 gold logit=C final_rank=2
+[73/330] 29f2956b f1 0.48s n_tokens=867 P1 gold logit=C final_rank=1
+[74/330] 2bf43736 f1 0.82s n_tokens=2006 P1 gold logit=C final_rank=1
+[75/330] 2ebe6c90 f1 0.53s n_tokens=937 P1 gold logit=C final_rank=1
+[76/330] 36580ce8 f1 0.44s n_tokens=724 P1 gold logit=C final_rank=7
+[77/330] 3ba21379 f1 0.73s n_tokens=1573 P1 gold logit=C final_rank=1
+[78/330] 3f1e9474 f1 0.59s n_tokens=1179 P1 gold logit=C final_rank=1
+[79/330] 3fdac837 f1 0.59s n_tokens=1080 P1 gold logit=C final_rank=5
+[80/330] 42ec0761 f1 0.62s n_tokens=1258 P1 gold logit=C final_rank=1
+[81/330] 4388e9dd f1 0.63s n_tokens=1284 P1 gold logit=C final_rank=3
+[82/330] 4bc144e2 f1 0.59s n_tokens=1135 P1 gold logit=C final_rank=3
+[83/330] 51b23612 f1 0.56s n_tokens=1057 P1 gold logit=C final_rank=9
+[84/330] 5831f84d f1 0.54s n_tokens=940 P1 gold logit=C final_rank=1
+[85/330] 618f13b2 f1 0.59s n_tokens=1142 P1 gold logit=B final_rank=158
+[86/330] 66f24dbb f1 0.51s n_tokens=956 P1 gold logit=C final_rank=10
+[87/330] 6a1eabeb f1 0.85s n_tokens=2032 P1 gold logit=C final_rank=2
+[88/330] 6ade9755 f1 0.64s n_tokens=1407 P1 gold logit=C final_rank=6
+[89/330] 7401057b f1 0.73s n_tokens=1548 P1 gold logit=C final_rank=3
+[90/330] 7527f7e2 f1 0.48s n_tokens=871 P1 gold logit=C final_rank=1
+[91/330] 7a8d0b71 f1 0.66s n_tokens=1456 P1 gold logit=C final_rank=2
+[92/330] 85fa3a3f f1 0.56s n_tokens=942 P1 gold logit=C final_rank=3
+[93/330] 86f00804 f1 0.48s n_tokens=832 P1 gold logit=C final_rank=2
+[94/330] 89527b6b f1 0.90s n_tokens=2255 P1 gold logit=C final_rank=1
+[95/330] 8979f9ec f1 0.66s n_tokens=1370 P1 gold logit=C final_rank=1
+[96/330] 89941a94 f1 0.66s n_tokens=1334 P1 gold logit=C final_rank=2
+[97/330] 8cf51dda f1 0.63s n_tokens=1297 P1 gold logit=C final_rank=1
+[98/330] 8ebdbe50 f1 0.48s n_tokens=848 P1 gold logit=C final_rank=1
+[99/330] 993da5e2 f1 0.59s n_tokens=1112 P1 gold logit=A final_rank=19
+[100/330] b3c15d39 f1 0.59s n_tokens=1140 P1 gold logit=C final_rank=1
+[101/330] b6019101 f1 0.50s n_tokens=804 P1 gold logit=C final_rank=1
+[102/330] b6025781 f1 0.45s n_tokens=761 P1 gold logit=C final_rank=1
+[103/330] b9cfe692 f1 0.56s n_tokens=855 P1 gold logit=C final_rank=1
+[104/330] bb7c3b45 f1 0.61s n_tokens=1168 P1 gold logit=C final_rank=3
+[105/330] c2ac3c61 f1 0.65s n_tokens=1318 P1 gold logit=C final_rank=1
+[106/330] c9f37c46 f1 0.53s n_tokens=951 P1 gold logit=C final_rank=3
+[107/330] caf03d32 f1 0.46s n_tokens=727 P1 gold logit=C final_rank=1
+[108/330] cc539528 f1 0.56s n_tokens=1094 P1 gold logit=B final_rank=29
+[109/330] cc6d1ec1 f1 0.51s n_tokens=882 P1 gold logit=B final_rank=20
+[110/330] d52b4f67 f1 0.56s n_tokens=1129 P1 gold logit=C final_rank=1
+[111/330] d7c942c3 f1 0.50s n_tokens=853 P1 gold logit=C final_rank=1
+[112/330] d905b33f f1 0.53s n_tokens=947 P1 gold logit=C final_rank=1
+[113/330] e01b8e2f f1 0.71s n_tokens=1538 P1 gold logit=C final_rank=2
+[114/330] e48988bc f1 0.64s n_tokens=1305 P1 gold logit=C final_rank=2
+[115/330] f0e564bc f1 0.51s n_tokens=881 P1 gold logit=C final_rank=2
+[116/330] gpt4_1d80365e f1 0.50s n_tokens=820 P1 gold logit=C final_rank=5
+[117/330] gpt4_1e4a8aeb f1 0.50s n_tokens=843 P1 gold logit=C final_rank=1
+[118/330] gpt4_468eb064 f1 0.60s n_tokens=1278 P1 gold logit=C final_rank=3
+[119/330] gpt4_4cd9eba1 f1 0.54s n_tokens=983 P1 gold logit=A final_rank=1241
+[120/330] gpt4_5438fa52 f1 0.76s n_tokens=1697 P1 gold logit=A final_rank=12
+[121/330] gpt4_74aed68e f1 0.50s n_tokens=847 P1 gold logit=B final_rank=46
+[122/330] gpt4_78cf46a3 f1 0.62s n_tokens=1244 P1 gold logit=C final_rank=6
+[123/330] gpt4_a1b77f9c f1 0.65s n_tokens=911 P1 gold logit=B final_rank=12
+[124/330] gpt4_af6db32f f1 0.48s n_tokens=863 P1 gold logit=C final_rank=6
+[125/330] gpt4_b0863698 f1 0.72s n_tokens=1590 P1 gold logit=C final_rank=2
+[126/330] gpt4_b5700ca9 f1 0.60s n_tokens=1179 P1 gold logit=C final_rank=2
+[127/330] 0100672e f2 0.69s n_tokens=1456
+[128/330] 07741c45 f2 0.59s n_tokens=1049
+[129/330] 08e075c7 f2 0.58s n_tokens=1067
+[130/330] 10d9b85a f2 0.59s n_tokens=1149
+[131/330] 16c90bf4 f2 0.48s n_tokens=870
+[132/330] 18bc8abd f2 0.68s n_tokens=1422
+[133/330] 1d4da289 f2 0.56s n_tokens=1130
+[134/330] 1de5cff2 f2 0.51s n_tokens=912
+[135/330] 1faac195 f2 0.47s n_tokens=781
+[136/330] 2311e44b f2 0.68s n_tokens=1443
+[137/330] 2318644b f2 0.51s n_tokens=896
+[138/330] 3d86fd0a f2 0.41s n_tokens=600
+[139/330] 3e321797 f2 0.63s n_tokens=1318
+[140/330] 45dc21b6 f2 0.50s n_tokens=792
+[141/330] 4b24c848 f2 0.51s n_tokens=884
+[142/330] 4baee567 f2 0.59s n_tokens=1176
+[143/330] 4fd1909e f2 0.51s n_tokens=1001
+[144/330] 51a45a95 f2 0.56s n_tokens=1025
+[145/330] 5a7937c8 f2 0.56s n_tokens=902
+[146/330] 5c40ec5b f2 0.59s n_tokens=1143
+[147/330] 60036106 f2 0.77s n_tokens=1767
+[148/330] 6222b6eb f2 0.67s n_tokens=1492
+[149/330] 6aeb4375 f2 0.62s n_tokens=1227
+[150/330] 6b168ec8 f2 0.51s n_tokens=951
+[151/330] 6c49646a f2 0.55s n_tokens=949
+[152/330] 6e984301 f2 0.59s n_tokens=1074
+[153/330] 6f9b354f f2 0.64s n_tokens=1310
+[154/330] 70b3e69b f2 0.68s n_tokens=1486
+[155/330] 71315a70 f2 0.51s n_tokens=840
+[156/330] 72e3ee87 f2 0.66s n_tokens=1299
+[157/330] 7405e8b1 f2 0.90s n_tokens=2073
+[158/330] 75f70248 f2 0.56s n_tokens=1104
+[159/330] 853b0a1d f2 0.60s n_tokens=1265
+[160/330] 86b68151 f2 0.71s n_tokens=1567
+[161/330] 87f22b4a f2 0.50s n_tokens=859
+[162/330] 8e9d538c f2 0.73s n_tokens=1557
+[163/330] 91b15a6e f2 0.53s n_tokens=1001
+[164/330] 9a707b81 f2 0.53s n_tokens=900
+[165/330] 9aaed6a3 f2 0.53s n_tokens=992
+[166/330] a1eacc2a f2 0.54s n_tokens=948
+[167/330] a3045048 f2 0.53s n_tokens=924
+[168/330] a40e080f f2 0.55s n_tokens=1048
+[169/330] a89d7624 f2 0.54s n_tokens=998
+[170/330] aae3761f f2 0.61s n_tokens=1043
+[171/330] ad7109d1 f2 0.49s n_tokens=843
+[172/330] bc8a6e93 f2 0.48s n_tokens=896
+[173/330] bcbe585f f2 0.51s n_tokens=903
+[174/330] c960da58 f2 0.66s n_tokens=1512
+[175/330] ceb54acb f2 0.56s n_tokens=1085
+[176/330] cf22b7bf f2 0.58s n_tokens=1026
+[177/330] e9327a54 f2 0.59s n_tokens=1229
+[178/330] ed4ddc30 f2 0.50s n_tokens=864
+[179/330] ef66a6e5 f2 0.47s n_tokens=747
+[180/330] f685340e f2 0.50s n_tokens=816
+[181/330] gpt4_0a05b494 f2 0.53s n_tokens=918
+[182/330] gpt4_0b2f1d21 f2 0.62s n_tokens=1275
+[183/330] gpt4_1916e0ea f2 0.50s n_tokens=890
+[184/330] gpt4_2487a7cb f2 0.68s n_tokens=1442
+[185/330] gpt4_2c50253f f2 0.46s n_tokens=727
+[186/330] gpt4_4edbafa2 f2 0.50s n_tokens=853
+[187/330] gpt4_4fc4f797 f2 0.76s n_tokens=1681
+[188/330] gpt4_68e94287 f2 0.50s n_tokens=833
+[189/330] gpt4_93f6379c f2 0.80s n_tokens=1576
+[190/330] gpt4_c27434e8 f2 0.61s n_tokens=1208
+[191/330] gpt4_fa19884c f2 0.62s n_tokens=1218
+[192/330] gpt4_fa19884d f2 0.54s n_tokens=898
+[193/330] 099778bb f3 0.73s n_tokens=1540
+[194/330] 10e09553 f3 0.73s n_tokens=1538
+[195/330] 1192316e f3 0.74s n_tokens=1620
+[196/330] 184da446 f3 0.59s n_tokens=1136
+[197/330] 18dcd5a5 f3 0.71s n_tokens=1590
+[198/330] 1f2b8d4f f3 0.61s n_tokens=1196
+[199/330] 27016adc f3 0.69s n_tokens=1536
+[200/330] 311778f1 f3 0.51s n_tokens=957
+[201/330] 32260d93 f3 0.44s n_tokens=681
+[202/330] 370a8ff4 f3 0.50s n_tokens=856
+[203/330] 3b6f954b f3 0.60s n_tokens=1270
+[204/330] 4c36ccef f3 0.52s n_tokens=941
+[205/330] 4dfccbf7 f3 0.59s n_tokens=1112
+[206/330] 5025383b f3 0.51s n_tokens=868
+[207/330] 545bd2b5 f3 0.63s n_tokens=1281
+[208/330] 577d4d32 f3 0.56s n_tokens=1036
+[209/330] 58bf7951 f3 0.55s n_tokens=1025
+[210/330] 58ef2f1c f3 0.48s n_tokens=826
+[211/330] 5a4f22c0 f3 0.93s n_tokens=2253
+[212/330] 60472f9c f3 0.68s n_tokens=1127
+[213/330] 65240037 f3 0.88s n_tokens=2140
+[214/330] 681a1674 f3 0.51s n_tokens=867
+[215/330] 8077ef71 f3 0.48s n_tokens=854
+[216/330] 8464fc84 f3 0.51s n_tokens=906
+[217/330] 8a2466db f3 0.47s n_tokens=774
+[218/330] 8b9d4367 f3 0.60s n_tokens=1206
+[219/330] 8cf4d046 f3 0.58s n_tokens=1091
+[220/330] 8fb83627 f3 0.61s n_tokens=1057
+[221/330] a06e4cfe f3 0.75s n_tokens=1757
+[222/330] a2f3aa27 f3 0.75s n_tokens=1619
+[223/330] a82c026e f3 0.48s n_tokens=836
+[224/330] a96c20ee f3 0.50s n_tokens=830
+[225/330] af8d2e46 f3 0.59s n_tokens=1184
+[226/330] affe2881 f3 0.58s n_tokens=1038
+[227/330] b0479f84 f3 0.48s n_tokens=852
+[228/330] b29f3365 f3 0.50s n_tokens=847
+[229/330] b5ef892d f3 0.60s n_tokens=1055
+[230/330] c4ea545c f3 0.54s n_tokens=1005
+[231/330] c6853660 f3 0.66s n_tokens=1339
+[232/330] c8090214 f3 0.69s n_tokens=1453
+[233/330] c8f1aeed f3 0.71s n_tokens=1559
+[234/330] caf9ead2 f3 0.51s n_tokens=1021
+[235/330] cc06de0d f3 0.59s n_tokens=1106
+[236/330] cc5ded98 f3 0.54s n_tokens=1022
+[237/330] ccb36322 f3 0.47s n_tokens=770
+[238/330] db467c8c f3 0.50s n_tokens=794
+[239/330] dcfa8644 f3 0.53s n_tokens=907
+[240/330] e56a43b9 f3 0.50s n_tokens=775
+[241/330] e8a79c70 f3 0.63s n_tokens=1318
+[242/330] e982271f f3 0.51s n_tokens=999
+[243/330] f0853d11 f3 0.50s n_tokens=873
+[244/330] f523d9fe f3 0.51s n_tokens=947
+[245/330] f9e8c073 f3 0.66s n_tokens=1362
+[246/330] faba32e5 f3 0.48s n_tokens=821
+[247/330] gpt4_1a1dc16d f3 0.58s n_tokens=1079
+[248/330] gpt4_1d4ab0c9 f3 0.46s n_tokens=732
+[249/330] gpt4_21adecb5 f3 0.47s n_tokens=765
+[250/330] gpt4_2d58bcd6 f3 0.58s n_tokens=1071
+[251/330] gpt4_385a5000 f3 0.58s n_tokens=1050
+[252/330] gpt4_59149c77 f3 0.66s n_tokens=1378
+[253/330] gpt4_6dc9b45b f3 0.48s n_tokens=838
+[254/330] gpt4_76048e76 f3 0.53s n_tokens=937
+[255/330] gpt4_7a0daae1 f3 0.50s n_tokens=832
+[256/330] gpt4_7ddcf75f f3 0.48s n_tokens=864
+[257/330] gpt4_d31cdae3 f3 0.54s n_tokens=985
+[258/330] gpt4_d9af6064 f3 0.62s n_tokens=1268
+[259/330] gpt4_e414231e f3 0.50s n_tokens=861
+[260/330] gpt4_fe651585 f3 0.50s n_tokens=804
+[261/330] 001be529 f4 0.48s n_tokens=852
+[262/330] 01493427 f4 0.49s n_tokens=784
+[263/330] 031748ae f4 0.53s n_tokens=899
+[264/330] 09ba9854 f4 0.69s n_tokens=1526
+[265/330] 0e5e2d1a f4 0.60s n_tokens=1275
+[266/330] 0ea62687 f4 0.53s n_tokens=953
+[267/330] 195a1a1b f4 0.48s n_tokens=876
+[268/330] 1da05512 f4 0.47s n_tokens=768
+[269/330] 1e043500 f4 0.45s n_tokens=727
+[270/330] 21436231 f4 0.74s n_tokens=1754
+[271/330] 26bdc477 f4 0.58s n_tokens=1080
+[272/330] 2a1811e2 f4 0.49s n_tokens=815
+[273/330] 3249768e f4 0.63s n_tokens=1306
+[274/330] 352ab8bd f4 0.87s n_tokens=2065
+[275/330] 37d43f65 f4 0.75s n_tokens=1765
+[276/330] 488d3006 f4 0.60s n_tokens=1265
+[277/330] 50635ada f4 0.59s n_tokens=1129
+[278/330] 55241a1f f4 0.68s n_tokens=1434
+[279/330] 57f827a0 f4 0.49s n_tokens=879
+[280/330] 5809eb10 f4 0.88s n_tokens=2155
+[281/330] 5e1b23de f4 0.51s n_tokens=939
+[282/330] 60159905 f4 0.53s n_tokens=938
+[283/330] 603deb26 f4 0.58s n_tokens=1032
+[284/330] 6071bd76 f4 0.62s n_tokens=1257
+[285/330] 6456829e f4 0.51s n_tokens=829
+[286/330] 6ae235be f4 0.75s n_tokens=1783
+[287/330] 6b7dfb22 f4 0.48s n_tokens=885
+[288/330] 7161e7e2 f4 0.94s n_tokens=2323
+[289/330] 720133ac f4 0.53s n_tokens=992
+[290/330] 726462e0 f4 0.55s n_tokens=1035
+[291/330] 778164c6 f4 0.55s n_tokens=1047
+[292/330] 7a87bd0c f4 0.59s n_tokens=1142
+[293/330] 852ce960 f4 0.47s n_tokens=736
+[294/330] 8550ddae f4 0.56s n_tokens=1034
+[295/330] 8a137a7f f4 0.56s n_tokens=1121
+[296/330] 8aef76bc f4 0.56s n_tokens=1078
+[297/330] 8c18457d f4 0.57s n_tokens=1008
+[298/330] a11281a2 f4 0.70s n_tokens=1480
+[299/330] af082822 f4 0.49s n_tokens=862
+[300/330] b01defab f4 0.69s n_tokens=1477
+[301/330] b46e15ee f4 0.59s n_tokens=906
+[302/330] b759caee f4 0.59s n_tokens=1221
+[303/330] c19f7a0b f4 0.52s n_tokens=947
+[304/330] c7dc5443 f4 0.51s n_tokens=849
+[305/330] ce6d2d27 f4 0.46s n_tokens=743
+[306/330] d596882b f4 0.66s n_tokens=1413
+[307/330] dccbc061 f4 0.64s n_tokens=1394
+[308/330] dd2973ad f4 0.59s n_tokens=1140
+[309/330] e25c3b8d f4 0.53s n_tokens=935
+[310/330] e6041065 f4 0.59s n_tokens=1082
+[311/330] e831120c f4 0.81s n_tokens=1876
+[312/330] ec81a493 f4 0.44s n_tokens=723
+[313/330] f4f1d8a4 f4 0.51s n_tokens=1023
+[314/330] f8c5f88b f4 0.56s n_tokens=1069
+[315/330] gpt4_2312f94c f4 0.59s n_tokens=1124
+[316/330] gpt4_2f584639 f4 0.65s n_tokens=1295
+[317/330] gpt4_468eb063 f4 0.57s n_tokens=1115
+[318/330] gpt4_483dd43c f4 0.62s n_tokens=1198
+[319/330] gpt4_61e13b3c f4 0.50s n_tokens=839
+[320/330] gpt4_6ed717ea f4 0.50s n_tokens=829
+[321/330] gpt4_7ca326fa f4 0.61s n_tokens=1046
+[322/330] gpt4_7de946e7 f4 0.66s n_tokens=1358
+[323/330] gpt4_8279ba02 f4 0.48s n_tokens=871
+[324/330] gpt4_a2d1d1f6 f4 0.48s n_tokens=840
+[325/330] gpt4_b4a80587 f4 0.50s n_tokens=869
+[326/330] gpt4_b5700ca0 f4 0.47s n_tokens=804
+[327/330] gpt4_cd90e484 f4 0.53s n_tokens=991
+[328/330] gpt4_e072b769 f4 0.66s n_tokens=1458
+[329/330] gpt4_e414231f f4 0.59s n_tokens=975
+[330/330] gpt4_f49edff3 f4 0.54s n_tokens=890
+{"reader": "phi4", "model_id": "microsoft/phi-4", "variant": "logit", "smoke": false, "device": "cuda", "dtype": "bfloat16", "load_s": 8.72515350393951, "questions": 330, "seconds_per_question": 0.5787906721717622, "wall_s": 191.80098256701604, "deadline_cut": false, "peak_rss_mb": 5647.953125, "peak_gpu_mb": 29452.5966796875, "n_layers": 40, "d_model": 5120}
+stage logit_large (ok, rc 0): elapsed 220 s (total 508 s of 8100)
+fit phi4mini: 56 prompts (min 32), time box 111 min
+[transformers] This model config has set a `rope_parameters['original_max_position_embeddings']` field, to be used together with `max_position_embeddings` to determine a scaling factor. Please set the `factor` field of `rope_parameters`with this ratio instead -- we recommend the use of this field over `original_max_position_embeddings`, as it is compatible with most model architectures.
+HFLensModel(Phi3ForCausalLM, n_layers=32, d_model=3072) fitting on 56 prompts (min 32, box 111.0 min)
+/usr/local/lib/python3.12/dist-packages/torch/autograd/graph.py:829: UserWarning: Attempting to run cuBLAS, but there was no current CUDA context! Attempting to set the primary context... (Triggered internally at /pytorch/aten/src/ATen/cuda/CublasHandlePool.cpp:179.)
+  return Variable._execution_engine.run_backward(  # Calls into the C++ engine to run the backward pass
+{"reader": "phi4mini", "model_id": "microsoft/Phi-4-mini-instruct", "n_prompts": 56, "n_target": 56, "n_minimum": 32, "below_minimum": false, "settings": {"dim_batch": 32, "max_seq_len": 128, "skip_first": 16, "source_layers": "all", "seed": 0, "chunk": 4, "max_minutes": 111.0, "device": "cuda", "dtype": "bfloat16", "force_bos": false}, "wall_s": 3578.966887373943, "wall_s_total": 3578.966887373943, "jlens_commit": "unknown", "corpus_sha256": "5f1bea067869d04849c0f975a2b29c4ff47d867f484f5010ea5e861eab246d91"}
+stage fit (ok, rc 0): elapsed 3591 s (total 4099 s of 8100)
+phi4mini jlens: 330 rows, 330 to read
+[transformers] This model config has set a `rope_parameters['original_max_position_embeddings']` field, to be used together with `max_position_embeddings` to determine a scaling factor. Please set the `factor` field of `rope_parameters`with this ratio instead -- we recommend the use of this field over `original_max_position_embeddings`, as it is compatible with most model architectures.
+[1/330] 00ca467f f0 1.21s n_tokens=791 P1 gold logit=C final_rank=2
+[2/330] 06db6396 f0 0.69s n_tokens=800 P1 gold logit=C final_rank=1
+[3/330] 0bb5a684 f0 0.71s n_tokens=1015 P1 gold logit=A final_rank=19
+[4/330] 0db4c65d f0 0.74s n_tokens=901 P1 gold logit=C final_rank=1
+[5/330] 15745da0 f0 0.63s n_tokens=725 P1 gold logit=C final_rank=4
+[6/330] 1b9b7252 f0 0.67s n_tokens=1447 P1 gold logit=C final_rank=1
+[7/330] 21d02d0d f0 0.70s n_tokens=976 P1 gold logit=C final_rank=2
+[8/330] 22d2cb42 f0 1.26s n_tokens=1178 P1 gold logit=C final_rank=4
+[9/330] 2698e78f f0 0.71s n_tokens=819 P1 gold logit=C final_rank=9
+[10/330] 28dc39ac f0 0.98s n_tokens=944 P1 gold logit=B final_rank=25
+[11/330] 37f165cf f0 0.69s n_tokens=811 P1 gold logit=A final_rank=604
+[12/330] 3fe836c9 f0 0.69s n_tokens=786 P1 gold logit=C final_rank=1
+[13/330] 4100d0a0 f0 0.61s n_tokens=781 P1 gold logit=A final_rank=18
+[14/330] 41275add f0 0.63s n_tokens=998 P1 gold logit=C final_rank=3
+[15/330] 4adc0475 f0 0.68s n_tokens=696 P1 gold logit=C final_rank=1
+[16/330] 4d6b87c8 f0 0.72s n_tokens=1030 P1 gold logit=C final_rank=1
+[17/330] 4f54b7c9 f0 0.74s n_tokens=901 P1 gold logit=C final_rank=3
+[18/330] 58470ed2 f0 0.73s n_tokens=2031 P1 gold logit=C final_rank=4
+[19/330] 59524333 f0 0.71s n_tokens=909 P1 gold logit=C final_rank=1
+[20/330] 5d3d2817 f0 0.61s n_tokens=788 P1 gold logit=C final_rank=1
+[21/330] 60bf93ed f0 0.70s n_tokens=885 P1 gold logit=C final_rank=1
+[22/330] 60d45044 f0 0.76s n_tokens=2586 P1 gold logit=C final_rank=1
+[23/330] 69fee5aa f0 0.69s n_tokens=784 P1 gold logit=C final_rank=2
+[24/330] 6a27ffc2 f0 0.71s n_tokens=797 P1 gold logit=C final_rank=1
+[25/330] 71017276 f0 0.62s n_tokens=824 P1 gold logit=C final_rank=3
+[26/330] 71a3fd6b f0 0.61s n_tokens=740 P1 gold logit=C final_rank=2
+[27/330] 75832dbd f0 0.61s n_tokens=777 P1 gold logit=C final_rank=4
+[28/330] 76d63226 f0 0.63s n_tokens=966 P1 gold logit=C final_rank=1
+[29/330] 7e00a6cb f0 0.65s n_tokens=947 P1 gold logit=C final_rank=1
+[30/330] 94f70d80 f0 0.66s n_tokens=1190 P1 gold logit=C final_rank=1
+[31/330] 95bcc1c8 f0 0.66s n_tokens=898 P1 gold logit=C final_rank=1
+[32/330] 982b5123 f0 0.75s n_tokens=1316 P1 gold logit=A final_rank=71
+[33/330] 9ea5eabc f0 0.69s n_tokens=823 P1 gold logit=A final_rank=75
+[34/330] 9ee3ecd6 f0 0.75s n_tokens=1271 P1 gold logit=C final_rank=3
+[35/330] a4996e51 f0 0.78s n_tokens=1700 P1 gold logit=C final_rank=1
+[36/330] ac031881 f0 0.61s n_tokens=830 P1 gold logit=C final_rank=1
+[37/330] b320f3f8 f0 0.60s n_tokens=763 P1 gold logit=C final_rank=7
+[38/330] b86304ba f0 0.61s n_tokens=870 P1 gold logit=C final_rank=1
+[39/330] ba61f0b9 f0 0.75s n_tokens=1477 P1 gold logit=C final_rank=1
+[40/330] bbf86515 f0 0.71s n_tokens=1031 P1 gold logit=C final_rank=1
+[41/330] c14c00dd f0 0.61s n_tokens=862 P1 gold logit=A final_rank=11
+[42/330] c5e8278d f0 0.64s n_tokens=798 P1 gold logit=C final_rank=1
+[43/330] c7cf7dfd f0 0.65s n_tokens=1106 P1 gold logit=C final_rank=1
+[44/330] c8c3f81d f0 0.68s n_tokens=1265 P1 gold logit=C final_rank=1
+[45/330] d6062bb9 f0 0.70s n_tokens=831 P1 gold logit=C final_rank=1
+[46/330] e493bb7c f0 0.70s n_tokens=978 P1 gold logit=A final_rank=26
+[47/330] e4e14d04 f0 0.70s n_tokens=944 P1 gold logit=A final_rank=24
+[48/330] e66b632c f0 0.72s n_tokens=1039 P1 gold logit=C final_rank=2
+[49/330] fca70973 f0 0.62s n_tokens=772 P1 gold logit=C final_rank=6
+[50/330] fca762bc f0 0.64s n_tokens=1052 P1 gold logit=C final_rank=1
+[51/330] fea54f57 f0 0.63s n_tokens=993 P1 gold logit=C final_rank=2
+[52/330] gpt4_18c2b244 f0 0.81s n_tokens=1070 P1 gold logit=A final_rank=12
+[53/330] gpt4_213fd887 f0 0.71s n_tokens=981 P1 gold logit=C final_rank=4
+[54/330] gpt4_4929293a f0 0.68s n_tokens=815 P1 gold logit=C final_rank=1
+[55/330] gpt4_4ef30696 f0 0.69s n_tokens=717 P1 gold logit=C final_rank=1
+[56/330] gpt4_70e84552 f0 0.73s n_tokens=1272 P1 gold logit=C final_rank=2
+[57/330] gpt4_7bc6cf22 f0 0.62s n_tokens=881 P1 gold logit=A final_rank=28
+[58/330] gpt4_85da3956 f0 0.63s n_tokens=969 P1 gold logit=C final_rank=1
+[59/330] gpt4_88806d6e f0 0.69s n_tokens=819 P1 gold logit=C final_rank=2
+[60/330] gpt4_8e165409 f0 0.72s n_tokens=1058 P1 gold logit=A final_rank=15
+[61/330] gpt4_98f46fc6 f0 0.79s n_tokens=1857 P1 gold logit=A final_rank=21
+[62/330] 07741c44 f1 0.72s n_tokens=1021 P1 gold logit=C final_rank=2
+[63/330] 0862e8bf f1 0.61s n_tokens=837 P1 gold logit=C final_rank=1
+[64/330] 08f4fc43 f1 0.71s n_tokens=942 P1 gold logit=A final_rank=23
+[65/330] 0ddfec37 f1 0.71s n_tokens=880 P1 gold logit=C final_rank=1
+[66/330] 0e4e4c46 f1 0.76s n_tokens=1485 P1 gold logit=C final_rank=1
+[67/330] 0f05491a f1 0.70s n_tokens=804 P1 gold logit=C final_rank=1
+[68/330] 118b2229 f1 0.60s n_tokens=674 P1 gold logit=C final_rank=1
+[69/330] 19b5f2b3 f1 0.61s n_tokens=840 P1 gold logit=C final_rank=6
+[70/330] 1c549ce4 f1 0.74s n_tokens=1165 P1 gold logit=C final_rank=1
+[71/330] 2133c1b5 f1 0.72s n_tokens=915 P1 gold logit=C final_rank=1
+[72/330] 28bcfaac f1 0.63s n_tokens=1002 P1 gold logit=C final_rank=1
+[73/330] 29f2956b f1 0.61s n_tokens=843 P1 gold logit=C final_rank=1
+[74/330] 2bf43736 f1 0.72s n_tokens=1986 P1 gold logit=C final_rank=1
+[75/330] 2ebe6c90 f1 0.75s n_tokens=907 P1 gold logit=A final_rank=11
+[76/330] 36580ce8 f1 0.60s n_tokens=708 P1 gold logit=C final_rank=2
+[77/330] 3ba21379 f1 0.78s n_tokens=1535 P1 gold logit=C final_rank=1
+[78/330] 3f1e9474 f1 0.65s n_tokens=1146 P1 gold logit=C final_rank=1
+[79/330] 3fdac837 f1 0.74s n_tokens=1057 P1 gold logit=A final_rank=14
+[80/330] 42ec0761 f1 0.75s n_tokens=1228 P1 gold logit=C final_rank=1
+[81/330] 4388e9dd f1 0.65s n_tokens=1257 P1 gold logit=C final_rank=1
+[82/330] 4bc144e2 f1 0.73s n_tokens=1115 P1 gold logit=C final_rank=2
+[83/330] 51b23612 f1 0.64s n_tokens=1045 P1 gold logit=C final_rank=3
+[84/330] 5831f84d f1 0.70s n_tokens=909 P1 gold logit=C final_rank=1
+[85/330] 618f13b2 f1 0.73s n_tokens=1097 P1 gold logit=A final_rank=16
+[86/330] 66f24dbb f1 0.62s n_tokens=927 P1 gold logit=C final_rank=4
+[87/330] 6a1eabeb f1 0.81s n_tokens=2000 P1 gold logit=C final_rank=2
+[88/330] 6ade9755 f1 0.65s n_tokens=1380 P1 gold logit=C final_rank=2
+[89/330] 7401057b f1 0.77s n_tokens=1499 P1 gold logit=C final_rank=2
+[90/330] 7527f7e2 f1 0.61s n_tokens=843 P1 gold logit=C final_rank=1
+[91/330] 7a8d0b71 f1 0.66s n_tokens=1404 P1 gold logit=C final_rank=1
+[92/330] 85fa3a3f f1 0.82s n_tokens=921 P1 gold logit=C final_rank=3
+[93/330] 86f00804 f1 0.64s n_tokens=808 P1 gold logit=C final_rank=2
+[94/330] 89527b6b f1 0.75s n_tokens=2237 P1 gold logit=C final_rank=2
+[95/330] 8979f9ec f1 0.79s n_tokens=1332 P1 gold logit=C final_rank=1
+[96/330] 89941a94 f1 0.77s n_tokens=1293 P1 gold logit=C final_rank=1
+[97/330] 8cf51dda f1 0.66s n_tokens=1266 P1 gold logit=A final_rank=11
+[98/330] 8ebdbe50 f1 0.61s n_tokens=831 P1 gold logit=C final_rank=1
+[99/330] 993da5e2 f1 0.74s n_tokens=1082 P1 gold logit=A final_rank=25
+[100/330] b3c15d39 f1 0.74s n_tokens=1101 P1 gold logit=C final_rank=1
+[101/330] b6019101 f1 0.70s n_tokens=786 P1 gold logit=C final_rank=1
+[102/330] b6025781 f1 0.60s n_tokens=743 P1 gold logit=A final_rank=11
+[103/330] b9cfe692 f1 0.93s n_tokens=822 P1 gold logit=C final_rank=1
+[104/330] bb7c3b45 f1 0.72s n_tokens=1146 P1 gold logit=C final_rank=1
+[105/330] c2ac3c61 f1 0.75s n_tokens=1302 P1 gold logit=C final_rank=1
+[106/330] c9f37c46 f1 0.73s n_tokens=914 P1 gold logit=C final_rank=2
+[107/330] caf03d32 f1 0.71s n_tokens=704 P1 gold logit=C final_rank=6
+[108/330] cc539528 f1 0.64s n_tokens=1084 P1 gold logit=A final_rank=20
+[109/330] cc6d1ec1 f1 0.71s n_tokens=847 P1 gold logit=A final_rank=22
+[110/330] d52b4f67 f1 0.64s n_tokens=1100 P1 gold logit=C final_rank=2
+[111/330] d7c942c3 f1 0.71s n_tokens=825 P1 gold logit=C final_rank=1
+[112/330] d905b33f f1 0.72s n_tokens=907 P1 gold logit=C final_rank=1
+[113/330] e01b8e2f f1 0.67s n_tokens=1490 P1 gold logit=C final_rank=1
+[114/330] e48988bc f1 0.65s n_tokens=1267 P1 gold logit=C final_rank=1
+[115/330] f0e564bc f1 0.71s n_tokens=853 P1 gold logit=C final_rank=2
+[116/330] gpt4_1d80365e f1 0.73s n_tokens=793 P1 gold logit=C final_rank=4
+[117/330] gpt4_1e4a8aeb f1 0.71s n_tokens=823 P1 gold logit=C final_rank=2
+[118/330] gpt4_468eb064 f1 0.65s n_tokens=1248 P1 gold logit=C final_rank=1
+[119/330] gpt4_4cd9eba1 f1 0.71s n_tokens=949 P1 gold logit=A final_rank=426
+[120/330] gpt4_5438fa52 f1 0.77s n_tokens=1653 P1 gold logit=C final_rank=1
+[121/330] gpt4_74aed68e f1 0.71s n_tokens=823 P1 gold logit=A final_rank=42
+[122/330] gpt4_78cf46a3 f1 0.74s n_tokens=1221 P1 gold logit=B final_rank=12
+[123/330] gpt4_a1b77f9c f1 1.14s n_tokens=888 P1 gold logit=C final_rank=7
+[124/330] gpt4_af6db32f f1 0.61s n_tokens=838 P1 gold logit=A final_rank=35
+[125/330] gpt4_b0863698 f1 0.68s n_tokens=1567 P1 gold logit=C final_rank=10
+[126/330] gpt4_b5700ca9 f1 0.65s n_tokens=1152 P1 gold logit=C final_rank=1
+[127/330] 0100672e f2 0.75s n_tokens=1428
+[128/330] 07741c45 f2 0.71s n_tokens=1021
+[129/330] 08e075c7 f2 0.72s n_tokens=1027
+[130/330] 10d9b85a f2 0.72s n_tokens=1135
+[131/330] 16c90bf4 f2 0.61s n_tokens=845
+[132/330] 18bc8abd f2 0.76s n_tokens=1400
+[133/330] 1d4da289 f2 0.65s n_tokens=1112
+[134/330] 1de5cff2 f2 0.61s n_tokens=892
+[135/330] 1faac195 f2 0.60s n_tokens=755
+[136/330] 2311e44b f2 0.74s n_tokens=1393
+[137/330] 2318644b f2 0.69s n_tokens=870
+[138/330] 3d86fd0a f2 0.60s n_tokens=594
+[139/330] 3e321797 f2 0.67s n_tokens=1285
+[140/330] 45dc21b6 f2 0.71s n_tokens=767
+[141/330] 4b24c848 f2 0.70s n_tokens=860
+[142/330] 4baee567 f2 0.66s n_tokens=1162
+[143/330] 4fd1909e f2 0.65s n_tokens=979
+[144/330] 51a45a95 f2 0.63s n_tokens=996
+[145/330] 5a7937c8 f2 0.78s n_tokens=875
+[146/330] 5c40ec5b f2 0.73s n_tokens=1110
+[147/330] 60036106 f2 0.77s n_tokens=1747
+[148/330] 6222b6eb f2 0.66s n_tokens=1474
+[149/330] 6aeb4375 f2 0.72s n_tokens=1190
+[150/330] 6b168ec8 f2 0.62s n_tokens=927
+[151/330] 6c49646a f2 0.70s n_tokens=920
+[152/330] 6e984301 f2 0.71s n_tokens=1039
+[153/330] 6f9b354f f2 0.65s n_tokens=1275
+[154/330] 70b3e69b f2 0.67s n_tokens=1495
+[155/330] 71315a70 f2 0.69s n_tokens=816
+[156/330] 72e3ee87 f2 0.73s n_tokens=1256
+[157/330] 7405e8b1 f2 0.80s n_tokens=2056
+[158/330] 75f70248 f2 0.64s n_tokens=1062
+[159/330] 853b0a1d f2 0.66s n_tokens=1223
+[160/330] 86b68151 f2 0.68s n_tokens=1527
+[161/330] 87f22b4a f2 0.70s n_tokens=831
+[162/330] 8e9d538c f2 0.75s n_tokens=1521
+[163/330] 91b15a6e f2 0.71s n_tokens=967
+[164/330] 9a707b81 f2 0.69s n_tokens=875
+[165/330] 9aaed6a3 f2 0.72s n_tokens=954
+[166/330] a1eacc2a f2 0.71s n_tokens=912
+[167/330] a3045048 f2 0.70s n_tokens=890
+[168/330] a40e080f f2 0.66s n_tokens=1022
+[169/330] a89d7624 f2 0.72s n_tokens=973
+[170/330] aae3761f f2 0.80s n_tokens=1016
+[171/330] ad7109d1 f2 0.62s n_tokens=813
+[172/330] bc8a6e93 f2 0.65s n_tokens=873
+[173/330] bcbe585f f2 0.62s n_tokens=879
+[174/330] c960da58 f2 0.68s n_tokens=1485
+[175/330] ceb54acb f2 0.64s n_tokens=1065
+[176/330] cf22b7bf f2 0.72s n_tokens=993
+[177/330] e9327a54 f2 0.65s n_tokens=1196
+[178/330] ed4ddc30 f2 0.71s n_tokens=846
+[179/330] ef66a6e5 f2 0.71s n_tokens=720
+[180/330] f685340e f2 0.69s n_tokens=798
+[181/330] gpt4_0a05b494 f2 0.69s n_tokens=895
+[182/330] gpt4_0b2f1d21 f2 0.73s n_tokens=1248
+[183/330] gpt4_1916e0ea f2 0.69s n_tokens=870
+[184/330] gpt4_2487a7cb f2 0.75s n_tokens=1433
+[185/330] gpt4_2c50253f f2 0.69s n_tokens=704
+[186/330] gpt4_4edbafa2 f2 0.69s n_tokens=835
+[187/330] gpt4_4fc4f797 f2 0.76s n_tokens=1669
+[188/330] gpt4_68e94287 f2 0.69s n_tokens=812
+[189/330] gpt4_93f6379c f2 0.96s n_tokens=1540
+[190/330] gpt4_c27434e8 f2 0.73s n_tokens=1173
+[191/330] gpt4_fa19884c f2 0.73s n_tokens=1183
+[192/330] gpt4_fa19884d f2 0.69s n_tokens=876
+[193/330] 099778bb f3 0.76s n_tokens=1508
+[194/330] 10e09553 f3 0.75s n_tokens=1506
+[195/330] 1192316e f3 0.76s n_tokens=1593
+[196/330] 184da446 f3 0.73s n_tokens=1099
+[197/330] 18dcd5a5 f3 0.68s n_tokens=1562
+[198/330] 1f2b8d4f f3 0.72s n_tokens=1176
+[199/330] 27016adc f3 0.74s n_tokens=1498
+[200/330] 311778f1 f3 0.64s n_tokens=930
+[201/330] 32260d93 f3 0.61s n_tokens=667
+[202/330] 370a8ff4 f3 0.69s n_tokens=835
+[203/330] 3b6f954b f3 0.65s n_tokens=1227
+[204/330] 4c36ccef f3 0.63s n_tokens=923
+[205/330] 4dfccbf7 f3 0.73s n_tokens=1079
+[206/330] 5025383b f3 0.70s n_tokens=837
+[207/330] 545bd2b5 f3 0.66s n_tokens=1254
+[208/330] 577d4d32 f3 0.63s n_tokens=1008
+[209/330] 58bf7951 f3 0.63s n_tokens=1003
+[210/330] 58ef2f1c f3 0.62s n_tokens=800
+[211/330] 5a4f22c0 f3 0.82s n_tokens=2241
+[212/330] 60472f9c f3 1.04s n_tokens=1086
+[213/330] 65240037 f3 0.74s n_tokens=2085
+[214/330] 681a1674 f3 0.70s n_tokens=847
+[215/330] 8077ef71 f3 0.63s n_tokens=828
+[216/330] 8464fc84 f3 0.62s n_tokens=877
+[217/330] 8a2466db f3 0.60s n_tokens=756
+[218/330] 8b9d4367 f3 0.65s n_tokens=1170
+[219/330] 8cf4d046 f3 0.73s n_tokens=1067
+[220/330] 8fb83627 f3 0.79s n_tokens=1024
+[221/330] a06e4cfe f3 0.70s n_tokens=1731
+[222/330] a2f3aa27 f3 0.77s n_tokens=1591
+[223/330] a82c026e f3 0.61s n_tokens=817
+[224/330] a96c20ee f3 0.69s n_tokens=812
+[225/330] af8d2e46 f3 0.65s n_tokens=1155
+[226/330] affe2881 f3 0.72s n_tokens=1002
+[227/330] b0479f84 f3 0.62s n_tokens=818
+[228/330] b29f3365 f3 0.73s n_tokens=811
+[229/330] b5ef892d f3 0.82s n_tokens=1041
+[230/330] c4ea545c f3 0.72s n_tokens=965
+[231/330] c6853660 f3 0.74s n_tokens=1304
+[232/330] c8090214 f3 0.75s n_tokens=1443
+[233/330] c8f1aeed f3 0.72s n_tokens=1553
+[234/330] caf9ead2 f3 0.63s n_tokens=988
+[235/330] cc06de0d f3 0.72s n_tokens=1076
+[236/330] cc5ded98 f3 0.70s n_tokens=995
+[237/330] ccb36322 f3 0.61s n_tokens=741
+[238/330] db467c8c f3 0.69s n_tokens=770
+[239/330] dcfa8644 f3 0.70s n_tokens=884
+[240/330] e56a43b9 f3 0.68s n_tokens=755
+[241/330] e8a79c70 f3 0.66s n_tokens=1263
+[242/330] e982271f f3 0.64s n_tokens=983
+[243/330] f0853d11 f3 0.69s n_tokens=852
+[244/330] f523d9fe f3 0.62s n_tokens=934
+[245/330] f9e8c073 f3 0.74s n_tokens=1323
+[246/330] faba32e5 f3 0.62s n_tokens=804
+[247/330] gpt4_1a1dc16d f3 0.71s n_tokens=1056
+[248/330] gpt4_1d4ab0c9 f3 0.68s n_tokens=714
+[249/330] gpt4_21adecb5 f3 0.68s n_tokens=739
+[250/330] gpt4_2d58bcd6 f3 0.72s n_tokens=1044
+[251/330] gpt4_385a5000 f3 0.71s n_tokens=1017
+[252/330] gpt4_59149c77 f3 0.74s n_tokens=1347
+[253/330] gpt4_6dc9b45b f3 0.62s n_tokens=813
+[254/330] gpt4_76048e76 f3 0.70s n_tokens=902
+[255/330] gpt4_7a0daae1 f3 0.69s n_tokens=809
+[256/330] gpt4_7ddcf75f f3 0.61s n_tokens=831
+[257/330] gpt4_d31cdae3 f3 0.70s n_tokens=947
+[258/330] gpt4_d9af6064 f3 0.73s n_tokens=1240
+[259/330] gpt4_e414231e f3 0.69s n_tokens=840
+[260/330] gpt4_fe651585 f3 0.70s n_tokens=785
+[261/330] 001be529 f4 0.63s n_tokens=826
+[262/330] 01493427 f4 0.71s n_tokens=756
+[263/330] 031748ae f4 0.70s n_tokens=876
+[264/330] 09ba9854 f4 0.75s n_tokens=1499
+[265/330] 0e5e2d1a f4 0.66s n_tokens=1236
+[266/330] 0ea62687 f4 0.71s n_tokens=922
+[267/330] 195a1a1b f4 0.63s n_tokens=846
+[268/330] 1da05512 f4 0.69s n_tokens=750
+[269/330] 1e043500 f4 0.63s n_tokens=712
+[270/330] 21436231 f4 0.70s n_tokens=1745
+[271/330] 26bdc477 f4 0.73s n_tokens=1046
+[272/330] 2a1811e2 f4 0.70s n_tokens=794
+[273/330] 3249768e f4 0.67s n_tokens=1282
+[274/330] 352ab8bd f4 0.74s n_tokens=2052
+[275/330] 37d43f65 f4 0.72s n_tokens=1738
+[276/330] 488d3006 f4 0.65s n_tokens=1235
+[277/330] 50635ada f4 0.72s n_tokens=1095
+[278/330] 55241a1f f4 0.75s n_tokens=1423
+[279/330] 57f827a0 f4 0.62s n_tokens=854
+[280/330] 5809eb10 f4 0.74s n_tokens=2123
+[281/330] 5e1b23de f4 0.63s n_tokens=910
+[282/330] 60159905 f4 0.70s n_tokens=911
+[283/330] 603deb26 f4 0.72s n_tokens=998
+[284/330] 6071bd76 f4 0.74s n_tokens=1231
+[285/330] 6456829e f4 0.69s n_tokens=799
+[286/330] 6ae235be f4 0.70s n_tokens=1738
+[287/330] 6b7dfb22 f4 0.62s n_tokens=863
+[288/330] 7161e7e2 f4 0.75s n_tokens=2302
+[289/330] 720133ac f4 0.70s n_tokens=957
+[290/330] 726462e0 f4 0.63s n_tokens=1002
+[291/330] 778164c6 f4 0.64s n_tokens=1026
+[292/330] 7a87bd0c f4 0.73s n_tokens=1111
+[293/330] 852ce960 f4 0.69s n_tokens=713
+[294/330] 8550ddae f4 0.63s n_tokens=999
+[295/330] 8a137a7f f4 0.64s n_tokens=1098
+[296/330] 8aef76bc f4 0.65s n_tokens=1053
+[297/330] 8c18457d f4 0.81s n_tokens=975
+[298/330] a11281a2 f4 0.76s n_tokens=1450
+[299/330] af082822 f4 0.62s n_tokens=835
+[300/330] b01defab f4 0.75s n_tokens=1416
+[301/330] b46e15ee f4 0.90s n_tokens=894
+[302/330] b759caee f4 0.66s n_tokens=1199
+[303/330] c19f7a0b f4 0.63s n_tokens=922
+[304/330] c7dc5443 f4 0.69s n_tokens=825
+[305/330] ce6d2d27 f4 0.68s n_tokens=721
+[306/330] d596882b f4 0.66s n_tokens=1387
+[307/330] dccbc061 f4 0.67s n_tokens=1364
+[308/330] dd2973ad f4 0.72s n_tokens=1115
+[309/330] e25c3b8d f4 0.70s n_tokens=906
+[310/330] e6041065 f4 0.72s n_tokens=1051
+[311/330] e831120c f4 0.79s n_tokens=1855
+[312/330] ec81a493 f4 0.61s n_tokens=705
+[313/330] f4f1d8a4 f4 0.63s n_tokens=996
+[314/330] f8c5f88b f4 0.65s n_tokens=1052
+[315/330] gpt4_2312f94c f4 0.71s n_tokens=1093
+[316/330] gpt4_2f584639 f4 0.73s n_tokens=1248
+[317/330] gpt4_468eb063 f4 0.65s n_tokens=1098
+[318/330] gpt4_483dd43c f4 0.73s n_tokens=1162
+[319/330] gpt4_61e13b3c f4 0.70s n_tokens=814
+[320/330] gpt4_6ed717ea f4 0.68s n_tokens=804
+[321/330] gpt4_7ca326fa f4 0.81s n_tokens=1024
+[322/330] gpt4_7de946e7 f4 0.74s n_tokens=1311
+[323/330] gpt4_8279ba02 f4 0.62s n_tokens=856
+[324/330] gpt4_a2d1d1f6 f4 0.61s n_tokens=816
+[325/330] gpt4_b4a80587 f4 0.69s n_tokens=848
+[326/330] gpt4_b5700ca0 f4 0.62s n_tokens=783
+[327/330] gpt4_cd90e484 f4 0.70s n_tokens=952
+[328/330] gpt4_e072b769 f4 0.67s n_tokens=1416
+[329/330] gpt4_e414231f f4 0.92s n_tokens=943
+[330/330] gpt4_f49edff3 f4 0.80s n_tokens=869
+{"reader": "phi4mini", "model_id": "microsoft/Phi-4-mini-instruct", "variant": "jlens", "smoke": false, "device": "cuda", "dtype": "bfloat16", "load_s": 5.766769064939581, "questions": 330, "seconds_per_question": 0.7000328487727199, "wall_s": 232.16785307601094, "deadline_cut": false, "peak_rss_mb": 5574.08203125, "peak_gpu_mb": 9118.54833984375, "n_layers": 32, "d_model": 3072}
+stage jread (ok, rc 0): elapsed 258 s (total 4357 s of 8100)
+[transformers] This model config has set a `rope_parameters['original_max_position_embeddings']` field, to be used together with `max_position_embeddings` to determine a scaling factor. Please set the `factor` field of `rope_parameters`with this ratio instead -- we recommend the use of this field over `original_max_position_embeddings`, as it is compatible with most model architectures.
+association {"n_items": 102, "n_skipped": 0, "pass_at_k": {"jlens": 0.00980392156862745, "logit": 0.0}, "pass_at_k_all": {"jlens": 0.029411764705882353, "logit": 0.029411764705882353}}
+multihop {"n_items": 93, "n_skipped": 0, "pass_at_k": {"jlens": 0.26344086021505375, "logit": 0.043010752688172046}, "pass_at_k_all": {"jlens": 0.521505376344086, "logit": 0.41935483870967744}}
+multilingual {"n_items": 107, "n_skipped": 0, "pass_at_k": {"jlens": 0.02102803738317757, "logit": 0.06775700934579439}, "pass_at_k_all": {"jlens": 0.15186915887850466, "logit": 0.16121495327102803}}
+order-ops {"n_items": 55, "n_skipped": 0, "pass_at_k": {"jlens": 0.0, "logit": 0.0}, "pass_at_k_all": {"jlens": 0.19090909090909092, "logit": 0.07272727272727272}}
+poetry {"n_items": 98, "n_skipped": 0, "pass_at_k": {"jlens": 0.061224489795918366, "logit": 0.0}, "pass_at_k_all": {"jlens": 0.061224489795918366, "logit": 0.01020408163265306}}
+typo {"n_items": 96, "n_skipped": 0, "pass_at_k": {"jlens": 0.041666666666666664, "logit": 0.041666666666666664}, "pass_at_k_all": {"jlens": 0.125, "logit": 0.19791666666666666}}
+{"out": "runs/exp43_lens_pod_phi/jl/eval/phi4mini.json", "band": [10, 21], "mean_pass_at_k": {"jlens": 0.06619399593824064, "logit": 0.025405738116772183}, "mean_pass_at_k_all": {"jlens": 0.17998664677224707, "logit": 0.14847159628553006}}
+stage eval (ok, rc 0): elapsed 120 s (total 4477 s of 8100)
+status {"logit_small": 330, "logit_large": 330, "jlens_small": 330, "eval": true, "lens": 56}
+all stages done in 4478 s; copy runs/exp43_lens_pod_phi/ back (the lens .pt/.ckpt.pt are not needed by the report) before the self-stop at +8700 s

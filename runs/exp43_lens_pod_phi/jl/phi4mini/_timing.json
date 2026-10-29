@@ -1,0 +1,21 @@
+{
+ "runs": [
+  {
+   "reader": "phi4mini",
+   "model_id": "microsoft/Phi-4-mini-instruct",
+   "variant": "jlens",
+   "smoke": false,
+   "device": "cuda",
+   "dtype": "bfloat16",
+   "load_s": 5.766769064939581,
+   "questions": 330,
+   "seconds_per_question": 0.7000328487727199,
+   "wall_s": 232.16785307601094,
+   "deadline_cut": false,
+   "peak_rss_mb": 5574.08203125,
+   "peak_gpu_mb": 9118.54833984375,
+   "n_layers": 32,
+   "d_model": 3072
+  }
+ ]
+}

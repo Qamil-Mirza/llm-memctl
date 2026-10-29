@@ -1,0 +1,234 @@
+{
+ "question_id": "3f1e9474",
+ "fold": 1,
+ "reader": "phi4",
+ "n_tokens": 1179,
+ "n_leading_ws": 0,
+ "prompt_sha256": "89ce2f1b510945e96dd4db304c634a40cc7fcdf6af161a863bc0f28b7bacf1dc",
+ "intact_prompt_sha256": "89ce2f1b510945e96dd4db304c634a40cc7fcdf6af161a863bc0f28b7bacf1dc",
+ "n_evidence_lines_cut": 0,
+ "n_bos": 0,
+ "positions": {
+  "P1": [
+   1178
+  ],
+  "P0": [
+   1176
+  ],
+  "E": [
+   380
+  ],
+  "Q": [
+   1170
+  ],
+  "P1_raw": [
+   1178
+  ]
+ },
+ "tracked_names": [
+  "gold",
+  "unknown_sp",
+  "Unknown_sp",
+  "unknown"
+ ],
+ "tracked": {
+  "gold": 21077,
+  "unknown_sp": 9987,
+  "Unknown_sp": 22435,
+  "unknown": 16476
+ },
+ "gold_token_text": " Sarah",
+ "position_mode": "forced",
+ "answer_marker": true,
+ "variants": [
+  "logit"
+ ],
+ "read_tag": "exp43_lens_pod_v1",
+ "measures": {
+  "logit": {
+   "k": 10,
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39
+   ],
+   "P1": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 1,
+     "emergence_depth": 0.65,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 6,
+     "final_rank": 32,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 8,
+     "final_rank": 8,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 43,
+     "final_rank": 1215,
+     "first_top1_depth": null
+    }
+   },
+   "P0": {
+    "gold": {
+     "best_rank": 404,
+     "final_rank": 7094,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 2966,
+     "final_rank": 21342,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 13156,
+     "final_rank": 40525,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 5340,
+     "final_rank": 5758,
+     "first_top1_depth": null
+    }
+   },
+   "E": [
+    {
+     "gold": {
+      "best_rank": 206,
+      "final_rank": 3725,
+      "emergence_depth": null,
+      "outcome": "A"
+     },
+     "unknown_sp": {
+      "best_rank": 13,
+      "final_rank": 16723,
+      "first_top1_depth": null
+     },
+     "Unknown_sp": {
+      "best_rank": 15,
+      "final_rank": 20069,
+      "first_top1_depth": null
+     },
+     "unknown": {
+      "best_rank": 19,
+      "final_rank": 86,
+      "first_top1_depth": null
+     }
+    }
+   ],
+   "Q": {
+    "gold": {
+     "best_rank": 1219,
+     "final_rank": 38419,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 73,
+     "final_rank": 9322,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 77,
+     "final_rank": 15896,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 700,
+     "final_rank": 713,
+     "first_top1_depth": null
+    }
+   },
+   "P1_raw": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 1,
+     "emergence_depth": 0.65,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 6,
+     "final_rank": 32,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 8,
+     "final_rank": 8,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 43,
+     "final_rank": 1215,
+     "first_top1_depth": null
+    }
+   }
+  }
+ },
+ "family": {
+  "key": "phi4",
+  "model_id": "microsoft/phi-4",
+  "template_kwargs": {},
+  "system_text": null,
+  "system_role": true,
+  "stop_tokens": [
+   "<|im_end|>",
+   "<|endoftext|>"
+  ],
+  "refusal_ids": [
+   9987,
+   22435
+  ]
+ },
+ "elapsed_s": 0.5889136160258204,
+ "model_id": "microsoft/phi-4",
+ "weights": null,
+ "size": "large",
+ "device": "cuda",
+ "dtype": "bfloat16",
+ "lens": "identity (logit lens)",
+ "lens_sha256": null
+}

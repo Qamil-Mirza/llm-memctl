@@ -1,0 +1,234 @@
+{
+ "question_id": "488d3006",
+ "fold": 4,
+ "reader": "phi4",
+ "n_tokens": 1265,
+ "n_leading_ws": 0,
+ "prompt_sha256": "536eb8a9f5e24b67e28704ac1ab33f4cdfcf42bc72d79039a57425a0120a8bd0",
+ "intact_prompt_sha256": "536eb8a9f5e24b67e28704ac1ab33f4cdfcf42bc72d79039a57425a0120a8bd0",
+ "n_evidence_lines_cut": 0,
+ "n_bos": 0,
+ "positions": {
+  "P1": [
+   1264
+  ],
+  "P0": [
+   1262
+  ],
+  "E": [
+   840
+  ],
+  "Q": [
+   1256
+  ],
+  "P1_raw": [
+   1264
+  ]
+ },
+ "tracked_names": [
+  "gold",
+  "unknown_sp",
+  "Unknown_sp",
+  "unknown"
+ ],
+ "tracked": {
+  "gold": 578,
+  "unknown_sp": 9987,
+  "Unknown_sp": 22435,
+  "unknown": 16476
+ },
+ "gold_token_text": " The",
+ "position_mode": "forced",
+ "answer_marker": true,
+ "variants": [
+  "logit"
+ ],
+ "read_tag": "exp43_lens_pod_v1",
+ "measures": {
+  "logit": {
+   "k": 10,
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39
+   ],
+   "P1": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 1,
+     "emergence_depth": 0.0,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 1631,
+     "final_rank": 9731,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 657,
+     "final_rank": 657,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 17546,
+     "final_rank": 36254,
+     "first_top1_depth": null
+    }
+   },
+   "P0": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 99,
+     "emergence_depth": 0.0,
+     "outcome": "B"
+    },
+    "unknown_sp": {
+     "best_rank": 6472,
+     "final_rank": 46979,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 11434,
+     "final_rank": 73082,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 9582,
+     "final_rank": 9723,
+     "first_top1_depth": null
+    }
+   },
+   "E": [
+    {
+     "gold": {
+      "best_rank": 23,
+      "final_rank": 870,
+      "emergence_depth": null,
+      "outcome": "A"
+     },
+     "unknown_sp": {
+      "best_rank": 256,
+      "final_rank": 21271,
+      "first_top1_depth": null
+     },
+     "Unknown_sp": {
+      "best_rank": 119,
+      "final_rank": 16055,
+      "first_top1_depth": null
+     },
+     "unknown": {
+      "best_rank": 161,
+      "final_rank": 161,
+      "first_top1_depth": null
+     }
+    }
+   ],
+   "Q": {
+    "gold": {
+     "best_rank": 84,
+     "final_rank": 4554,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 304,
+     "final_rank": 12371,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 203,
+     "final_rank": 12928,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 1224,
+     "final_rank": 1224,
+     "first_top1_depth": null
+    }
+   },
+   "P1_raw": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 1,
+     "emergence_depth": 0.0,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 1631,
+     "final_rank": 9731,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 657,
+     "final_rank": 657,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 17546,
+     "final_rank": 36254,
+     "first_top1_depth": null
+    }
+   }
+  }
+ },
+ "family": {
+  "key": "phi4",
+  "model_id": "microsoft/phi-4",
+  "template_kwargs": {},
+  "system_text": null,
+  "system_role": true,
+  "stop_tokens": [
+   "<|im_end|>",
+   "<|endoftext|>"
+  ],
+  "refusal_ids": [
+   9987,
+   22435
+  ]
+ },
+ "elapsed_s": 0.5976248809602112,
+ "model_id": "microsoft/phi-4",
+ "weights": null,
+ "size": "large",
+ "device": "cuda",
+ "dtype": "bfloat16",
+ "lens": "identity (logit lens)",
+ "lens_sha256": null
+}

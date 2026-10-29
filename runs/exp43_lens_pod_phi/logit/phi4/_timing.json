@@ -1,0 +1,21 @@
+{
+ "runs": [
+  {
+   "reader": "phi4",
+   "model_id": "microsoft/phi-4",
+   "variant": "logit",
+   "smoke": false,
+   "device": "cuda",
+   "dtype": "bfloat16",
+   "load_s": 8.72515350393951,
+   "questions": 330,
+   "seconds_per_question": 0.5787906721717622,
+   "wall_s": 191.80098256701604,
+   "deadline_cut": false,
+   "peak_rss_mb": 5647.953125,
+   "peak_gpu_mb": 29452.5966796875,
+   "n_layers": 40,
+   "d_model": 5120
+  }
+ ]
+}
