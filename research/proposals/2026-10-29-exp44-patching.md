@@ -87,3 +87,32 @@ One prompt family, one position (P1, forced), one corruption (cut evidence; the 
 by plausibility, which the filter removes). Patching P1 only tests what the P1 state holds; answer information sitting
 at evidence positions at mid-depth and moved late is "late at P1", which is what the lenses claim to read. The digit
 and article token caveats of §43 apply to the gold's first token.
+
+## Rev 1 (2026-10-29, after the build review d1902f5 / stage 0; before any development run)
+
+- §2 correction: R(0) ≈ 0 is an empirical check, not a construction (layer 0's output already attends over the
+  context). Bound unchanged, |R(0)| < 0.05; stage 0 observed < 0.01 on rows with a real gap.
+- §2 scope: sanity is asserted on patched rows inside the widest filter; recorded elsewhere. The 3B development run
+  patches all rows (descriptive curves by class); the 7B and both confirmation runs patch eligible rows only.
+- §4 C3 reading fixed: "agrees" = CI overlaps [0.85, 0.92] and median ≥ 0.75; "under-read" = upper bound < 0.75;
+  else undetermined.
+- §3 filter: strict (corrupt rank > 10) unless fewer than 40 of 126 development rows survive for that model, then
+  relaxed (> 3), decided by the development run and recorded here as rev 2 before `FIXED_FILTER` is set. Stage 0's
+  preview from the §34c reads: strict 31 / 39, relaxed 58 / 65 (3B / 7B).
+
+## Amendment 1 (proposed 2026-10-29; **pending the user's word**; not part of the development run)
+
+Motivated by the user's external review (Liu et al. 2026 *Broken Symmetry*; Ling et al. 2026 *Abstention as a prompt
+artifact*; Deswal 2026 *EviScope*), verified in `research/briefings/2026-10-29-literature-positioning.md`:
+
+- **Condition S (evidence substitution).** On the rows where the gold string appears verbatim in exactly one
+  evidence line, build a donor prompt with the gold replaced by a same-type substitute (a name for a name, a date for
+  a date, drawn from another row's gold of the same question type). Patch the P1 residual from the donor run into the
+  clean run layer by layer and score the **logit difference gold − substitute**: transfer T(l) = (Δ_patched(l) −
+  Δ_clean) / (Δ_donor − Δ_clean). This tests whether the patched state carries evidence-specific content rather than
+  willingness to answer, which clean → cut cannot separate on its own. Claim S1 (per model): median transfer depth
+  (first T ≥ 0.5) with CI, read beside d_c; readings as for C1.
+- **Condition U (no "unknown" option).** The clean prompt with the instruction's "unknown" option removed (the §35
+  frozen-note wording), run on the refusal rows: the share whose final top-1 becomes the gold without any patch is
+  the prompt-artefact share (Ling et al.), reported beside the patching results as a standing control.
+- Cost: laptop, free for the 3B; the 7B adds about the same time again. No pod.
