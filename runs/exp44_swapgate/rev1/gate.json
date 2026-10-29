@@ -1,0 +1,329 @@
+{
+ "spec": "research/proposals/2026-10-29-exp44-patching.md rev 1 §A (D-45)",
+ "seed": 44,
+ "rules": {
+  "verbatim": "the gold's D1 tokens (answer_selection._tokens) as a contiguous whole-token run of the text's D1 tokens (ASCII case-insensitive regex, cross-checked against the normalised form); stricter than D1's substring branch, no all-tokens branch",
+  "placement": "segment_prompt line spans (separator excluded); question = 'Question:' to '\\n\\nNote:'; elsewhere = any whole-prompt match outside the one evidence line",
+  "swap": "every match of the gold inside that one evidence line (widened to the gold's own adjacent non-alphanumeric prefix/suffix, e.g. '$') replaced by the substitute's surface form (its raw gold, one trailing period dropped); all other bytes identical (asserted)",
+  "pool": "the family's 330 population rows sorted by (fold, question_id), shuffled once with random.Random(44); each row iterates the same order from the start, first candidate passing every rule",
+  "candidate_rules_in_order": [
+   "not self, different normalised gold",
+   "same surface type",
+   "|n_tokens(' '+S) - n_tokens(' '+G)| <= 2",
+   "S not verbatim anywhere in the clean prompt",
+   "G not verbatim anywhere in the swap prompt",
+   "same teacher-forced leading-whitespace tokens as G",
+   "different first content token"
+  ],
+  "first_token": "jlens_readout.tracked_token_ids: first non-whitespace token of ids(' ' + text) (the token P1 predicts in §34); continuation_first_id form ids('Answer:' + ' ' + text) - ids('Answer:') checked",
+  "alignment": "patching.check_alignment on readout_for(clean) vs readout_for(swap), gold forced as §34; the cut-is-shorter clause off (n_evidence_lines=0); tracked ids and forced whitespace must match",
+  "exclusion_order": [
+   "gold_zero_evidence",
+   "gold_several_evidence",
+   "gold_in_question",
+   "gold_elsewhere",
+   "no_substitute",
+   "first_token_equal",
+   "alignment_failure"
+  ],
+  "labels": "§23: success = correct; refusal = not correct and unknown; wrong = otherwise (Qwen exp23 fixed8, Llama exp24 fixed8)",
+  "surface_types": {
+   "order": [
+    "date",
+    "number",
+    "name",
+    "other"
+   ],
+   "date": "^(?:\\d{1,2}(?:st|nd|rd|th)?\\s+(?:of\\s+)?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\b.*|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?\\b.*|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\s+\\d{4}|(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b.*|\\d{4}[/-]\\d{1,2}[/-]\\d{1,2}|\\d{1,2}/\\d{1,2}(?:/\\d{2,4})?|\\d{1,2}(?::\\d{2})?\\s*(?:am|pm|a\\.m\\.|p\\.m\\.))\\.?$",
+   "number": "^(?:about\\s+|around\\s+|approximately\\s+)?(?:[$£€+-]\\s?)?(?:\\d[\\d,]*(?:\\.\\d+)?|\\.\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|a hundred|a thousand|thousand|half|once|twice|a couple)(?:\\s?%|\\s?[-:/x]\\s?\\d[\\d,]*(?:\\.\\d+)?)?(?:[\\s-][A-Za-z]+(?:\\s[A-Za-z]+)?)?\\.?$",
+   "name": "^(?:The\\s+|the\\s+)?[A-ZÀ-Þ][\\w'’.&-]*(?:\\s+(?:[A-ZÀ-Þ][\\w'’.&-]*|of|the|and|at|on|in|de|la|del|du|von|van|for|&)){0,5}\\.?$  (no digit; not yes/no/none/unknown)",
+   "other": "everything else"
+  }
+ },
+ "families": {
+  "qwen3b": {
+   "tables": {
+    "population": {
+     "dev": 126,
+     "confirmation": 204,
+     "all": 330
+    },
+    "eligible": {
+     "dev": 36,
+     "confirmation": 54,
+     "all": 90
+    },
+    "by_question_type": {
+     "dev": {
+      "knowledge-update": 10,
+      "multi-session": 0,
+      "single-session-assistant": 8,
+      "single-session-preference": 0,
+      "single-session-user": 17,
+      "temporal-reasoning": 1
+     },
+     "confirmation": {
+      "knowledge-update": 13,
+      "multi-session": 5,
+      "single-session-assistant": 16,
+      "single-session-preference": 0,
+      "single-session-user": 16,
+      "temporal-reasoning": 4
+     },
+     "all": {
+      "knowledge-update": 23,
+      "multi-session": 5,
+      "single-session-assistant": 24,
+      "single-session-preference": 0,
+      "single-session-user": 33,
+      "temporal-reasoning": 5
+     }
+    },
+    "by_label": {
+     "confirmation": {
+      "success": 27,
+      "refusal": 15,
+      "wrong": 12
+     },
+     "all": {
+      "success": 47,
+      "refusal": 21,
+      "wrong": 22
+     }
+    },
+    "by_surface_type": {
+     "dev": {
+      "number": 13,
+      "name": 12,
+      "other": 11
+     },
+     "confirmation": {
+      "number": 24,
+      "name": 16,
+      "other": 12,
+      "date": 2
+     },
+     "all": {
+      "number": 37,
+      "name": 28,
+      "other": 23,
+      "date": 2
+     }
+    },
+    "population_surface_types": {
+     "number": 133,
+     "other": 141,
+     "name": 48,
+     "date": 8
+    },
+    "exclusions_in_order": {
+     "gold_zero_evidence": 180,
+     "gold_several_evidence": 5,
+     "gold_in_question": 11,
+     "gold_elsewhere": 39,
+     "no_substitute": 1,
+     "first_token_equal": 4,
+     "alignment_failure": 0
+    },
+    "exclusion_steps": [
+     {
+      "exclusion": "gold_zero_evidence",
+      "removed": 180,
+      "remaining": 150
+     },
+     {
+      "exclusion": "gold_several_evidence",
+      "removed": 5,
+      "remaining": 145
+     },
+     {
+      "exclusion": "gold_in_question",
+      "removed": 11,
+      "remaining": 134
+     },
+     {
+      "exclusion": "gold_elsewhere",
+      "removed": 39,
+      "remaining": 95
+     },
+     {
+      "exclusion": "no_substitute",
+      "removed": 1,
+      "remaining": 94
+     },
+     {
+      "exclusion": "first_token_equal",
+      "removed": 4,
+      "remaining": 90
+     },
+     {
+      "exclusion": "alignment_failure",
+      "removed": 0,
+      "remaining": 90
+     }
+    ],
+    "distinct_substitutes": 19,
+    "alignment_failures": [],
+    "regex_vs_normalised": {
+     "checks": 1218,
+     "disagreements": 0
+    },
+    "continuation_split_unstable": 0
+   },
+   "gate": {
+    "eligible_folds_2_4": 54,
+    "question_types_ge_15_folds_2_4": {
+     "single-session-assistant": 16,
+     "single-session-user": 16
+    },
+    "n_question_types_ge_15": 2,
+    "inview_failures_folds_2_4": 27,
+    "inview_failures_all_330": 43,
+    "verdict": "pool (claims read on all 330)"
+   }
+  },
+  "llama3b": {
+   "tables": {
+    "population": {
+     "dev": 126,
+     "confirmation": 204,
+     "all": 330
+    },
+    "eligible": {
+     "dev": 39,
+     "confirmation": 56,
+     "all": 95
+    },
+    "by_question_type": {
+     "dev": {
+      "knowledge-update": 12,
+      "multi-session": 0,
+      "single-session-assistant": 9,
+      "single-session-preference": 0,
+      "single-session-user": 17,
+      "temporal-reasoning": 1
+     },
+     "confirmation": {
+      "knowledge-update": 14,
+      "multi-session": 5,
+      "single-session-assistant": 16,
+      "single-session-preference": 0,
+      "single-session-user": 17,
+      "temporal-reasoning": 4
+     },
+     "all": {
+      "knowledge-update": 26,
+      "multi-session": 5,
+      "single-session-assistant": 25,
+      "single-session-preference": 0,
+      "single-session-user": 34,
+      "temporal-reasoning": 5
+     }
+    },
+    "by_label": {
+     "confirmation": {
+      "success": 44,
+      "refusal": 6,
+      "wrong": 6
+     },
+     "all": {
+      "success": 71,
+      "refusal": 12,
+      "wrong": 12
+     }
+    },
+    "by_surface_type": {
+     "dev": {
+      "number": 14,
+      "name": 12,
+      "other": 12,
+      "date": 1
+     },
+     "confirmation": {
+      "number": 25,
+      "name": 16,
+      "other": 12,
+      "date": 3
+     },
+     "all": {
+      "number": 39,
+      "name": 28,
+      "other": 24,
+      "date": 4
+     }
+    },
+    "population_surface_types": {
+     "number": 133,
+     "other": 141,
+     "name": 48,
+     "date": 8
+    },
+    "exclusions_in_order": {
+     "gold_zero_evidence": 180,
+     "gold_several_evidence": 5,
+     "gold_in_question": 11,
+     "gold_elsewhere": 39,
+     "no_substitute": 0,
+     "first_token_equal": 0,
+     "alignment_failure": 0
+    },
+    "exclusion_steps": [
+     {
+      "exclusion": "gold_zero_evidence",
+      "removed": 180,
+      "remaining": 150
+     },
+     {
+      "exclusion": "gold_several_evidence",
+      "removed": 5,
+      "remaining": 145
+     },
+     {
+      "exclusion": "gold_in_question",
+      "removed": 11,
+      "remaining": 134
+     },
+     {
+      "exclusion": "gold_elsewhere",
+      "removed": 39,
+      "remaining": 95
+     },
+     {
+      "exclusion": "no_substitute",
+      "removed": 0,
+      "remaining": 95
+     },
+     {
+      "exclusion": "first_token_equal",
+      "removed": 0,
+      "remaining": 95
+     },
+     {
+      "exclusion": "alignment_failure",
+      "removed": 0,
+      "remaining": 95
+     }
+    ],
+    "distinct_substitutes": 20,
+    "alignment_failures": [],
+    "regex_vs_normalised": {
+     "checks": 1121,
+     "disagreements": 0
+    },
+    "continuation_split_unstable": 0
+   },
+   "gate": {
+    "eligible_folds_2_4": 56,
+    "question_types_ge_15_folds_2_4": {
+     "single-session-assistant": 16,
+     "single-session-user": 17
+    },
+    "n_question_types_ge_15": 2,
+    "inview_failures_folds_2_4": 12,
+    "inview_failures_all_330": 24,
+    "verdict": "stop"
+   }
+  }
+ },
+ "note": "Qwen 2.5 7B shares the Qwen 3B rows and prompts (exp44_patch.population asserts it)."
+}

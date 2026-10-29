@@ -1,7 +1,20 @@
 #!/usr/bin/env python
 """§44 rev 1 §A: the swap-subset feasibility gate, from the data alone (tokenizers only, no model forward pass).
 
-    .venv/bin/python scripts/exp44_swap_gate.py            # writes runs/exp44_swapgate/
+    .venv/bin/python scripts/exp44_swap_gate.py            # rev 2 rules, writes runs/exp44_swapgate/
+    .venv/bin/python scripts/exp44_swap_gate.py --rev 1 --out runs/exp44_swapgate/rev1   # the 63882c1 gate
+
+Rev 2 (the Advisor's rulings 2 and 3 of the proposal's "Rev 2" record, 5146f5b) changes two things and nothing else:
+- substitute assignment: row i (its index in the family's (fold, question_id) order, 0..329) shuffles its own
+  candidate list (the other 329 rows in that order) with random.Random(44 + i) and walks it; a substitute string
+  (D1-normalised) is used at most CAP = 3 times across the family's eligible rows, rows processed in (fold, id) order;
+  a candidate at its cap is skipped. A use is counted only once the row is eligible (alignment passed).
+- surface types: "number" splits into number:currency (leading $/£/€ or a currency word), number:percent (% or
+  "percent"), number:duration (a time unit word), number:bare (everything else the number regex takes, including a
+  number with a non-time, non-currency unit such as "10 pounds" or "38 subjects"); the substitute must share the
+  subtype. "other" substitutes must come from a row of the same LongMemEval question type, with the same
+  first-character capitalisation (surface form, str.isupper of the first character) and |token length diff| <= 1.
+  Every other rule (including the +-2 length tolerance for the other types) is the rev 1 rule below.
 
 Spec: research/proposals/2026-10-29-exp44-patching.md, "Rev 1 amendment" §A (D-45). Population: the §34 330 rows per
 family (126 dev = folds 0-1, 204 confirmation = folds 2-4). Qwen 2.5 3B via scripts/exp44_patch.population (paired
@@ -58,6 +71,8 @@ from memctl.analysis.answer_selection import _tokens  # noqa: E402
 
 SEED = 44
 LEN_TOL = 2
+CAP = 3                 # rev 2: uses per substitute string across a family's eligible rows
+OTHER_LEN_TOL = 1       # rev 2: "other" substitutes within +-1 token
 OUT = Path("runs/exp44_swapgate")
 FOLD_SETS = {"dev": (0, 1), "confirmation": (2, 3, 4), "all": (0, 1, 2, 3, 4)}
 LABELS = ("success", "refusal", "wrong")
@@ -83,6 +98,32 @@ NAME_RE = re.compile(rf"^(?:The\s+|the\s+)?[A-ZÀ-Þ][\w'’.&-]*(?:\s+{NAME_WOR
 NOT_NAMES = {"yes", "no", "none", "unknown"}
 SURFACE_RULES = {"order": ["date", "number", "name", "other"], "date": DATE_RE.pattern, "number": NUMBER_RE.pattern,
                  "name": NAME_RE.pattern + "  (no digit; not yes/no/none/unknown)", "other": "everything else"}
+
+
+CURRENCY_WORDS = r"dollars?|bucks|euros?|cents?|usd|eur|gbp|yen|rupees?"
+TIME_UNITS = (r"seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|nights?|weeks?|months?|years?|yrs?|decades?|"
+              r"centur(?:y|ies)")
+NUMBER_SUBTYPE_RULES = {"order": ["currency", "percent", "duration", "bare"],
+                        "currency": rf"leading [$£€] or a word in ({CURRENCY_WORDS})",
+                        "percent": "'%' or the word percent", "duration": rf"a word in ({TIME_UNITS})",
+                        "bare": "every other number-type gold (incl. a number with a non-time, non-currency unit)"}
+
+
+def number_subtype(gold: str) -> str:
+    g = gold.strip().lower()
+    if re.match(r"^(?:about\s+|around\s+|approximately\s+)?[$£€]", g) or re.search(rf"\b(?:{CURRENCY_WORDS})\b", g):
+        return "currency"
+    if "%" in g or re.search(r"\bper\s?cent\b", g):
+        return "percent"
+    if re.search(rf"(?:\b|\d)(?:{TIME_UNITS})\b", g):
+        return "duration"
+    return "bare"
+
+
+def type_key(gold: str, rev: int = 2) -> str:
+    """The surface type a substitute must share: rev 1 = surface_type; rev 2 splits number into four subtypes."""
+    t = surface_type(gold)
+    return f"number:{number_subtype(gold)}" if rev >= 2 and t == "number" else t
 
 
 def surface_type(gold: str) -> str:
@@ -242,19 +283,45 @@ def pool_order(records) -> list:
     return pool
 
 
-def choose_substitute(record, place: dict, pool, tinfo: dict, types: dict, chk: Checker):
-    """(substitute record | None, exclusion | None, swap prompt, lines). `tinfo`/`types` keyed by question id."""
-    gnorm = " ".join(_tokens(record.gold))
+def row_candidates(records_sorted, i: int) -> list:
+    """Rev 2: row i's own candidate list (every other row, (fold, id) order) shuffled with random.Random(44 + i)."""
+    cands = [r for j, r in enumerate(records_sorted) if j != i]
+    random.Random(SEED + i).shuffle(cands)
+    return cands
+
+
+def norm(text: str) -> str:
+    return " ".join(_tokens(text))
+
+
+def first_cap(text: str) -> bool:
+    s = surface(text)
+    return bool(s) and s[0].isupper()
+
+
+def choose_substitute(record, place: dict, pool, tinfo: dict, types: dict, chk: Checker,
+                      uses: Counter | None = None, rev: int = 1, stats: Counter | None = None):
+    """(substitute record | None, exclusion | None, swap prompt, lines). `tinfo`/`types` keyed by question id.
+    Rev 2 (`rev=2`, `uses` = substitute-string use counts so far): "other" substitutes need the same LongMemEval
+    question type, the same first-character capitalisation and +-1 token length; a candidate whose normalised string
+    already has CAP uses is skipped (counted in `stats["cap_skips"]`; a row whose only passing candidates were at
+    their cap is counted in `stats["no_substitute_cap_only"]` and excluded as no_substitute)."""
+    gnorm = norm(record.gold)
     g = tinfo[record.question_id]
     gpat = gold_pattern(record.gold)
-    passed_but_first = False
+    other = types[record.question_id] == "other"
+    tol = OTHER_LEN_TOL if rev >= 2 and other else LEN_TOL
+    passed_but_first = passed_but_cap = False
     for cand in pool:
-        if cand.question_id == record.question_id or " ".join(_tokens(cand.gold)) == gnorm:
+        if cand.question_id == record.question_id or norm(cand.gold) == gnorm:
             continue
         if types[cand.question_id] != types[record.question_id]:
             continue
+        if rev >= 2 and other and (cand.question_type != record.question_type
+                                   or first_cap(cand.gold) != first_cap(record.gold)):
+            continue
         c = tinfo[cand.question_id]
-        if abs(c["n_tokens"] - g["n_tokens"]) > LEN_TOL:
+        if abs(c["n_tokens"] - g["n_tokens"]) > tol:
             continue
         cpat = gold_pattern(cand.gold)
         if cpat is None or not surface(cand.gold) or chk.occurs(record.prompt, cpat, cand.gold):
@@ -267,8 +334,15 @@ def choose_substitute(record, place: dict, pool, tinfo: dict, types: dict, chk: 
         if c["first_id"] == g["first_id"]:
             passed_but_first = True
             continue
+        if uses is not None and uses[norm(cand.gold)] >= CAP:
+            passed_but_cap = True
+            if stats is not None:
+                stats["cap_skips"] += 1
+            continue
         return cand, None, prompt, (line, new_line)
-    return None, ("first_token_equal" if passed_but_first else "no_substitute"), None, None
+    if passed_but_cap and stats is not None:
+        stats["no_substitute_cap_only"] += 1
+    return None, ("first_token_equal" if passed_but_first and not passed_but_cap else "no_substitute"), None, None
 
 
 def alignment(tokenizer, record, prompt: str, line: str, new_line: str, chat_text_fn) -> str | None:
@@ -336,18 +410,21 @@ def llama_population(runs_dir: str = "runs"):
 
 # --- the gate -------------------------------------------------------------------------------------------------------
 
-def evaluate(records, tokenizer, chat_text_fn=None, log=print) -> dict:
+def evaluate(records, tokenizer, chat_text_fn=None, log=print, rev: int = 2) -> dict:
     records = sorted(records, key=lambda r: (r.fold, r.question_id))
     chk = Checker()
     tinfo = {r.question_id: token_info(tokenizer, r.gold) for r in records}
-    types = {r.question_id: surface_type(r.gold) for r in records}
-    pool = pool_order(records)
+    types = {r.question_id: type_key(r.gold, rev) for r in records}
+    pool = pool_order(records) if rev < 2 else None
+    uses, stats = (Counter(), Counter()) if rev >= 2 else (None, None)
     removed = Counter()
-    eligible, align_reasons = [], []
-    for r in records:
+    eligible, align_reasons, removed_rows = [], [], []
+    for i, r in enumerate(records):
         why, place = place_gold(r, chk)
         if why is None:
-            cand, why, prompt, lines = choose_substitute(r, place, pool, tinfo, types, chk)
+            cands = pool if rev < 2 else row_candidates(records, i)
+            cand, why, prompt, lines = choose_substitute(r, place, cands, tinfo, types, chk, uses=uses, rev=rev,
+                                                         stats=stats)
         if why is None:
             bad = alignment(tokenizer, r, prompt, lines[0], lines[1], chat_text_fn)
             if bad is not None:
@@ -355,24 +432,31 @@ def evaluate(records, tokenizer, chat_text_fn=None, log=print) -> dict:
                 align_reasons.append({"question_id": r.question_id, "reason": bad})
         if why is not None:
             removed[why] += 1
+            removed_rows.append({"question_id": r.question_id, "fold": r.fold, "label": label23(r),
+                                 "question_type": r.question_type, "gold": r.gold, "type": types[r.question_id],
+                                 "exclusion": why})
             continue
+        if uses is not None:
+            uses[norm(cand.gold)] += 1
         g, s = tinfo[r.question_id], tinfo[cand.question_id]
         eligible.append({
             "question_id": r.question_id, "fold": r.fold, "question_type": r.question_type,
             "gold": r.gold, "substitute": cand.gold, "substitute_from": cand.question_id,
             "gold_surface": surface(r.gold), "substitute_surface": surface(cand.gold),
             "surface_type": types[r.question_id], "substitute_type": types[cand.question_id],
+            "first_cap": first_cap(r.gold), "substitute_first_cap": first_cap(cand.gold),
+            "substitute_question_type": cand.question_type,
             "gold_first_id": g["first_id"], "gold_first_text": g["first_text"],
             "substitute_first_id": s["first_id"], "substitute_first_text": s["first_text"],
             "gold_n_tokens": g["n_tokens"], "substitute_n_tokens": s["n_tokens"], "leading_ws_ids": list(g["leading"]),
             "evidence_line_index": place["line_index"], "n_occurrences_in_line": place["n_occurrences"],
             "clean_prompt_sha256": hashlib.sha256(r.prompt.encode()).hexdigest(),
             "swap_prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest(),
-            "_label": label23(r)})
+            "row_index": i, "_label": label23(r)})
     cont_disagree = sum(1 for e in eligible for k in ("gold", "substitute")
                         if not tinfo[e["question_id"] if k == "gold" else e["substitute_from"]]["cont_tail_equal"])
     return {"records": records, "eligible": eligible, "removed": removed, "align_reasons": align_reasons,
-            "types": types, "regex_checks": chk.checks, "regex_disagreements": chk.disagreements,
+            "types": types, "rev": rev, "removed_rows": removed_rows, "cap_stats": dict(stats or {}), "regex_checks": chk.checks, "regex_disagreements": chk.disagreements,
             "continuation_split_unstable": cont_disagree}
 
 
@@ -388,6 +472,8 @@ def tables(res) -> dict:
     out["by_surface_type"] = {k: dict(Counter(e["surface_type"] for e in el if e["fold"] in f))
                               for k, f in FOLD_SETS.items()}
     out["population_surface_types"] = dict(Counter(res["types"].values()))
+    out["by_surface_type_and_label_all"] = {ty: {lab: sum(e["surface_type"] == ty and e["_label"] == lab for e in el)
+                                                 for lab in LABELS} for ty in sorted({e["surface_type"] for e in el})}
     out["exclusions_in_order"] = {k: res["removed"].get(k, 0) for k in EXCLUSIONS}
     left, steps = len(recs), []
     for k in EXCLUSIONS:
@@ -395,28 +481,50 @@ def tables(res) -> dict:
         steps.append({"exclusion": k, "removed": res["removed"].get(k, 0), "remaining": left})
     out["exclusion_steps"] = steps
     out["distinct_substitutes"] = len({e["substitute_from"] for e in el})
+    mult = Counter(norm(e["substitute"]) for e in el)
+    out["distinct_substitute_strings"] = len(mult)
+    out["max_substitute_multiplicity"] = max(mult.values()) if mult else 0
+    out["top_substitutes"] = mult.most_common(8)
+    out["cap_stats"] = res.get("cap_stats", {})
     out["alignment_failures"] = res["align_reasons"]
+    out["substitute_exclusions"] = [x for x in res.get("removed_rows", [])
+                                    if x["exclusion"] in ("no_substitute", "first_token_equal")]
     out["regex_vs_normalised"] = {"checks": res["regex_checks"], "disagreements": res["regex_disagreements"]}
     out["continuation_split_unstable"] = res["continuation_split_unstable"]
     return out
 
 
-def gate(t: dict) -> dict:
+def gate(t: dict, rev: int = 1) -> dict:
     n = t["eligible"]["confirmation"]
     qt = {k: v for k, v in t["by_question_type"]["confirmation"].items() if v >= 15}
     fail = t["by_label"]["confirmation"]["refusal"] + t["by_label"]["confirmation"]["wrong"]
     fail_all = t["by_label"]["all"]["refusal"] + t["by_label"]["all"]["wrong"]
     if n < 50 or fail < 15:
         verdict = "stop"
-    elif len(qt) < 2:
+    elif len(qt) < 2 and rev < 2:
         verdict = "stop (fewer than two question types of >= 15; the spec names no pool route for this)"
     elif fail >= 30:
         verdict = "proceed"
     else:
         verdict = "pool (claims read on all 330)"
+    if rev >= 2 and len(qt) < 2 and verdict != "stop":       # rev 2 ruling 7: proceed with a type-diversity caveat
+        verdict += " + type-diversity caveat (fewer than two question types of >= 15 on folds 2-4; rev 2 ruling 7)"
     return {"eligible_folds_2_4": n, "question_types_ge_15_folds_2_4": qt, "n_question_types_ge_15": len(qt),
             "inview_failures_folds_2_4": fail, "inview_failures_all_330": fail_all, "verdict": verdict}
 
+
+RULES_REV2 = {
+    "pool": "rev 2: row i (index in the family's (fold, question_id) order) shuffles the other 329 rows with"
+            " random.Random(44 + i) and walks that list; first candidate passing every rule and not at its cap",
+    "cap": f"each D1-normalised substitute string used at most {CAP} times across the family's eligible rows; rows in"
+           " (fold, id) order; a candidate at its cap is skipped; a use counts once the row is eligible; a row whose"
+           " only passing candidates were capped is excluded as no_substitute (count in cap_stats)",
+    "surface_types": "rev 2: number split into currency / percent / duration / bare (number_subtype; the substitute"
+                     " must share the subtype); date, name as rev 1",
+    "other": f"rev 2: 'other' substitutes from rows of the same LongMemEval question type, same first-character"
+             f" capitalisation of the surface form, |n_tokens diff| <= {OTHER_LEN_TOL}",
+    "number_subtypes": NUMBER_SUBTYPE_RULES,
+}
 
 RULES = {
     "verbatim": "the gold's D1 tokens (answer_selection._tokens) as a contiguous whole-token run of the text's D1 tokens"
@@ -445,10 +553,13 @@ RULES = {
 }
 
 
-def markdown(per: dict) -> str:
-    L = ["# §44 rev 1 §A: swap-subset feasibility gate", "",
-         "Data only (tokenizers, no forward pass). Spec: research/proposals/2026-10-29-exp44-patching.md rev 1 §A; "
-         "rules in gate.json `rules` and in scripts/exp44_swap_gate.py. Counts only.", ""]
+def markdown(per: dict, rev: int = 2) -> str:
+    title = ("# §44 rev 2: swap-subset gate recomputed under rulings 2-3" if rev >= 2
+             else "# §44 rev 1 §A: swap-subset feasibility gate")
+    L = [title, "",
+         "Data only (tokenizers, no forward pass). Spec: research/proposals/2026-10-29-exp44-patching.md rev 1 §A"
+         + (" with the rev 2 rulings 2 (per-row draw, cap 3) and 3 (number subtypes, same-type 'other')" if rev >= 2
+            else "") + "; rules in gate.json `rules` and in scripts/exp44_swap_gate.py. Counts only.", ""]
     for fam, d in per.items():
         t, g = d["tables"], d["gate"]
         L += [f"## {fam}", "", "| | dev (0-1) | confirmation (2-4) | all |", "|---|---|---|---|",
@@ -464,7 +575,11 @@ def markdown(per: dict) -> str:
         for s in t["exclusion_steps"]:
             L.append(f"| {s['exclusion']} | {s['removed']} | {s['remaining']} |")
         L += ["", f"Eligible by surface type (all): {t['by_surface_type']['all']}; population surface types: "
-                  f"{t['population_surface_types']}; distinct substitutes used: {t['distinct_substitutes']}.",
+                  f"{t['population_surface_types']}; distinct substitute rows used: {t['distinct_substitutes']}; "
+                  f"distinct substitute strings: {t['distinct_substitute_strings']}, maximum multiplicity "
+                  f"{t['max_substitute_multiplicity']} (most used: {t['top_substitutes']}); cap stats: "
+                  f"{t['cap_stats']}.",
+              f"Eligible by surface type x §23 label (all): {t['by_surface_type_and_label_all']}.",
               f"Regex vs normalised cross-check: {t['regex_vs_normalised']}; continuation split unstable: "
               f"{t['continuation_split_unstable']}.", "",
               f"Gate arithmetic: eligible folds 2-4 = {g['eligible_folds_2_4']} (need >= 50); question types with "
@@ -472,12 +587,25 @@ def markdown(per: dict) -> str:
               f"{g['inview_failures_folds_2_4']} (>= 30 proceed, 15-29 pool, < 15 stop); all 330: "
               f"{g['inview_failures_all_330']}. **Verdict: {g['verdict']}**"
               + ("" if fam == "qwen3b" else " (descriptive; the gate binds on Qwen 3B only)"), ""]
+        if rev >= 2 and fam == "qwen3b":
+            c = g["rev2_check"]
+            L += [f"Rev 2 check (5146f5b: the POOL verdict stands if >= 85 eligible and >= 40 failures on all 330): "
+                  f"eligible {c['eligible_all']}, failures {c['failures_all']} -> **{c['result']}**", ""]
+        if rev >= 2:
+            L += ["Rows excluded at the substitute step (no_substitute / first_token_equal):", ""]
+            L += [f"- {x['question_id']} f{x['fold']} {x['label']} [{x['type']}] {x['gold']!r}: {x['exclusion']}"
+                  for x in t["substitute_exclusions"]]
+            L += ["", "Eligible rows (gold -> substitute, type):", ""]
+            L += [f"- {e['question_id']} f{e['fold']} [{e['surface_type']}] {e['gold']!r} -> {e['substitute']!r}"
+                  for e in d["eligible"]]
+            L.append("")
     return "\n".join(L)
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=str(OUT))
+    ap.add_argument("--rev", type=int, default=2, choices=(1, 2))
     args = ap.parse_args(argv)
     from transformers import AutoTokenizer
 
@@ -494,18 +622,29 @@ def main(argv=None) -> int:
             tok = AutoTokenizer.from_pretrained(cfg.model_id)
             records, fn = llama_population(), (lambda p, tok=tok, cfg=cfg: F.chat_text(tok, cfg, p))
         assert len(records) == 330 and sum(r.fold < 2 for r in records) == 126, (fam, len(records))
-        res = evaluate(records, tok, fn)
+        res = evaluate(records, tok, fn, rev=args.rev)
         t = tables(res)
-        per[fam] = {"tables": t, "gate": gate(t)}
+        per[fam] = {"tables": t, "gate": gate(t, args.rev)}
+        if args.rev >= 2 and fam == "qwen3b":
+            ea = t["eligible"]["all"]
+            fa = t["by_label"]["all"]["refusal"] + t["by_label"]["all"]["wrong"]
+            per[fam]["gate"]["rev2_check"] = {
+                "eligible_all": ea, "failures_all": fa, "need": {"eligible_all": 85, "failures_all": 40},
+                "result": "verdict stands (POOL)" if ea >= 85 and fa >= 40 else "FLAG: Advisor re-reads the gate (rev 3)"}
+        if args.rev >= 2:
+            per[fam]["eligible"] = [{k: e[k] for k in ("question_id", "fold", "surface_type", "gold", "substitute")}
+                                    for e in res["eligible"]]
         with open(out / f"eligible_{fam}.jsonl", "w") as fh:
             for e in res["eligible"]:
                 fh.write(json.dumps({k: v for k, v in e.items() if not k.startswith("_")}) + "\n")
         print(fam, json.dumps(per[fam]["gate"]), flush=True)
-    payload = {"spec": "research/proposals/2026-10-29-exp44-patching.md rev 1 §A (D-45)", "seed": SEED,
-               "rules": RULES, "families": per,
+    rules = dict(RULES, **({"rev2": RULES_REV2} if args.rev >= 2 else {}))
+    payload = {"spec": "research/proposals/2026-10-29-exp44-patching.md rev 1 §A (D-45)"
+                       + (" + rev 2 rulings 2-3 (5146f5b)" if args.rev >= 2 else ""), "rev": args.rev, "seed": SEED,
+               "rules": rules, "families": per,
                "note": "Qwen 2.5 7B shares the Qwen 3B rows and prompts (exp44_patch.population asserts it)."}
     (out / "gate.json").write_text(json.dumps(payload, indent=1, ensure_ascii=False))
-    (out / "gate.md").write_text(markdown(per))
+    (out / "gate.md").write_text(markdown(per, args.rev))
     return 0
 
 

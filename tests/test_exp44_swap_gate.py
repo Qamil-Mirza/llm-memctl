@@ -125,3 +125,64 @@ def test_swap_inserts_the_substitute_surface_form():
     r = rec("a", lines, [lines[1]], "20%", q="By how much?")
     _, place = G.place_gold(r, G.Checker())
     assert G.swap_prompt(r, place, "8")[2] == "user, d2: rates rose 8 this year."
+
+
+# --- rev 2 rulings 2-3 ----------------------------------------------------------------------------------------------
+
+def test_number_subtypes_and_type_key():
+    assert [G.number_subtype(x) for x in ("$800", "20 dollars", "20%", "5 percent", "three months", "24 hours",
+                                          "30-minute", "10", "five", "10 pounds", "2-3 eggs")] == \
+        ["currency", "currency", "percent", "percent", "duration", "duration", "duration", "bare", "bare", "bare",
+         "bare"]
+    assert G.type_key("$800") == "number:currency" and G.type_key("$800", rev=1) == "number"
+    assert G.type_key("Paris") == "name" and G.type_key("June 3rd") == "date"
+
+
+def test_rev2_other_rules_and_cap():
+    tok = Tok()
+    lines = ["user, d1: hello", "user, d2: I keep it under my bed.", "user, d3: bye"]
+    r = rec("a", lines, [lines[1]], "under my bed", q="Where is it?")
+    _, place = G.place_gold(r, G.Checker())
+
+    def other(qid, gold, qtype="single-session-user"):
+        x = rec(qid, lines, [lines[1]], gold, fold=1)
+        return x._replace(question_type=qtype) if hasattr(x, "_replace") else \
+            __import__("dataclasses").replace(x, question_type=qtype)
+    pool = [r, other("b", "in the garage", "knowledge-update"),      # another question type: skipped
+            other("c", "In the garage"),                             # other capitalisation: skipped
+            other("d", "in the old blue garage shed"),               # +-1 token fails (rev 1's +-2 would too)
+            other("e", "in the attic")]
+    tinfo = {x.question_id: G.token_info(tok, x.gold) for x in pool}
+    types = {x.question_id: G.type_key(x.gold) for x in pool}
+    cand, why, prompt, _ = G.choose_substitute(r, place, pool, tinfo, types, G.Checker(), uses=G.Counter(), rev=2)
+    assert why is None and cand.question_id == "e" and "keep it in the attic." in prompt
+    # rev 1 ignores the question type and capitalisation: the first candidate is taken
+    assert G.choose_substitute(r, place, pool, tinfo, types, G.Checker(), rev=1)[0].question_id == "b"
+    # the cap: "in the attic" already used CAP times -> skipped; the row has no other candidate -> no_substitute
+    stats = G.Counter()
+    uses = G.Counter({"in the attic": G.CAP})
+    out = G.choose_substitute(r, place, pool, tinfo, types, G.Checker(), uses=uses, rev=2, stats=stats)
+    assert out[0] is None and out[1] == "no_substitute"
+    assert stats["cap_skips"] == 1 and stats["no_substitute_cap_only"] == 1
+    uses = G.Counter({"in the attic": G.CAP - 1})
+    assert G.choose_substitute(r, place, pool, tinfo, types, G.Checker(), uses=uses, rev=2)[0].question_id == "e"
+
+
+def test_rev2_per_row_draw_is_seeded_by_row_index():
+    recs = [rec(f"q{i}", ["user, d1: x"], ["user, d1: x"], "x", fold=i % 5) for i in range(20)]
+    recs = sorted(recs, key=lambda r: (r.fold, r.question_id))
+    a, b = G.row_candidates(recs, 3), G.row_candidates(recs, 3)
+    assert [x.question_id for x in a] == [x.question_id for x in b] and recs[3] not in a and len(a) == 19
+    ref = [r for j, r in enumerate(recs) if j != 3]
+    G.random.Random(44 + 3).shuffle(ref)
+    assert [x.question_id for x in a] == [x.question_id for x in ref]
+    assert [x.question_id for x in G.row_candidates(recs, 4)] != [x.question_id for x in a]
+
+
+def test_gate_rev2_edge_case_proceeds_with_caveat():
+    t = {"eligible": {"confirmation": 50}, "by_question_type": {"confirmation": {"a": 15, "b": 14}},
+         "by_label": {"confirmation": {"refusal": 14, "wrong": 12, "success": 0},
+                      "all": {"refusal": 19, "wrong": 20, "success": 0}}}
+    assert G.gate(t, rev=1)["verdict"].startswith("stop")
+    v = G.gate(t, rev=2)["verdict"]
+    assert v.startswith("pool") and "type-diversity caveat" in v
