@@ -92,3 +92,51 @@ citing the above as precedent.
 - Cite Lavi et al. and Walters et al. in EXPERIMENTS §38 and §43 (Executor, on the Advisor's word) and in the thesis
   outline. Verify the (unverified) items before any citation.
 - The contributions statement (`2026-10-29-contributions.md`) is updated to point here.
+
+## Addendum (2026-10-29, later): papers from the user's external review, verified by the Advisor from the primary pages
+
+- **Liu, Wang, Wang, Xiao & Lin 2026, *Broken Symmetry in LLM Refusal: Answer Release Is More Local Than Refusal
+  Restoration*, EMNLP 2026 main (2026.emnlp-main.2540).** The correct answer stays linearly recoverable after a clean
+  refusal; a single-position patch releases it; restoring refusal needs multi-position intervention; a mean
+  answer-to-refusal displacement vector is not a reliable reversible control. **Closest published neighbour of §38/§39:
+  "release is local" is now in print.** What remains ours: the in-context evidence setting, the grading of released
+  answers against the evidence-cut control and the note ceiling, the cross-family contrast (Qwen decision / Llama
+  upstream), and extractability-not-answerability.
+- **Ling et al. 2026, *LLM Abstention Can Be a Prompt Artifact, in Addition to Genuine Uncertainty*, EMNLP 2026 main
+  (2026.emnlp-main.549).** An added "Unknown" option (or a random word) cuts accuracy; the bias emerges with instruction
+  tuning and shows as a later-layer output override. **Bears directly on Qwen's in-view refusals.** Our §35 (frozen
+  note + "do not reply unknown": +0.176, half the matched gap) and §34b (part of the absence is the forced format)
+  already measure the prompt-artefact share; the record should cite Ling et al. and say so, and any new design must
+  carry a no-"unknown"-option arm as a control, not a finding.
+- **Kumaran, Daw, Osindero, Veličković & Pătrăucean 2026, *Causal evidence that language models use confidence to drive
+  behaviour*, Nature Machine Intelligence (doi 10.1038/s42256-026-01293-x; arXiv:2603.22161).** Steering an internal
+  confidence representation moves abstention; threshold-based policies; verbal confidence independent of log-prob.
+  "Has the answer but does not express it" is established as a mechanism class; our contribution must be the
+  evidence-grounded, graded version.
+- **Lavi, Milo & Geva, EACL 2026 (2026.eacl-long.29)** — the venue of the paper already listed above.
+- **Du & Hu 2026, *Recognition–Refusal Misalignment in LLMs*, EMNLP 2026 main (2026.emnlp-main.1078).** Math/code
+  impossibility, 1.7B–70B: a recognition direction nearly orthogonal to safety refusal; steering it moves
+  invalidity-aware behaviour; "routing, not encoding". Not evidence-in-context, but the recognition-vs-refusal
+  separation is the published form of our "the direction is not an answerability signal".
+- **Deswal 2026, *EviScope*, GroundLM 2026 workshop (2026.groundlm-1.20).** 40 quartets (evidence added / removed /
+  distracted / contradicted), behavioural only, Qwen2.5-7B, Llama 3.1 8B, Gemini. Our §34c evidence ablation is the
+  internal counterpart; a contradicted-evidence arm would be the natural addition to §44.
+- **Joad, Hawasly, Boughorbel, Durrani & Sencar 2026, *There Is More to Refusal in LLMs than a Single Direction*,
+  EMNLP 2026 main (2026.emnlp-main.2606).** Distinct refusal directions, one shared control knob under linear steering.
+  Matches our §41/§42 negative in kind.
+
+**Revised positioning of contribution 1.** Not "answers survive refusal and a one-position push releases them" (Liu et
+al.). Instead: in evidence-grounded refusals, the released answers are graded against an evidence-cut control and the
+model's own note, which separates a decision failure (Qwen 3B: release beats the note) from an upstream extraction
+failure (Llama 3B: release never beats the note), and the release direction's projection tracks extractability, not
+answerability. That distinction is motivated by §38–§43, **not yet established**: it rests on 13 Llama rows and one
+prompt family, and the user's review is right that it needs the controlled evidence-substitution design before it is
+claimed.
+
+**Design consequences (for the user's decision).** (i) §44 should gain an evidence-substitution condition on the rows
+where the gold appears verbatim in an evidence line: replace it with a same-type substitute, patch between the two
+evidence runs, and score whether the patched state moves the answer toward the donor evidence (logit difference gold
+vs substitute), which tests transfer of evidence-specific content rather than willingness to answer. (ii) A no-
+"unknown"-option arm (Ling et al.) as a standing control. (iii) Direction 6 (causal presence score) first, direction 1
+(evidence-to-answer pathway) as the central experiment, direction 3 (base vs instruct) as a control; directions 4, 5
+and 7 deferred, as the user's review recommends.
