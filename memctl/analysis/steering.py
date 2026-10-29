@@ -674,7 +674,8 @@ class HookedEngine:
 class HFEngine(HookedEngine):
     """transformers; fp32 on CPU (the laptop), bf16 on CUDA (the pod)."""
 
-    def __init__(self, model: str, threads: int = 8, family=None, weights: str | None = None) -> None:
+    def __init__(self, model: str, threads: int = 8, family=None, weights: str | None = None,
+                 dtype: str | None = None) -> None:
         """`family` (a memctl.analysis.families.FamilyConfig, §43) is None for every §38-§42 path, which keeps the
         Qwen behaviour unchanged. With a family: the tokenizer comes from `model` (the HF id), the weights from
         `weights` or `family.weights` (a local fp32 copy) or `model`; the layers from `family.layer_path`, the width
@@ -686,7 +687,8 @@ class HFEngine(HookedEngine):
         torch.set_num_threads(threads)
         self.torch, self.model, self.family = torch, model, family
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        dtype = torch.bfloat16 if self.device == "cuda" else torch.float32
+        # `dtype` (§44): 'bfloat16' / 'float32' overrides the device default (the 7B in bf16 on the laptop CPU)
+        dtype = getattr(torch, dtype) if dtype else (torch.bfloat16 if self.device == "cuda" else torch.float32)
         self.name = f"hf-transformers-{transformers.__version__}-{self.device}-{str(dtype).split('.')[-1]}"
         self.tokenizer = AutoTokenizer.from_pretrained(model)
         if family is None:
