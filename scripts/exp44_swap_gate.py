@@ -29,7 +29,9 @@ number (a range "5-2" / "2-3 eggs" / "3:1" counts every digit of the string), sa
 the number, "points", "-inch"; the unit need not match); (3) every kept type: leading determiner (the/a/an/my/our/his/
 her/their/its, membership case-insensitive, followed by at least one more word) the same word as written in G and S
 ("The" != "the": a case-only difference would put the read on the determiner), or absent in both;
-(4) the walk unchanged, so a row whose rev 3 substitute passes (2)-(3) keeps it: asserted against the recorded rev 3
+(5) (review 91f37cb) a candidate whose divergent read token for G or S has no letter or digit is rejected
+(rev8_reject_read_punct) and the walk goes on; no passing candidate = no_substitute. (4) the walk unchanged, so a
+row whose rev 3 substitute passes (2)-(3) and (5) keeps it: asserted against the recorded rev 3
 eligible set (runs/exp44_swapgate/eligible_qwen3b.jsonl), every unchanged row's eligible record identical; the changed
 rows are listed in gate.json `rev8_changes`.
 
@@ -187,6 +189,11 @@ def rev8_reject(gold: str, cand: str, type_: str) -> str | None:
     return None
 
 
+def has_alnum(token_text: str) -> bool:
+    """Rev 8 rule 5: the read token carries at least one letter or digit."""
+    return any(ch.isalnum() for ch in token_text)
+
+
 def type_key(gold: str, rev: int = 2) -> str:
     """The surface type a substitute must share: rev 1 = surface_type; rev 2 splits number into four subtypes."""
     t = surface_type(gold)
@@ -338,7 +345,7 @@ def token_info(tokenizer, text: str) -> dict:
     b = _ids(tokenizer, ANSWER_PREFIX + " " + text)
     stable = b[:len(a)] == a and len(b) > len(a)
     return {"n_tokens": len(answer), "leading": tuple(answer[:k - 1]), "first_id": int(first),
-            "content": tuple(answer[k - 1:]),
+            "content": tuple(answer[k - 1:]), "content_text": tuple(tokenizer.decode([t]) for t in answer[k - 1:]),
             "first_text": tokenizer.decode([first]), "cont_first_id": int(b[len(a)]) if stable else None,
             "cont_tail_equal": stable and b[len(a):] == answer}
 
@@ -407,10 +414,16 @@ def choose_substitute(record, place: dict, pool, tinfo: dict, types: dict, chk: 
             continue
         if rev >= 3:
             from memctl.analysis.swap import shared_prefix
-            _, gd, sd = shared_prefix(g["content"], c["content"])
+            pre, gd, sd = shared_prefix(g["content"], c["content"])
             if gd is None or sd is None:
                 passed_but_first = True
                 continue
+            if rev >= 8:     # rule 5 (review 91f37cb): a read token with no letter or digit is no read
+                k = len(pre)
+                if not (has_alnum(g["content_text"][k]) and has_alnum(c["content_text"][k])):
+                    if stats is not None:
+                        stats["rev8_reject_read_punct"] += 1
+                    continue
         elif c["first_id"] == g["first_id"]:
             passed_but_first = True
             continue
@@ -616,6 +629,8 @@ def rev8_changes(res: dict, rev3_rows: list[dict]) -> dict:
             other.append(q)
             continue
         why = rev8_reject(old["gold"], old["substitute"], old["surface_type"])
+        if why is None and not (has_alnum(old["gold_read_text"]) and has_alnum(old["substitute_read_text"])):
+            why = "read_punct"                                     # rule 5 (review 91f37cb)
         if why is None:
             assert q in new, f"rev 8: {q} keeps a passing rev 3 substitute {old['substitute']!r} but is {removed.get(q)}"
             assert new[q] == old, (q, {k: (old.get(k), new[q].get(k)) for k in set(old) | set(new[q])
@@ -782,6 +797,8 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=None, help="default runs/exp44_swapgate (rev 8: runs/exp44_swapgate/rev8)")
     ap.add_argument("--rev", type=int, default=3, choices=(1, 2, 3, 8))
+    ap.add_argument("--compare-to", default=None, help="rev 8: a previous rev 8 output dir; every eligible record not"
+                                                       " listed as differing must be identical (reported)")
     args = ap.parse_args(argv)
     from transformers import AutoTokenizer
 
@@ -820,6 +837,20 @@ def main(argv=None) -> int:
             rev3_rows = [json.loads(l) for l in REV3_ELIGIBLE.read_text().splitlines() if l.strip()]
             per[fam]["rev8_changes"] = rev8_changes(res, rev3_rows)
             per[fam]["rev8_changes"]["rev3_eligible_sha256"] = hashlib.sha256(REV3_ELIGIBLE.read_bytes()).hexdigest()
+            if args.compare_to:
+                prev8 = {json.loads(l)["question_id"]: json.loads(l) for l in
+                         (Path(args.compare_to) / "eligible_qwen3b.jsonl").read_text().splitlines() if l.strip()}
+                now8 = {e["question_id"]: public(e) for e in res["eligible"]}
+                diff = sorted(q for q in set(prev8) | set(now8) if prev8.get(q) != now8.get(q))
+                per[fam]["rev8_vs_previous"] = {"previous": args.compare_to, "n_previous": len(prev8),
+                                                "n_now": len(now8), "identical": len(set(prev8) & set(now8)) - sum(
+                                                    q in prev8 and q in now8 for q in diff),
+                                                "differing": [{"question_id": q, "before": prev8.get(q, {}).get(
+                                                    "substitute"), "after": now8.get(q, {}).get("substitute"),
+                                                    "after_read": [now8[q]["gold_read_text"],
+                                                                   now8[q]["substitute_read_text"]] if q in now8
+                                                    else None} for q in diff]}
+                print(fam, "rev 8 vs", args.compare_to, json.dumps(per[fam]["rev8_vs_previous"]), flush=True)
             print(fam, "rev 8 vs rev 3:", {k: v for k, v in per[fam]["rev8_changes"].items()
                                            if isinstance(v, int)}, flush=True)
         if args.rev >= 2:
@@ -839,6 +870,8 @@ def main(argv=None) -> int:
                          "determiner": f"first word in {list(DETERMINERS)} (membership case-insensitive, followed by"
                                        " another word): the same word as written in S ('The' != 'the', else the"
                                        " read is the determiner's case), or none in both; every kept type",
+                         "read_punct": "rule 5 (review 91f37cb): a candidate whose divergent read token for G or S"
+                                       " has no letter or digit is rejected (rev8_reject_read_punct), the walk goes on",
                          "walk": "unchanged (random.Random(44 + i), first passing candidate, cap 3); a rev 3 row"
                                  " whose substitute passes keeps it (record identity asserted)"}
     if args.rev >= 3:

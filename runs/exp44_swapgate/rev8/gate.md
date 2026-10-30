@@ -41,9 +41,9 @@ Exclusions in order of application (of 330):
 | first_token_equal | 0 | 70 |
 | alignment_failure | 0 | 70 |
 
-Eligible by surface type (all): {'number:duration': 7, 'name': 27, 'date': 4, 'number:bare': 27, 'number:currency': 4, 'number:percent': 1}; population surface types: {'number:bare': 73, 'other': 141, 'number:duration': 35, 'name': 48, 'number:currency': 20, 'date': 8, 'number:percent': 5}; distinct substitute rows used: 58; distinct substitute strings: 56, maximum multiplicity 3 (most used: [('emma', 3), ('harvard university', 2), ('10 pounds', 2), ('ikea', 2), ('jaipur rugs', 2), ('techcorp', 2), ('100', 2), ('five', 2)]); cap stats: {'rev8_reject_bare_unit': 29, 'rev8_reject_bare_digits': 159, 'rev8_reject_bare_form': 163, 'rev8_reject_determiner': 95}.
+Eligible by surface type (all): {'number:duration': 7, 'name': 27, 'date': 4, 'number:bare': 27, 'number:currency': 4, 'number:percent': 1}; population surface types: {'number:bare': 73, 'other': 141, 'number:duration': 35, 'name': 48, 'number:currency': 20, 'date': 8, 'number:percent': 5}; distinct substitute rows used: 58; distinct substitute strings: 56, maximum multiplicity 3 (most used: [('emma', 3), ('harvard university', 2), ('10 pounds', 2), ('ikea', 2), ('jaipur rugs', 2), ('techcorp', 2), ('100', 2), ('five', 2)]); cap stats: {'rev8_reject_bare_unit': 30, 'rev8_reject_bare_digits': 163, 'rev8_reject_bare_form': 164, 'rev8_reject_determiner': 95, 'rev8_reject_read_punct': 2}.
 Eligible by surface type x §23 label (all): {'date': {'success': 0, 'refusal': 2, 'wrong': 2}, 'name': {'success': 14, 'refusal': 6, 'wrong': 7}, 'number:bare': {'success': 15, 'refusal': 4, 'wrong': 8}, 'number:currency': {'success': 2, 'refusal': 1, 'wrong': 1}, 'number:duration': {'success': 7, 'refusal': 0, 'wrong': 0}, 'number:percent': {'success': 0, 'refusal': 1, 'wrong': 0}}.
-Regex vs normalised cross-check: {'checks': 875, 'disagreements': 0}; continuation split unstable: 0.
+Regex vs normalised cross-check: {'checks': 879, 'disagreements': 0}; continuation split unstable: 0.
 
 Gate arithmetic: eligible folds 2-4 = 43 (need >= 50); question types with >= 15 = {} (need >= 2); in-view failures folds 2-4 = 21 (>= 30 proceed, 15-29 pool, < 15 stop); all 330: 32. **Verdict: n/a under rev 8 (POOL fixed by rev 4; rev 1 arithmetic recorded beside)**
 
@@ -72,7 +72,7 @@ Changed-substitute rows (the only fresh evidence, honesty clause):
 - 3249768e f4 wrong [name] 'Absinthe': 'The Glass Menagerie' (fails determiner) -> 'Tom', read ' Abs' vs ' Tom'
 - 5809eb10 f4 success [number:bare] '2014.': '3,000 miles' (fails bare_unit) -> '1300', read '2' vs '1'
 - 5e1b23de f4 success [number:bare] '3': '25' (fails bare_digits) -> '5', read '3' vs '5'
-- c7dc5443 f4 refusal [number:bare] '5-2': '8 meals' (fails bare_digits) -> '50', read '-' vs '0'
+- c7dc5443 f4 refusal [number:bare] '5-2': '8 meals' (fails bare_digits) -> '10', read '5' vs '1'
 - ec81a493 f4 success [number:bare] '500': '3' (fails bare_digits) -> '100', read '5' vs '1'
 
 Lost rows (rev 3 substitute fails rev 8, no passing candidate):
@@ -81,7 +81,7 @@ Lost rows (rev 3 substitute fails rev 8, no passing candidate):
 
 Rev 2 check (5146f5b: the POOL verdict stands if >= 85 eligible and >= 40 failures on all 330): eligible 70, failures 32 -> **recorded for rev 4 (rev 3: POOL regardless; the 85 / 40 bar was a re-read trigger)**
 
-Rows with a non-empty shared prefix: 12 (prefixes {'6:': 2, '1': 2, ' $': 4, ' The': 3, '5': 1}):
+Rows with a non-empty shared prefix: 11 (prefixes {'6:': 2, '1': 2, ' $': 4, ' The': 3}):
 
 - 59524333 f0 wrong '6:00 pm' -> '6:45 AM': prefix '6:', read '0' vs '4'
 - 95bcc1c8 f0 success '10' -> '15': prefix '1', read '0' vs '5'
@@ -94,7 +94,6 @@ Rows with a non-empty shared prefix: 12 (prefixes {'6:': 2, '1': 2, ' $': 4, ' T
 - cc06de0d f3 refusal '$6' -> '$50': prefix ' $', read '6' vs '5'
 - 852ce960 f4 wrong '$400,000' -> '$25,000': prefix ' $', read '4' vs '2'
 - c19f7a0b f4 refusal '6:30 pm' -> '6:00 pm': prefix '6:', read '3' vs '0'
-- c7dc5443 f4 refusal '5-2' -> '50': prefix '5', read '-' vs '0'
 
 Rows excluded at the substitute step (no_substitute / first_token_equal / type_other_rev8):
 
@@ -192,7 +191,7 @@ Eligible rows (gold -> substitute, type):
 - 7a87bd0c f4 [number:duration] '4 weeks' -> '5.5 weeks'
 - 852ce960 f4 [number:currency] '$400,000' -> '$25,000'
 - c19f7a0b f4 [date] '6:30 pm' -> '6:00 pm'
-- c7dc5443 f4 [number:bare] '5-2' -> '50'
+- c7dc5443 f4 [number:bare] '5-2' -> '10'
 - d596882b f4 [name] 'By Chloe' -> 'Data Science'
 - dd2973ad f4 [date] '2 AM' -> '7 pm'
 - ec81a493 f4 [number:bare] '500' -> '100'

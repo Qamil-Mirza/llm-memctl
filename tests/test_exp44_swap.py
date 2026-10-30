@@ -628,3 +628,24 @@ def test_rev8_report_s1_wording_when_established():
     few = {"S1": sw.s1([_row("wrong", 3, -3)] * 10 + [_row("wrong", 0.2, 0.1)] * 10, samples=300)}
     out = rep.rev8_reads([], few, set(), 10)
     assert out["underpowered"] and not few["S1"]["established"]
+
+
+def test_rev8_rule5_rejects_a_read_token_without_letter_or_digit(engine):
+    """Review 91f37cb, the c7dc5443 case: "5-2" -> "50" shares " 5" and would read "-" vs "0"; it is skipped."""
+    import exp44_swap_gate as G
+    tok = engine.tokenizer
+    a, b, c = record("qa", gold="5-2"), record("qb", gold="50"), record("qc", gold="10")
+    pool = [a, b, c]
+    tinfo = {x.question_id: G.token_info(tok, x.gold) for x in pool}
+    types = {x.question_id: G.type_key(x.gold) for x in pool}
+    assert set(types.values()) == {"number:bare"}
+    _, place = G.place_gold(a, G.Checker())
+    cand3 = G.choose_substitute(a, place, [b, c], tinfo, types, G.Checker(), uses=G.Counter(), rev=3)[0]
+    assert cand3.question_id == "qb"                                    # rev 3 (and e60c8b5) took "50"
+    stats = G.Counter()
+    cand8, why, _, _ = G.choose_substitute(a, place, [b, c], tinfo, types, G.Checker(), uses=G.Counter(), rev=8,
+                                           stats=stats)
+    assert why is None and cand8.question_id == "qc" and stats["rev8_reject_read_punct"] == 1
+    out = G.choose_substitute(a, place, [b], tinfo, types, G.Checker(), uses=G.Counter(), rev=8, stats=G.Counter())
+    assert out[0] is None and out[1] == "no_substitute"                 # nothing else passes: no_substitute
+    assert G.has_alnum(" 5") and G.has_alnum("é") and not G.has_alnum("-") and not G.has_alnum(" ")

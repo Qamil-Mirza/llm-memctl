@@ -63,6 +63,7 @@
    "bare": "number:bare: same form (digit / word); digit-form same digit count of the leading number (range: every digit of the string); same unit presence (trailing word)",
    "bare_regex": "^(?:about\\s+|around\\s+|approximately\\s+)?(?:[$£€+-]\\s?)?(?P<num>\\d[\\d,]*(?:\\.\\d+)?|\\.\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|a hundred|a thousand|thousand|half|once|twice|a couple)(?P<range>\\s?[-:/x]\\s?\\d[\\d,]*(?:\\.\\d+)?)?(?P<unit>[\\s-][A-Za-z]+(?:\\s[A-Za-z]+)?)?\\.?$",
    "determiner": "first word in ['the', 'a', 'an', 'my', 'our', 'his', 'her', 'their', 'its'] (membership case-insensitive, followed by another word): the same word as written in S ('The' != 'the', else the read is the determiner's case), or none in both; every kept type",
+   "read_punct": "rule 5 (review 91f37cb): a candidate whose divergent read token for G or S has no letter or digit is rejected (rev8_reject_read_punct), the walk goes on",
    "walk": "unchanged (random.Random(44 + i), first passing candidate, cap 3); a rev 3 row whose substitute passes keeps it (record identity asserted)"
   },
   "rev3": {
@@ -277,19 +278,19 @@
      ]
     ],
     "cap_stats": {
-     "rev8_reject_bare_unit": 29,
-     "rev8_reject_bare_digits": 159,
-     "rev8_reject_bare_form": 163,
-     "rev8_reject_determiner": 95
+     "rev8_reject_bare_unit": 30,
+     "rev8_reject_bare_digits": 163,
+     "rev8_reject_bare_form": 164,
+     "rev8_reject_determiner": 95,
+     "rev8_reject_read_punct": 2
     },
     "shared_prefix": {
-     "n_nonempty": 12,
+     "n_nonempty": 11,
      "prefixes": {
       "6:": 2,
       "1": 2,
       " $": 4,
-      " The": 3,
-      "5": 1
+      " The": 3
      },
      "rows": [
       {
@@ -400,16 +401,6 @@
        "substitute": "6:00 pm",
        "prefix": "6:",
        "gold_read": "3",
-       "substitute_read": "0"
-      },
-      {
-       "question_id": "c7dc5443",
-       "fold": 4,
-       "label": "refusal",
-       "gold": "5-2",
-       "substitute": "50",
-       "prefix": "5",
-       "gold_read": "-",
        "substitute_read": "0"
       }
      ]
@@ -643,7 +634,7 @@
      }
     ],
     "regex_vs_normalised": {
-     "checks": 875,
+     "checks": 879,
      "disagreements": 0
     },
     "continuation_split_unstable": 0
@@ -1018,12 +1009,12 @@
       "gold": "5-2",
       "rev3_substitute": "8 meals",
       "rev3_fails": "bare_digits",
-      "rev8_substitute": "50",
+      "rev8_substitute": "10",
       "rev8_read": [
-       "-",
-       "0"
+       "5",
+       "1"
       ],
-      "shared_prefix": "5",
+      "shared_prefix": "",
       "read_differs_by_case_only": false,
       "label": "refusal"
      },
@@ -1103,6 +1094,23 @@
      "c19f7a0b",
      "d596882b",
      "dd2973ad"
+    ]
+   },
+   "rev8_vs_previous": {
+    "previous": "runs/exp44_swapgate/rev8_e60c8b5",
+    "n_previous": 70,
+    "n_now": 70,
+    "identical": 69,
+    "differing": [
+     {
+      "question_id": "c7dc5443",
+      "before": "50",
+      "after": "10",
+      "after_read": [
+       "5",
+       "1"
+      ]
+     }
     ]
    },
    "eligible": [
@@ -1573,7 +1581,7 @@
      "fold": 4,
      "surface_type": "number:bare",
      "gold": "5-2",
-     "substitute": "50"
+     "substitute": "10"
     },
     {
      "question_id": "d596882b",
