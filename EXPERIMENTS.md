@@ -7230,16 +7230,19 @@ differs by tokenizer (digits, articles). P1 is a forced position. The Llama Part
 **Spend so far.** Stage 0, stage 1 and the dev reads: $0 (laptop). Llama Part B pod: about $0.61; Gemma Part B pod:
 about $0.75; Phi Part B pod: about $0.75. All experiments ≈ $20.06 of $30.
 
-## 44. Is the answer at the answer position put there by the evidence? Activation patching and an evidence swap (2026-10-29, pre-registered; in progress)
+## 44. Is the answer at the answer position put there by the evidence? Activation patching and an evidence swap (2026-10-29, pre-registered; complete 2026-10-30)
 
-**Status: IN PROGRESS.**
+**Status: COMPLETE.**
 - **Rev 1, conditions S and U on Qwen 2.5 3B:** done.
   - **S0 FAILS** (34/46 = 0.739): the swap is not valid, and S1–S3 are not read.
   - **U1 reads "not the format":** 0.228 (21 of 92) of the 3B's in-view refusals become gold under U, 42% still refuse, and
     Steer-under-U − U is +0.152 (+0.065, +0.239).
 - **Llama 3B S/U:** done, descriptive by rev 2. S0 is valid (55/66 = 0.833); S1 is not reliably distinguishable (half-width 0.167 > 0.15).
-- **Rev 0 (clean → cut patching):** development done for both models. The 3B confirmation read is done (C3
-  undetermined); the 7B confirmation read is running.
+- **Rev 8, the repaired swap on Qwen 3B:** S0 FAILS on its lower bound (31/38 = 0.816 (0.684, 0.921)). The swap
+  manipulation did not reach validity on this prompt family in two designs; the swap line closes.
+- **Rev 0 (clean → cut patching):** confirmed for both models. 3B: C3 undetermined (median d_c 0.750). 7B (GPU read):
+  C1 undetermined, "both partly right" (median d_c 0.679 (0.643, 0.714)); C2 "carries little" (mean R at layer 13
+  0.005).
 
 Pre-registration `research/proposals/2026-10-29-exp44-patching.md`:
 - rev 0 at 6e21476;
@@ -7288,6 +7291,28 @@ filter; 10 are excluded for a gap under 1 nat, leaving 78 claim rows. None is R(
 finds it causally usable (per-row d_c − d_jlens median −0.139); the pre-registered under-read criterion (upper bound
 < 0.75) is missed by 0.028, so this is reported as undetermined. Report `runs/exp44_report_confirm_qwen3b.md`
 (b1b5c45; review 3d6ca32).
+
+**Rev 0 confirmation, Qwen 7B (folds 2–4, 204 rows, read on one A40 GPU in bf16; 2026-10-30).**
+- **C1 is undetermined ("both partly right"):** median d_c 0.679 (0.643, 0.714), n 83. The J-lens reading needed an
+  upper bound below 0.65 and the logit reading a lower bound above 0.70.
+- **C2: "carries little".** The mean R at layer 13, the §34 J-lens mid-stack depth, is 0.005 (−0.010, +0.020).
+- Rows: 96 in the used rank filter, 10 excluded for a gap under 1 nat, 3 R(0)-flagged (3.5%), so 83 claim rows.
+  R(L−1) passes on 86 of 86.
+- Robustness, with the flagged rows included: C1 is unchanged; C2 is −0.027.
+- Sensitivity, pre-declared as a hold rule: C1 is unchanged (a) with the 5 rows that flipped between devices excluded
+  (0.679 (0.643, 0.714), n 82; C2 0.003), and (b) with the median shifted by ±1 layer (0.643 or 0.714, the same
+  reading). So the verdict stands, and the laptop CPU read was stopped at 75 of 204 rows (rows kept).
+- Report: `runs/exp44_report_confirm_qwen7b_gpu.md` and `_sensitivity.md` (50eab42).
+
+So on the 7B, the mid-stack J-lens signal of §34 carries almost no causal weight at the answer position, and the
+evidence-dependent information becomes usable from about two-thirds of the depth. Neither lens's depth is confirmed
+as the causal one.
+
+**Device check (laptop CPU bf16 against pod CUDA bf16, 7B; 73 common rows, 36 patched on both).** d_c is equal on 34
+of 36 rows; the other two differ by −1 and +2 layers of 28. The maximum |R| difference is 0.142 (median over rows
+0.042). There is one eligibility flip (91b15a6e), two gap-sign flips, one 1-nat-gap flip and one R(0)-flag flip, and
+the largest |log p| difference is about 1.4 nat. This is bf16 drift between devices: small on the deciding statistic,
+able to move a row or two across the filter. Report `runs/exp44_patch/device_check_qwen7b.md` (cbffc52).
 
 **Rev 1: the evidence swap (S) and the no-"unknown" control (U), Qwen 3B, pooled over all 330 rows (rev 4).**
 
@@ -7356,14 +7381,29 @@ failures; U on 45 in-view refusals, all with a note.
   mismatches, 4 bare-number form mismatches and 2 generic "The". Following by type: date 4/4, name 20/22, currency
   3/3, duration 5/5, bare 14/18, other 9/14.
 
-No repaired rev is ordered. The user decides between a rev 8 (Qwen 3B only, with "other" substitutes dropped, bare
-numbers form-matched and the first content token read) and closing the swap line.
+**Rev 8: the repaired swap on Qwen 3B (D-47; pod, fp32).** This is a repaired design tested on the same rows after
+the fault was seen; nothing here is confirmatory.
+- The repair, rules 1–5: "other" substitutes dropped; bare numbers matched in form, digit count and unit presence; the
+  leading determiner matched; the shared-prefix read kept; punctuation-only read tokens rejected.
+- 70 rows. Labels 38 / 14 / 18 (success / refusal / wrong).
+- **S0: 31 of 38 = 0.816 (0.684, 0.921): not valid (lower bound below 0.70).**
+- Honesty split: changed-substitute rows 7 of 10; unchanged rows 24 of 28 (already known from rev 1).
+- The seven non-followers are now almost all small-number rows ("four" → "five", "five" → "four", "3" → "5",
+  "2" → "6", "2014." → "1300"), plus "Spotify" → "Emma" (a brand swapped for a person's name under the name rule) and
+  the duration row whose Δ_clean < 0. Small counts are plausibly answers the model computes or reads off elsewhere in
+  the prompt, so swapping the number string does not control them.
+- Descriptive only, since S0 failed: among the 32 failures, 26 are answer-production, 6 indeterminate and 0
+  evidence-use at 1 nat.
+
+**The swap manipulation did not reach validity on this prompt family in two designs; the evidence-use /
+answer-production split is not established by §44.**
 
 **Caveats.** One benchmark and prompt family; one forced position; first-token logit differences. The swap subset is
 biased toward extractive single-hop rows (§F). The 7B was run in bf16 on CPU. The rev 0 numbers above are development
 folds only.
 
-**Spend.** $0 (laptop). All experiments ≈ $20.06 of $30.
+**Spend.** Laptop runs $0; one A40 pod for the 7B confirmation and rev 8 (about 17 min, about $0.16). All
+experiments ≈ $20.22 of $30.
 
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
