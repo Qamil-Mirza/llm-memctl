@@ -7235,7 +7235,7 @@ about $0.75; Phi Part B pod: about $0.75. All experiments ≈ $20.06 of $30.
 **Status: IN PROGRESS.**
 - **Rev 1, conditions S and U on Qwen 2.5 3B:** done.
   - **S0 FAILS** (34/46 = 0.739): the swap is not valid, and S1–S3 are not read.
-  - **U1 reads "not the format":** 0.228 of the 3B's in-view refusals become gold under U, 42% still refuse, and
+  - **U1 reads "not the format":** 0.228 (21 of 92) of the 3B's in-view refusals become gold under U, 42% still refuse, and
     Steer-under-U − U is +0.152 (+0.065, +0.239).
 - **Llama 3B S/U:** running.
 - **Rev 0 (clean → cut patching):** development done for both models. The confirmation reads (folds 2–4) are pending.
@@ -7304,7 +7304,7 @@ them in-view failures. S took 2.7 h and U 1.4 h, on the laptop, $0.
 - The 3B's failures are mostly on rows where the swap does move the answer preference (29 of 43). That is the
   direction the thesis would predict, but the following test is not trusted on this subset.
 - Evidence-specific transfer (forward d_T 0.889, reverse 0.889, n 63) completes later than clean → cut recovery on the
-  same rows (d_c 0.778, n 26); the logit lens gives 0.917 and the J-lens 0.889 on those rows.
+  same rows (d_c 0.778, 26 development rows, unfiltered); the logit lens gives 0.917 and the J-lens 0.889 on those rows.
 - The rev 6 controls behaved. The donor difference patch and the difference-norm random perturbation stay at about 5%
   of the forward shift at d_T. S3 validity passed only on the pre-declared fallback (the donor's late-layer mean shift
   reaches 1.22 nat, above ±0.5 but below the 2-nat "still disruptive" flag).
