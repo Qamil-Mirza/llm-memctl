@@ -467,3 +467,8 @@ smoke on the pod (a 3-row run of each) before the full runs; D-30 fresh-venv bun
 user: about $0.50–1.00, hard stop $2.50 (≈ 4–5 h at $0.49–0.59/h); programme after this ≤ $22.56 of the $30 cap.**
 The Executor creates no pod until the user types the approval in its pane; it never leaves a pod billing while
 waiting on a question; it terminates and verifies with list-pods when both runs are copied back.
+
+**Rev 8 gate review (e60c8b5; `research/reviews/2026-10-30-exp44-rev8-gate.md`):** counts confirmed (70 rows; 47
+unchanged / 23 changed / 1 lost / 18 "other"). Determiner compared as written (accepted deviation). **Rule 5 added
+before any run:** a candidate whose divergent read token for G or S has no letter or digit is rejected and the walk
+continues (c7dc5443 "5-2" → "50" read "-" vs "0"); gate re-run, other 69 rows asserted identical.
