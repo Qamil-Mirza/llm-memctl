@@ -123,3 +123,12 @@ Toy prompts are not long-context memory; stage 3 is the bridge. The 56-prompt le
 refit may or may not pass it (the §34 eval runs again on the refit lens, reported, not a gate here). bf16 on the pod
 vs fp32 on the laptop: the smoke pins the final-layer top-1 on 3 cases. Readability is a top-10 statement about a
 linear readout, not evidence of use. Greedy decoding only. One model, one family; nothing here generalises.
+
+## Rev 1 (2026-10-30, build review 7573325; before any model run)
+
+Readability refined, not loosened: the space form counts at every position, the bare form only at the first
+generated token; the counted positions are the last prompt token and the answer span (F1: all generated tokens; F2
+and stage 3: tokens after "Answer:"), with "last prompt token only" and "any generated token" beside; F2 and stage 3
+generate up to 160 tokens, stopping after the Answer line; the **held** half decides, dev first for presentation,
+pooled beside. Quote revised to ≈ $1.35–1.65 (≈ 2.3–2.8 h); hard stop $2.50 unchanged. Review:
+`research/reviews/2026-10-30-exp45-build.md`.
