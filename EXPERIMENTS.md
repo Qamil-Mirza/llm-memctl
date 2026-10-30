@@ -7230,6 +7230,108 @@ differs by tokenizer (digits, articles). P1 is a forced position. The Llama Part
 **Spend so far.** Stage 0, stage 1 and the dev reads: $0 (laptop). Llama Part B pod: about $0.61; Gemma Part B pod:
 about $0.75; Phi Part B pod: about $0.75. All experiments ≈ $20.06 of $30.
 
+## 44. Is the answer at the answer position put there by the evidence? Activation patching and an evidence swap (2026-10-29, pre-registered; in progress)
+
+**Status: IN PROGRESS.**
+- **Rev 1, conditions S and U on Qwen 2.5 3B:** done.
+  - **S0 FAILS** (34/46 = 0.739): the swap is not valid, and S1–S3 are not read.
+  - **U1 reads "not the format":** 0.228 of the 3B's in-view refusals become gold under U, 42% still refuse, and
+    Steer-under-U − U is +0.152 (+0.065, +0.239).
+- **Llama 3B S/U:** running.
+- **Rev 0 (clean → cut patching):** development done for both models. The confirmation reads (folds 2–4) are pending.
+
+Pre-registration `research/proposals/2026-10-29-exp44-patching.md`:
+- rev 0 at 6e21476;
+- rev 1 at cfa7712: the thesis question and conditions S and U;
+- rev 2–4 at 5146f5b, 7acce03 and f9952b2: the swap gate and the shared-prefix rule;
+- rev 5 at f0ec6c7: the 1-nat gap on both filters, with R(0) a flag rather than a stop;
+- rev 6 at 31553f6: difference-matched controls;
+- rev 7 at 6f457fd: the filters fixed.
+
+Decisions: D-44 (the user's order) and D-45 (the thesis question). Reviews: `research/reviews/2026-10-29-exp44-build.md`,
+`research/reviews/2026-10-29-exp44-swap-build.md` and `research/reviews/2026-10-30-exp44-swap-qwen3b-results.md` (6230ac3).
+Code:
+- `memctl/analysis/patching.py`, `scripts/exp44_patch.py` and `scripts/exp44_report.py` (d1902f5, ffca6b2, 63bb3d2);
+- `scripts/exp44_swap_gate.py` (63882c1, 88b2a19, 0dcb155);
+- `memctl/analysis/swap.py`, `scripts/exp44_swap.py` and `scripts/exp44_swap_report.py` (dbd813e, 8f8589c, f22c8f8).
+
+**The question (D-45).** When a small model fails on a question whose evidence is in view, can a failure of evidence
+use (the evidence does not reach the answer computation) be told apart experimentally from a failure of answer
+production (the evidence-dependent information is at the answer position, but the response decision overrides it)?
+
+**Rev 0: clean → evidence-cut patching (laptop; development folds 0–1).**
+- Method: for each §34 row, the P1 residual of the clean run is written, layer by layer, into the evidence-cut run.
+  R(l) is the recovery of log p(gold first token) at the final layer, normalised between the cut and clean values.
+  The causal depth d_c is the first layer with R ≥ 0.5.
+- Filter (rev 5 and rev 7): clean rank ≤ 10, cut rank > 3, and lp_clean − lp_cut ≥ 1 nat (relaxed for both models,
+  since fewer than 40 dev rows passed the strict filter).
+- R(L−1) = 1 is asserted. |R(0)| ≥ 0.05 is a flag that excludes the row from the claims.
+
+| dev, folds 0–1 | Qwen 3B | Qwen 7B (bf16) |
+|---|---|---|
+| rows / patched | 126 / 126 (all) | 126 / 61 |
+| strict + gap / relaxed + gap | 30 / 52 | 38 / 59 |
+| excluded for gap < 1 nat inside the rank filter | 5 | 7 |
+| R(0)-flagged | 0 | 3 |
+| claim rows | 52 | 56 |
+| median d_c | 0.736 (0.667, 0.750) (C3) | 0.679 (0.643, 0.714) (C1) |
+| mean R at layer 13 (the §34 J-lens mid-stack depth) | – | 0.022 (0.001, 0.045) (C2) |
+
+On the development folds, the 7B's mid-stack J-lens signal carries almost no causal weight at the answer position
+(R ≈ 0.02 at layer 13), and the evidence-dependent recovery happens from about two-thirds of the depth. The
+confirmation reads are pending; no claim is made from these rows.
+
+**Rev 1: the evidence swap (S) and the no-"unknown" control (U), Qwen 3B, pooled over all 330 rows (rev 4).**
+
+- **S0 (validity) FAILS.** Among the 3B's successes in the swap subset, 34 of 46 follow the evidence (0.739 (0.609,
+  0.870), the same at the 0.5, 1 and 2 nat margins). The bar is ≥ 0.80 with a lower bound ≥ 0.70. The swap does not
+  control the answer reliably enough on this prompt family. Per §C, **S1–S3 are not read.**
+- **U1 (prompt artefact): "not the format".** U is the §35 frozen-note line with no "unknown" option, run on the 3B's
+  in-view refusals: 97 in scope, of which 92 carry a note to freeze; 5 have no note.
+  - Gold under U: 0.228 (0.152, 0.315), within the "not the format" bar (≤ 0.25, upper bound < 0.35).
+  - Under U, 42% of these refusals still refuse.
+  - The §38 push under U gets 0.380: Steer-under-U − U = +0.152 (+0.065, +0.239).
+  - On the 18 swap-subset refusals, U is 0.389 (descriptive).
+
+Swap subset and cost: 89 rows (the §A rules with rev 2's per-row substitutes and rev 3's shared-prefix rule), 43 of
+them in-view failures. S took 2.7 h and U 1.4 h, on the laptop, $0.
+
+**Descriptive notes (not claims, because S0 failed).**
+- Classes at 1 nat (answer production / evidence use / indeterminate):
+  - successes 34 / 4 / 8;
+  - refusals 13 / 1 / 7;
+  - wrong answers 16 / 2 / 4.
+- The 3B's failures are mostly on rows where the swap does move the answer preference (29 of 43). That is the
+  direction the thesis would predict, but the following test is not trusted on this subset.
+- Evidence-specific transfer (forward d_T 0.889, reverse 0.889, n 63) completes later than clean → cut recovery on the
+  same rows (d_c 0.778, n 26); the logit lens gives 0.917 and the J-lens 0.889 on those rows.
+- The rev 6 controls behaved. The donor difference patch and the difference-norm random perturbation stay at about 5%
+  of the forward shift at d_T. S3 validity passed only on the pre-declared fallback (the donor's late-layer mean shift
+  reaches 1.22 nat, above ±0.5 but below the 2-nat "still disruptive" flag).
+
+**Post-hoc, exploratory: why S0 failed (diagnosed after the outcome; not a result).** The 12 non-following successes
+split three ways. By surface type, following among successes is name 12/14, currency 2/2, duration 6/7, bare number
+10/15, other 4/8.
+1. **Type-incompatible substitutes (7 rows).** The "other" rule drew substitutes from the same question type, which
+   produced answers the question cannot take ("every week" → "under my bed", "Spotify" → "Emma", a year "2014." →
+   "3,000 miles"). A model that declines to copy an impossible answer is behaving correctly; these rows test the
+   substitute, not evidence use.
+2. **Generic first tokens (overlapping with 1).** The read token is the first divergent token: "2" of a year, "The",
+   "Chapter". On 2bf43736 and 5809eb10, the gold's log p under the swap is ≈ 0, because the question, not the
+   evidence, predicts that token.
+3. **Small bare numbers (4 rows).** "five" → "four", "3" → "25" and the like; Δ moves by only 0.2–1.0 nat.
+
+The one duration miss (19b5f2b3) has Δ_clean < 0, so it is uninformative. On name, currency and duration rows alone,
+following is 20/23 = 0.87. **That figure is selected after the outcome and cannot rescue S0.** It says what a repaired
+design would need: same-answer-type substitutes with a non-generic first content token. No redesign is made here;
+whether a repaired rev runs is the user's decision.
+
+**Caveats.** One benchmark and prompt family; one forced position; first-token logit differences. The swap subset is
+biased toward extractive single-hop rows (§F). The 7B was run in bf16 on CPU. The rev 0 numbers above are development
+folds only.
+
+**Spend.** $0 (laptop). All experiments ≈ $20.06 of $30.
+
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
 **Status: STOPPED at the regeneration sanity check; no gradient was computed.** Secondary to §34 (the J-lens
