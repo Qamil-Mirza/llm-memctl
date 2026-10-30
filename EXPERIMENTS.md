@@ -7237,7 +7237,7 @@ about $0.75; Phi Part B pod: about $0.75. All experiments ≈ $20.06 of $30.
   - **S0 FAILS** (34/46 = 0.739): the swap is not valid, and S1–S3 are not read.
   - **U1 reads "not the format":** 0.228 (21 of 92) of the 3B's in-view refusals become gold under U, 42% still refuse, and
     Steer-under-U − U is +0.152 (+0.065, +0.239).
-- **Llama 3B S/U:** running.
+- **Llama 3B S/U:** done, descriptive by rev 2. S0 is valid (55/66 = 0.833); S1 is not reliably distinguishable (half-width 0.167 > 0.15).
 - **Rev 0 (clean → cut patching):** development done for both models. The confirmation reads (folds 2–4) are pending.
 
 Pre-registration `research/proposals/2026-10-29-exp44-patching.md`:
@@ -7325,6 +7325,31 @@ The one duration miss (19b5f2b3) has Δ_clean < 0, so it is uninformative. On na
 following is 20/23 = 0.87. **That figure is selected after the outcome and cannot rescue S0.** It says what a repaired
 design would need: same-answer-type substitutes with a non-generic first content token. No redesign is made here;
 whether a repaired rev runs is the user's decision.
+
+**Rev 1 on Llama 3.2 3B (pooled over all 330 rows; descriptive by rev 2).** 90 swap rows, 24 of them in-view
+failures; U on 45 in-view refusals, all with a note.
+- **S0 is valid:** 55 of 66 successes follow the evidence (0.833 (0.742, 0.924), the same at every margin).
+- Classes at 1 nat (answer production / evidence use / indeterminate):
+  - successes 55 / 0 / 11;
+  - refusals 10 / 1 / 1;
+  - wrong answers 9 / 0 / 3.
+- **S1: not reliably distinguishable** (half-width 0.167 > 0.15; (a) indeterminate 0.167 ≤ 0.20 and (b) a margin move
+  of 0.042 both hold).
+  - Point estimate: 19 of 24 failures are answer-production and 1 of 24 evidence-use. That is the opposite of rev 1's
+    prediction for Llama (an evidence-use majority).
+  - Caveat, in the same breath: the swap subset is the verbatim single-line end of the population, where §43's
+    note-ceiling rows are under-represented. So the §43 Llama–Qwen contrast is not reproduced on this subset, rather
+    than refuted.
+- S2, descriptive: the push (layer 17, α 2) opens 3 of 10 answer-production refusals; there is 1 evidence-use refusal.
+- S3, descriptive: forward d_T 0.768 (0.750, 0.786), n 74; reverse 0.786. Validity on the pre-declared fallback.
+- **U1: "not the format".** Gold under U 0.089 (0.022, 0.178), n 45. 31 of the 45 still refuse. Steer-under-U − U
+  is +0.133 (+0.044, +0.244).
+- Post-hoc, exploratory: the 11 non-following successes fall in the same classes as Qwen's: 5 "other" type
+  mismatches, 4 bare-number form mismatches and 2 generic "The". Following by type: date 4/4, name 20/22, currency
+  3/3, duration 5/5, bare 14/18, other 9/14.
+
+No repaired rev is ordered. The user decides between a rev 8 (Qwen 3B only, with "other" substitutes dropped, bare
+numbers form-matched and the first content token read) and closing the swap line.
 
 **Caveats.** One benchmark and prompt family; one forced position; first-token logit differences. The swap subset is
 biased toward extractive single-hop rows (§F). The 7B was run in bf16 on CPU. The rev 0 numbers above are development
