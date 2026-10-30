@@ -344,7 +344,21 @@ def main(argv=None) -> int:
                    help="8: the rev 8 repaired gate (runs/exp44_swapgate/rev8), S only, out runs/exp44_swap/qwen3b_rev8")
     p.add_argument("--weights", default=None, help="load the model from this path (the D-30 / pod stub models)")
     p.add_argument("--dtype", default="float32", choices=("float32", "bfloat16"))
+    p.add_argument("--stub-force-follow", action="store_true",
+                   help="stub models only (needs --weights): every row 'follows' and the T sanity bound is off, so the"
+                        " patch passes and controls run on a random tiny model (the pod / D-30 code-path check)")
     args = p.parse_args(argv)
+    if args.stub_force_follow:
+        if not args.weights:
+            p.error("--stub-force-follow needs --weights (stub models only)")
+        real_base = sw.base_passes
+
+        def forced(engine, x):
+            row, state = real_base(engine, x)
+            row["follows"]["1"] = True
+            return row, state
+        sw.base_passes = forced
+        sw.check_patch_sanity = lambda row: None
     if args.gate_rev >= 8:
         if args.model != "qwen3b":
             p.error("--gate-rev 8 is Qwen 3B only (rev 8: Llama does not rerun)")

@@ -180,6 +180,8 @@ def main(argv=None) -> int:
     p.add_argument("--patch-all", action="store_true", help="patch every row, not only the filter-eligible ones")
     p.add_argument("--threads", type=int, default=8)
     p.add_argument("--out", default=None)
+    p.add_argument("--weights", default=None, help="load the model (and tokenizer) from this path instead (the §44 pod"
+                                                   " stub models); the stamp's model id is unchanged")
     args = p.parse_args(argv)
     folds = [int(f) for f in args.folds.split(",")]
     check_folds(folds, args.confirm)
@@ -196,7 +198,7 @@ def main(argv=None) -> int:
     from memctl.analysis.steering import HFEngine
 
     t0 = time.perf_counter()
-    engine = HFEngine(resolve_model(args.model), threads=args.threads, dtype=MODELS[args.model]["dtype"])
+    engine = HFEngine(args.weights or resolve_model(args.model), threads=args.threads, dtype=MODELS[args.model]["dtype"])
     load_s = time.perf_counter() - t0
     rss_after_load = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024
     print(f"loaded {args.model} ({engine.name}) in {load_s:.0f}s, peak RSS {rss_after_load:.0f} MB, "
