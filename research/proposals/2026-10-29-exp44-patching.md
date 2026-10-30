@@ -394,3 +394,19 @@ so a full-state overwrite could by itself clear T ≥ 0.5. The §B controls, as 
 Development-only observations, not readings: S0 following 4/6 among successes; d_T forward 0.889, reverse 0.889, on
 rows whose rev 0 d_c is about 0.75; two non-following successes are indeterminate (Δ moves, no flip). All on
 folds 0–1; no confirmation row has been read.
+
+## Rev 7 (2026-10-30): the rev 0 7B filter fixed; confirmation read of rev 0 authorised
+
+7B development run complete (7572906: 126 rows, 61 patched, 208 s/row bf16 CPU). Advisor recount from
+`runs/exp44_patch/qwen7b/*.json`: strict rank 39, **strict + gap 38 < 40**, so the pre-declared relaxation applies;
+relaxed rank 66, **relaxed + gap 59** (7 gap-excluded), 3 R(0)-flagged (0.050–0.067, gaps 2.5–4.7), **56 claim rows**.
+Report and recount agree. Development C1: median d_c 0.679 [0.643, 0.714] (n 56; flagged included 0.679, n 59);
+C2: mean R at layer 13 0.022 [0.001, 0.045]. Development readings only; they decide nothing.
+
+**Rulings.** (1) Both models read the **relaxed filter with the 1-nat gap** (3B 52 development rows, 7B 59; R(0)
+flags excluded with counts). (2) `FIXED_FILTER` and `CONFIRM_AUTHORISED` may now be flipped together, in one commit by
+the Executor. (3) The confirmation read of rev 0 (folds 2–4, 204 rows per model, eligible rows patched) is a single
+read per model, after which C1–C3 are read as written in §4 with the rev 1 and rev 5 amendments. (4) Order on the
+laptop: Qwen 3B S then U first (the user has asked for the swap results), then Llama 3B, then the rev 0
+confirmation reads (3B about 3 h, 7B about 7–12 h depending on the eligible share); the Executor reports the
+projected 7B confirmation time before starting it. No pod is involved unless the Advisor asks the user.
