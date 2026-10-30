@@ -7,6 +7,7 @@ Per prompt: the prompt, the generated text and outcome; per lens a heat map (lay
 entity's best rank over its forms (log10 rank, rank 1 darkest, clipped at 10^4; the dashed line is the last prompt
 token, everything right of it is generated); and the top-10 strip at the last prompt token and each generated token
 (the cell shows the top-1, its tooltip the top-10 with log-probs; a cell whose top-1 is a pinned entity is outlined).
+For F2 and stage 3 a dotted green line marks where the counted answer span starts (rev 1).
 Presentation only: nothing here changes a criterion. `--split dev` renders the dev half only (§3: read first).
 Writes <dir>/html/<key>.html and <dir>/html/index.html.
 """
@@ -61,7 +62,8 @@ def entity_rows(pinned: list[dict]) -> list[tuple[str, str, list[int]]]:
     return rows
 
 
-def heatmap_png(ranks: np.ndarray, layers, tokens: list[str], last_prompt: int, rows, title: str) -> str:
+def heatmap_png(ranks: np.ndarray, layers, tokens: list[str], last_prompt: int, rows, title: str,
+                answer_from: int | None = None) -> str:
     """Base64 PNG: one panel per entity, y = layer (final at top), x = position."""
     import matplotlib
     matplotlib.use("Agg")
@@ -75,6 +77,8 @@ def heatmap_png(ranks: np.ndarray, layers, tokens: list[str], last_prompt: int, 
         grid = np.log10(np.clip(ranks[:, :, cols].min(axis=-1), 1, 10 ** 4))
         im = ax.imshow(grid, aspect="auto", origin="lower", cmap="Blues_r", vmin=0, vmax=4, interpolation="nearest")
         ax.axvline(last_prompt + 0.5, color="#c0392b", lw=1, ls="--")
+        if answer_from is not None and answer_from > last_prompt:
+            ax.axvline(answer_from - 0.5, color="#1e8449", lw=1, ls=":")
         ax.set_ylabel("layer", fontsize=7)
         ax.set_title(label, fontsize=8, loc="left")
         step = max(1, n_pos // 120)
@@ -133,7 +137,10 @@ def render_one(payload: dict, arrays: dict, decode) -> str:
              "<h2>Generated</h2>", f"<pre>{html.escape(payload['generated_text'])}</pre>",
              "<details><summary>Prompt</summary>", f"<pre>{html.escape(payload.get('prompt', '') or '(see rows44.jsonl)')}</pre></details>"]
     for li, name in enumerate(payload["lens_names"]):
-        png = heatmap_png(arrays["ranks"][li], layers, tokens, lp, rows, f"{name}: best rank per layer and position")
+        counted = payload.get("counted_positions") or [lp]
+        span = [c for c in counted if c != lp]
+        png = heatmap_png(arrays["ranks"][li], layers, tokens, lp, rows, f"{name}: best rank per layer and position",
+                          answer_from=span[0] if span else None)
         parts += [f"<h2>{html.escape(name)}</h2>", f'<img alt="{html.escape(name)} rank heat map" src="data:image/png;base64,{png}">',
                   "<h3>Top-10 strip (last prompt token, generated tokens)</h3>",
                   strip_table(arrays["top_ids"][li], arrays["top_logp"][li].astype(np.float32), layers, tokens, lp, decode,

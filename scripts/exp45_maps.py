@@ -12,7 +12,9 @@ sha ddbdb32d...de21b), jrefit (the refit lens, used only when its sidecar says b
 lens. Outputs: <root>/<lens set>/stage<n>/<key>.npz (ranks, logp, top_ids, top_logp: [lens, layer, position, .];
 layers; positions; input_ids) and <key>.json (prompt, tokens, generated text, outcome, pinned ids, lens hashes),
 _timing.json, _failed.json. The lens set is "j56-jrefit-logit" or "j56-logit". Stage 1 runs the dev half first.
-A prompt counts as done only if its json carries the same lens hashes, chat sha, max_new and MAPS_VERSION.
+A prompt counts as done only if its json carries the same lens hashes, chat sha, max_new / max_new_note and
+MAPS_VERSION. Generation (rev 1): F1 16 new tokens; F2 and stage 3 up to 160, stopping at the end of the "Answer:"
+line; the outcome is graded on the Answer line when present, the whole output otherwise (marker recorded).
 Exit 5: smoke failed. 7: a lens does not fit the model. 8: nothing read and failures recorded. 9: stopped at the
 deadline (rows so far kept). Nothing here prints an outcome except --smoke / --write-reference (3 dev cases).
 """
@@ -37,7 +39,7 @@ from memctl.analysis import maps as M  # noqa: E402
 from memctl.analysis.jlens_readout import file_sha256  # noqa: E402
 
 MODEL_ID = "Qwen/Qwen2.5-3B-Instruct"
-MAPS_VERSION = "exp45_maps_v1"
+MAPS_VERSION = "exp45_maps_v2"      # rev 1: answer-line generation, answer span, counted positions
 CASES = Path("runs/exp45_maps/cases.jsonl")
 ROWS44 = Path("runs/exp45_maps/rows44.jsonl")
 ROOT_OUT = Path("runs/exp45_maps")
@@ -89,7 +91,9 @@ def refit_usable(lens_path: str | None) -> tuple[bool, str]:
 
 # ---------------------------------------------------------------------------------------------- inputs
 
-def case_inputs(tokenizer, case: dict, max_new: int) -> tuple[M.MapInputs, dict]:
+def case_inputs(tokenizer, case: dict, max_new: int, max_new_note: int = M.MAX_NEW_NOTE) -> tuple[M.MapInputs, dict]:
+    """F1: `max_new` tokens, every generated token in the answer span; F2: up to `max_new_note`, stopping at the end
+    of the "Answer:" line, the answer span after the marker (rev 1 rulings 2-3)."""
     from memctl.analysis.jacobian import wrap_chat
 
     chat = wrap_chat(tokenizer, case["prompt"])
@@ -98,7 +102,9 @@ def case_inputs(tokenizer, case: dict, max_new: int) -> tuple[M.MapInputs, dict]
             "format": case["format"], "hardness": case["hardness"], "base_index": case["base_index"],
             "prompt": case["prompt"], "prompt_sha256": case["prompt_sha256"], "gold": case["gold"],
             "competitors": case["competitors"], "intermediate": case["intermediate"], "pinned": case["pinned"]}
-    return M.MapInputs(case["case_id"], chat, ids, None, max_new), meta
+    if case["format"] == "F2":
+        return M.MapInputs(case["case_id"], chat, ids, None, max_new_note, "after_marker"), meta
+    return M.MapInputs(case["case_id"], chat, ids, None, max_new, "all"), meta
 
 
 def span_positions(tokenizer, chat: str, prompt: str, spans: list[tuple[int, int]]) -> list[int]:
@@ -114,7 +120,8 @@ def span_positions(tokenizer, chat: str, prompt: str, spans: list[tuple[int, int
     return keep
 
 
-def row44_inputs(tokenizer, row: dict, max_new: int) -> tuple[M.MapInputs, dict]:
+def row44_inputs(tokenizer, row: dict, max_new: int, max_new_note: int = M.MAX_NEW_NOTE) -> tuple[M.MapInputs, dict]:
+    """Stage 3: the §23 Note prompts, generated as F2 (rev 1 ruling 5); `max_new` is unused."""
     from memctl.analysis.jacobian import wrap_chat
 
     chat = wrap_chat(tokenizer, row["prompt"])
@@ -126,7 +133,7 @@ def row44_inputs(tokenizer, row: dict, max_new: int) -> tuple[M.MapInputs, dict]
     meta = {k: row[k] for k in ("key", "question_id", "fold", "kind", "prompt_sha256", "gold", "substitute",
                                 "label23", "question_type", "output23", "evidence_span", "question_span")}
     meta.update({"pinned": pinned, "pinned_dropped": dropped, "competitors": [row["substitute"]]})
-    return M.MapInputs(row["key"], chat, [p["id"] for p in pinned], positions, max_new), meta
+    return M.MapInputs(row["key"], chat, [p["id"] for p in pinned], positions, max_new_note, "after_marker"), meta
 
 
 # ---------------------------------------------------------------------------------------------- model
@@ -243,7 +250,9 @@ def main(argv=None) -> int:
     p.add_argument("--smoke", type=int, default=0, help="read the first N smoke cases and check them (exit 5 on failure)")
     p.add_argument("--reference", default=None, help="smoke: the laptop fp32 reference directory")
     p.add_argument("--write-reference", action="store_true", help="laptop: the 3 smoke cases, logit lens, -> --out")
-    p.add_argument("--max-new", type=int, default=M.MAX_NEW)
+    p.add_argument("--max-new", type=int, default=M.MAX_NEW, help="F1 new tokens (16)")
+    p.add_argument("--max-new-note", type=int, default=M.MAX_NEW_NOTE,
+                   help="F2 and stage 3: at most this many new tokens, stopping at the end of the Answer line (160)")
     p.add_argument("--k", type=int, default=M.K)
     p.add_argument("--device", default="auto")
     p.add_argument("--dtype", default="auto", help="auto: bfloat16 on CUDA, float32 on CPU")
@@ -281,7 +290,7 @@ def main(argv=None) -> int:
     hf, lens_model, tok, load_s = load(device, dtype, args.weights)
     lenses, shas = load_lenses(lens56, refit, lens_model, device)
     names = [n for n in M.LENS_NAMES if n in lenses]
-    stamp = {"maps_version": MAPS_VERSION, "lenses": shas, "max_new": args.max_new, "k": args.k,
+    stamp = {"maps_version": MAPS_VERSION, "lenses": shas, "max_new": args.max_new, "max_new_note": args.max_new_note, "k": args.k,
              "model": args.weights or MODEL_ID, "dtype": dtype, "device": device}
     if args.out:
         out = Path(args.out)
@@ -292,8 +301,7 @@ def main(argv=None) -> int:
     failed = read_json(out / "_failed.json", {}) or {}
     started, seconds, payloads, arrays_list, stopped = time.perf_counter(), {}, [], [], False
     for number, item in enumerate(items):
-        x, meta = build(tok, item, args.max_new)
-        x.max_new = args.max_new
+        x, meta = build(tok, item, args.max_new, args.max_new_note)
         stamp_i = dict(stamp, chat_sha256=M.sha256_text(x.chat_text))
         if not (args.smoke or args.write_reference) and is_done(out, x.key, stamp_i):
             continue

@@ -270,7 +270,7 @@ def runs(tok, tiny, cases, tmp_path_factory):
              "question_span": [prompt.index("Question:"), prompt.index("\n\nNote:")]} for i, k in ((0, "clean"), (0, "swap"))]
     (work / "rows44.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
     base = ["--lens56", str(d / "lens.pt"), "--allow-lens-sha", "--weights", str(d / "qwen3b"), "--device", "cpu",
-            "--cases", str(work / "cases.jsonl"), "--rows44", str(work / "rows44.jsonl"), "--max-new", "3"]
+            "--cases", str(work / "cases.jsonl"), "--rows44", str(work / "rows44.jsonl"), "--max-new", "3", "--max-new-note", "12"]
     res = {"work": work, "d": d}
     res["smoke"] = E.main(base + ["--smoke", "3", "--out", str(work / "smoke")])
     res["smoke_bad"] = E.main(base + ["--smoke", "1", "--out", str(work / "smoke_bad"), "--break-bos"])
@@ -297,7 +297,11 @@ def test_runner_smoke_resume_deadline_and_stage3(runs):
     names = sorted(p.name for p in s1.glob("*.json") if not p.name.startswith("_"))
     assert names[0].startswith("DE00_v0_F1_H0") and all(json.loads((s1 / n).read_text())["split"] == "dev" for n in names)
     payload = json.loads((s1 / names[0]).read_text())
-    assert payload["outcome"] in M.OUTCOMES and payload["stamp"]["maps_version"] == "exp45_maps_v1"
+    assert payload["outcome"] in M.OUTCOMES and payload["stamp"]["maps_version"] == "exp45_maps_v2"
+    f2 = json.loads((s1 / "DE00_v0_F2_H0.json").read_text())
+    assert f2["answer_span_rule"] == "after_marker" and f2["n_generated"] <= 12 and f2["max_new"] == 12
+    assert payload["answer_span_rule"] == "all" and payload["max_new"] == 3
+    assert payload["counted_positions"] == list(range(payload["last_prompt_index"], payload["n_tokens"]))
     assert set(payload["lens_sha256"]) == {"j56", "logit"}
     assert runs["s3"] == 0 and len(list((work / "maps/j56-logit/stage3").glob("q0_*.npz"))) == 2
 
@@ -344,3 +348,95 @@ def test_report_calls_criteria_by_task(tok):
     assert c["j56"]["b_intermediate"]["first_layer"] == 3 and c["j56"]["c_competitor"] is None
     payload["task"] = "DE"
     assert rep.calls(payload, {"ranks": ranks, "layers": np.arange(L)})["j56"]["b_intermediate"] is None
+
+
+# ---------------------------------------------------------------------------------------------- rev 1 rulings 1-3
+
+def test_ruling1_space_form_everywhere_bare_form_only_at_the_last_prompt_token():
+    # T columns: 0 = " York" (sp), 1 = "York" (bare); P = 5, last prompt token at index 2
+    r = np.full((4, 5, 2), 500, dtype=np.int32)
+    layers = [0, 1, 2, 3]
+    r[1, 4, 1] = 1                                   # bare form hit at a generated position: does not count
+    got = M.readability_rule(r, [0], [1], layers, [2, 3, 4], [2])
+    assert got["readable"] is False
+    r[2, 2, 1] = 4                                   # bare form at the last prompt token: counts
+    got = M.readability_rule(r, [0], [1], layers, [2, 3, 4], [2])
+    assert got == {"readable": True, "first_layer": 2, "first_depth": 0.5, "first_pos": 2, "best_rank": 4}
+    r[0, 3, 0] = 9                                   # space form at a counted generated position: earlier layer wins
+    assert M.readability_rule(r, [0], [1], layers, [2, 3, 4], [2])["first_layer"] == 0
+    assert M.readability(r, [0, 1], layers, 2)["first_layer"] == 0     # "either form anywhere" beside
+
+
+def test_ruling3_counted_positions_exclude_note_tokens():
+    r = np.full((3, 6, 1), 500, dtype=np.int32)
+    layers = [0, 1, 2]
+    r[1, 3, 0] = 2                                   # a note token (index 3), before the answer span (index 5)
+    assert M.readability_rule(r, [0], [], layers, [1, 5], [1])["readable"] is False          # fixed
+    assert M.readability_rule(r, [0], [], layers, [1], [1])["readable"] is False             # last prompt only
+    assert M.readability_rule(r, [0], [], layers, list(range(1, 6)), [1])["readable"] is True  # any generated
+    assert M.readability_rule(r, [], [], layers, [1], [1])["readable"] is None
+
+
+def test_answer_line_stop_rule_and_answer_start(tok):
+    assert not M.answer_line_done("Alice lives in Leeds. Answer: Leeds")
+    assert M.answer_line_done("Alice lives in Leeds.\nAnswer: Leeds\n")
+    assert not M.answer_line_done("Answer:\n") and M.answer_line_done("Answer:\nLeeds\n")
+    ids = tok("Alice lived in York, then Leeds.\nAnswer: Leeds\n", add_special_tokens=False).input_ids
+    j0 = M.answer_start_token(tok, ids)
+    assert tok.decode(ids[j0:]).strip() == "Leeds" and tok.decode(ids[:j0]).endswith("Answer:")
+    assert M.answer_start_token(tok, tok("no marker here", add_special_tokens=False).input_ids) is None
+
+
+@pytest.mark.parametrize("text, found", [("Note: Alice moved.\nAnswer: York\n", True), ("Note: Alice moved to", False)])
+def test_map_prompt_counts_the_answer_span_after_the_marker(tok, tiny, monkeypatch, text, found):
+    from memctl.analysis.jacobian import wrap_chat
+
+    model, lm, lens, _ = tiny
+    gen = tok(text, add_special_tokens=False).input_ids
+    seen = {}
+    def fake(hf, ids, max_new, eos, tokenizer=None, stop_after_answer=False):
+        seen.update(max_new=max_new, stop=stop_after_answer)
+        return list(gen)
+    monkeypatch.setattr(M, "generate_greedy", fake)
+    x = M.MapInputs("k", wrap_chat(tok, "Alice lived in Leeds.\n\nWhere?"), [100], None, 160, "after_marker")
+    payload, a = M.map_prompt(model, lm, tok, x, {"j56": lens, "logit": None})
+    lp = payload["last_prompt_index"]
+    assert seen == {"max_new": 160, "stop": True} and payload["answer_span_found"] is found
+    if found:
+        j0 = payload["answer_start_token"]
+        assert payload["counted_positions"] == [lp] + list(range(lp + j0, payload["n_tokens"]))
+        assert payload["position_tokens"][lp + j0].endswith(":")      # the marker's last token predicts the answer
+    else:
+        assert payload["counted_positions"] == [lp]
+
+
+def test_case_and_row_inputs_set_generation_by_format(tok, cases):
+    E = _script("exp45_maps")
+    by = {c["case_id"]: c for c in cases}
+    x1, _ = E.case_inputs(tok, by["DE00_v0_F1_H0"], 16)
+    x2, _ = E.case_inputs(tok, by["DE00_v0_F2_H0"], 16)
+    assert (x1.max_new, x1.answer_span) == (16, "all") and (x2.max_new, x2.answer_span) == (160, "after_marker")
+    prompt = "Intro.\n\n## Memory\nuser, d1: I live in York.\n\n## Current input\nQuestion: Where?\n\nNote:"
+    row = {"key": "q_clean", "question_id": "q", "fold": 0, "kind": "clean", "prompt": prompt, "prompt_sha256": "s",
+           "gold": "York", "substitute": "Leeds", "gold_read_id": 4261, "substitute_read_id": 32371, "label23": "x",
+           "question_type": "t", "output23": None, "evidence_span": [20, 40], "question_span": [60, 75]}
+    x3, _ = E.row44_inputs(tok, row, 16)
+    assert (x3.max_new, x3.answer_span) == (160, "after_marker")
+
+
+def test_report_variants_follow_the_rulings(tok):
+    rep = _script("exp45_report")
+    pinned = M.pin_tokens(tok, [("gold", "York")])
+    sp, bare = M.form_columns(pinned, "York")
+    ranks = np.full((4, 6, len(pinned)), 900, dtype=np.int32)
+    ranks[1, 3, sp[0]] = 2                           # note token (not counted)
+    ranks[2, 1, bare[0]] = 5                          # bare at a counted answer position that is not the last prompt
+    payload = {"pinned": pinned, "gold": "York", "last_prompt_index": 1, "counted_positions": [1, 5]}
+    layers = [0, 1, 2, 3]
+    assert rep.entity_call(ranks, pinned, ["York"], layers, payload)["first_layer"] == 2      # bare at lp counts
+    ranks[2, 1, bare[0]] = 900
+    ranks[2, 5, bare[0]] = 5
+    assert rep.entity_call(ranks, pinned, ["York"], layers, payload)["readable"] is False
+    assert rep.entity_call(ranks, pinned, ["York"], layers, payload, "any generated token")["first_layer"] == 1
+    assert rep.entity_call(ranks, pinned, ["York"], layers, payload, "either form anywhere")["readable"] is True
+    assert rep.entity_call(ranks, pinned, ["York"], layers, payload, "last prompt token only")["readable"] is False

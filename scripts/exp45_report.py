@@ -5,13 +5,16 @@ fit stability between the two J-lenses), stage 2 matched failures, stage 3 the �
     .venv/bin/python scripts/exp45_report.py --root runs/exp45_maps --half dev        # the dev half first (§3)
     .venv/bin/python scripts/exp45_report.py --root runs/exp45_maps --half all [--swap-dir runs/exp44_swap/qwen3b_rev8/S]
 
-Criteria (proposal §4-§5, fixed): readable = a pinned id of the entity in the lens top-10 at the last prompt token or
-any generated token, at any layer; (a) uses layers before the final layer only. (a) gold on every task type; (b) the
+Criteria (proposal §4-§5, rev 1 / review 2d7122f): readable = the entity's " X" id in the lens top-10 at a counted
+position (the last prompt token and the answer span: F1 every generated token, F2 and stage 3 the tokens after
+"Answer:"), or its bare "X" id at the last prompt token (which predicts the first generated token), at any layer; (a)
+uses layers before the final layer only. Beside: "last prompt token only", "any generated token", "either form
+anywhere". (a) gold on every task type; (b) the
 intermediate on RC (v0, v1, v3; in v2 the supervisor is the gold); (c) the competitor on TU. A criterion "recovers"
 when the share is >= 0.70 with the Wilson lower bound >= 0.55. Lens stability: the two J-lenses disagree on >= 0.20 of
 the (prompt, pinned entity) calls (before the final layer) -> "the 56-prompt lens is not stable". Stage 2: the
-pre-registered sentence per lens; fewer than 10 failures at H2 -> "too few failures on these tasks". Verdicts are
-printed for each half and pooled; the Advisor decides which line is read (dev is read first, §3).
+pre-registered sentence per lens; fewer than 10 failures at H2 -> "too few failures on these tasks". The HELD half
+decides every criterion (rev 1 ruling 4); dev is shown first (presentation only), pooled beside.
 Writes <root>/<lens set>/report_<half>.md and .json. Never writes into --swap-dir.
 """
 
@@ -48,26 +51,51 @@ def load_dir(d: Path, half: str = "all") -> list[tuple[dict, dict]]:
     return out
 
 
+VARIANTS = ("fixed", "last prompt token only", "any generated token", "either form anywhere")
+
+
+def _cols(pinned: list[dict], surfaces) -> tuple[list[int], list[int]]:
+    sp, bare = [], []
+    for surf in surfaces:
+        a, b = M.form_columns(pinned, surf)
+        sp += a
+        bare += b
+    return sp, bare
+
+
+def entity_call(r: np.ndarray, pinned: list[dict], surfaces, layers, payload: dict, variant: str = "fixed",
+                exclude_final: bool = False) -> dict:
+    """One readability call under the rev 1 rule. fixed: space form at the counted positions (last prompt token + the
+    answer span), bare form at the last prompt token (which predicts the first generated token); the beside variants
+    change only the positions (or, for "either form anywhere", use both forms everywhere from the last prompt token)."""
+    lp, P = payload["last_prompt_index"], r.shape[1]
+    sp, bare = _cols(pinned, surfaces)
+    if variant == "either form anywhere":
+        return M.readability(r, sp + bare, layers, lp, exclude_final=exclude_final)
+    counted = {"fixed": payload.get("counted_positions", list(range(lp, P))), "last prompt token only": [lp],
+               "any generated token": list(range(lp, P))}[variant]
+    return M.readability_rule(r, sp, bare, layers, counted, [lp], exclude_final=exclude_final)
+
+
 def calls(payload: dict, arrays: dict) -> dict:
-    """Per lens: the three criterion calls (None when the criterion does not apply), last-prompt-token-only gold
-    readability beside, and per entity the before-final call (for lens agreement)."""
-    pinned, layers, fp = payload["pinned"], [int(l) for l in arrays["layers"]], payload["last_prompt_index"]
-    gold = M.entity_columns(pinned, payload["gold"])
-    inter = M.entity_columns(pinned, payload["intermediate"]) if payload.get("intermediate") else []
-    comps = [c for s in payload.get("competitors", []) for c in M.entity_columns(pinned, s)]
+    """Per lens and variant: the three criterion calls (None when the criterion does not apply); per entity the fixed
+    before-final call (for lens agreement)."""
+    pinned, layers = payload["pinned"], [int(l) for l in arrays["layers"]]
+    inter = [payload["intermediate"]] if payload.get("intermediate") else []
+    comps = list(payload.get("competitors", []))
     surfaces = list(dict.fromkeys(p["surface"] for p in pinned))
     out = {}
     for li, name in enumerate(payload["lens_names"]):
         r = arrays["ranks"][li]
-        lpt = r[:, fp:fp + 1, :]
-        out[name] = {
-            "a_gold": M.readability(r, gold, layers, fp, exclude_final=True),
-            "b_intermediate": M.readability(r, inter, layers, fp) if (payload.get("task") == "RC" and inter) else None,
-            "c_competitor": M.readability(r, comps, layers, fp) if (payload.get("task") == "TU" and comps) else None,
-            "gold_last_prompt_only": M.readability(lpt, gold, layers, 0, exclude_final=True),
-            "entities": {s: M.readability(r, M.entity_columns(pinned, s), layers, fp, exclude_final=True)["readable"]
-                         for s in surfaces},
-        }
+        out[name] = {"entities": {s: entity_call(r, pinned, [s], layers, payload, exclude_final=True)["readable"]
+                                  for s in surfaces}}
+        for v in VARIANTS:
+            suffix = "" if v == "fixed" else f" | {v}"
+            out[name]["a_gold" + suffix] = entity_call(r, pinned, [payload["gold"]], layers, payload, v, exclude_final=True)
+            out[name]["b_intermediate" + suffix] = (entity_call(r, pinned, inter, layers, payload, v)
+                                                    if (payload.get("task") == "RC" and inter) else None)
+            out[name]["c_competitor" + suffix] = (entity_call(r, pinned, comps, layers, payload, v)
+                                                  if (payload.get("task") == "TU" and comps) else None)
     return out
 
 
@@ -85,32 +113,31 @@ def criterion_table(items: list[tuple[dict, dict, dict]], lens_names: list[str])
         sub = [(p, c) for p, _, c in items if p.get("task") == task]
         for lens in lens_names:
             for crit in CRITERIA:
-                vals = [c[lens][crit] for _, c in sub if c[lens][crit] is not None]
-                if vals:
-                    table[task][lens][crit] = share_row([v["readable"] for v in vals], [v["first_depth"] for v in vals])
-            lpo = [c[lens]["gold_last_prompt_only"] for _, c in sub]
-            if lpo:
-                table[task][lens]["a_gold_last_prompt_only (beside)"] = share_row([v["readable"] for v in lpo],
-                                                                                  [v["first_depth"] for v in lpo])
+                for v in VARIANTS:
+                    key = crit if v == "fixed" else f"{crit} | {v}"
+                    vals = [c[lens][key] for _, c in sub if c[lens][key] is not None]
+                    if vals:
+                        table[task][lens][key] = share_row([x["readable"] for x in vals], [x["first_depth"] for x in vals])
     return json.loads(json.dumps(table))
 
 
 def lens_agreement(items: list[tuple[dict, dict, dict]]) -> dict | None:
     """Readability-call agreement j56 vs jrefit per (prompt, entity), and the Spearman correlation of the two lenses'
-    trajectories (log rank, layers before the final, positions from the last prompt token), per (prompt, entity)."""
+    trajectories (log rank of the entity's best form, layers before the final, the counted positions), per (prompt,
+    entity). The calls are the fixed rule's."""
     agree, total, rhos = 0, 0, []
     for p, a, c in items:
         if "j56" not in c or "jrefit" not in c:
             continue
         i56, ir = p["lens_names"].index("j56"), p["lens_names"].index("jrefit")
-        fp = p["last_prompt_index"]
+        counted = p.get("counted_positions", list(range(p["last_prompt_index"], a["ranks"].shape[2])))
         for s in c["j56"]["entities"]:
             x, y = c["j56"]["entities"][s], c["jrefit"]["entities"][s]
             total += 1
             agree += int(x == y)
             cols = M.entity_columns(p["pinned"], s)
-            ra = np.log(a["ranks"][i56, :-1, fp:, :][:, :, cols].min(-1))
-            rb = np.log(a["ranks"][ir, :-1, fp:, :][:, :, cols].min(-1))
+            ra = np.log(a["ranks"][i56, :-1, counted, :][:, :, cols].min(-1))
+            rb = np.log(a["ranks"][ir, :-1, counted, :][:, :, cols].min(-1))
             rho = M.spearman(ra, rb)
             if rho is not None:
                 rhos.append(rho)
@@ -121,6 +148,20 @@ def lens_agreement(items: list[tuple[dict, dict, dict]]) -> dict | None:
             "stable": disagree < 0.20, "verdict": "stable" if disagree < 0.20 else "the 56-prompt lens is not stable",
             "spearman_median": float(np.median(rhos)) if rhos else None,
             "spearman_quartiles": M.quartiles(rhos), "n_trajectories": len(rhos)}
+
+
+def fixed_trajectory(r: np.ndarray, payload: dict) -> np.ndarray:
+    """Per layer, the gold's best rank under the fixed rule (space form at the counted positions, bare form at the
+    last prompt token)."""
+    lp = payload["last_prompt_index"]
+    sp, bare = _cols(payload["pinned"], [payload["gold"]])
+    counted = payload.get("counted_positions", list(range(lp, r.shape[1])))
+    parts = []
+    if sp:
+        parts.append(r[:, counted, :][:, :, sp].min(axis=(1, 2)))
+    if bare:
+        parts.append(r[:, [lp], :][:, :, bare].min(axis=(1, 2)))
+    return np.minimum.reduce(parts)
 
 
 def stage2(all_items: list[tuple[dict, dict, dict]], lens_names: list[str]) -> dict:
@@ -142,9 +183,8 @@ def stage2(all_items: list[tuple[dict, dict, dict]], lens_names: list[str]) -> d
             layers = [int(l) for l in a["layers"]]
             for lens in lens_names:
                 fi, si = p["lens_names"].index(lens), pair[0]["lens_names"].index(lens)
-                f_t = M.gold_trajectory(a["ranks"][fi], M.entity_columns(p["pinned"], p["gold"]), p["last_prompt_index"])
-                s_t = M.gold_trajectory(pair[1]["ranks"][si], M.entity_columns(pair[0]["pinned"], pair[0]["gold"]),
-                                        pair[0]["last_prompt_index"])
+                f_t = fixed_trajectory(a["ranks"][fi], p)
+                s_t = fixed_trajectory(pair[1]["ranks"][si], pair[0])
                 row["departure_layer"][lens] = M.departure_layer(f_t, s_t, layers)
                 row.setdefault("gold_traj", {})[lens] = {"failure": f_t.tolist(), "pair": s_t.tolist()}
         pairs.append(row)
@@ -173,6 +213,7 @@ def stage3(items: list[tuple[dict, dict]], swap_dir: Path | None) -> list[dict]:
             s_row = json.loads((swap_dir / f"{p['question_id']}.json").read_text())
         layers, fp = [int(l) for l in a["layers"]], p["last_prompt_index"]
         entry = {"key": p["key"], "kind": p["kind"], "label23": p["label23"], "outcome": p["outcome"],
+                 "answer_marker": p.get("answer_marker"), "answer_span_found": p.get("answer_span_found"),
                  "generated": p["generated_text"][:60], "cls_1nat": (s_row or {}).get("cls", {}).get("1"),
                  "d_T_fwd": (s_row or {}).get("d_T_fwd"), "lenses": {}}
         for li, lens in enumerate(p["lens_names"]):
@@ -180,14 +221,13 @@ def stage3(items: list[tuple[dict, dict]], swap_dir: Path | None) -> list[dict]:
             entry["lenses"][lens] = {}
             for role in ("gold", "substitute", "unknown"):
                 surf = M.role_surfaces(p["pinned"], role)
-                cols = [c for s in surf for c in M.entity_columns(p["pinned"], s)]
-                if not cols:
+                if not surf:
                     continue
-                lpt = M.readability(r[:, fp:fp + 1, :], cols, layers, 0)
-                gen = M.readability(r, cols, layers, fp)
+                lpt = entity_call(r, p["pinned"], surf, layers, p, "last prompt token only")
+                gen = entity_call(r, p["pinned"], surf, layers, p, "fixed")
                 entry["lenses"][lens][role] = {"best_rank_last_prompt": lpt["best_rank"],
                                                "first_top10_layer_last_prompt": lpt["first_layer"],
-                                               "readable_any": gen["readable"], "first_layer_any": gen["first_layer"]}
+                                               "readable_fixed": gen["readable"], "first_layer_fixed": gen["first_layer"]}
         rows.append(entry)
     return rows
 
@@ -198,15 +238,22 @@ def _f(x, nd=2):
 
 def markdown(rep: dict) -> str:
     L = [f"# §45 report ({rep['lens_set']}, half: {rep['half']})", "",
-         "Descriptive. Readable = a pinned id in the lens top-10 at the last prompt token or a generated token "
-         "(criterion (a): before the final layer). A miss is 'not recovered by this lens', never 'not computed'.", ""]
+         "Descriptive. Readable (fixed, rev 1) = the entity's space-form id in the lens top-10 at a counted position "
+         "(the last prompt token and the answer span: F1 every generated token, F2 / stage 3 the tokens after "
+         "'Answer:'), or its bare-form id at the last prompt token; criterion (a) before the final layer. Rows marked "
+         "'| ...' are descriptive beside. A miss is 'not recovered by this lens', never 'not computed'. **The held half "
+         "decides**; dev is shown first for presentation, pooled beside.", "",
+         "Caveat: in F2 the memory lines carry dates that increase with line order, so in TU the timestamp order is "
+         "a second update cue beside the wording (a format effect, which F2 is there to show).", ""]
     s1 = rep["stage1"]
     L += [f"## Stage 1: solved prompts ({s1['n_solved']} of {s1['n_prompts']})", "",
-          "Outcomes: " + json.dumps(s1["outcomes"]), ""]
+          "Outcomes: " + json.dumps(s1["outcomes"]),
+          "Answer marker present (format|present): " + json.dumps(s1["answer_marker_by_format"]), ""]
+    label = {"dev": "dev (presentation only)", "held": "held (decides)", "all": "pooled (beside)"}
     for scope in ("dev", "held", "all"):
         if scope not in s1["tables"]:
             continue
-        L += [f"### {scope}", "", "| task | lens | criterion | n | readable | share | Wilson 95% | verdict | first depth q1/q2/q3 |",
+        L += [f"### {label[scope]}", "", "| task | lens | criterion | n | readable | share | Wilson 95% | verdict | first depth q1/q2/q3 |",
               "|---|---|---|---|---|---|---|---|---|"]
         for task, by_lens in s1["tables"][scope].items():
             for lens, by_c in by_lens.items():
@@ -233,12 +280,12 @@ def markdown(rep: dict) -> str:
         L.append(f"| {r['key']} | {r['outcome']} | {r['ambiguous']} | {r['answer_marker']} | {r['pair'] or '-'} | "
                  f"{json.dumps(r['departure_layer'])} | {r['generated'].replace('|', '/').replace(chr(10), ' ')} |")
     L += ["", f"## Stage 3: the §44 rev 8 rows ({len(rep['stage3'])} prompts)", "",
-          "| key | §23 | §44 class (1 nat) | d_T fwd | outcome | lens: gold / substitute / unknown best rank at the last prompt token | generated |",
-          "|---|---|---|---|---|---|---|"]
+          "| key | §23 | §44 class (1 nat) | d_T fwd | outcome | marker | lens: gold / substitute / unknown best rank at the last prompt token | generated |",
+          "|---|---|---|---|---|---|---|---|"]
     for r in rep["stage3"]:
         lens_txt = "; ".join(f"{lens} " + "/".join(_f(v.get(role, {}).get("best_rank_last_prompt")) for role in ("gold", "substitute", "unknown"))
                              for lens, v in r["lenses"].items())
-        L.append(f"| {r['key']} | {r['label23']} | {r['cls_1nat'] or '-'} | {_f(r['d_T_fwd'])} | {r['outcome']} | {lens_txt} | "
+        L.append(f"| {r['key']} | {r['label23']} | {r['cls_1nat'] or '-'} | {_f(r['d_T_fwd'])} | {r['outcome']} | {r['answer_marker']} | {lens_txt} | "
                  f"{r['generated'].replace('|', '/').replace(chr(10), ' ')} |")
     return "\n".join(L) + "\n"
 
@@ -274,6 +321,8 @@ def main(argv=None) -> int:
                       "outcomes": dict(Counter(x[0]["outcome"] for x in items1)),
                       "outcomes_by_task_format": {"|".join(k): v for k, v in sorted(Counter(
                           (x[0]["task"], x[0]["format"], x[0]["outcome"]) for x in items1).items())},
+                      "answer_marker_by_format": {"|".join(map(str, k)): v for k, v in sorted(Counter(
+                          (x[0]["format"], bool(x[0].get("answer_marker"))) for x in items1).items())},
                       "tables": tables, "lens_agreement": lens_agreement(solved),
                       "lens_agreement_all_prompts": lens_agreement(items1)},
            "stage2": stage2(items1, lens_names), "stage3": stage3(items3, swap_dir),

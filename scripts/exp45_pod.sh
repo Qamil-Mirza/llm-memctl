@@ -15,7 +15,8 @@
 # map path with j56 + logit: lens shape, finite ranks, BOS count, the final-layer top-1 at the last prompt token
 # equal to the laptop fp32 read in runs/exp45_maps/smoke_ref; exit 5 before any full run) -> stage A refit (a second
 # 3B J-lens, 128 WikiText prompts, minimum 96, seed 1, §34 settings: dim batch 32, max_seq_len 128, skip_first 16,
-# chunk 4; time box min(75 min, what is left after MAPS_RESERVE_S)) -> stage B maps: stage 1 (864 prompts, dev half
+# chunk 4; time box min(75 min, what is left after MAPS_RESERVE_S)) -> stage B maps (rev 1: F1 16 new tokens; F2 and
+# stage 3 up to 160, stopping at the end of the "Answer:" line): stage 1 (864 prompts, dev half
 # first) with j56 + jrefit + logit when the refit sidecar says below_minimum false, else j56 + logit -> stage 3 (the
 # 140 §44 rev 8 prompts) -> the §34 lens eval on the refit lens (reported, not a gate) -> status -> pod.done.
 # Deadlines: HARD_STOP_S (default 14400 s) after start all model work ends; the maps runs stop between prompts before
@@ -33,7 +34,7 @@ TRANSFORMERS_VERSION=5.17.0
 HARD_STOP_S="${HARD_STOP_S:-14400}"
 SELF_STOP_S="${SELF_STOP_S:-15000}"
 FIT_MAX_MIN="${FIT_MAX_MIN:-75}"
-MAPS_RESERVE_S="${MAPS_RESERVE_S:-4200}"     # stage 1 (~25-35 min) + stage 3 (~10 min) + eval (~5 min), with margin
+MAPS_RESERVE_S="${MAPS_RESERVE_S:-5400}"     # rev 1: stage 1 (~40-60 min) + stage 3 (~15 min) + eval (~5 min)
 STUB_BREAK="${STUB_BREAK:-}"
 export RUNPOD_POD_ID="${RUNPOD_POD_ID:-}"
 if [ "$ENGINE" = stub ]; then
@@ -218,7 +219,7 @@ REFIT_ARG=""; [ -e "$LENSES/qwen3b.pt" ] && REFIT_ARG="--lens-refit $LENSES/qwen
 # reserves kept after stage 1 for stage 3 + eval, and after stage 3 for the eval (stub: none, so a short HARD_STOP_S
 # cuts stage 1 itself, which the D-30 deadline test needs)
 EVAL_RESERVE=$([ "$ENGINE" = stub ] && echo 0 || echo 300)
-S3_RESERVE=$([ "$ENGINE" = stub ] && echo 0 || echo 900)
+S3_RESERVE=$([ "$ENGINE" = stub ] && echo 0 || echo 1500)   # rev 1 ruling 5
 R1=0
 run_step maps_stage1 $(( $(left) - S3_RESERVE - EVAL_RESERVE )) $PY scripts/exp45_maps.py --stage 1 --lens56 "$L56" $SHA_FLAG $REFIT_ARG $W \
   --device "$DEV" --root "$MAPS_ROOT" --deadline $(( DEADLINE - S3_RESERVE - EVAL_RESERVE )) $STUB_LIMIT || R1=$?

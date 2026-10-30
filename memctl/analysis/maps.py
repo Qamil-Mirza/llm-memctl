@@ -17,9 +17,15 @@ whole output when there is none (as memctl.agents.llm.LLMAgent); gold = score_an
 competitor = the same test against a competitor, abstain = memctl.metrics.is_refusal with neither hit, other = the
 rest (both gold and a competitor, or a refusal beside a hit, is "other" with ambiguous=True).
 
-Readability (fixed by the proposal, §4): a pinned entity is readable on a prompt if one of its pinned ids is in the
-lens top-10 at the last prompt token or at any generated token, at any layer ("before the final layer" for the gold
-criterion (a)); the first layer and the position of first readability are recorded.
+Readability (proposal §4 as refined by rev 1, build review 2d7122f): a pinned entity is readable on a prompt if its
+" X" (space-form) id is in the lens top-10 at a counted position, or its bare "X" id is in the top-10 at the position
+that predicts the first generated token (the last prompt token: the readout at position p is the distribution over
+token p+1), at any layer ("before the final layer" for the gold criterion (a)). Counted positions: the last prompt
+token and the answer span, i.e. every position from the one that predicts the first answer token to the last
+generated token (F1: all generated tokens; F2 and stage 3: the tokens after "Answer:", none when the marker is
+absent). First readability = the earliest layer with a hit at a counted position (the earliest such position on it).
+Beside: "last prompt token only", "any generated token" (the same form rule, every generated position) and "either
+form anywhere" (both forms at every position from the last prompt token on).
 
 ``torch`` and ``jlens`` are imported only inside the functions that run a model.
 """
@@ -42,7 +48,9 @@ DETERMINERS = ("the", "a", "an")
 FORMS = ("sp", "bare")
 OUTCOMES = ("gold", "competitor", "other", "abstain")
 K = 10
-MAX_NEW = 16
+MAX_NEW = 16                 # F1 (rev 1 ruling 2)
+MAX_NEW_NOTE = 160           # F2 and stage 3: up to 160 new tokens, stopping at the end of the "Answer:" line
+ANSWER_MARKER = "answer:"
 MAX_SEQ_LEN = 4096
 LENS_NAMES = ("j56", "jrefit", "logit")      # array order; a run without the refit lens has ("j56", "logit")
 
@@ -180,6 +188,44 @@ def readability(ranks: np.ndarray, columns: Sequence[int], layers: Sequence[int]
             "first_pos": from_pos + pi, "best_rank": best}
 
 
+def form_columns(pinned: list[dict], surface: str) -> tuple[list[int], list[int]]:
+    """(space-form columns, bare-form columns) of one surface; an id that is both (digits) is in both lists."""
+    cols = entity_columns(pinned, surface)
+    return [i for i in cols if "sp" in pinned[i]["forms"]], [i for i in cols if "bare" in pinned[i]["forms"]]
+
+
+def readability_rule(ranks: np.ndarray, sp_cols: Sequence[int], bare_cols: Sequence[int], layers: Sequence[int],
+                     counted: Sequence[int], bare_at: Sequence[int], *, k: int = K, exclude_final: bool = False) -> dict:
+    """The rev 1 call: the space-form ids at the `counted` positions, the bare-form ids at the `bare_at` positions
+    (indices into the stored positions). Same return as `readability`."""
+    if not sp_cols and not bare_cols:
+        return {"readable": None, "first_layer": None, "first_depth": None, "first_pos": None, "best_rank": None}
+    layers = list(layers)
+    n_layers = int(layers[-1]) + 1
+    sub = ranks[:-1] if exclude_final else ranks
+    use = layers[:-1] if exclude_final else layers
+    P = ranks.shape[1]
+    best = np.full((sub.shape[0], P), np.iinfo(np.int64).max, dtype=np.int64)
+    if sp_cols and len(counted):
+        idx = list(counted)
+        best[:, idx] = np.minimum(best[:, idx], sub[:, idx, :][:, :, list(sp_cols)].min(-1))
+    if bare_cols and len(bare_at):
+        idx = list(bare_at)
+        best[:, idx] = np.minimum(best[:, idx], sub[:, idx, :][:, :, list(bare_cols)].min(-1))
+    considered = sorted(set(counted if sp_cols else []) | set(bare_at if bare_cols else []))
+    if not considered:
+        return {"readable": False, "first_layer": None, "first_depth": None, "first_pos": None, "best_rank": None}
+    view = best[:, considered]
+    hit = view <= k
+    b = int(view.min())
+    if not hit.any():
+        return {"readable": False, "first_layer": None, "first_depth": None, "first_pos": None, "best_rank": b}
+    li = int(np.argmax(hit.any(axis=1)))
+    pi = considered[int(np.argmax(hit[li]))]
+    layer = int(use[li])
+    return {"readable": True, "first_layer": layer, "first_depth": layer / n_layers, "first_pos": pi, "best_rank": b}
+
+
 def gold_trajectory(ranks: np.ndarray, columns: Sequence[int], from_pos: int) -> np.ndarray:
     """Per layer, the best rank of an entity over the positions from `from_pos` on (the stage 2 comparison line)."""
     return ranks[:, from_pos:, :][:, :, list(columns)].min(axis=(1, 2))
@@ -260,6 +306,7 @@ class MapInputs:
     pinned_ids: list[int]
     positions: list[int] | None = None
     max_new: int = MAX_NEW
+    answer_span: str = "all"           # "all" (F1: every generated token) or "after_marker" (F2, stage 3)
 
 
 def lens_to(lens, device) -> None:
@@ -275,17 +322,51 @@ def lens_mismatch(lens, lens_model) -> str | None:
     return None
 
 
-def generate_greedy(hf_model, input_ids: list[int], max_new: int, eos_ids: Sequence[int]) -> list[int]:
-    """Greedy continuation ids (the EOS, if produced, is kept as the last id)."""
+def answer_line_done(text: str) -> bool:
+    """True once the text holds an "Answer:" marker followed by a non-empty answer and the end of that line."""
+    marker = text.lower().rfind(ANSWER_MARKER)
+    if marker < 0:
+        return False
+    lines = text[marker + len(ANSWER_MARKER):].split("\n")
+    return any(line.strip() for line in lines[:-1])          # a non-empty answer line that has been terminated
+
+
+def generate_greedy(hf_model, input_ids: list[int], max_new: int, eos_ids: Sequence[int], tokenizer=None,
+                    stop_after_answer: bool = False) -> list[int]:
+    """Greedy continuation ids (the EOS, if produced, is kept as the last id). `stop_after_answer`: stop once the
+    generated text completes its "Answer:" line (the newline token is kept)."""
     import torch
+    import transformers
 
     device = next(hf_model.parameters()).device
     ids = torch.tensor([input_ids], dtype=torch.long, device=device)
+    n0 = len(input_ids)
+    criteria = None
+    if stop_after_answer:
+        class AnswerLine(transformers.StoppingCriteria):
+            def __call__(self, seq, scores, **kwargs):
+                done = answer_line_done(tokenizer.decode(seq[0, n0:].tolist(), skip_special_tokens=True))
+                return torch.full((seq.shape[0],), done, dtype=torch.bool, device=seq.device)
+        criteria = transformers.StoppingCriteriaList([AnswerLine()])
     with torch.no_grad():
         out = hf_model.generate(ids, attention_mask=torch.ones_like(ids), max_new_tokens=max_new, do_sample=False,
                                 temperature=None, top_p=None, top_k=None, eos_token_id=list(eos_ids),
-                                pad_token_id=list(eos_ids)[0])
-    return [int(t) for t in out[0, len(input_ids):].tolist()]
+                                pad_token_id=list(eos_ids)[0], stopping_criteria=criteria)
+    return [int(t) for t in out[0, n0:].tolist()]
+
+
+def answer_start_token(tokenizer, gen_ids: Sequence[int]) -> int | None:
+    """Index of the first generated token that starts after the last "Answer:" marker (None: no marker, or nothing
+    after it). Char offsets come from decoding growing prefixes."""
+    text = tokenizer.decode(list(gen_ids), skip_special_tokens=True)
+    marker = text.lower().rfind(ANSWER_MARKER)
+    if marker < 0:
+        return None
+    end = marker + len(ANSWER_MARKER)
+    for j in range(len(gen_ids)):
+        if len(tokenizer.decode(list(gen_ids[:j]), skip_special_tokens=True)) >= end:
+            return j
+    return None
 
 
 def torch_ranks(logits, token_ids: Sequence[int], chunk: int = 4):
@@ -337,7 +418,9 @@ def map_prompt(hf_model, lens_model, tokenizer, x: MapInputs, lenses: dict, *, k
     if eos_ids is None:
         eos_ids = [t for t in {tokenizer.convert_tokens_to_ids("<|im_end|>"), tokenizer.eos_token_id} if t is not None]
     t_gen = time.perf_counter()
-    gen_ids = generate_greedy(hf_model, prompt_ids, x.max_new, eos_ids) if x.max_new > 0 else []
+    note = x.answer_span == "after_marker"
+    gen_ids = (generate_greedy(hf_model, prompt_ids, x.max_new, eos_ids, tokenizer, stop_after_answer=note)
+               if x.max_new > 0 else [])
     gen_s = time.perf_counter() - t_gen
     full = prompt_ids + gen_ids
     last_prompt = len(prompt_ids) - 1
@@ -374,10 +457,22 @@ def map_prompt(hf_model, lens_model, tokenizer, x: MapInputs, lenses: dict, *, k
                     r = readout_layer(lens_model.unembed(resid), x.pinned_ids, k)
                 ranks[ni, li], logp[ni, li], top_ids[ni, li], top_lp[ni, li] = r
     gen_text = tokenizer.decode(gen_ids, skip_special_tokens=True)
+    lp_index = positions.index(last_prompt)
+    # counted positions (indices into `positions`): the last prompt token and the answer span, i.e. from the position
+    # predicting the first answer token (generated token j0 is predicted at sequence position last_prompt + j0) on
+    if note:
+        j0 = answer_start_token(tokenizer, gen_ids)
+        span = [] if j0 is None else list(range(lp_index + j0, len(positions)))
+    else:
+        j0 = 0
+        span = list(range(lp_index, len(positions)))
+    counted = sorted({lp_index} | set(span))
     bos_like = {t for t in (getattr(tokenizer, "bos_token_id", None), tokenizer.convert_tokens_to_ids("<|endoftext|>"))
                 if t is not None}
     payload = {"key": x.key, "n_prompt_tokens": len(prompt_ids), "n_generated": len(gen_ids), "n_tokens": len(full),
-               "generated_ids": gen_ids, "generated_text": gen_text, "last_prompt_index": positions.index(last_prompt),
+               "generated_ids": gen_ids, "generated_text": gen_text, "last_prompt_index": lp_index,
+               "answer_span_rule": x.answer_span, "answer_start_token": j0, "answer_span_found": j0 is not None,
+               "counted_positions": counted, "max_new": x.max_new,
                "lens_names": names, "n_layers": lens_model.n_layers, "layers": layers, "k": k,
                "n_bos": sum(1 for t in prompt_ids if t in bos_like),
                "first_id": prompt_ids[0], "chat_sha256": sha256_text(x.chat_text),
