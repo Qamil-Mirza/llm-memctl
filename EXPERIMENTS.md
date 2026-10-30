@@ -7238,7 +7238,8 @@ about $0.75; Phi Part B pod: about $0.75. All experiments ≈ $20.06 of $30.
   - **U1 reads "not the format":** 0.228 (21 of 92) of the 3B's in-view refusals become gold under U, 42% still refuse, and
     Steer-under-U − U is +0.152 (+0.065, +0.239).
 - **Llama 3B S/U:** done, descriptive by rev 2. S0 is valid (55/66 = 0.833); S1 is not reliably distinguishable (half-width 0.167 > 0.15).
-- **Rev 0 (clean → cut patching):** development done for both models. The confirmation reads (folds 2–4) are pending.
+- **Rev 0 (clean → cut patching):** development done for both models. The 3B confirmation read is done (C3
+  undetermined); the 7B confirmation read is running.
 
 Pre-registration `research/proposals/2026-10-29-exp44-patching.md`:
 - rev 0 at 6e21476;
@@ -7280,6 +7281,13 @@ production (the evidence-dependent information is at the answer position, but th
 On the development folds, the 7B's mid-stack J-lens signal carries almost no causal weight at the answer position
 (R ≈ 0.02 at layer 13), and the evidence-dependent recovery happens from about two-thirds of the depth. The
 confirmation reads are pending; no claim is made from these rows.
+
+**Rev 0 confirmation, Qwen 3B (folds 2–4, 204 rows; 2026-10-30).** C3 is undetermined. 88 rows are in the used rank
+filter; 10 are excluded for a gap under 1 nat, leaving 78 claim rows. None is R(0)-flagged, and R(L−1) passes on 78 of
+78. The median d_c is 0.750 (0.722, 0.778). The lens places the 3B's answer about 0.15 of the stack later than patching
+finds it causally usable (per-row d_c − d_jlens median −0.139); the pre-registered under-read criterion (upper bound
+< 0.75) is missed by 0.028, so this is reported as undetermined. Report `runs/exp44_report_confirm_qwen3b.md`
+(b1b5c45; review 3d6ca32).
 
 **Rev 1: the evidence swap (S) and the no-"unknown" control (U), Qwen 3B, pooled over all 330 rows (rev 4).**
 
