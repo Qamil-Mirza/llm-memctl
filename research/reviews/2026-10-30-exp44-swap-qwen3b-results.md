@@ -76,3 +76,14 @@ user's decision; nothing is proposed here.
    figure labelled as selected after the outcome.
 3. No new intervention and no rerun of S without the user's decision (D-45 stopping rule).
 4. Llama 3B S/U continues as ordered (its S0 is read the same way); then the rev 0 confirmation reads (3B, then 7B).
+
+## Addendum: EXPERIMENTS.md §44 text at 117955b — ACCEPT with two wording edits
+
+Status block order is as ruled (S0 FAIL → swap not valid → S1–S3 not read → U1 → the rest). The rev 0 development
+table may stay above the rev 1 block: it is a different condition, and ruling 1 concerned the S/U result. Numbers
+checked against the files: 34/46, 0.739, classes 34/4/8, 13/1/7, 16/2/4, 29/43, U 0.228 / 0.424 / 0.380 / +0.152,
+rev 0 table (30/52, 38/59, 5/7, 0/3, 52/56, 0.736, 0.679, 0.022), d_T 0.889, d_c 0.778, lenses 0.917 / 0.889. Two
+edits: (1) write "21 of 92" beside 0.228 in the Status block; (2) the "d_c 0.778, n 26" beside d_T is the median over
+all patched development rows of the swap set, not filter rows (filter rows alone: n 17, same median 0.778) — say
+"26 development rows, unfiltered". With those, §44 is accepted as the in-progress text; it closes when Llama 3B S/U
+and the rev 0 confirmation reads are in.
