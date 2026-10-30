@@ -55,3 +55,7 @@ Llama is **descriptive throughout** by the rev 2 gate (24 in-view failures < 30)
    a pre-registered rev 8 on Qwen 3B only, about 2.7 h on the laptop, $0. Under D-45 the Advisor does not order it;
    the user chooses between that and closing the swap line with the documented outcome.
 4. Rev 0 confirmation reads proceed as ordered (3B running; 7B after the projection).
+
+## Addendum: EXPERIMENTS.md §44 Llama block at baee708 — ACCEPT
+
+All numbers and wordings as ruled (S0 55/66; S1 not reliably distinguishable with the 19/24 vs 1/24 point estimate and the subset caveat in the same bullet; U1 4/45 with 31/45 still refusing; post-hoc classes and type breakdown; "the user decides" sentence). No edits.
