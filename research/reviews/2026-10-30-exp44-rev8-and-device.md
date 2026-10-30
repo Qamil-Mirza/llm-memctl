@@ -51,3 +51,13 @@ of d_c over ≈ 55 rows) and able to move a row or two across the filter.
    under (a) and (b), it stands and **the laptop run is stopped** (rows kept; the device check is the record).
 4. C3 (3B) was read on the laptop CPU; no change.
 5. The §44 text carries one device paragraph with the numbers above.
+
+## Addendum: 7B GPU confirmation report (50eab42) and EXPERIMENTS.md §44 at a8ababc — ACCEPT, no edits
+
+Advisor recount from `runs/exp44_patch/qwen7b_gpu/*.json`: rank filter 96, gap-excluded 10, R(0)-flagged 3, claim rows
+83, patched 86, R(L−1) 86/86; **C1 median d_c 0.679 (0.643, 0.714) n 83 = undetermined**; **C2 mean R(13) 0.005
+(−0.010, 0.020)**; flagged included 0.679 / −0.027; sensitivity (a) n 82 0.679 (0.643, 0.714), C2 0.003; quartiles
+0.643 / 0.679 / 0.750; 6 % of rows ≥ 0.85. Every number in the report and the §44 text matches. The hold rule was
+applied as written: verdict unchanged under (a) and (b), laptop run stopped at 75/204 (process confirmed gone from
+the Advisor pane). §44 text: header and status COMPLETE, 3B and 7B confirmation blocks, device paragraph, rev 8 block
+with the required lines verbatim, spend ≈ $20.22. Accepted without edits. Record changes follow (pre-approved, D-47).
