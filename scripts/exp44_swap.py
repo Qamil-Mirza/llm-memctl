@@ -22,6 +22,12 @@ Exit 7 (rev 6): the output directory holds S / U rows stamped with another metho
 controls of runs/exp44_swap/smoke/): resume REFUSES rather than redoing them, so old-control rows are never mixed with
 or overwritten by new ones; use a fresh --out. The --smoke default is now runs/exp44_swap/smoke_rev6/<model> (the rev 1
 smoke under runs/exp44_swap/smoke/ stays as the record).
+
+Rev 8 (83fe60a, D-47): --gate-rev 8 reads runs/exp44_swapgate/rev8/ (Qwen 3B only), writes S to
+runs/exp44_swap/qwen3b_rev8/S/ (default --out runs/exp44_swap/qwen3b_rev8), stamps rows with
+swap.method_sha256(gate_rev=8) (so they never mix with the rev 6 rows), and runs no U (U and Llama do not rerun).
+    .venv/bin/python scripts/exp44_swap.py --model qwen3b --gate-rev 8 --pooled --check-inputs
+    .venv/bin/python scripts/exp44_swap.py --model qwen3b --gate-rev 8 --pooled           # S only, fp32
 """
 
 from __future__ import annotations
@@ -47,6 +53,8 @@ from memctl.analysis import swap as sw  # noqa: E402
 MODELS = {"qwen3b": {"id": "Qwen/Qwen2.5-3B-Instruct", "family": None, "refusal": F.QWEN3B},
           "llama3b": {"id": F.LLAMA3B.model_id, "family": F.LLAMA3B, "refusal": F.LLAMA3B}}
 GATE_DIR = Path("runs/exp44_swapgate")
+GATE_DIRS = {3: GATE_DIR, 8: GATE_DIR / "rev8"}
+REV8_OUT = "qwen3b_rev8"
 OUT = Path("runs/exp44_swap")
 DEV_FOLDS = (0, 1)
 POOL_AUTHORISED = True    # rev 4 (f9952b2): POOL on all 330 rows; the swap set is fixed from here
@@ -54,9 +62,9 @@ REFUSED, SANITY, GATE_MISMATCH, OLD_METHOD = 2, 3, 5, 7
 SMOKE_DIR = "smoke_rev6"     # rev 6: new controls; runs/exp44_swap/smoke/ keeps the rev 1 smoke
 
 
-def check_method(out: Path) -> None:
+def check_method(out: Path, gate_rev: int = 3) -> None:
     """Refuse (exit 7) if any S / U row under `out` carries a method_sha256 other than the current one."""
-    want = sw.method_sha256()
+    want = sw.method_sha256(gate_rev)
     stale = []
     for sub in ("S", "U"):
         for path in sorted((out / sub).glob("*.json")) if (out / sub).exists() else []:
@@ -92,12 +100,13 @@ def load_population(model: str):
     return G.qwen_population() if model == "qwen3b" else G.llama_population()
 
 
-def load_eligible(model: str, gate_dir: Path = GATE_DIR) -> tuple[list[dict], str]:
+def load_eligible(model: str, gate_dir: Path | None = None, gate_rev: int = 3) -> tuple[list[dict], str]:
+    gate_dir = gate_dir or GATE_DIRS[gate_rev]
     path = gate_dir / f"eligible_{model}.jsonl"
     rows = [json.loads(l) for l in path.read_text().splitlines() if l.strip()]
     gate = json.loads((gate_dir / "gate.json").read_text())
-    if gate.get("rev") != 3:
-        raise SystemExit(f"exp44_swap: {gate_dir}/gate.json is not the rev 3 gate")
+    if gate.get("rev") != gate_rev:
+        raise SystemExit(f"exp44_swap: {gate_dir}/gate.json is not the rev {gate_rev} gate")
     return sorted(rows, key=lambda e: (e["fold"], e["question_id"])), hashlib.sha256(path.read_bytes()).hexdigest()
 
 
@@ -118,8 +127,8 @@ def label23(record) -> str:
     return "success" if record.correct else ("refusal" if record.unknown else "wrong")
 
 
-def stamp(engine_name: str, model_id: str, x: sw.SwapInputs, e: dict, eligible_sha: str) -> dict:
-    return {"method_sha256": sw.method_sha256(), "engine": engine_name, "model_id": model_id,
+def stamp(engine_name: str, model_id: str, x: sw.SwapInputs, e: dict, eligible_sha: str, gate_rev: int = 3) -> dict:
+    return {"method_sha256": sw.method_sha256(gate_rev), "engine": engine_name, "model_id": model_id,
             "clean_ids_sha256": sw.sha_ids(x.clean_ids), "swap_ids_sha256": sw.sha_ids(x.swap_ids),
             "cut_ids_sha256": sw.sha_ids(x.cut_ids), "substitute": e["substitute"],
             "swap_prompt_sha256": e["swap_prompt_sha256"], "eligible_sha256": eligible_sha}
@@ -134,9 +143,10 @@ def read_row(path: Path, want: dict) -> dict | None:
 
 
 class SRun:
-    def __init__(self, engine, model: str, records: dict, order: list[dict], out: Path, eligible_sha: str, log=print):
+    def __init__(self, engine, model: str, records: dict, order: list[dict], out: Path, eligible_sha: str, log=print,
+                 gate_rev: int = 3):
         self.engine, self.model, self.records, self.order, self.out, self.log = engine, model, records, order, out, log
-        self.eligible_sha = eligible_sha
+        self.eligible_sha, self.gate_rev = eligible_sha, gate_rev
         self.refusal_ids = MODELS[model]["refusal"].refusal_ids
         self.chat_fn = None if MODELS[model]["family"] is None else engine.chat_text
         self.inputs, self.seconds = {}, {}
@@ -161,7 +171,8 @@ class SRun:
         return self.out / "resid" / f"{self.order[i]['question_id']}.npz"
 
     def want(self, i: int) -> dict:
-        return stamp(self.engine.name, MODELS[self.model]["id"], self.x(i), self.order[i], self.eligible_sha)
+        return stamp(self.engine.name, MODELS[self.model]["id"], self.x(i), self.order[i], self.eligible_sha,
+                     self.gate_rev)
 
     def donor(self, i: int) -> int | None:
         return sw.choose_donor(self.order, i)
@@ -187,7 +198,7 @@ class SRun:
         rec = self.records[self.order[i]["question_id"]]
         row.update({"model": self.model, "label": label23(rec), "question_type": rec.question_type,
                     "surface_type": self.order[i]["surface_type"], "substitute": self.order[i]["substitute"],
-                    "gold": rec.gold, "row_index": i, "stamp": self.want(i)})
+                    "gold": rec.gold, "row_index": i, "gate_rev": self.gate_rev, "stamp": self.want(i)})
         write_json(self.path(i), row)
 
     def patch(self, i: int, row: dict, state: dict) -> dict:
@@ -217,7 +228,7 @@ class SRun:
                 "h_clean": r["clean"], "h_swap": r["swap"]}
 
     def run(self) -> None:
-        check_method(self.out)
+        check_method(self.out, self.gate_rev)
         deferred = []
         for i, e in enumerate(self.order):
             t0 = time.perf_counter()
@@ -283,7 +294,7 @@ def u_rows(engine, model: str, records: list, swap_qids: set, out: Path, log=pri
     return seconds
 
 
-def check_inputs(model: str, records: dict, order: list[dict]) -> int:
+def check_inputs(model: str, records: dict, order: list[dict], gate_rev: int = 3) -> int:
     """No forward pass: every swap row's inputs are rebuilt and aligned with the tokenizer alone; token counts and
     the U rows' marker presence are printed (the basis of the time estimate)."""
     from transformers import AutoTokenizer
@@ -306,7 +317,7 @@ def check_inputs(model: str, records: dict, order: list[dict]) -> int:
     refusals = [r for r in records.values() if label23(r) == "refusal"]
     marked = sum(sel.split_note(r.output)[0] is not None for r in refusals)
     swapq = {e["question_id"] for e in order}
-    print(json.dumps({"model": model, "n_swap_rows": len(order), "built": len(lens), "failed": bad,
+    print(json.dumps({"model": model, "gate_rev": gate_rev, "n_swap_rows": len(order), "built": len(lens), "failed": bad,
                       "mean_tokens_clean_swap_cut": [sum(c) / len(lens) for c in zip(*lens)] if lens else None,
                       "max_tokens_clean": max((l[0] for l in lens), default=None),
                       "labels": {lab: sum(label23(records[e["question_id"]]) == lab for e in order)
@@ -329,31 +340,44 @@ def main(argv=None) -> int:
                    help="tokenizer only (no model): rebuild every swap row's clean / swap / cut inputs and report")
     p.add_argument("--threads", type=int, default=8)
     p.add_argument("--out", default=None)
+    p.add_argument("--gate-rev", type=int, default=3, choices=(3, 8),
+                   help="8: the rev 8 repaired gate (runs/exp44_swapgate/rev8), S only, out runs/exp44_swap/qwen3b_rev8")
+    p.add_argument("--weights", default=None, help="load the model from this path (the D-30 / pod stub models)")
+    p.add_argument("--dtype", default="float32", choices=("float32", "bfloat16"))
     args = p.parse_args(argv)
+    if args.gate_rev >= 8:
+        if args.model != "qwen3b":
+            p.error("--gate-rev 8 is Qwen 3B only (rev 8: Llama does not rerun)")
+        if args.only_u:
+            p.error("--gate-rev 8 runs no U (rev 8: U does not rerun)")
+        args.skip_u = True
     folds = list(range(5)) if args.pooled else [int(f) for f in args.folds.split(",")]
     if not args.check_inputs:              # the input check runs no model and reads no outcome: any fold
         check_folds(folds, args.pooled)
-    out = Path(args.out or (OUT / (SMOKE_DIR if args.smoke else "") / args.model))
+    out = Path(args.out or (OUT / REV8_OUT if args.gate_rev >= 8
+                            else OUT / (SMOKE_DIR if args.smoke else "") / args.model))
     population = [r for r in load_population(args.model) if r.fold in folds]
     records = {r.question_id: r for r in population}
-    eligible, eligible_sha = load_eligible(args.model)
+    eligible, eligible_sha = load_eligible(args.model, gate_rev=args.gate_rev)
     order = [e for e in eligible if e["fold"] in folds]
     order = order[: args.limit] if args.limit else order
     if args.check_inputs:
-        return check_inputs(args.model, records, order)
-    check_method(out)
+        return check_inputs(args.model, records, order, args.gate_rev)
+    check_method(out, args.gate_rev)
     from memctl.analysis.steering import HFEngine
 
     t0 = time.perf_counter()
     cfg = MODELS[args.model]
-    engine = HFEngine(cfg["id"], threads=args.threads, family=cfg["family"], dtype="float32")
+    engine = HFEngine(args.weights or cfg["id"], threads=args.threads, family=cfg["family"], dtype=args.dtype)
     load_s = time.perf_counter() - t0
     print(f"loaded {args.model} ({engine.name}) in {load_s:.0f}s; {len(order)} swap rows, folds {folds}", flush=True)
     started = time.perf_counter()
     summary = {"model": args.model, "engine": engine.name, "threads": args.threads, "folds": folds,
-               "n_swap_rows": len(order), "load_s": load_s, "method_sha256": sw.method_sha256()}
+               "n_swap_rows": len(order), "load_s": load_s, "method_sha256": sw.method_sha256(args.gate_rev),
+               "gate_rev": args.gate_rev, "weights": args.weights}
     if not args.only_u:
-        run = SRun(engine, args.model, records, order, out, eligible_sha, log=lambda s: print(s, flush=True))
+        run = SRun(engine, args.model, records, order, out, eligible_sha, log=lambda s: print(s, flush=True),
+                   gate_rev=args.gate_rev)
         run.run()
         summary["s_seconds"] = run.seconds
     if not (args.smoke or args.skip_u):

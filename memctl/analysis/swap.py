@@ -94,8 +94,15 @@ METHOD = {"spec": "research/proposals/2026-10-29-exp44-patching.md rev 1 amendme
           "unknown": "log-sum-exp of log p over the family's refusal ids", "residual": "decoder layer output"}
 
 
-def method_sha256() -> str:
-    return hashlib.sha256(json.dumps(METHOD, sort_keys=True).encode()).hexdigest()
+GATE_REV8 = {"gate_rev": 8, "gate": "rev 8 (83fe60a, D-47): runs/exp44_swapgate/rev8, no 'other', bare numbers "
+                                  "form-matched, leading determiner matched; passes and controls unchanged"}
+
+
+def method_sha256(gate_rev: int = 3) -> str:
+    """The S / U row method stamp. gate_rev 8 (§44 rev 8) adds GATE_REV8 so its rows never share a stamp with the
+    rev 3 / rev 6 rows; any other value is the unchanged rev 6 stamp."""
+    m = dict(METHOD, **GATE_REV8) if gate_rev >= 8 else METHOD
+    return hashlib.sha256(json.dumps(m, sort_keys=True).encode()).hexdigest()
 
 
 class SanityError(RuntimeError):

@@ -23,6 +23,12 @@ opened. Llama 3B: descriptive (rev 2): S0 and the class shares are reported, S1-
   rows, the same quantity for donor, random and forward. The absolute check is printed in every case. Beside: rev 0's d_c (runs/exp44_patch) and the §34 lens depths (Qwen; runs/exp34_jlens), where on disk.
 - U1: refusals that become gold under U (full population in scope; the swap subset beside): >= 0.50 with lower > 0.40
   "mostly a prompt artefact", <= 0.25 with upper < 0.35 "not the format", else partial; Steer-under-U - U beside.
+Rev 8 (83fe60a, D-47; --gate-rev 8 --pooled, Qwen 3B only): S rows from runs/exp44_swap/qwen3b_rev8/S/ (stamped
+method_sha256(gate_rev=8)), U rows from the rev 1 directory runs/exp44_swap/qwen3b/U/ (U does not rerun; S2 reads its
+A_steer), report to runs/exp44_swap/qwen3b_rev8/report_pooled.{md,json}. Honesty clause: S0 is stated on the whole
+rev 8 set AND on the changed-substitute rows (runs/exp44_swapgate/rev8/gate.json `rev8_changes`, the only fresh
+evidence) and on the unchanged rows beside; nothing is confirmatory; an established S1 is worded "established on a
+post-hoc-repaired design"; the power note (S1(c) needs about 40 failures) is printed with the failure count.
 Percentile bootstrap, 10,000 draws (--samples). Writes <root>/<model>/report_<tag>.{md,json}.
 Exit 2: scope refused. Exit 6: a following row is not patched (or lacks its donor control). Exit 7: an S row is
 stamped with another method_sha256 (e.g. the rev 1 full-overwrite controls): rows of two methods are never pooled.
@@ -44,6 +50,38 @@ DEV_FOLDS = (0, 1)
 POOL_AUTHORISED = True    # rev 4 (f9952b2): POOL on all 330 rows; the swap set is fixed from here
 READ_CLAIMS = {"qwen3b": True, "llama3b": False}       # rev 2: Llama descriptive (S0 and shares only)
 REFUSED, UNPATCHED, OLD_METHOD = 2, 6, 7
+REV8_DIR, REV8_GATE = "qwen3b_rev8", Path("runs/exp44_swapgate/rev8/gate.json")
+REV8_PREFIX = "established on a post-hoc-repaired design: "
+POWER_NOTE = ("Power, stated in advance (rev 8): S1(c) (half-width <= 0.15) needs about 40 failures; with fewer, S1(c)"
+              " is expected to fail on power even if the repair is sound: 'not reliably distinguishable on these rows,"
+              " underpowered', documented, no further rev. S0 on the repaired design is the question rev 8 can answer.")
+
+
+def rev8_changed_qids(gate_path: Path = REV8_GATE) -> set[str]:
+    g = json.loads(gate_path.read_text())
+    if g.get("rev") != 8:
+        raise SystemExit(f"exp44_swap_report: {gate_path} is not the rev 8 gate")
+    return {c["question_id"] for c in g["families"]["qwen3b"]["rev8_changes"]["changed_rows"]}
+
+
+def rev8_reads(S: list[dict], claims: dict, changed: set[str], samples: int) -> dict:
+    """The honesty-clause split and the rev 8 wording of S1."""
+    succ = [r for r in S if r["label"] == "success"]
+    out = {"S0_changed": sw.s0([r for r in succ if r["question_id"] in changed], samples),
+           "S0_unchanged": sw.s0([r for r in succ if r["question_id"] not in changed], samples),
+           "n_changed_rows": sum(r["question_id"] in changed for r in S),
+           "n_changed_in_scope_not_on_disk": len(changed - {r["question_id"] for r in S}),
+           "changed_labels": {lab: sum(r["question_id"] in changed and r["label"] == lab for r in S)
+                              for lab in ("success", "refusal", "wrong")},
+           "n_failures": claims["S1"]["n"], "power_note": POWER_NOTE,
+           "underpowered": claims["S1"]["n"] < 40,
+           "confirmatory": False}
+    s1 = claims["S1"]
+    if s1.get("established"):
+        s1["reading"] = REV8_PREFIX + s1["reading"]
+    elif s1.get("established") is False and s1.get("c") is False and out["underpowered"]:
+        s1["reading"] += ", underpowered (rev 8 power note)"
+    return out
 
 
 def check_scope(folds, pooled: bool) -> None:
@@ -83,10 +121,11 @@ def beside(model: str, rows: list[dict], patch_root: Path, exp34: Path) -> dict:
 
 
 def build(root: Path, model: str, folds, samples: int = sw.BOOT_SAMPLES, patch_root: Path = Path("runs/exp44_patch"),
-          exp34: Path = Path("runs/exp34_jlens")) -> tuple[str, dict]:
-    S = load_dir(root / model / "S", folds)
-    U = load_dir(root / model / "U", folds)
-    stale = [r["question_id"] for r in S if r.get("stamp", {}).get("method_sha256") != sw.method_sha256()]
+          exp34: Path = Path("runs/exp34_jlens"), gate_rev: int = 3, changed: set[str] | None = None) -> tuple[str, dict]:
+    s_model = REV8_DIR if gate_rev >= 8 else model
+    S = load_dir(root / s_model / "S", folds)
+    U = load_dir(root / model / "U", folds)           # rev 8: U does not rerun, the rev 1 U rows are read
+    stale = [r["question_id"] for r in S if r.get("stamp", {}).get("method_sha256") != sw.method_sha256(gate_rev)]
     if stale:
         print(f"exp44_swap_report: {len(stale)} rows of another method (e.g. {stale[0]}): not pooled with rev 6 rows",
               file=sys.stderr)
@@ -126,7 +165,11 @@ def build(root: Path, model: str, folds, samples: int = sw.BOOT_SAMPLES, patch_r
                     for lab in ("success", "refusal", "wrong")}
     summary = {"model": model, "folds": list(folds), "n_swap_rows": len(S), "labels": labels,
                "classes_by_label_1nat": cls_by_label, "n_patched": len(patched), "n_u_rows": len(U),
-               "status": status, "claims": claims}
+               "status": status, "claims": claims, "gate_rev": gate_rev}
+    if gate_rev >= 8:
+        summary["rev8"] = rev8_reads(S, claims, changed if changed is not None else rev8_changed_qids(), samples)
+        summary["status"] = {k: (v + " (rev 8: post-hoc-repaired design, not confirmatory)" if v == "read" else v)
+                             for k, v in status.items()}
     return markdown(summary), summary
 
 
@@ -140,7 +183,21 @@ def _ci(s):
 
 def markdown(s: dict) -> str:
     c = s["claims"]
-    L = [f"# §44 swap conditions S / U: {s['model']}, folds {s['folds']}", "",
+    rev8 = s.get("rev8")
+    head = []
+    if rev8:
+        c0, cu = rev8["S0_changed"], rev8["S0_unchanged"]
+        head = ["**Rev 8 (83fe60a, D-47): a repaired design tested on the same rows after the fault was seen.** No claim"
+                " here is confirmatory. The rows whose substitute is unchanged give no new information; the fresh"
+                " evidence is the changed-substitute rows.", "",
+                f"S0 on the changed-substitute rows (successes): {_ci(c0)} (n={c0['n']}, k={c0.get('k')}) -> "
+                f"{c0['reading']}; on the unchanged rows (already known from rev 1): {_ci(cu)} (n={cu['n']}, "
+                f"k={cu.get('k')}). Changed rows on disk {rev8['n_changed_rows']} (labels {rev8['changed_labels']}; "
+                f"missing {rev8['n_changed_in_scope_not_on_disk']}).", "",
+                f"{rev8['power_note']} Failures here: {rev8['n_failures']}"
+                + (" (underpowered for S1(c))." if rev8["underpowered"] else "."), ""]
+    L = [f"# §44 swap conditions S / U: {s['model']}" + (" rev 8" if rev8 else "") + f", folds {s['folds']}", "",
+         *head,
          "Spec: research/proposals/2026-10-29-exp44-patching.md rev 1 amendment §C, rev 2. Status per claim: "
          + json.dumps(s["status"]), "",
          f"Swap rows {s['n_swap_rows']} (labels {s['labels']}); patched {s['n_patched']}; U rows {s['n_u_rows']}.",
@@ -181,12 +238,15 @@ def main(argv=None) -> int:
     ap.add_argument("--pooled", action="store_true")
     ap.add_argument("--tag", default=None)
     ap.add_argument("--samples", type=int, default=sw.BOOT_SAMPLES)
+    ap.add_argument("--gate-rev", type=int, default=3, choices=(3, 8))
     args = ap.parse_args(argv)
+    if args.gate_rev >= 8 and args.model != "qwen3b":
+        ap.error("--gate-rev 8 is Qwen 3B only")
     folds = tuple(range(5)) if args.pooled else tuple(int(f) for f in args.folds.split(","))
     check_scope(folds, args.pooled)
-    text, summary = build(Path(args.root), args.model, folds, args.samples)
+    text, summary = build(Path(args.root), args.model, folds, args.samples, gate_rev=args.gate_rev)
     tag = args.tag or ("pooled" if args.pooled else "dev")
-    out = Path(args.root) / args.model
+    out = Path(args.root) / (REV8_DIR if args.gate_rev >= 8 else args.model)
     out.mkdir(parents=True, exist_ok=True)
     (out / f"report_{tag}.md").write_text(text)
     (out / f"report_{tag}.json").write_text(json.dumps(summary, indent=1))

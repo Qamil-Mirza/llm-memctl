@@ -22,6 +22,17 @@ memctl.analysis.swap.shared_prefix); a candidate that is a token-prefix of the g
 counts as first_token_equal. The alignment check is memctl.analysis.swap.build_swap_inputs (clean / swap / cut with the
 prefix forced: it ends every sequence, identical). Eligible rows record the prefix and the read (divergent) ids.
 
+Rev 8 (83fe60a, D-47; --rev 8 --out runs/exp44_swapgate/rev8, Qwen 3B only; everything else rev 3): (1) gold
+surface type "other" excluded as type_other_rev8 (applied after the placement exclusions, before the substitute walk);
+(2) number:bare candidates form-matched: same form (digit / number word), digit-form = same digit count of the leading
+number (a range "5-2" / "2-3 eggs" / "3:1" counts every digit of the string), same unit presence (a trailing word after
+the number, "points", "-inch"; the unit need not match); (3) every kept type: leading determiner (the/a/an/my/our/his/
+her/their/its, membership case-insensitive, followed by at least one more word) the same word as written in G and S
+("The" != "the": a case-only difference would put the read on the determiner), or absent in both;
+(4) the walk unchanged, so a row whose rev 3 substitute passes (2)-(3) keeps it: asserted against the recorded rev 3
+eligible set (runs/exp44_swapgate/eligible_qwen3b.jsonl), every unchanged row's eligible record identical; the changed
+rows are listed in gate.json `rev8_changes`.
+
 Spec: research/proposals/2026-10-29-exp44-patching.md, "Rev 1 amendment" §A (D-45). Population: the §34 330 rows per
 family (126 dev = folds 0-1, 204 confirmation = folds 2-4). Qwen 2.5 3B via scripts/exp44_patch.population (paired
 with the 7B: same rule, same prompts, so the 7B shares these rows); Llama 3.2 3B via load_family_records paired with
@@ -84,6 +95,13 @@ FOLD_SETS = {"dev": (0, 1), "confirmation": (2, 3, 4), "all": (0, 1, 2, 3, 4)}
 LABELS = ("success", "refusal", "wrong")
 EXCLUSIONS = ("gold_zero_evidence", "gold_several_evidence", "gold_in_question", "gold_elsewhere",
               "no_substitute", "first_token_equal", "alignment_failure")
+EXCLUSIONS_REV8 = EXCLUSIONS[:4] + ("type_other_rev8",) + EXCLUSIONS[4:]
+REV3_ELIGIBLE = Path("runs/exp44_swapgate/eligible_qwen3b.jsonl")     # the rev 3 / rev 4 recorded set (S rows)
+DETERMINERS = ("the", "a", "an", "my", "our", "his", "her", "their", "its")
+
+
+def exclusions(rev: int) -> tuple[str, ...]:
+    return EXCLUSIONS_REV8 if rev >= 8 else EXCLUSIONS
 
 # --- surface types (fixed regex, tested in this order: date, number, name, else other) ---------------------------
 MONTHS = (r"jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|"
@@ -124,6 +142,49 @@ def number_subtype(gold: str) -> str:
     if re.search(rf"(?:\b|\d)(?:{TIME_UNITS})\b", g):
         return "duration"
     return "bare"
+
+
+BARE_RE = re.compile(
+    rf"^(?:about\s+|around\s+|approximately\s+)?(?:[$£€+-]\s?)?(?P<num>\d[\d,]*(?:\.\d+)?|\.\d+|{NUMBER_WORDS})"
+    r"(?P<range>\s?[-:/x]\s?\d[\d,]*(?:\.\d+)?)?(?P<unit>[\s-][A-Za-z]+(?:\s[A-Za-z]+)?)?\.?$", re.I)
+
+
+def bare_form(gold: str) -> dict | None:
+    """Rev 8: (form, digit count, unit presence) of a number:bare gold; None if it does not parse."""
+    m = BARE_RE.match(gold.strip())
+    if m is None:
+        return None
+    digit = bool(re.match(r"[\d.]", m.group("num")))
+    is_range = m.group("range") is not None
+    digits = (len(re.findall(r"\d", gold)) if is_range else len(re.findall(r"\d", m.group("num")))) if digit else None
+    return {"form": "digit" if digit else "word", "digits": digits, "unit": m.group("unit") is not None,
+            "range": is_range}
+
+
+def leading_determiner(text: str) -> str | None:
+    """Rev 8: the surface form's first word (as written) if it is a determiner (membership case-insensitive) followed
+    by at least one more word. "The same word" is compared as written: "The" vs "the" would differ in their first
+    token, so the read would land on the determiner's case, the very fault rule (3) removes (resolved by the Executor
+    build; the case-insensitive comparison gives 2 such rows on Qwen 3B)."""
+    words = surface(text).split()
+    return words[0] if len(words) >= 2 and words[0].lower() in DETERMINERS else None
+
+
+def rev8_reject(gold: str, cand: str, type_: str) -> str | None:
+    """Rev 8 candidate rules (2)-(3): None if `cand` passes, else the rule it fails."""
+    if type_ == "number:bare":
+        g, c = bare_form(gold), bare_form(cand)
+        if g is None or c is None:
+            return "bare_unparsed"
+        if g["form"] != c["form"]:
+            return "bare_form"
+        if g["form"] == "digit" and g["digits"] != c["digits"]:
+            return "bare_digits"
+        if g["unit"] != c["unit"]:
+            return "bare_unit"
+    if leading_determiner(gold) != leading_determiner(cand):
+        return "determiner"
+    return None
 
 
 def type_key(gold: str, rev: int = 2) -> str:
@@ -327,6 +388,12 @@ def choose_substitute(record, place: dict, pool, tinfo: dict, types: dict, chk: 
         if rev >= 2 and other and (cand.question_type != record.question_type
                                    or first_cap(cand.gold) != first_cap(record.gold)):
             continue
+        if rev >= 8:
+            why8 = rev8_reject(record.gold, cand.gold, types[record.question_id])
+            if why8 is not None:
+                if stats is not None:
+                    stats[f"rev8_reject_{why8}"] += 1
+                continue
         c = tinfo[cand.question_id]
         if abs(c["n_tokens"] - g["n_tokens"]) > tol:
             continue
@@ -434,6 +501,8 @@ def evaluate(records, tokenizer, chat_text_fn=None, log=print, rev: int = 2) -> 
     eligible, align_reasons, removed_rows = [], [], []
     for i, r in enumerate(records):
         why, place = place_gold(r, chk)
+        if why is None and rev >= 8 and types[r.question_id] == "other":
+            why = "type_other_rev8"
         if why is None:
             cands = pool if rev < 2 else row_candidates(records, i)
             cand, why, prompt, lines = choose_substitute(r, place, cands, tinfo, types, chk, uses=uses, rev=rev,
@@ -502,9 +571,9 @@ def tables(res) -> dict:
     out["population_surface_types"] = dict(Counter(res["types"].values()))
     out["by_surface_type_and_label_all"] = {ty: {lab: sum(e["surface_type"] == ty and e["_label"] == lab for e in el)
                                                  for lab in LABELS} for ty in sorted({e["surface_type"] for e in el})}
-    out["exclusions_in_order"] = {k: res["removed"].get(k, 0) for k in EXCLUSIONS}
+    out["exclusions_in_order"] = {k: res["removed"].get(k, 0) for k in exclusions(res["rev"])}
     left, steps = len(recs), []
-    for k in EXCLUSIONS:
+    for k in exclusions(res["rev"]):
         left -= res["removed"].get(k, 0)
         steps.append({"exclusion": k, "removed": res["removed"].get(k, 0), "remaining": left})
     out["exclusion_steps"] = steps
@@ -522,10 +591,57 @@ def tables(res) -> dict:
                                       "substitute_read": e["substitute_read_text"]} for e in pre]}
     out["alignment_failures"] = res["align_reasons"]
     out["substitute_exclusions"] = [x for x in res.get("removed_rows", [])
-                                    if x["exclusion"] in ("no_substitute", "first_token_equal")]
+                                    if x["exclusion"] in ("no_substitute", "first_token_equal", "type_other_rev8")]
     out["regex_vs_normalised"] = {"checks": res["regex_checks"], "disagreements": res["regex_disagreements"]}
     out["continuation_split_unstable"] = res["continuation_split_unstable"]
     return out
+
+
+def public(e: dict) -> dict:
+    return {k: v for k, v in e.items() if not k.startswith("_")}
+
+
+def rev8_changes(res: dict, rev3_rows: list[dict]) -> dict:
+    """Rev 8 rule (4), the honesty clause's basis: compare with the recorded rev 3 / rev 4 eligible set. A rev 3 row
+    whose substitute passes the rev 8 rules must be eligible under rev 8 with the identical record (asserted: same
+    substitute string, same swap prompt sha, same read ids); every other rev 3 row is either excluded as "other",
+    re-drawn (a changed substitute) or lost (no passing candidate / alignment). No row may be new."""
+    new = {e["question_id"]: public(e) for e in res["eligible"]}
+    removed = {x["question_id"]: x["exclusion"] for x in res["removed_rows"]}
+    unchanged, changed, lost, other = [], [], [], []
+    for old in rev3_rows:
+        q = old["question_id"]
+        if old["surface_type"] == "other":
+            assert removed.get(q) == "type_other_rev8", (q, removed.get(q))
+            other.append(q)
+            continue
+        why = rev8_reject(old["gold"], old["substitute"], old["surface_type"])
+        if why is None:
+            assert q in new, f"rev 8: {q} keeps a passing rev 3 substitute {old['substitute']!r} but is {removed.get(q)}"
+            assert new[q] == old, (q, {k: (old.get(k), new[q].get(k)) for k in set(old) | set(new[q])
+                                       if old.get(k) != new[q].get(k)})
+            unchanged.append(q)
+            continue
+        base = {"question_id": q, "fold": old["fold"], "surface_type": old["surface_type"], "gold": old["gold"],
+                "rev3_substitute": old["substitute"], "rev3_fails": why}
+        if q in new:
+            e = new[q]
+            assert e["substitute"] != old["substitute"]
+            changed.append({**base, "rev8_substitute": e["substitute"], "rev8_read": [e["gold_read_text"],
+                            e["substitute_read_text"]], "shared_prefix": e["shared_prefix_text"],
+                            "read_differs_by_case_only": e["gold_read_text"].strip().lower()
+                            == e["substitute_read_text"].strip().lower()})
+        else:
+            lost.append({**base, "exclusion": removed.get(q)})
+    extra = sorted(set(new) - {o["question_id"] for o in rev3_rows})
+    assert not extra, f"rev 8: rows eligible now but not under rev 3: {extra}"
+    labels = {e["question_id"]: e["_label"] for e in res["eligible"]}
+    for c in changed:
+        c["label"] = labels[c["question_id"]]
+    return {"rev3_eligible": len(rev3_rows), "rev3_eligible_sha256": None, "excluded_other": len(other),
+            "unchanged": len(unchanged), "changed": len(changed), "lost": len(lost),
+            "unchanged_identity_asserted": True, "changed_rows": changed, "lost_rows": lost,
+            "unchanged_question_ids": unchanged}
 
 
 def gate(t: dict, rev: int = 1) -> dict:
@@ -588,13 +704,16 @@ RULES = {
 
 
 def markdown(per: dict, rev: int = 2) -> str:
-    title = ("# §44 rev 3: swap-subset gate recomputed with the shared-prefix rule" if rev >= 3
+    title = ("# §44 rev 8: repaired swap gate (no 'other'; bare numbers form-matched; determiner matched), Qwen 3B"
+             if rev >= 8 else
+             "# §44 rev 3: swap-subset gate recomputed with the shared-prefix rule" if rev >= 3
              else "# §44 rev 2: swap-subset gate recomputed under rulings 2-3" if rev >= 2
              else "# §44 rev 1 §A: swap-subset feasibility gate")
     L = [title, "",
          "Data only (tokenizers, no forward pass). Spec: research/proposals/2026-10-29-exp44-patching.md rev 1 §A"
          + (" with the rev 2 rulings 2 (per-row draw, cap 3) and 3 (number subtypes, same-type 'other')" if rev >= 2
-            else "") + "; rules in gate.json `rules` and in scripts/exp44_swap_gate.py. Counts only.", ""]
+            else "") + (" and rev 8 (83fe60a, D-47: no 'other', bare form-matched, determiner matched)" if rev >= 8
+                         else "") + "; rules in gate.json `rules` and in scripts/exp44_swap_gate.py. Counts only.", ""]
     for fam, d in per.items():
         t, g = d["tables"], d["gate"]
         L += [f"## {fam}", "", "| | dev (0-1) | confirmation (2-4) | all |", "|---|---|---|---|",
@@ -622,6 +741,21 @@ def markdown(per: dict, rev: int = 2) -> str:
               f"{g['inview_failures_folds_2_4']} (>= 30 proceed, 15-29 pool, < 15 stop); all 330: "
               f"{g['inview_failures_all_330']}. **Verdict: {g['verdict']}**"
               + ("" if fam == "qwen3b" else " (descriptive; the gate binds on Qwen 3B only)"), ""]
+        if rev >= 8 and "rev8_changes" in d:
+            ch = d["rev8_changes"]
+            L += [f"Rev 8 against the recorded rev 3 / rev 4 set ({ch['rev3_eligible']} rows): 'other' excluded "
+                  f"{ch['excluded_other']}; unchanged substitute {ch['unchanged']} (record identity asserted); "
+                  f"changed substitute {ch['changed']}; lost (no passing candidate) {ch['lost']}.", "",
+                  "Changed-substitute rows (the only fresh evidence, honesty clause):", ""]
+            L += [f"- {c['question_id']} f{c['fold']} {c['label']} [{c['surface_type']}] {c['gold']!r}: "
+                  f"{c['rev3_substitute']!r} (fails {c['rev3_fails']}) -> {c['rev8_substitute']!r}, read "
+                  f"{c['rev8_read'][0]!r} vs {c['rev8_read'][1]!r}" + (" [read differs by case only]"
+                                                                      if c["read_differs_by_case_only"] else "")
+                  for c in ch["changed_rows"]]
+            L += ["", "Lost rows (rev 3 substitute fails rev 8, no passing candidate):", ""]
+            L += [f"- {c['question_id']} f{c['fold']} [{c['surface_type']}] {c['gold']!r}: {c['rev3_substitute']!r} "
+                  f"(fails {c['rev3_fails']}) -> {c['exclusion']}" for c in ch["lost_rows"]]
+            L.append("")
         if rev >= 2 and fam == "qwen3b":
             c = g["rev2_check"]
             L += [f"Rev 2 check (5146f5b: the POOL verdict stands if >= 85 eligible and >= 40 failures on all 330): "
@@ -633,7 +767,8 @@ def markdown(per: dict, rev: int = 2) -> str:
                 L += [f"- {x['question_id']} f{x['fold']} {x['label']} {x['gold']!r} -> {x['substitute']!r}: prefix "
                       f"{x['prefix']!r}, read {x['gold_read']!r} vs {x['substitute_read']!r}" for x in sp["rows"]]
                 L.append("")
-            L += ["Rows excluded at the substitute step (no_substitute / first_token_equal):", ""]
+            L += ["Rows excluded at the substitute step (no_substitute / first_token_equal"
+                  + (" / type_other_rev8" if rev >= 8 else "") + "):", ""]
             L += [f"- {x['question_id']} f{x['fold']} {x['label']} [{x['type']}] {x['gold']!r}: {x['exclusion']}"
                   for x in t["substitute_exclusions"]]
             L += ["", "Eligible rows (gold -> substitute, type):", ""]
@@ -645,17 +780,19 @@ def markdown(per: dict, rev: int = 2) -> str:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=str(OUT))
-    ap.add_argument("--rev", type=int, default=3, choices=(1, 2, 3))
+    ap.add_argument("--out", default=None, help="default runs/exp44_swapgate (rev 8: runs/exp44_swapgate/rev8)")
+    ap.add_argument("--rev", type=int, default=3, choices=(1, 2, 3, 8))
     args = ap.parse_args(argv)
     from transformers import AutoTokenizer
 
     from memctl.analysis import families as F
 
-    out = Path(args.out)
+    out = Path(args.out or (OUT / "rev8" if args.rev >= 8 else OUT))
+    if args.rev >= 8 and out.resolve() == OUT.resolve():
+        raise SystemExit("exp44_swap_gate: rev 8 must not overwrite the rev 3 outputs in runs/exp44_swapgate/")
     out.mkdir(parents=True, exist_ok=True)
     per = {}
-    for fam in ("qwen3b", "llama3b"):
+    for fam in (("qwen3b",) if args.rev >= 8 else ("qwen3b", "llama3b")):
         if fam == "qwen3b":
             records, tok, fn = qwen_population(), AutoTokenizer.from_pretrained("Qwen/Qwen2.5-3B-Instruct"), None
         else:
@@ -666,6 +803,9 @@ def main(argv=None) -> int:
         res = evaluate(records, tok, fn, rev=args.rev)
         t = tables(res)
         per[fam] = {"tables": t, "gate": gate(t, args.rev)}
+        if args.rev >= 8:      # the rev 1 gate arithmetic does not bind: the pooled 330-row design is fixed by rev 4
+            per[fam]["gate"]["verdict_rev1_arithmetic"] = per[fam]["gate"]["verdict"]
+            per[fam]["gate"]["verdict"] = "n/a under rev 8 (POOL fixed by rev 4; rev 1 arithmetic recorded beside)"
         if args.rev >= 2 and fam == "qwen3b":
             ea = t["eligible"]["all"]
             fa = t["by_label"]["all"]["refusal"] + t["by_label"]["all"]["wrong"]
@@ -674,6 +814,14 @@ def main(argv=None) -> int:
                 "result": ("recorded for rev 4 (rev 3: POOL regardless; the 85 / 40 bar was a re-read trigger)"
                            if args.rev >= 3 else
                            "verdict stands (POOL)" if ea >= 85 and fa >= 40 else "FLAG: Advisor re-reads the gate (rev 3)")}
+        if args.rev >= 8:
+            prev = json.loads((OUT / "gate.json").read_text())
+            assert prev["rev"] == 3, "runs/exp44_swapgate/gate.json is not the rev 3 gate"
+            rev3_rows = [json.loads(l) for l in REV3_ELIGIBLE.read_text().splitlines() if l.strip()]
+            per[fam]["rev8_changes"] = rev8_changes(res, rev3_rows)
+            per[fam]["rev8_changes"]["rev3_eligible_sha256"] = hashlib.sha256(REV3_ELIGIBLE.read_bytes()).hexdigest()
+            print(fam, "rev 8 vs rev 3:", {k: v for k, v in per[fam]["rev8_changes"].items()
+                                           if isinstance(v, int)}, flush=True)
         if args.rev >= 2:
             per[fam]["eligible"] = [{k: e[k] for k in ("question_id", "fold", "surface_type", "gold", "substitute")}
                                     for e in res["eligible"]]
@@ -682,6 +830,17 @@ def main(argv=None) -> int:
                 fh.write(json.dumps({k: v for k, v in e.items() if not k.startswith("_")}) + "\n")
         print(fam, json.dumps(per[fam]["gate"]), flush=True)
     rules = dict(RULES, **({"rev2": RULES_REV2} if args.rev >= 2 else {}))
+    if args.rev >= 8:
+        rules["rev8"] = {"other": "surface_type 'other' excluded as type_other_rev8 (after gold_elsewhere, before the"
+                                  " substitute walk)",
+                         "bare": "number:bare: same form (digit / word); digit-form same digit count of the leading"
+                                 " number (range: every digit of the string); same unit presence (trailing word)",
+                         "bare_regex": BARE_RE.pattern,
+                         "determiner": f"first word in {list(DETERMINERS)} (membership case-insensitive, followed by"
+                                       " another word): the same word as written in S ('The' != 'the', else the"
+                                       " read is the determiner's case), or none in both; every kept type",
+                         "walk": "unchanged (random.Random(44 + i), first passing candidate, cap 3); a rev 3 row"
+                                 " whose substitute passes keeps it (record identity asserted)"}
     if args.rev >= 3:
         rules["rev3"] = {"first_token": "different first token after the shared prefix (longest common content-token"
                                         " prefix of G and S after the leading whitespace); no divergent token ->"
@@ -690,7 +849,8 @@ def main(argv=None) -> int:
                                       " forced; it ends every sequence, identical"}
     payload = {"spec": "research/proposals/2026-10-29-exp44-patching.md rev 1 §A (D-45)"
                        + (" + rev 2 rulings 2-3 (5146f5b)" if args.rev >= 2 else "")
-                       + (" + rev 3 shared-prefix rule (7acce03)" if args.rev >= 3 else ""), "rev": args.rev, "seed": SEED,
+                       + (" + rev 3 shared-prefix rule (7acce03)" if args.rev >= 3 else "")
+                       + (" + rev 8 repaired swap (83fe60a, D-47)" if args.rev >= 8 else ""), "rev": args.rev, "seed": SEED,
                "rules": rules, "families": per,
                "note": "Qwen 2.5 7B shares the Qwen 3B rows and prompts (exp44_patch.population asserts it)."}
     (out / "gate.json").write_text(json.dumps(payload, indent=1, ensure_ascii=False))

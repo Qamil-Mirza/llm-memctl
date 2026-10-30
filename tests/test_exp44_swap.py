@@ -543,3 +543,88 @@ def test_gate_rev3_first_token_after_prefix(engine):
     del ti["d"]["content"], ti["d"]["first_id"]
     ti["d"] = G.token_info(tok, "Paris")
     assert G.choose_substitute(lr, pl, pool2, ti, ty, G.Checker(), uses=G.Counter(), rev=3)[0].question_id == "d"
+
+
+# --- rev 8 (83fe60a, D-47) ----------------------------------------------------------------------------------------
+
+def test_rev8_gate_excludes_other_and_matches_determiners(engine):
+    import exp44_swap_gate as G
+    recs = [record("qa", gold="Leeds"), record("qb", gold="Paris", correct=True, unknown=False),
+            record("qc", gold="in the attic"), record("qd", gold="The Grand Hall"),
+            record("qe", gold="The Old Mill", correct=True, unknown=False), record("qf", gold="Madrid")]
+    res = G.evaluate(recs, engine.tokenizer, rev=8)
+    removed = {x["question_id"]: x["exclusion"] for x in res["removed_rows"]}
+    assert removed == {"qc": "type_other_rev8"}
+    sub = {e["question_id"]: e["substitute"] for e in res["eligible"]}
+    assert sub["qd"] == "The Old Mill" and sub["qe"] == "The Grand Hall"
+    assert all(G.leading_determiner(sub[q]) is None for q in ("qa", "qb", "qf"))
+    t = G.tables(res)
+    assert list(t["exclusions_in_order"]) == list(G.EXCLUSIONS_REV8) and t["exclusions_in_order"]["type_other_rev8"] == 1
+    # rev 3 on the same rows: "other" is kept (no other "other" row to swap with: no_substitute), determiners free
+    res3 = G.evaluate(recs, engine.tokenizer, rev=3)
+    assert {x["question_id"]: x["exclusion"] for x in res3["removed_rows"]}.get("qc") == "no_substitute"
+
+
+def test_rev8_srun_stamp_is_distinct_and_never_mixed(engine, tmp_path):
+    import exp44_swap as ex
+    recs = [record("qa", gold="Leeds", correct=True, unknown=False), record("qb", gold="Madrid")]
+    order = [_eligible(engine, r, s) for r, s in zip(recs, ["Paris", "Berlin"])]
+    assert sw.method_sha256(8) != sw.method_sha256() == sw.method_sha256(3)
+    ex.SRun(engine, "qwen3b", {r.question_id: r for r in recs}, order, tmp_path, "sha", log=lambda s: None,
+            gate_rev=8).run()
+    row = json.loads((tmp_path / "S" / "qa.json").read_text())
+    assert row["stamp"]["method_sha256"] == sw.method_sha256(8) and row["gate_rev"] == 8
+    with pytest.raises(SystemExit) as e:                               # a rev 3 run over rev 8 rows: refused
+        ex.SRun(engine, "qwen3b", {r.question_id: r for r in recs}, order, tmp_path, "sha", log=lambda s: None).run()
+    assert e.value.code == ex.OLD_METHOD
+
+
+def test_rev8_report_honesty_split_and_wording(tmp_path):
+    import exp44_swap_report as rep
+    S = tmp_path / rep.REV8_DIR / "S"
+    U = tmp_path / "qwen3b" / "U"
+    S.mkdir(parents=True)
+    U.mkdir(parents=True)
+    # 10 unchanged successes all follow; 5 changed successes, 2 follow; 45 failures, all answer-production
+    rows = ([("u", "success", 3, -3)] * 10 + [("c", "success", 3, -3)] * 2 + [("c", "success", 1, 0.9)] * 3
+            + [("u", "wrong", 3, -3)] * 45)
+    changed = set()
+    for i, (kind, lab, dc, ds) in enumerate(rows):
+        q = f"q{i}"
+        if kind == "c":
+            changed.add(q)
+        r = {"question_id": q, "fold": i % 5, **_row(lab, dc, ds), "patched": sw.follows(dc, ds), "d_T_fwd": 0.5,
+             "d_T_rev": 0.6, "donor": "q0", "control_mismatch": {"shift": [0.1, 0.0]},
+             "control_random": {"shift": [0.0, 0.0]}, "fwd": {"delta": [dc, ds]}, "clean": {"delta": dc},
+             "stamp": {"method_sha256": sw.method_sha256(8)}}
+        (S / f"{q}.json").write_text(json.dumps(r))
+    text, s = rep.build(tmp_path, "qwen3b", tuple(range(5)), samples=300, patch_root=tmp_path / "none",
+                        exp34=tmp_path / "none", gate_rev=8, changed=changed)
+    r8 = s["rev8"]
+    assert s["claims"]["S0"]["value"] == pytest.approx(12 / 15)
+    assert r8["S0_changed"]["value"] == pytest.approx(2 / 5) and r8["S0_changed"]["n"] == 5
+    assert r8["S0_unchanged"]["value"] == 1.0 and r8["S0_unchanged"]["n"] == 10
+    assert r8["n_changed_rows"] == 5 and r8["changed_labels"]["success"] == 5 and r8["confirmatory"] is False
+    assert "a repaired design tested on the same rows after the fault was seen" in text and "No claim" in text
+    assert "S0 on the changed-substitute rows" in text and "Power, stated in advance" in text
+    if s["claims"]["S1"]["established"]:
+        assert s["claims"]["S1"]["reading"].startswith(rep.REV8_PREFIX)
+    assert all("not confirmatory" in v for v in s["status"].values() if v.startswith("read"))
+    # rev 3 rows in the rev 8 directory are refused (never pooled)
+    old = json.loads((S / "q0.json").read_text())
+    (S / "q0.json").write_text(json.dumps({**old, "stamp": {"method_sha256": sw.method_sha256()}}))
+    with pytest.raises(SystemExit) as e:
+        rep.build(tmp_path, "qwen3b", tuple(range(5)), samples=10, gate_rev=8, changed=changed)
+    assert e.value.code == rep.OLD_METHOD
+
+
+def test_rev8_report_s1_wording_when_established():
+    import exp44_swap_report as rep
+    fails = [_row("wrong", 3, -3)] * 60
+    claims = {"S1": sw.s1(fails, samples=300)}
+    assert claims["S1"]["established"]
+    rep.rev8_reads([], claims, set(), 10)
+    assert claims["S1"]["reading"] == rep.REV8_PREFIX + "answer-production failures are the majority"
+    few = {"S1": sw.s1([_row("wrong", 3, -3)] * 10 + [_row("wrong", 0.2, 0.1)] * 10, samples=300)}
+    out = rep.rev8_reads([], few, set(), 10)
+    assert out["underpowered"] and not few["S1"]["established"]

@@ -4,6 +4,8 @@ import re
 import sys
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 import exp44_swap_gate as G  # noqa: E402
@@ -186,3 +188,86 @@ def test_gate_rev2_edge_case_proceeds_with_caveat():
     assert G.gate(t, rev=1)["verdict"].startswith("stop")
     v = G.gate(t, rev=2)["verdict"]
     assert v.startswith("pool") and "type-diversity caveat" in v
+
+
+# --- rev 8 (83fe60a, D-47): the repaired swap ---------------------------------------------------------------------
+
+def test_rev8_bare_form_digit_count_unit_and_ranges():
+    f = G.bare_form
+    assert f("10") == {"form": "digit", "digits": 2, "unit": False, "range": False}
+    assert f("3,000 miles") == {"form": "digit", "digits": 4, "unit": True, "range": False}
+    assert f("55-inch")["unit"] and f("55-inch")["digits"] == 2
+    assert f("2014.") == {"form": "digit", "digits": 4, "unit": False, "range": False}
+    assert f("five") == {"form": "word", "digits": None, "unit": False, "range": False}
+    assert f("Two")["form"] == "word"
+    # ranges: digit-form, the digit count of the whole string
+    assert f("5-2") == {"form": "digit", "digits": 2, "unit": False, "range": True}
+    assert f("2-3 eggs") == {"form": "digit", "digits": 2, "unit": True, "range": True}
+    assert f("3:1")["range"] and f("3:1")["digits"] == 2
+    r = G.rev8_reject
+    assert r("10", "15", "number:bare") is None and r("10", "5-2", "number:bare") is None
+    assert r("6", "100", "number:bare") == "bare_digits"
+    assert r("five", "5", "number:bare") == "bare_form" and r("5", "five", "number:bare") == "bare_form"
+    assert r("five", "six", "number:bare") is None and r("six", "Two", "number:bare") is None
+    assert r("55-inch", "38", "number:bare") == "bare_unit"
+    assert r("132 points", "500 Mbps", "number:bare") is None          # the unit need not match
+    assert r("38 subjects", "10 pounds", "number:bare") is None
+    assert r("2-3 eggs", "10 pounds", "number:bare") is None
+    assert r("2-3 eggs", "500", "number:bare") == "bare_digits"
+    # the bare rule binds number:bare only
+    assert r("three months", "4 days.", "number:duration") is None and r("$800", "$0.75", "number:currency") is None
+
+
+def test_rev8_leading_determiner():
+    d = G.leading_determiner
+    assert d("The Glass Menagerie") == "The" and d("the Episcopal Church") == "the" and d("a yellow dress") == "a"
+    assert d("Paris") is None and d("Absinthe") is None and d("Theodore Roosevelt") is None and d("A") is None
+    r = G.rev8_reject
+    assert r("The Glass Menagerie", "The Grand Ballroom", "name") is None
+    assert r("The Grand Ballroom", "Nostalgia", "name") == "determiner"
+    assert r("Absinthe", "The Glass Menagerie", "name") == "determiner"
+    assert r("Absinthe", "Tom", "name") is None
+    # the same word as written: a case-only difference would be the read token
+    assert r("the Episcopal Church", "The Grand Ballroom", "name") == "determiner"
+    assert r("my sister", "her brother", "other") == "determiner"
+    # every kept type, bare numbers too ("a hundred" vs "two")
+    assert r("a hundred", "two", "number:bare") == "determiner"
+
+
+def test_rev8_exclusion_order_puts_other_before_the_walk():
+    assert G.exclusions(8) == G.EXCLUSIONS[:4] + ("type_other_rev8",) + G.EXCLUSIONS[4:]
+    assert G.exclusions(3) == G.EXCLUSIONS
+
+
+def _el(qid, gold, sub, type_, label="success", **kw):
+    return {"question_id": qid, "fold": 2, "surface_type": type_, "gold": gold, "substitute": sub,
+            "gold_read_text": gold[:2], "substitute_read_text": sub[:2], "shared_prefix_text": "", **kw}
+
+
+def test_rev8_changes_asserts_unchanged_identity_and_lists_changed():
+    rev3 = [_el("a", "Paris", "Leeds", "name"), _el("b", "6", "100", "number:bare"),
+            _el("c", "under my bed", "in the attic", "other"), _el("d", "The Grand Ballroom", "Nostalgia", "name")]
+    new = [dict(rev3[0], _label="success"), dict(_el("b", "6", "8", "number:bare"), _label="wrong")]
+    res = {"eligible": new, "removed_rows": [{"question_id": "c", "exclusion": "type_other_rev8"},
+                                             {"question_id": "d", "exclusion": "no_substitute"}]}
+    ch = G.rev8_changes(res, rev3)
+    assert (ch["unchanged"], ch["changed"], ch["lost"], ch["excluded_other"]) == (1, 1, 1, 1)
+    assert ch["changed_rows"][0]["question_id"] == "b" and ch["changed_rows"][0]["rev3_fails"] == "bare_digits"
+    assert ch["changed_rows"][0]["rev8_substitute"] == "8" and ch["changed_rows"][0]["label"] == "wrong"
+    assert ch["lost_rows"][0]["question_id"] == "d" and ch["lost_rows"][0]["exclusion"] == "no_substitute"
+    # a row whose rev 3 substitute passes rev 8 but comes out different: the assertion fires
+    bad = {"eligible": [dict(_el("a", "Paris", "Rome", "name"), _label="success"), new[1]],
+           "removed_rows": res["removed_rows"]}
+    with pytest.raises(AssertionError):
+        G.rev8_changes(bad, rev3)
+    # ... or with any other field of its record changed (e.g. the swap prompt sha)
+    bad = {"eligible": [dict(rev3[0], swap_prompt_sha256="x", _label="success"), new[1]],
+           "removed_rows": res["removed_rows"]}
+    with pytest.raises(AssertionError):
+        G.rev8_changes(bad, rev3)
+    # an "other" row that is not excluded as type_other_rev8, or a new row, fails too
+    with pytest.raises(AssertionError):
+        G.rev8_changes({"eligible": new, "removed_rows": res["removed_rows"][1:]}, rev3)
+    with pytest.raises(AssertionError):
+        G.rev8_changes({"eligible": new + [dict(_el("z", "Rome", "Oslo", "name"), _label="success")],
+                        "removed_rows": res["removed_rows"]}, rev3)
