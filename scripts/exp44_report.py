@@ -37,7 +37,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from memctl.analysis import patching as pt  # noqa: E402
 
 MODELS = ("qwen3b", "qwen7b")
-FIXED_FILTER: dict | None = None        # e.g. {"qwen3b": 10, "qwen7b": 10}: k_corrupt per model, set in rev 1
+FIXED_FILTER: dict | None = {"qwen3b": 3, "qwen7b": 3}   # rev 7 (6f457fd): relaxed (corrupt rank > 3) + 1-nat gap, both models
 REFUSED, MISMATCH, UNPATCHED = 2, 4, 6
 EXP34 = Path("runs/exp34_jlens")
 

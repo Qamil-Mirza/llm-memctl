@@ -192,9 +192,16 @@ def test_fold_guard():
     with pytest.raises(SystemExit) as e:
         ex.check_folds([0, 2], confirm=False)
     assert e.value.code == ex.REFUSED
-    with pytest.raises(SystemExit) as e:                           # not yet authorised even with --confirm
-        ex.check_folds([3], confirm=True)
-    assert e.value.code == ex.REFUSED
+    assert ex.CONFIRM_AUTHORISED is True                           # rev 7 (6f457fd)
+    ex.check_folds([2, 3, 4], confirm=True)
+    saved = ex.CONFIRM_AUTHORISED
+    try:                                                           # with the lock off, --confirm is still refused
+        ex.CONFIRM_AUTHORISED = False
+        with pytest.raises(SystemExit) as e:
+            ex.check_folds([3], confirm=True)
+        assert e.value.code == ex.REFUSED
+    finally:
+        ex.CONFIRM_AUTHORISED = saved
 
 
 def test_resume_skips_done_rows_and_redoes_stale(engine, tmp_path, monkeypatch):
@@ -320,9 +327,15 @@ def test_report_dev_and_confirm_guard(tmp_path):
     assert s["n_filter"] == 41 and n["claims"]["C1"]["stat"]["n"] == 41
     assert s["c2_layer"] == 13 and 0 < n["claims"]["C2"]["stat"]["value"] < 1
     assert s["dc_minus_lens"]["jlens"]["n"] == 41
-    with pytest.raises(SystemExit) as e:
-        rep.build(root, confirm=True, samples=10, exp34=exp34)
-    assert e.value.code == rep.REFUSED
+    saved = rep.FIXED_FILTER
+    try:                                                           # with the filter unset, --confirm is refused
+        rep.FIXED_FILTER = None
+        with pytest.raises(SystemExit) as e:
+            rep.build(root, confirm=True, samples=10, exp34=exp34)
+        assert e.value.code == rep.REFUSED
+    finally:
+        rep.FIXED_FILTER = saved
+    assert rep.FIXED_FILTER == {"qwen3b": 3, "qwen7b": 3}         # rev 7 (6f457fd)
     bad = json.loads((exp34 / "qwen7b" / "q0.json").read_text())
     bad["prompt_sha256"] = "other"
     (exp34 / "qwen7b" / "q0.json").write_text(json.dumps(bad))

@@ -42,7 +42,7 @@ from memctl.analysis import patching as pt  # noqa: E402
 MODELS = {"qwen3b": {"id": "Qwen/Qwen2.5-3B-Instruct", "dtype": "float32", "n_layers": 36},
           "qwen7b": {"id": "Qwen/Qwen2.5-7B-Instruct", "dtype": "bfloat16", "n_layers": 28}}
 LOCAL_7B_CACHE = "cache/exp44_hf"            # the 7B weights live inside the repo (not ~/.cache)
-CONFIRM_AUTHORISED = False
+CONFIRM_AUTHORISED = True    # rev 7 (6f457fd): both models relaxed + 1-nat gap; one confirmation read per model
 N_POPULATION = 330
 REFUSED, SANITY, PROMPT_MISMATCH = 2, 3, 4
 
