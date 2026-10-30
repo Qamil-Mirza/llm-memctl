@@ -410,3 +410,60 @@ read per model, after which C1–C3 are read as written in §4 with the rev 1 an
 laptop: Qwen 3B S then U first (the user has asked for the swap results), then Llama 3B, then the rev 0
 confirmation reads (3B about 3 h, 7B about 7–12 h depending on the eligible share); the Executor reports the
 projected 7B confirmation time before starting it. No pod is involved unless the Advisor asks the user.
+
+## Rev 8 (2026-10-30): the repaired swap on Qwen 3B — user-approved; GPU pod permitted for speed
+
+**Standing.** The S0 failure on Qwen 3B (34/46 = 0.739; review 6230ac3) and the same non-follower classes on
+Llama 3B (review 8ec5bef, ruling 3) show a fault in the substitute construction, not in the models: "other"-type
+substitutes drawn by LongMemEval question type are often answers the question cannot take; bare numbers were swapped
+across digit count, digit/word form and unit presence; a leading determiner ("The", "A", "my") can be the read token
+when the substitute lacks one. The user chose the repaired rev over closing the line (Advisor pane, 2026-10-30:
+"You have approval for both"). D-45 stands: this is a repair of a measurement, not a new intervention, probe, scaling
+or routing study.
+
+**Honesty clause, fixed now.** All 89 Qwen 3B swap rows (folds 0–4, pooled by rev 4) were already read under rev 1,
+and the repair was motivated by those reads. Rows whose substitute is unchanged under rev 8 give **no new
+information** (their results are deterministic and already known: name 12/14, currency 2/2, duration 6/7 following
+among successes). The fresh evidence in rev 8 is the set of rows whose substitute **changes** (every bare-number row
+that gets a form-matched substitute; any name row re-drawn under the determiner rule). The report states S0 on the
+whole rev 8 set *and* on the changed-substitute rows separately, and the §44 text calls rev 8 "a repaired design
+tested on the same rows after the fault was seen". No claim from rev 8 is confirmatory; S1, if (a)–(c) pass, is
+reported as "established on a post-hoc-repaired design" and F11 says so.
+
+**Changes to the gate (`scripts/exp44_swap_gate.py`, rev 8; everything else rev 3 behaviour).**
+1. **"other" type excluded.** Rows with `surface_type == "other"` are excluded as `type_other_rev8` (Qwen 3B: 18 rows).
+2. **Bare numbers form-matched.** For `number:bare` rows the candidate must additionally satisfy: (i) same form, both
+   digit-form or both number-word-form; (ii) digit-form: same count of digits in the leading number; (iii) unit
+   presence matches: both have a trailing unit/noun after the number ("points", "Mbps", "eggs") or neither (the unit
+   itself need not match). Ranges ("5-2", "2-3 eggs") count as digit-form with the digit count of the whole string.
+   A row with no passing candidate is excluded as `no_substitute` (counted; the rev 2 cap rule unchanged).
+3. **Leading determiner matched.** For every kept type: if the gold's first word is in {the, a, an, my, our, his, her,
+   their, its} (case-insensitive) the candidate's first word must be the same word; if the gold has no such word the
+   candidate must have none. The rev 3 shared-prefix rule then puts the read at the first divergent content token.
+4. Candidate walk unchanged: row i's list shuffled by `random.Random(44 + i)`, first passing candidate taken, so the
+   unchanged rows keep their rev 1 substitute (the honesty clause depends on this; the Executor asserts the identity
+   of the substitute string on every unchanged row and reports the count of changed rows).
+5. Percent rows (1) and date rows (4) are kept as they are; too few to matter, reported in the type table.
+
+**Runs.** Qwen 3B S only (the U runs and the Llama runs do not change). Bidirectional patching and the rev 6 controls
+as before. Laptop ≈ 2.7 h fp32, or a pod (below). Output under `runs/exp44_swap/qwen3b_rev8/S/`, report
+`runs/exp44_swap/qwen3b_rev8/report_pooled.{md,json}`; the rev 1 directory is kept untouched.
+
+**Reads (as §C, with the honesty clause).** S0 on the whole set and on changed rows; if S0 passes on the whole set,
+S1 (a)(b)(c), S2 (≥ 8 refusal rows per class, else descriptive), S3 with the rev 6 validity rule; then the type
+table. **Power, stated in advance:** after the "other" exclusion the set is ≤ 71 rows, ≈ 38 successes and ≈ 33
+failures before any `no_substitute` loss; S1(c) (half-width ≤ 0.15) needs ≈ 40 failures, so S1(c) is expected to
+fail on power even if the repair is sound. That outcome is "not reliably distinguishable on these rows, underpowered",
+documented, no further rev. S0 on the repaired design is the question rev 8 can actually answer.
+
+**GPU pod (speed only; the user's words 2026-10-30: "if there's a way to speed things up by renting out pods let's
+do it").** Both remaining computations may run on one RunPod A40 instead of the laptop: (A) the rev 0 7B
+confirmation, all 204 rows re-run on the GPU in bf16 (not the 171 remaining: one device per confirmation read), into
+`runs/exp44_patch/qwen7b_gpu/`; the laptop run keeps going as the fallback until the GPU read is accepted, then it is
+stopped; the rows both devices have done are reported as a device-consistency check (per-row d_c equal, max |R|
+difference) before the GPU rows are read as the confirmation; (B) rev 8 S on Qwen 3B in fp32. The engine already
+selects CUDA when present (`HFEngine.device`); `dtype` overrides stay as in `MODELS`. Pre-launch stub check and D-22
+smoke on the pod (a 3-row run of each) before the full runs; D-30 fresh-venv bundle test. **Advisor's quote to the
+user: about $0.50–1.00, hard stop $2.50 (≈ 4–5 h at $0.49–0.59/h); programme after this ≤ $22.56 of the $30 cap.**
+The Executor creates no pod until the user types the approval in its pane; it never leaves a pod billing while
+waiting on a question; it terminates and verifies with list-pods when both runs are copied back.
