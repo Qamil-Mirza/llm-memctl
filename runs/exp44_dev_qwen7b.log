@@ -1,0 +1,135 @@
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights: 100%|██████████| 339/339 [00:00<00:00, 4125.59it/s]
+loaded qwen7b (hf-transformers-5.17.0-cpu-bfloat16) in 4s, peak RSS 528 MB, 126 rows
+[1/126] 00ca467f f0 156.9s tok=908/645 rank clean=2 corrupt=1 lp -1.41/-0.50
+[2/126] 06db6396 f0 158.9s tok=912/749 rank clean=1 corrupt=2 lp -0.00/-16.50
+[3/126] 0bb5a684 f0 211.5s tok=1127/937 rank clean=5 corrupt=7 lp -14.25/-17.13 R(0)=-0.04348021571894452 R(L-1)=1.0 d_c=0.6785714285714286 sanity=PASS
+[4/126] 0db4c65d f0 174.5s tok=1003/847 rank clean=3 corrupt=3 lp -2.94/-2.10
+[5/126] 15745da0 f0 170.4s tok=836/772 rank clean=1 corrupt=137 lp -0.11/-22.63 R(0)=-0.011115385947083231 R(L-1)=1.0 d_c=0.6428571428571429 sanity=PASS
+[6/126] 1b9b7252 f0 289.8s tok=1550/1355 rank clean=1 corrupt=14 lp -0.03/-14.00 R(0)=3.0193176193562177e-06 R(L-1)=1.0 d_c=0.6785714285714286 sanity=PASS
+[7/126] 21d02d0d f0 198.7s tok=1081/851 rank clean=2 corrupt=4 lp -3.17/-12.00 R(0)=0.028303167749318455 R(L-1)=1.0 d_c=0.7857142857142857 sanity=PASS
+[8/126] 22d2cb42 f0 174.8s tok=1296/354 rank clean=7 corrupt=4 lp -12.38/-2.40 R(0)=-0.008503849777673442 R(L-1)=1.0 d_c=0.8571428571428571 sanity=PASS
+[9/126] 2698e78f f0 173.7s tok=927/726 rank clean=1 corrupt=14 lp -0.04/-12.75 R(0)=1.5589814370722366e-05 R(L-1)=1.0 d_c=0.6428571428571429 sanity=PASS
+[10/126] 28dc39ac f0 180.9s tok=1059/689 rank clean=1 corrupt=8 lp -0.62/-14.00 R(0)=-0.018673717445846092 R(L-1)=1.0 d_c=0.6428571428571429 sanity=PASS
+[11/126] 37f165cf f0 174.2s tok=916/736 rank clean=8 corrupt=22 lp -16.58/-14.88 R(0)=-0.11048726482549125 R(L-1)=1.0 d_c=0.8928571428571429 sanity=FAIL
+exp44_patch: 37f165cf: sanity failed: R(L-1)=1.0, R(0)=-0.11048726482549125
+7b exit 3
+resume 21:55:51
+Loading weights:   0%|          | 0/339 [00:00<?, ?it/s]Loading weights: 100%|██████████| 339/339 [00:00<00:00, 4584.03it/s]
+loaded qwen7b (hf-transformers-5.17.0-cpu-bfloat16) in 3s, peak RSS 528 MB, 126 rows
+[12/126] 3fe836c9 f0 151.5s tok=899/736 rank clean=1 corrupt=351 lp -0.15/-29.34 eligible R(0)=0.00642083761275843 R(L-1)=1.0 d_c=0.6428571428571429 R(L-1) PASS
+[13/126] 4100d0a0 f0 144.3s tok=888/800 rank clean=22 corrupt=98 lp -18.06/-27.69
+[14/126] 41275add f0 182.8s tok=1101/845 rank clean=4 corrupt=6 lp -9.47/-12.25 eligible R(0)=-0.04503267586496169 R(L-1)=1.0 d_c=0.6071428571428571 R(L-1) PASS
+[15/126] 4adc0475 f0 128.5s tok=799/661 rank clean=1 corrupt=3 lp -0.00/-5.67
+[16/126] 4d6b87c8 f0 183.7s tok=1137/955 rank clean=1 corrupt=1 lp -0.00/-0.00
+[17/126] 4f54b7c9 f0 164.5s tok=1010/822 rank clean=1 corrupt=3 lp -0.09/-3.51
+[18/126] 58470ed2 f0 313.3s tok=2154/1354 rank clean=20 corrupt=301 lp -14.47/-21.38
+[19/126] 59524333 f0 187.6s tok=1023/868 rank clean=1 corrupt=106 lp -0.39/-10.22 eligible R(0)=0.006453676451541253 R(L-1)=1.0 d_c=0.7857142857142857 R(L-1) PASS
+[20/126] 5d3d2817 f0 171.8s tok=901/817 rank clean=3 corrupt=147 lp -6.38/-13.76 eligible R(0)=0.019070528616298564 R(L-1)=1.0 d_c=0.6785714285714286 R(L-1) PASS
+[21/126] 60bf93ed f0 177.7s tok=998/764 rank clean=1 corrupt=13 lp -0.02/-8.29 eligible R(0)=-0.010588662786640193 R(L-1)=1.0 d_c=0.5357142857142857 R(L-1) PASS
+[22/126] 60d45044 f0 598.6s tok=3197/3136 rank clean=2 corrupt=6575 lp -1.22/-34.46 eligible R(0)=0.008694415348517526 R(L-1)=1.0 d_c=0.7857142857142857 R(L-1) PASS
+[23/126] 69fee5aa f0 166.6s tok=899/722 rank clean=1 corrupt=7 lp -0.00/-6.92 eligible R(0)=-0.022551405268228873 R(L-1)=1.0 d_c=0.5714285714285714 R(L-1) PASS
+[24/126] 6a27ffc2 f0 152.0s tok=908/739 rank clean=1 corrupt=1 lp -0.00/-0.00
+[25/126] 71017276 f0 160.1s tok=938/811 rank clean=4 corrupt=1 lp -1.93/-1.13
+[26/126] 71a3fd6b f0 161.3s tok=842/737 rank clean=1 corrupt=48 lp -0.00/-17.19 eligible R(0)=0.003626545371213194 R(L-1)=1.0 d_c=0.6428571428571429 R(L-1) PASS
+[27/126] 75832dbd f0 156.8s tok=878/823 rank clean=8 corrupt=8 lp -10.50/-10.25 GAP<1 (excluded)
+[28/126] 76d63226 f0 201.6s tok=1064/960 rank clean=1 corrupt=11 lp -0.00/-8.91 eligible R(0)=-0.013931869915455603 R(L-1)=1.0 d_c=0.5714285714285714 R(L-1) PASS
+[29/126] 7e00a6cb f0 187.3s tok=1058/811 rank clean=1 corrupt=2556 lp -0.01/-21.38 eligible R(0)=0.0145885890944898 R(L-1)=1.0 d_c=0.8571428571428571 R(L-1) PASS
+[30/126] 94f70d80 f0 245.8s tok=1296/1206 rank clean=1 corrupt=5 lp -0.00/-15.00 eligible R(0)=-0.008330832194512356 R(L-1)=1.0 d_c=0.7857142857142857 R(L-1) PASS
+[31/126] 95bcc1c8 f0 174.8s tok=1003/900 rank clean=1 corrupt=1 lp -0.00/-0.16
+[32/126] 982b5123 f0 243.8s tok=1434/1257 rank clean=25 corrupt=102 lp -11.62/-21.63
+[33/126] 9ea5eabc f0 156.5s tok=924/795 rank clean=224 corrupt=76 lp -19.94/-13.33
+[34/126] 9ee3ecd6 f0 242.4s tok=1420/1244 rank clean=3 corrupt=3 lp -12.88/-7.46
+[35/126] a4996e51 f0 312.3s tok=1830/1614 rank clean=1 corrupt=1 lp -0.00/-0.00
+[36/126] ac031881 f0 160.0s tok=930/823 rank clean=2 corrupt=2 lp -4.63/-6.13
+[37/126] b320f3f8 f0 167.9s tok=873/774 rank clean=4 corrupt=2563 lp -3.47/-33.38 eligible R(0)=-0.003130598211192424 R(L-1)=1.0 d_c=0.6428571428571429 R(L-1) PASS
+[38/126] b86304ba f0 192.0s tok=985/929 rank clean=5 corrupt=12 lp -13.38/-19.13 eligible R(0)=0.021739508413781205 R(L-1)=1.0 d_c=0.6785714285714286 R(L-1) PASS
+[39/126] ba61f0b9 f0 289.4s tok=1595/1386 rank clean=1 corrupt=4 lp -0.20/-16.63 eligible R(0)=-6.287139906876318e-10 R(L-1)=1.0 d_c=0.8214285714285714 R(L-1) PASS
+[40/126] bbf86515 f0 210.2s tok=1161/950 rank clean=1 corrupt=5 lp -0.01/-4.70 eligible R(0)=0.05341965603951352 R(L-1)=1.0 d_c=0.75 R(L-1) PASS R0_FLAG (excluded from claims)
+[41/126] c14c00dd f0 187.9s tok=968/899 rank clean=2 corrupt=128011 lp -1.38/-42.78 eligible R(0)=0.0007531100628550384 R(L-1)=1.0 d_c=0.7857142857142857 R(L-1) PASS
+[42/126] c5e8278d f0 175.8s tok=908/819 rank clean=1 corrupt=2999 lp -0.00/-33.47 eligible R(0)=-0.007932457682747597 R(L-1)=1.0 d_c=0.6428571428571429 R(L-1) PASS
+[43/126] c7cf7dfd f0 214.5s tok=1225/940 rank clean=1 corrupt=16 lp -0.00/-14.63 eligible R(0)=-0.004271973895267672 R(L-1)=1.0 d_c=0.7857142857142857 R(L-1) PASS
+[44/126] c8c3f81d f0 251.2s tok=1421/1345 rank clean=1 corrupt=1 lp -0.00/-0.00
+[45/126] d6062bb9 f0 151.8s tok=933/733 rank clean=1 corrupt=3 lp -0.66/-2.96
+[46/126] e493bb7c f0 175.8s tok=1095/840 rank clean=6 corrupt=9 lp -6.91/-4.53 GAP<1 (excluded)
+[47/126] e4e14d04 f0 178.5s tok=1062/892 rank clean=11 corrupt=102 lp -10.96/-21.19
+[48/126] e66b632c f0 184.9s tok=1164/875 rank clean=1 corrupt=3 lp -0.00/-4.17
+[49/126] fca70973 f0 152.8s tok=878/801 rank clean=41 corrupt=7 lp -8.04/-10.50
+[50/126] fca762bc f0 209.0s tok=1160/967 rank clean=1 corrupt=7 lp -0.00/-8.84 eligible R(0)=-0.014124663105288015 R(L-1)=1.0 d_c=0.6428571428571429 R(L-1) PASS
+[51/126] fea54f57 f0 192.5s tok=1103/822 rank clean=1 corrupt=4472 lp -0.00/-20.47 eligible R(0)=0.007461222944557321 R(L-1)=1.0 d_c=0.7857142857142857 R(L-1) PASS
+[52/126] gpt4_18c2b244 f0 192.2s tok=1179/930 rank clean=54 corrupt=229 lp -15.72/-25.56
+[53/126] gpt4_213fd887 f0 178.9s tok=1091/895 rank clean=14 corrupt=9 lp -14.39/-11.76
+[54/126] gpt4_4929293a f0 166.2s tok=911/743 rank clean=1 corrupt=28 lp -0.10/-14.94 eligible R(0)=-2.872259835918384e-05 R(L-1)=1.0 d_c=0.6428571428571429 R(L-1) PASS
+[55/126] gpt4_4ef30696 f0 136.6s tok=821/675 rank clean=1 corrupt=2 lp -0.43/-1.35
+[56/126] gpt4_70e84552 f0 249.5s tok=1388/1176 rank clean=4 corrupt=29 lp -9.51/-17.63 eligible R(0)=0.0076147223070610675 R(L-1)=1.0 d_c=0.7142857142857143 R(L-1) PASS
+[57/126] gpt4_7bc6cf22 f0 173.2s tok=990/917 rank clean=1 corrupt=1 lp -0.00/-0.00
+[58/126] gpt4_85da3956 f0 185.5s tok=1073/976 rank clean=2 corrupt=1 lp -0.98/-0.49
+[59/126] gpt4_88806d6e f0 168.7s tok=914/756 rank clean=1 corrupt=4 lp -0.00/-10.75 eligible R(0)=-0.011603761837260314 R(L-1)=1.0 d_c=0.7142857142857143 R(L-1) PASS
+[60/126] gpt4_8e165409 f0 196.4s tok=1180/995 rank clean=1 corrupt=1 lp -0.77/-0.60
+[61/126] gpt4_98f46fc6 f0 338.8s tok=1977/1821 rank clean=110 corrupt=365 lp -21.88/-21.88
+[62/126] 07741c44 f1 203.6s tok=1133/963 rank clean=1 corrupt=78 lp -0.00/-14.95 eligible R(0)=-0.0040993000064765694 R(L-1)=1.0 d_c=0.75 R(L-1) PASS
+[63/126] 0862e8bf f1 184.2s tok=964/895 rank clean=1 corrupt=3667 lp -0.00/-33.69 eligible R(0)=0.0009262215638576497 R(L-1)=1.0 d_c=0.7857142857142857 R(L-1) PASS
+[64/126] 08f4fc43 f1 189.9s tok=1050/873 rank clean=3 corrupt=4 lp -2.24/-4.75 eligible R(0)=-0.04389536305410503 R(L-1)=1.0 d_c=0.75 R(L-1) PASS
+[65/126] 0ddfec37 f1 179.6s tok=1002/809 rank clean=2 corrupt=7 lp -0.84/-7.48 eligible R(0)=0.01737851006405268 R(L-1)=1.0 d_c=0.6071428571428571 R(L-1) PASS
+[66/126] 0e4e4c46 f1 267.1s tok=1600/1405 rank clean=1 corrupt=1 lp -0.00/-0.00
+[67/126] 0f05491a f1 165.5s tok=913/748 rank clean=1 corrupt=5 lp -0.63/-22.81 eligible R(0)=-8.455435209777245e-11 R(L-1)=1.0 d_c=0.7857142857142857 R(L-1) PASS
+[68/126] 118b2229 f1 154.8s tok=785/740 rank clean=1 corrupt=19 lp -0.00/-13.66 eligible R(0)=0.009152508305038599 R(L-1)=1.0 d_c=0.6071428571428571 R(L-1) PASS
+[69/126] 19b5f2b3 f1 182.7s tok=954/881 rank clean=1 corrupt=483 lp -0.07/-29.78 eligible R(0)=0.008409787004042601 R(L-1)=1.0 d_c=0.7142857142857143 R(L-1) PASS
+[70/126] 1c549ce4 f1 232.8s tok=1291/1131 rank clean=1 corrupt=11 lp -0.20/-16.50 eligible R(0)=-2.2549367800913172e-07 R(L-1)=1.0 d_c=0.6428571428571429 R(L-1) PASS
+[71/126] 2133c1b5 f1 188.0s tok=1034/862 rank clean=1 corrupt=7 lp -0.00/-7.77 eligible R(0)=-0.014055598220676428 R(L-1)=1.0 d_c=0.6785714285714286 R(L-1) PASS
+[72/126] 28bcfaac f1 178.4s tok=1106/876 rank clean=1 corrupt=1 lp -0.00/-0.00
+[73/126] 29f2956b f1 180.1s tok=955/877 rank clean=1 corrupt=18 lp -0.00/-13.41 eligible R(0)=-0.018132119496903402 R(L-1)=1.0 d_c=0.6785714285714286 R(L-1) PASS
+[74/126] 2bf43736 f1 355.7s tok=2085/1937 rank clean=1 corrupt=1 lp -0.00/-0.00
+[75/126] 2ebe6c90 f1 172.2s tok=1034/890 rank clean=3 corrupt=2 lp -1.53/-2.72
+[76/126] 36580ce8 f1 154.2s tok=813/737 rank clean=1 corrupt=23554 lp -0.19/-35.11 eligible R(0)=-0.007166112965701008 R(L-1)=1.0 d_c=0.7142857142857143 R(L-1) PASS
+[77/126] 3ba21379 f1 284.0s tok=1675/1537 rank clean=1 corrupt=1 lp -0.00/-0.00
+[78/126] 3f1e9474 f1 212.8s tok=1262/1145 rank clean=1 corrupt=1 lp -0.00/-0.00
+[79/126] 3fdac837 f1 212.1s tok=1161/1040 rank clean=1 corrupt=4 lp -0.57/-3.00 eligible R(0)=-0.03889121505663133 R(L-1)=1.0 d_c=0.6428571428571429 R(L-1) PASS
+[80/126] 42ec0761 f1 238.9s tok=1343/1171 rank clean=1 corrupt=62 lp -0.22/-15.70 eligible R(0)=-3.926888405345202e-05 R(L-1)=1.0 d_c=0.6785714285714286 R(L-1) PASS
+[81/126] 4388e9dd f1 225.7s tok=1374/970 rank clean=1 corrupt=52 lp -0.04/-24.81 eligible R(0)=0.0025229021324168436 R(L-1)=1.0 d_c=0.6785714285714286 R(L-1) PASS
+[82/126] 4bc144e2 f1 217.0s tok=1226/1024 rank clean=2 corrupt=6 lp -1.58/-12.25 eligible R(0)=6.694144992533161e-07 R(L-1)=1.0 d_c=0.6428571428571429 R(L-1) PASS
+[83/126] 51b23612 f1 186.0s tok=1136/752 rank clean=1 corrupt=10468 lp -0.03/-26.19 eligible R(0)=-0.001194759503772399 R(L-1)=1.0 d_c=0.8214285714285714 R(L-1) PASS
+[84/126] 5831f84d f1 170.2s tok=1022/861 rank clean=1 corrupt=1 lp -0.00/-0.25
+[85/126] 618f13b2 f1 218.8s tok=1223/1014 rank clean=3 corrupt=21 lp -5.15/-13.77 eligible R(0)=-0.0004658980729861174 R(L-1)=1.0 d_c=0.8928571428571429 R(L-1) PASS
+[86/126] 66f24dbb f1 203.4s tok=1037/994 rank clean=4 corrupt=5 lp -7.16/-9.65 eligible R(0)=0.05022137282433986 R(L-1)=1.0 d_c=0.7857142857142857 R(L-1) PASS R0_FLAG (excluded from claims)
+[87/126] 6a1eabeb f1 379.4s tok=2161/1990 rank clean=1 corrupt=1 lp -0.00/-0.00
+[88/126] 6ade9755 f1 266.5s tok=1489/1427 rank clean=1 corrupt=1 lp -0.23/-0.01
+[89/126] 7401057b f1 298.1s tok=1696/1542 rank clean=26 corrupt=504 lp -7.93/-17.46
+[90/126] 7527f7e2 f1 185.6s tok=957/867 rank clean=1 corrupt=158 lp -0.00/-29.94 eligible R(0)=0.00626277827929409 R(L-1)=1.0 d_c=0.6785714285714286 R(L-1) PASS
+[91/126] 7a8d0b71 f1 252.7s tok=1542/988 rank clean=1 corrupt=577 lp -0.00/-31.19 eligible R(0)=-0.003005995079437845 R(L-1)=1.0 d_c=0.6428571428571429 R(L-1) PASS
+[92/126] 85fa3a3f f1 167.6s tok=1034/763 rank clean=1 corrupt=2 lp -0.00/-4.76
+[93/126] 86f00804 f1 163.4s tok=919/837 rank clean=1 corrupt=3 lp -0.00/-8.75
+[94/126] 89527b6b f1 398.4s tok=2350/1750 rank clean=2 corrupt=5 lp -5.76/-11.38 eligible R(0)=0.06675012214677101 R(L-1)=1.0 d_c=0.6428571428571429 R(L-1) PASS R0_FLAG (excluded from claims)
+[95/126] 8979f9ec f1 269.4s tok=1449/1265 rank clean=1 corrupt=4 lp -0.03/-4.08 eligible R(0)=0.00021538267666654579 R(L-1)=1.0 d_c=0.6785714285714286 R(L-1) PASS
+[96/126] 89941a94 f1 244.0s tok=1417/1208 rank clean=2 corrupt=2 lp -1.89/-2.30
+[97/126] 8cf51dda f1 218.2s tok=1381/991 rank clean=4 corrupt=5 lp -10.88/-9.63 GAP<1 (excluded)
+[98/126] 8ebdbe50 f1 168.8s tok=930/874 rank clean=1 corrupt=1 lp -0.11/-0.00
+[99/126] 993da5e2 f1 220.2s tok=1191/1006 rank clean=4 corrupt=112 lp -4.33/-23.25 eligible R(0)=-0.01981454112782756 R(L-1)=1.0 d_c=0.6785714285714286 R(L-1) PASS
+[100/126] b3c15d39 f1 209.2s tok=1228/1009 rank clean=1 corrupt=1 lp -0.03/-0.28
+[101/126] b6019101 f1 168.1s tok=888/714 rank clean=1 corrupt=8 lp -0.00/-7.26 eligible R(0)=-0.02171902838250546 R(L-1)=1.0 d_c=0.6428571428571429 R(L-1) PASS
+[102/126] b6025781 f1 154.6s tok=841/792 rank clean=51 corrupt=15 lp -11.21/-8.64
+[103/126] b9cfe692 f1 144.5s tok=935/607 rank clean=1 corrupt=3 lp -0.00/-2.20
+[104/126] bb7c3b45 f1 234.3s tok=1251/1085 rank clean=2 corrupt=875 lp -3.90/-32.13 eligible R(0)=0.006636670104262108 R(L-1)=1.0 d_c=0.6785714285714286 R(L-1) PASS
+[105/126] c2ac3c61 f1 249.1s tok=1397/1248 rank clean=1 corrupt=3 lp -0.00/-2.54
+[106/126] c9f37c46 f1 177.6s tok=1030/858 rank clean=2 corrupt=3 lp -10.13/-1.98
+[107/126] caf03d32 f1 143.3s tok=807/714 rank clean=90 corrupt=46 lp -10.82/-8.52
+[108/126] cc539528 f1 192.5s tok=1173/897 rank clean=19 corrupt=73 lp -14.32/-16.38
+[109/126] cc6d1ec1 f1 164.0s tok=962/787 rank clean=24 corrupt=511 lp -10.58/-30.72
+[110/126] d52b4f67 f1 220.0s tok=1223/1148 rank clean=2 corrupt=2 lp -2.81/-1.32
+[111/126] d7c942c3 f1 175.1s tok=932/738 rank clean=1 corrupt=26 lp -0.13/-19.75 eligible R(0)=6.242268951546242e-06 R(L-1)=1.0 d_c=0.6428571428571429 R(L-1) PASS
+[112/126] d905b33f f1 178.1s tok=1033/852 rank clean=1 corrupt=1 lp -0.00/-0.00
+[113/126] e01b8e2f f1 328.7s tok=1711/1647 rank clean=1 corrupt=420 lp -0.09/-23.22 eligible R(0)=0.005391058183221835 R(L-1)=1.0 d_c=0.7857142857142857 R(L-1) PASS
+[114/126] e48988bc f1 231.5s tok=1384/1103 rank clean=1 corrupt=1 lp -0.00/-0.00
+[115/126] f0e564bc f1 182.8s tok=969/813 rank clean=1 corrupt=21 lp -0.00/-19.63 eligible R(0)=-0.009556233432183548 R(L-1)=1.0 d_c=0.6428571428571429 R(L-1) PASS
+[116/126] gpt4_1d80365e f1 155.4s tok=903/736 rank clean=2 corrupt=1 lp -1.74/-0.63
+[117/126] gpt4_1e4a8aeb f1 174.5s tok=924/750 rank clean=1 corrupt=9 lp -0.33/-5.45 eligible R(0)=-0.01240323826217814 R(L-1)=1.0 d_c=0.8214285714285714 R(L-1) PASS
+[118/126] gpt4_468eb064 f1 269.3s tok=1394/1290 rank clean=1 corrupt=503 lp -0.00/-30.53 eligible R(0)=0.010220173497310798 R(L-1)=1.0 d_c=0.7142857142857143 R(L-1) PASS
+[119/126] gpt4_4cd9eba1 f1 181.8s tok=1069/872 rank clean=392 corrupt=1028 lp -21.14/-32.31
+[120/126] gpt4_5438fa52 f1 319.7s tok=1796/1646 rank clean=25 corrupt=11 lp -12.78/-9.30
+[121/126] gpt4_74aed68e f1 156.4s tok=929/734 rank clean=2 corrupt=5 lp -1.61/-2.09 GAP<1 (excluded)
+[122/126] gpt4_78cf46a3 f1 235.5s tok=1329/1203 rank clean=12 corrupt=10 lp -12.90/-8.81
+[123/126] gpt4_a1b77f9c f1 139.2s tok=990/476 rank clean=4 corrupt=4 lp -2.30/-2.48 GAP<1 (excluded)
+[124/126] gpt4_af6db32f f1 169.6s tok=944/848 rank clean=3 corrupt=3 lp -2.21/-2.29
+[125/126] gpt4_b0863698 f1 307.5s tok=1691/1604 rank clean=1 corrupt=2 lp -0.64/-4.76
+[126/126] gpt4_b5700ca9 f1 230.7s tok=1281/1188 rank clean=1 corrupt=1 lp -0.03/-0.02
+{"model": "qwen7b", "model_id": "Qwen/Qwen2.5-7B-Instruct", "engine": "hf-transformers-5.17.0-cpu-bfloat16", "threads": 8, "folds": [0, 1], "rows": 115, "patch_all": false, "seconds_per_row": 208.07620909955838, "load_s": 3.1932943391148, "wall_s": 23930.23386000702, "peak_rss_mb_after_load": 527.546875, "peak_rss_mb": 15075.88671875, "projected_h_330_rows_all_patched": 19.07365250079285, "r0_flagged": ["bbf86515", "66f24dbb", "89527b6b"], "method_sha256": "456cc2025583718a62e64e323d3f8115714ba20f5fc0efa216d6fdd0290714d7", "filter_version": 2}
+7b exit 0
