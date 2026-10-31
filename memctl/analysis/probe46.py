@@ -14,9 +14,11 @@ so base-grouped folds would hold out the label itself). C is chosen by that CV. 
 Hewitt-Liang control task, a random pool label per base case (seed 46): its dev-CV accuracy measures how far base-case
 identity alone is decodable, and selectivity = probe dev-CV - c1 dev-CV; c2 presence, the first distractor name in
 the prompt (H1/H2 cells only), dev CV only (its held labels never occur in dev); c3 chance = 1 / pool items present.
-Readout criterion (§3 with rev 1 ruling 3 and rev 2 ruling 4): dev-CV conditions read before the held read
-(selectivity >= 0.30; c2 dev-CV accuracy below the Wilson lower bound of the probe's dev-CV accuracy), then held
-accuracy >= 0.70 with Wilson lower bound >= 0.55; held accuracy - 1/12 and chance reported beside.
+Readout criterion (rev 5, 45bb089): "decodable at layer l" = held accuracy >= 0.70 with Wilson lower bound >= 0.55;
+chance (c3), held c1 and held accuracy - 1/12 reported beside. The dev-CV selectivity and presence clauses are
+descriptive only (dev_ok): within dev every label lives in one base case and every fold keeps every base in train,
+so c1 (a label per base) is a near-sufficient statistic for the target and the clauses are unsatisfiable by
+construction; the held read (other As and cities for the same names) is the across-base test.
 """
 
 from __future__ import annotations
@@ -36,8 +38,10 @@ METHOD_VERSION = "exp46_probe_v0"
 SEED = 46
 N_LAYERS = 36
 C_GRID = (0.001, 0.01, 0.1, 1.0)
-CV_FOLDS = 5                      # used only when no groups are given
+CV_FOLDS = 5                      # used only when no groups are given (the dev CV uses the 6 cells below)
 CV_SCHEME = "format_hardness"     # dev-CV groups: the (format, hardness) cell of each prompt
+SOLVER = "standardise -> training-row-span projection (exact for L2) -> lbfgs multinomial, max_iter 2000"
+CRITERION_REV = 5
 ACC_MIN, LOWER_MIN, SELECTIVITY_MIN = 0.70, 0.55, 0.30
 VERDICT_LAYER_MAX = 29            # §5: "first decodable layer at P_last <= 29"
 TASKS = ("RC", "TU")
@@ -136,11 +140,37 @@ def cv_group(case: dict) -> str:
     return f"{case['format']}|{case['hardness']}"
 
 
-def _make(c: float):
+class RowSpace:
+    """Exact reparametrisation for an L2-penalised linear model with n training rows << d features: project the
+    (standardised, hence centred) features onto the span of the training rows (SVD, rank <= n). The penalised
+    optimum lies in that span (the loss gradient does, the penalty is rotation-invariant), so the fitted model's
+    decisions are unchanged up to solver tolerance; the solver works in <= n dimensions instead of d."""
+
+    def fit(self, X, y=None):
+        _, sv, vt = np.linalg.svd(np.asarray(X, dtype=np.float64), full_matrices=False)
+        keep = sv > sv.max() * 1e-10 if sv.size else sv.astype(bool)
+        self.v_ = vt[keep].T
+        return self
+
+    def transform(self, X):
+        return np.asarray(X, dtype=np.float64) @ self.v_
+
+    def fit_transform(self, X, y=None):
+        return self.fit(X).transform(X)
+
+    def get_params(self, deep=True):
+        return {}
+
+    def set_params(self, **params):
+        return self
+
+
+def _make(c: float, rowspace: bool = True):
     from sklearn.linear_model import LogisticRegression
     from sklearn.pipeline import make_pipeline
     from sklearn.preprocessing import StandardScaler
-    return make_pipeline(StandardScaler(), LogisticRegression(C=c, max_iter=2000))
+    steps = [StandardScaler()] + ([RowSpace()] if rowspace else []) + [LogisticRegression(C=c, max_iter=2000)]
+    return make_pipeline(*steps)
 
 
 def _splits(y: np.ndarray, groups, folds: int, seed: int):
@@ -224,7 +254,7 @@ def accuracy(model, X: np.ndarray, y: Sequence[str]) -> dict:
 
 
 def dev_conditions(probe_cv: dict, c1_cv: dict, presence_cv: dict | None) -> bool:
-    """The dev-CV clauses, read before any held read: selectivity (probe - c1) >= 0.30 and, where a presence control
+    """The dev-CV clauses (descriptive since rev 5, reported as dev_ok; they do not gate): selectivity (probe - c1) >= 0.30 and, where a presence control
     exists (RC), its accuracy below the probe's dev-CV Wilson lower bound."""
     if probe_cv["acc"] is None or c1_cv["acc"] is None:
         return False
@@ -238,9 +268,9 @@ def dev_conditions(probe_cv: dict, c1_cv: dict, presence_cv: dict | None) -> boo
     return True
 
 
-def decodable(held: dict, dev_ok: bool) -> bool:
-    """§3 readout criterion: the dev-CV clauses hold and held accuracy >= 0.70 with Wilson lower bound >= 0.55."""
-    if not dev_ok or held["acc"] is None:
+def decodable(held: dict) -> bool:
+    """Rev 5 readout criterion: held accuracy >= 0.70 with Wilson lower bound >= 0.55 (held numbers only)."""
+    if held["acc"] is None:
         return False
     return held["acc"] >= ACC_MIN and held["lower"] >= LOWER_MIN
 

@@ -189,9 +189,10 @@ def test_dev_conditions_and_decodable():
     assert not P.dev_conditions(hi, {"acc": 0.7}, None)                         # selectivity 0.2 < 0.30
     assert not P.dev_conditions(hi, {"acc": 0.1}, {"acc": 0.85})                # presence >= probe lower bound
     assert P.dev_conditions(hi, {"acc": 0.1}, None)                             # TU: no presence clause
-    assert P.decodable({"acc": 0.75, "lower": 0.6}, True)
-    assert not P.decodable({"acc": 0.75, "lower": 0.5}, True)
-    assert not P.decodable({"acc": 0.95, "lower": 0.9}, False)
+    assert P.decodable({"acc": 0.75, "lower": 0.6})                            # rev 5: held numbers only
+    assert not P.decodable({"acc": 0.75, "lower": 0.5})
+    assert not P.decodable({"acc": 0.65, "lower": 0.6})
+    assert not P.decodable({"acc": None, "lower": None})
     assert P.first_decodable({0: False, 3: True, 7: True}) == 3 and P.first_decodable({0: False}) is None
 
 

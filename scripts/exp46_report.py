@@ -136,11 +136,14 @@ def markdown(rep: dict) -> str:
     if rep.get("probe"):
         lines += ["", "## Probe", ""]
         for key, r in rep["probe"]["reads"].items():
+            note = " (redundant with TU current: a bijection of it within each base case)" if key == "TU:superseded:P_last" else ""
             if rep["split"] == "held":
-                lines.append(f"- {key}: first decodable layer {r.get('first_decodable')}")
+                lines.append(f"- {key}{note}: first decodable layer {r.get('first_decodable')}")
+                lines.append("  held acc by layer: " + " ".join(
+                    f"{l}:{v['probe']['acc']:.2f}" for l, v in r["layers"].items() if v["probe"]["acc"] is not None))
             else:
                 ok = [l for l, v in r["layers"].items() if v.get("dev_ok")]
-                lines.append(f"- {key}: dev-CV clauses hold at layers {', '.join(ok) or 'none'}")
+                lines.append(f"- {key}{note}: dev-CV clauses (descriptive since rev 5) hold at layers {', '.join(ok) or 'none'}")
     if rep.get("verdict"):
         v = rep["verdict"]
         lines += ["", "## §5 verdict (computed)", "", f"**{v['verdict']}**" + (" (under-powered: fewer than 30 held pairs)"
