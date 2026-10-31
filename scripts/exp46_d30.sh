@@ -45,7 +45,7 @@ grep -q '^exit=0 ' "$O/pod.done" || fail "pod.done does not say exit=0"
 import json, sys
 o = sys.argv[1]
 s = json.load(open(f"{o}/status.json"))
-assert s["capture"] == 24 and s["baselines"] == 2 and s["readout"] in ("first_city", "rule45"), s
+assert s["capture"] == 24 and s["baselines"] == 2 and s["readout"] == "conclusion", s
 t = json.load(open(f"{o}/stage_times.json"))
 names = [x["stage"] for x in t["stages"]]
 assert names == ["install", "population", "stub_check", "smoke", "projection", "capture", "baselines", "validate",
