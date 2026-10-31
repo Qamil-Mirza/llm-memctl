@@ -20,6 +20,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "scripts"))
 
 from memctl.analysis import patch46 as T  # noqa: E402
 from memctl.analysis import probe46 as P  # noqa: E402
@@ -71,6 +72,20 @@ def k2_by_flag(records: list[dict], cases: dict) -> dict:
             for f, v in split.items()}
 
 
+def attribution_table(records: list[dict], cases: dict, names, cities, kind: str = "patch") -> dict:
+    """Per layer: counts of (attributed supervisor, outcome) for one pass kind (descriptive)."""
+    out = defaultdict(lambda: defaultdict(int))
+    for rec in records:
+        c = cases[rec["triple_id"]]
+        for x in rec["results"]:
+            if x["kind"] != kind:
+                continue
+            att = T.attributed_supervisor(x["text"], c["format"], c["entities"][0], names, c["B"], c["Bp"], c["Bpp"],
+                                          cities)
+            out[str(x["layer"])][f"{att}/{x['outcome']}"] += 1
+    return {l: dict(v) for l, v in sorted(out.items(), key=lambda kv: int(kv[0]))}
+
+
 def lstar(prof: dict) -> int | None:
     def ints(d):
         return {int(l): v for l, v in d.items()}
@@ -86,6 +101,10 @@ def build(probe_dir: Path, patch: Path, split: str, cases: dict) -> dict:
     rep = {"split": split, "pairs": len(s1), "pairs_with_k2": len(entered_k2), "readout": read_json(patch / "readout.json"),
            "s1": prof, "k3": k3_share(s1), "k2_by_flag": k2_by_flag(ctl, cases), "s2": profiles(s2, kinds=("patch", "k1")),
            "l_star_s1": lstar(prof)}
+    import exp45_cases as C
+    rep["attribution_s1_patch"] = attribution_table(s1, cases, C.NAMES, C.CITIES, "patch")
+    rep["attribution_s1_k1"] = attribution_table(ctl, cases, C.NAMES, C.CITIES, "k1")
+    rep["attribution_s1_k2"] = attribution_table(ctl, cases, C.NAMES, C.CITIES, "k2")
     probe_file = probe_dir / ("probe_held.json" if split == "held" else "probe_dev.json")
     rep["probe"] = read_json(probe_file)
     if split == "held" and rep["probe"]:
@@ -99,15 +118,21 @@ def markdown(rep: dict) -> str:
              f"Readout rule: {(rep['readout'] or {}).get('rule')} (dev agreement {(rep['readout'] or {}).get('agreement')}).",
              f"k3 token-substitution floor: {rep['k3']['k']}/{rep['k3']['n']} (pass {rep['k3']['pass']}). "
              f"L* at S1: {rep['l_star_s1']} (S1 pairs n = {rep['pairs']}, k2 pairs n = {rep['pairs_with_k2']}).", "", "## S1 transfer by layer", "",
-             "| layer | Transfer | lower | k1 | k2 | name-copy (patch) |", "|---|---|---|---|---|---|"]
+             "| layer | Transfer | lower | k1 | k2 |", "|---|---|---|---|---|"]
     s1 = rep["s1"]
     for l in range(P.N_LAYERS):
         t = s1.get("patch", {}).get(str(l), {})
         a = s1.get("k1", {}).get(str(l), {})
         b = s1.get("k2", {}).get(str(l), {})
-        nc = s1.get("name_copy_share", {}).get("patch", {}).get(str(l))
         f = lambda v: "—" if v is None else f"{v:.3f}"
-        lines.append(f"| {l} | {f(t.get('share'))} | {f(t.get('lower'))} | {f(a.get('share'))} | {f(b.get('share'))} | {f(nc)} |")
+        lines.append(f"| {l} | {f(t.get('share'))} | {f(t.get('lower'))} | {f(a.get('share'))} | {f(b.get('share'))} |")
+    att = rep.get("attribution_s1_patch") or {}
+    if att:
+        cells = sorted({k for v in att.values() for k in v})
+        lines += ["", "## S1 attribution x outcome (descriptive; supervisor named before the conclusion / outcome)", "",
+                  "| layer | " + " | ".join(cells) + " |", "|---|" + "---|" * len(cells)]
+        for l, v in att.items():
+            lines.append(f"| {l} | " + " | ".join(str(v.get(c, 0)) for c in cells) + " |")
     if rep.get("probe"):
         lines += ["", "## Probe", ""]
         for key, r in rep["probe"]["reads"].items():

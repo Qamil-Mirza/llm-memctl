@@ -122,6 +122,17 @@ def test_conclusion_readout_rev4():
     assert T.MAX_NEW_CONCLUSION == {"F1": 96, "F2": 160}
 
 
+def test_attributed_supervisor():
+    names = ("Laura", "Alice", "Sarah", "Kate", "Ben")
+    f = lambda t, fmt="F1": T.attributed_supervisor(t, fmt, "Kate", names, "Laura", "Alice", "Sarah", CITIES)
+    assert f("Kate's supervisor is Alice, and Alice works in Chester.") == "Bp"
+    assert f("Kate's supervisor works in Chester.") == "none"                 # a verb is not a name
+    assert f("- Kate's supervisor is Laura.\nTherefore, Kate's supervisor, Alice, works in Chester.") == "Bp"  # last
+    assert f("Kate's supervisor is Ben, who works in York.") == "none"         # a pool name outside the triple
+    assert f("The supervisor Sarah works in Durham.") == "Bpp"
+    assert f("Kate's supervisor is Laura.\nAnswer: unknown\n", "F2") == "B"
+
+
 def test_k1_vector_norm_matched():
     rng = np.random.default_rng(0)
     h, hp = np.zeros(16, np.float32), np.full(16, 2.0, np.float32)

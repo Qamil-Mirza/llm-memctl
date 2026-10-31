@@ -277,3 +277,28 @@ def verdict(first_decodable_p_last: int | None, l_star: int | None, held_pairs: 
     return {"probe_decodable_le_29": a, "l_star_ge_10": b, "verdict": label,
             "under_powered": held_pairs < HELD_PAIRS_MIN, "held_pairs": held_pairs,
             "first_decodable_p_last": first_decodable_p_last, "l_star": l_star}
+
+
+# ---------------------------------------------------------------------------------------------- attribution
+
+ATTRIBUTION_LABELS = ("B", "Bp", "Bpp", "none")
+
+
+def attributed_supervisor(text: str, fmt: str, a: str, names: Sequence[str], b: str, bp: str, bpp: str,
+                          cities: Sequence[str]) -> str:
+    """Descriptive (review 2026-10-31 ruling): the supervisor the generation attributes, from the last of
+    "{A}'s supervisor is X", "{A}'s supervisor, X," or "supervisor X" before the conclusion item, with X a pool
+    name; labelled B / Bp / Bpp, else (no match, or a pool name outside the triple) "none". Not part of L*,
+    Transfer or the §5 rule."""
+    hit = conclusion(text, fmt, cities)
+    head = text if hit is None else text[:hit[0]]
+    pool = "|".join(re.escape(n) for n in names)
+    pats = [re.escape(a) + r"'s supervisor is (" + pool + r")\b", re.escape(a) + r"'s supervisor, (" + pool + r"),",
+            r"\bsupervisor (" + pool + r")\b"]
+    found = []
+    for pat in pats:
+        found += [(m.start(1), m.group(1)) for m in re.finditer(pat, head)]
+    if not found:
+        return "none"
+    name = max(found)[1]
+    return {b: "B", bp: "Bp", bpp: "Bpp"}.get(name, "none")
