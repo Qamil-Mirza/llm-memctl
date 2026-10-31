@@ -7635,9 +7635,9 @@ stands on the intervention arm; its first clause is not established, because the
 - **Intervention (held, 55 unseen base cases):** patching the residual at the supervisor's name token from a prompt
   with another supervisor moves the answer to that supervisor's city through layer 15 of 36 (L\* = 15; Transfer 0.80
   at L15, 0.69 at L16, 0 from L33). Both content-matched controls stay at 0 (k1 0/55 at every layer; k2 0/47 except
-  1/47 at L20). The §45 lenses read nothing at that site at layers 2–29, so at P_B they are blind to a variable that
+  1/47 at L20). The §45 lenses read nothing at the evidence positions, P_B among them, at layers 2–29, so at P_B they are blind to a variable that
   moves the answer.
-- **Probe (held):** no layer decodable for any read; accuracy 0.01–0.11 at P_last, at or below 1/12 at every layer.
+- **Probe (held):** no layer decodable for any read; accuracy 0.04–0.11 at P_last, at or below 1/12 at every layer.
   Dev confounds label with base case (each of the 12 labels lives in one of 6 dev bases), so the dev-fitted probe
   learned base identity; "not decodable at P_last before layer 30" is a property of its training data, not of the
   representation.
@@ -7774,7 +7774,7 @@ Prior art predicts the first on toy tasks (Feng & Steinhardt 2023; Geva et al. 2
 | Transfer held | 0.927 | 0.945 | 0.818–0.855 | 0.727 / 0.727 / 0.727 / 0.764 / 0.764 / 0.800 (LB 0.598–0.676) | 0.691 (0.560, 0.797) | 0.60–0.73 | 0.527 | 0.25–0.31 | 0.036 | 0 |
 | Transfer dev | 1.000 | 0.980 | 0.82–0.90 | 0.765 / 0.765 / 0.745 / 0.725 / 0.706 / 0.686 (LB at 15: 0.550) | 0.706 | 0.39–0.65 | 0.392 | 0.14–0.20 | 0.020 | 0 |
 
-- **L\* = 15 held** (dev 14: layer 15 misses the bar by its lower bound, 0.550 against 0.55 with the share 0.686).
+- **L\* = 15 held** (dev 14: layer 15 misses on the share, 0.686 against 0.70 (lower bound 0.550)).
 - **k1** 0/55 held (0/51 dev) at every layer. **k2** 0/47 held at every layer except L20 (1/47 = 0.021); 0/47 dev.
   k2 is 0 under both the unused-name and the reused-distractor B″ groups.
 - **k3 52/55 = 0.945 (0.851, 0.981) held, FAIL by one pair** (dev 49/51 = 0.961, pass).
