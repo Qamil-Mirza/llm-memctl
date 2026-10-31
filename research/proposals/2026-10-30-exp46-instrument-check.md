@@ -194,3 +194,64 @@ model's correct conclusion (Executor's dev baselines, 1 of 21 rows, structural).
 max_new 96. Classification C1 / C1′ / other / abstain by that item; no city → other. Used for the solved filter, k3,
 Transfer and S2 alike. `validate` reports the three rules' agreement and solve rates on the dev baselines and lists
 disagreements; it does not switch rules. Name-copy share computed on the text before the conclusion city.
+
+## Rev 5 (2026-10-31, Advisor ruling on the probe dev numbers; before any held read)
+
+**Finding (dev CV, `runs/exp46_probe/cuda-bfloat16/probe_dev.json`, recounted by the Advisor).** `dev_ok` holds at no
+layer for any of the four reads. c1 ≥ probe at 33 of 36 layers for RC supervisor @ P_last (probe > c1 only at layers
+33–35, by 0.014–0.049), at every layer for RC supervisor @ P_q (c1 = 1.000 throughout) and for both TU reads. RC
+supervisor @ P_last, probe / c1 / c2: layer 0 0.896 / 0.931 / 0.688; layer 9 0.472 / 0.535 / 0.406; layer 15
+0.333 / 0.424 / 0.396; layer 21 0.312 / 0.507 / 0.260; layer 29 0.444 / 0.549 / 0.292; layer 31 0.826 / 0.861 / 0.552;
+layer 33 0.951 / 0.924 / 0.667; layer 35 0.972 / 0.958 / 0.667; chance (c3) 0.264; n = 144, 6 folds. TU current @
+P_last: 0.729 / 0.965 at layer 0, a trough of 0.29–0.35 at layers 8–25, 0.750 / 0.993 at layer 35; chance 0.286. TU
+superseded is the same problem relabelled (within a base the superseded city is the base's other city) and matches TU
+current at 34 of 36 layers (layers 5 and 15 differ by one row).
+
+**Why the clause cannot pass (design error, the Advisor's).** Within dev every probe label is a function of the base
+case (each label occurs in exactly one dev base, rev 3), and c1 assigns one random label per base. On folds that keep
+every base in train (rev 3's own choice), a representation that identifies the base case scores on c1 exactly as well
+as on the true label. c1 is therefore a near-sufficient statistic for the target within dev, and selectivity =
+probe − c1 ≤ 0 whenever base identity is decodable, whatever the representation holds about the supervisor. No fold
+scheme within dev separates base from label, because the case list confounds them by construction (rev 3 noted the
+confound and still kept the clause; that was the error). The U-shaped dev curve (high at layers 0–2 and 31–35, trough at
+9–29) is what base-identity decodability at P_last looks like and says nothing about the supervisor.
+
+**Rulings.**
+
+1. **Gate.** The dev-CV selectivity clause and the dev-CV presence clause are removed from the readout criterion. They
+   are unsatisfiable by construction, not merely unmet, and were never a test of the thing the probe is for. "Decodable
+   at layer l" is now the **held** criterion alone: held accuracy ≥ 0.70 with Wilson lower bound ≥ 0.55; chance (c3)
+   and accuracy − 1/12 reported beside. c1, c2 and selectivity stay in `probe_dev.json` and the report as descriptive
+   dev numbers with this note. Option (C) (a new held-side control) is declined: it is new design after the dev read,
+   and the held read already separates base from label.
+2. **Why the held read is a real test (case-list metadata only, no model output read).** All 12 RC supervisor labels and
+   all 12 TU city labels of held occur in dev (ceiling 1.0, no "unseen label counts as wrong" loss). Every held base
+   pairs its supervisor name with a different questioner A and a different gold city than the dev base that carries
+   the same label (e.g. David: dev A Kate / Durham, held A Laura / Cambridge). A probe fitted on dev bases can score on
+   held only by reading the supervisor's identity from the residual, not the base. Held c1 is at chance by construction
+   (rev 2) and is reported, not gated.
+3. **No change to §5.** The verdict table stands as fixed. The first decodable layer is reported with the whole held
+   profile (all 36 layers, accuracy and interval). If the first decodable layer is 0–2, that is a legitimate §5 input and
+   is reported as "decodable from layer l at P_last" beside the §45 audit fact that the lenses had no top-10 hit at any
+   question position at any layer (briefing 2026-10-30 §1); it is not re-interpreted after the read.
+4. **Solver (accepted).** Standardise → projection onto the span of the training rows (SVD, rank ≤ n) → the same lbfgs
+   multinomial L2 fit. For an L2-penalised linear model the optimum weight lies in the row span (loss gradient in the
+   span, penalty rotation-invariant), the projection is an isometry on that span, and the out-of-span component of any
+   test row is orthogonal to the weight; the fit is exact up to solver tolerance. Executor's equality check on a dev fold
+   (train 5 cells, test F1|H0): identical penalised objective (25.803490, C 1, layer 10), weights in the row space to
+   1e-14, argmax 12/12 at C 0.01 and 0.1, 23/24 at C 1 (ill-conditioned optimum, same objective). 10–70 s per fit →
+   about 85 s for the run. Recorded as `config.solver` in `design.json`. **Disclosure, recorded:** the Executor's first
+   equality check compared the two solvers' argmax on held *features*; no held label was read and no held accuracy was
+   computed; the check was redone on a dev fold and the figures above are from that. Ruled: not a selection on held
+   (the solver is fixed by exactness, not by held behaviour), but a held touch before commit, and recorded as such.
+5. **TU superseded** is kept as computed and labelled *redundant with TU current* in the report (same problem up to
+   relabelling); it is not a separate finding. TU reads remain descriptive (§5).
+6. **Commit order before the single held read.** (i) Executor commits the solver, the rev 5 criterion (the `decodable`
+   rule reads held only; `dev_ok` reported, not gating; `design_config.criterion` updated so the design sha names the
+   rev 5 design) and `design.json`; (ii) Executor writes `design_committed.json` naming that commit and the design sha;
+   (iii) the Advisor recomputes the design sha from the committed code and verifies it before the held read is run;
+   (iv) the held read runs once; `probe_held.json` and the held report are the result. Nothing held has been read at
+   the time of this ruling (`probe_held.json` and the held report do not exist).
+
+Note on `design.json`: `"folds": 5` is the unused stratified fallback (`CV_FOLDS`); the dev CV actually used the 6
+(format × hardness) groups (`cv_scheme`). Both are recorded; no code change is required for the record.
