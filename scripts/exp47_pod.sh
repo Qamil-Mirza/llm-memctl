@@ -12,7 +12,8 @@
 # bundle_info; exit 3) -> stub check on the pod's device (the 3 smoke rows on the stub, Δ assert off; a second run
 # redoes nothing; exit 5) -> download the 3B -> D-22 smoke (the 3 smoke rows ec81a493 / 7401057b / 5809eb10 on the 3B:
 # sanity and the Δ assert must hold on every row; exit 5) -> projection (the slowest smoke row x 36 x 1.15 + the
-# seconds spent; above PROJECT_LIMIT = $1.00 at $0.59/h the chain stops, exit 7) -> the 36 rows -> report -> status.
+# seconds spent; above PROJECT_LIMIT = $1.00 at $0.59/h the chain stops, exit 7) -> the 36 rows (batch 19, or 10 if the
+# smoke's peak CUDA memory exceeded 36 GB) -> report -> status.
 # Deadlines: HARD_STOP_S (default 5400) after start all model work ends (the run stops between rows, exit 9,
 # resumable). The watchdog stops the pod at SELF_STOP_S (default 6000) with `runpodctl stop pod $RUNPOD_POD_ID`; a
 # laptop DELETE follows the copy-back. No outcome is printed. Exit 3: input. 4: GPU / install / download. 5: stub
@@ -176,7 +177,10 @@ set -e
 if [ "$RC" -ne 0 ]; then echo "PROJECTION above \$$PROJECT_LIMIT (rc $RC): chain stopped; ask before continuing" | tee -a "$OUT/pod.log"; stage_done projection stop "$RC"; exit 7; fi
 stage_done projection ok 0
 
-RR=0; run_step rows "$(left)" $PY scripts/exp47_patch.py $W --device "$DEV" --dtype "$DT" $NOASSERT --out "$RES" --deadline-s $(( $(left) - 30 )) $LIMIT || RR=$?
+# Build review ruling (b): smoke peak above 36 GB -> the rows run at --batch 10.
+ROWS_BATCH=$($PY -c "import json; p = json.load(open('$OUT/smoke/smoke.json')).get('peak_cuda_gb'); print(10 if (p or 0) > 36 else 19)")
+echo "rows batch $ROWS_BATCH (smoke peak $($PY -c "import json; print(json.load(open('$OUT/smoke/smoke.json')).get('peak_cuda_gb'))") GB)" | tee -a "$OUT/pod.log"
+RR=0; run_step rows "$(left)" $PY scripts/exp47_patch.py $W --device "$DEV" --dtype "$DT" --batch "$ROWS_BATCH" $NOASSERT --out "$RES" --deadline-s $(( $(left) - 30 )) $LIMIT || RR=$?
 stage_done rows "$(status_of "$RR")" "$RR"
 RP=0; run_step report "$(left)" $PY scripts/exp47_report.py --root "$RES" || RP=$?
 stage_done report "$(status_of "$RP")" "$RP"

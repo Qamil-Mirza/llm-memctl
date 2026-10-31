@@ -75,9 +75,13 @@ def build(root: Path) -> dict:
                  "without_multi_occurrence": {"n": no_multi["n"], "l_star_descriptive": B.l_star(no_multi["transfer"], no_multi["k1"]) if no_multi["n"] else None}}
     rep["B2"] = {**cf, "reading": B.b2_reading(cs["l_star"], cf["l_star"], cf["status"], b1_yes)}
     ref = [r for r in recs if r["label"] == "refusal"]
-    rep["B3"] = {"status": "read" if sum(r["entered"] for r in ref) >= B.MIN_ROWS else "descriptive",
-                 "refusal_rows_entered": sum(r["entered"] for r in ref), "refusal_rows_all": len(ref),
-                 "refusal_to_answer_entered": outcome_shift([r for r in ref if r["entered"]], {"G", "S"}),
+    ref_ent = [r for r in ref if r["entered"]]
+    ref_ent_unknown = [r for r in ref_ent if r["baseline"]["clean"]["outcome"] == "unknown"]
+    rep["B3"] = {"status": "read" if len(ref_ent) >= B.MIN_ROWS else "descriptive",
+                 "refusal_rows_entered": len(ref_ent), "refusal_rows_all": len(ref),
+                 "refusal_rows_entered_clean_unknown": len(ref_ent_unknown),
+                 "refusal_to_answer_entered": outcome_shift(ref_ent, {"G", "S"}),
+                 "refusal_to_answer_entered_clean_unknown": outcome_shift(ref_ent_unknown, {"G", "S"}),
                  "refusal_to_answer_all": outcome_shift(ref, {"G", "S"}),
                  "success_induced_abstention": outcome_shift(suc, {"unknown"})}
     per = defaultdict(list)
@@ -88,10 +92,23 @@ def build(root: Path) -> dict:
     rep["B4"] = {"row_l_star_median": {f"{a}:{b}": (statistics.median([v if v is not None else -1 for v in vals]), len(vals))
                                        for (a, b), vals in sorted(per.items())},
                  "s2": s2_split(ent)}
-    rep["outcomes_by_layer"] = {lab: {l: dict(Counter(x["outcome"] for r in recs if r["label"] == lab and r["entered"] == e
-                                                      for x in r["patch"] if x["layer"] == l))
-                                      for l in range(B.N_LAYERS)}
-                                for lab in ("success", "refusal", "wrong") for e in (True,)}
+    rep["baseline_outcomes"] = {f"{lab}|{'entered' if e else 'not_entered'}|{kind}":
+                                dict(Counter(r["baseline"][kind]["outcome"] for r in recs
+                                             if r["label"] == lab and r["entered"] == e))
+                                for lab in ("success", "refusal", "wrong") for e in (True, False)
+                                for kind in ("clean", "swap")}
+
+    def share(rs, want):
+        k = sum(r["baseline"]["clean"]["outcome"] == want for r in rs)
+        return {"k": k, "n": len(rs), "share": k / len(rs) if rs else None}
+    rep["label_consistency"] = {
+        "refusal_clean_unknown_all": share(ref, "unknown"), "refusal_clean_unknown_entered": share(ref_ent, "unknown"),
+        "success_clean_G_all": share([r for r in recs if r["label"] == "success"], "G"),
+        "success_clean_G_entered": share(suc, "G")}
+    rep["outcomes_by_layer_entered"] = {lab: {l: dict(Counter(x["outcome"] for r in ent if r["label"] == lab
+                                                              for x in r["patch"] if x["layer"] == l))
+                                              for l in range(B.N_LAYERS)}
+                                        for lab in ("success", "refusal", "wrong")}
     rep["not_entered_outcomes"] = {l: dict(Counter(x["outcome"] for r in recs if not r["entered"] for x in r["patch"]
                                                    if x["layer"] == l)) for l in range(B.N_LAYERS)}
     return rep
@@ -127,7 +144,12 @@ def markdown(rep: dict) -> str:
              f"Without the multi-occurrence rows (descriptive): n {rep['B1']['without_multi_occurrence']['n']}, "
              f"L* {rep['B1']['without_multi_occurrence']['l_star_descriptive']}.",
              f"**B2** failure entered n {rep['B2']['n']} ({rep['B2']['status']}), L* {rep['B2']['l_star']}: {rep['B2']['reading']}.",
-             f"**B3** {rep['B3']['status']} (refusal rows entered {rep['B3']['refusal_rows_entered']} of {rep['B3']['refusal_rows_all']}).",
+             f"**B3** {rep['B3']['status']} (refusal rows entered {rep['B3']['refusal_rows_entered']} of {rep['B3']['refusal_rows_all']}; "
+             f"of those, clean baseline 'unknown' under this readout: {rep['B3']['refusal_rows_entered_clean_unknown']}).",
+             "", "Label consistency (this readout vs the §23 label): " + "; ".join(
+                 f"{k} {v['k']}/{v['n']}" for k, v in rep["label_consistency"].items()),
+             "", "Baseline outcomes (clean / swap generations) by label and entry:", "```",
+             json.dumps(rep["baseline_outcomes"], indent=1), "```",
              "", "| layer | T succ | LB | k1 succ | T fail | LB | k1 fail |", "|---|---|---|---|---|---|---|"]
     for l in range(B.N_LAYERS):
         s, sk = rep["B1"]["transfer"].get(l, {}), rep["B1"]["k1"].get(l, {})
@@ -135,11 +157,13 @@ def markdown(rep: dict) -> str:
         lines.append(f"| {l} | {f(s.get('share'))} | {f(s.get('lower'))} | {f(sk.get('share'))} | {f(g.get('share'))} | "
                      f"{f(g.get('lower'))} | {f(gk.get('share'))} |")
     lines += ["", "## B3 (descriptive unless >= 8 refusal rows enter)", "",
-              "| layer | refusal -> G/S, patch - k1 (entered) | success -> unknown, patch - k1 |", "|---|---|---|"]
+              "| layer | refusal -> G/S, patch - k1 (entered) | same, clean baseline unknown only | success -> unknown, patch - k1 |",
+              "|---|---|---|---|"]
     for l in range(B.N_LAYERS):
         a = rep["B3"]["refusal_to_answer_entered"].get(l, {})
+        c = rep["B3"]["refusal_to_answer_entered_clean_unknown"].get(l, {})
         b = rep["B3"]["success_induced_abstention"].get(l, {})
-        lines.append(f"| {l} | {f(a.get('diff'))} | {f(b.get('diff'))} |")
+        lines.append(f"| {l} | {f(a.get('diff'))} | {f(c.get('diff'))} | {f(b.get('diff'))} |")
     s2 = rep["B4"]["s2"]
     lines += ["", "## B4 (descriptive)", "", "Per-row L* medians (-1 = none) and n:", "```",
               json.dumps(rep["B4"]["row_l_star_median"], indent=1), "```", "",
