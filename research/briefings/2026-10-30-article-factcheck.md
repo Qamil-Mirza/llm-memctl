@@ -181,3 +181,19 @@ else zero; archiving free)", and may mention replay regret only as implemented-a
   closed, so publishing them is fine, but say they are illustrative rows, chosen by the author, from their classes.
 - The two examples are Qwen2.5-3B-Instruct under one prompt family on one benchmark (LongMemEval-S); §24 and §43 extend
   parts of the picture to other families, but these rows do not.
+
+## 4. Addendum: Codex's two development-fold rows, verified (2026-10-30, later)
+
+- `b320f3f8` (fold 0, single-session-user, gold "a blue Snaggletooth"): cached 3B output `user mentioned buying a rare blue
+  Snaggletooth action figure from a thrift store a few weeks ago.` ⏎ `Answer: unknown`; §23 verdict wrong/refusal; D1 true
+  (gold in the note); 7B correct ("A rare blue Snaggletooth action figure."); §35 arm A ` unknown`, arm B ` Snaggletooth
+  action figure` judged correct, arm F correct, F-cut and N-cut refuse. Cache file as Codex named it
+  (`cache/generations_exp23_qwen3b/5e/5eff6547….json`). Clean own-note refusal; fine to publish.
+- `4bc144e2` (fold 1, multi-session, gold "$65"): cached 3B output `user mentioned spending $15 on a car wash on February
+  3rd and $50 on a parking ticket on January 5th.` ⏎ `Answer: unknown`; 7B `Answer: $65` correct; §35 arm B ` $65` judged
+  correct. **Caveat: D1 is false on this row** (the gold string "$65" is not in the note, only the two amounts), so in §35's
+  terms it is an S′ row, one of the "note holds the ingredients, the last step happens at the answer" recoveries described
+  as exploratory in §35a, not one of the 22 S rows that Claim 1 is computed on. Also arm F (the forced prompt regenerated)
+  answered `$55`, wrong, and F-cut answered `$15` with no evidence. Describe it as "the note names both amounts and the sum
+  is done only when 'unknown' is forbidden", not as "the gold was in the note".
+- Both rows are development-fold rows (folds 0–1), which were open throughout; no leak concern.
