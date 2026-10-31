@@ -440,3 +440,83 @@ def test_report_variants_follow_the_rulings(tok):
     assert rep.entity_call(ranks, pinned, ["York"], layers, payload, "any generated token")["first_layer"] == 1
     assert rep.entity_call(ranks, pinned, ["York"], layers, payload, "either form anywhere")["readable"] is True
     assert rep.entity_call(ranks, pinned, ["York"], layers, payload, "last prompt token only")["readable"] is False
+
+
+# ---------------------------------------------------------------------------------------------- post hoc echo rules
+
+def test_echo_rule_a_drops_only_the_position_fed_the_target():
+    # stored positions 0..5, lp = 1; X = ids {7, 8} (two forms); X is fed in at position 3
+    input_at = [50, 51, 52, 7, 53, 54]
+    counted = [1, 2, 3, 4, 5]
+    assert M.echo_counted(counted, input_at, [7, 8], "A", 1) == [1, 2, 4, 5]
+    assert M.echo_counted(counted, [50, 51, 52, 8, 53, 7], [7, 8], "A", 1) == [1, 2, 4]   # either form
+    r = np.full((3, 6, 2), 500, dtype=np.int32)      # columns: 0 = sp, 1 = bare of X
+    r[0, 3, 0] = 1                                   # the echo: X ranked 1 at layer 0 where X is the input
+    layers = [0, 1, 2]
+    assert M.readability_rule(r, [0], [1], layers, counted, [1], exclude_final=True)["first_layer"] == 0   # fixed
+    a = M.readability_rule(r, [0], [1], layers, M.echo_counted(counted, input_at, [7, 8], "A", 1), [1],
+                           exclude_final=True)
+    assert a["readable"] is False
+    r[1, 4, 0] = 3                                   # a hit at a later, non-echo position still counts under A
+    a = M.readability_rule(r, [0], [1], layers, M.echo_counted(counted, input_at, [7, 8], "A", 1), [1],
+                           exclude_final=True)
+    assert a["readable"] and a["first_pos"] == 4
+
+
+def test_echo_rule_b_keeps_positions_up_to_the_one_producing_the_first_occurrence():
+    input_at = [50, 51, 52, 7, 53, 7]                # X first fed in at 3, so position 2 produced it
+    counted = [1, 2, 3, 4, 5]
+    assert M.echo_counted(counted, input_at, [7], "B", 1) == [1, 2]
+    assert M.echo_counted(counted, [50, 51, 52, 53, 54, 55], [7], "B", 1) == counted      # never produced
+    assert M.echo_counted([1, 4, 5], input_at, [7], "B", 1) == [1]                         # F2: note held X
+    # X fed in at the last prompt token itself does not drop it (only lp+1.. are searched)
+    assert M.echo_counted(counted, [50, 7, 52, 53, 54, 55], [7], "B", 1) == counted
+    with pytest.raises(ValueError):
+        M.echo_counted(counted, input_at, [7], "C", 1)
+
+
+def test_echo_rules_leave_the_bare_form_at_the_last_prompt_token(tok):
+    rep = _script("exp45_report")
+    pinned = M.pin_tokens(tok, [("gold", "York")])
+    sp, bare = M.form_columns(pinned, "York")
+    sp_id = pinned[sp[0]]["id"]
+    ranks = np.full((4, 6, len(pinned)), 900, dtype=np.int32)
+    ranks[2, 1, bare[0]] = 5                         # bare form at the last prompt token (index 1)
+    ranks[0, 4, sp[0]] = 1                           # echo of " York" fed in at position 4
+    payload = {"pinned": pinned, "gold": "York", "last_prompt_index": 1, "counted_positions": [1, 2, 3, 4, 5]}
+    input_at = np.array([9, 10, 11, sp_id, sp_id, 12])            # " York" first fed in at 3 (produced at 2)
+    layers = [0, 1, 2, 3]
+    fixed = rep.entity_call(ranks, pinned, ["York"], layers, payload, exclude_final=True)
+    assert fixed["first_layer"] == 0                 # inflated by the echo
+    for rule in ("rule A", "rule B"):
+        got = rep.entity_call(ranks, pinned, ["York"], layers, payload, rule, exclude_final=True, input_at=input_at)
+        assert got["readable"] and got["first_layer"] == 2 and got["first_pos"] == 1      # the bare hit at lp
+    ranks[1, 3, sp[0]] = 4                           # position 3 is fed " York": excluded by A and B
+    ranks[1, 2, sp[0]] = 900
+    assert rep.entity_call(ranks, pinned, ["York"], layers, payload, "rule A", exclude_final=True,
+                           input_at=input_at)["first_layer"] == 2
+    ranks[1, 5, sp[0]] = 4                           # position 5: not an echo (A counts), after production (B not)
+    assert rep.entity_call(ranks, pinned, ["York"], layers, payload, "rule A", exclude_final=True,
+                           input_at=input_at)["first_layer"] == 1
+    assert rep.entity_call(ranks, pinned, ["York"], layers, payload, "rule B", exclude_final=True,
+                           input_at=input_at)["first_layer"] == 2
+    with pytest.raises(ValueError):
+        rep.entity_call(ranks, pinned, ["York"], layers, payload, "rule A")
+
+
+def test_report_rules_read_input_tokens_at_the_stored_positions(tok):
+    # stage 3 keeps a subset of prompt positions: the input token at stored index p is input_ids[positions[p]]
+    rep = _script("exp45_report")
+    pinned = M.pin_tokens(tok, [("gold", "York")])
+    sp, _ = M.form_columns(pinned, "York")
+    sp_id = pinned[sp[0]]["id"]
+    full = np.array([1, 2, sp_id, 3, 4, 5, 6, 7], dtype=np.int32)    # " York" in the prompt at sequence index 2
+    positions = np.array([0, 5, 6, 7], dtype=np.int32)              # lp = stored 1 (sequence 5), then generated
+    ranks = np.full((2, 4, 4, len(pinned)), 900, dtype=np.int32)
+    ranks[:, 2, 2, sp[0]] = 3                                       # hit at stored 2 (fed token 6, not " York")
+    payload = {"pinned": pinned, "gold": "York", "intermediate": None, "competitors": [], "task": "DE",
+               "lens_names": ["j56", "logit"], "last_prompt_index": 1, "counted_positions": [1, 2, 3]}
+    c = rep.calls(payload, {"ranks": ranks, "layers": np.arange(4), "input_ids": full, "positions": positions})
+    assert c["j56"]["a_gold | rule B"]["readable"] and c["j56"]["a_gold | rule A"]["readable"]
+    assert c["j56"]["a_gold | rule B"]["first_pos"] == 2
+    assert c["j56"]["b_intermediate | rule A"] is None and c["j56"]["a_gold | rule A, incl. final layer"] is None

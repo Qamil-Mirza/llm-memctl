@@ -11,68 +11,122 @@ Answer marker present (format|present): {"F1|False": 216, "F2|False": 1, "F2|Tru
 
 ### dev (presentation only)
 
-| task | lens | criterion | n | readable | share | Wilson 95% | verdict | first depth q1/q2/q3 |
+| task | lens | criterion | n | readable | share | Wilson 95% | verdict | first depth q1/q2/q3 (fixed-rule depths: inflated by echo, not shown) |
 |---|---|---|---|---|---|---|---|---|
-| DE | j56 | a_gold | 93 | 93 | 1.00 | [0.96, 1.00] | recovers | 0.00/0.00/0.86 |
+| DE | j56 | a_gold | 93 | 93 | 1.00 | [0.96, 1.00] | recovers (inflated by echo) | inflated by echo |
 | DE | j56 | a_gold | last prompt token only | 93 | 20 | 0.22 | [0.14, 0.31] | not recovered | 0.92/0.92/0.92 |
-| DE | j56 | a_gold | any generated token | 93 | 93 | 1.00 | [0.96, 1.00] | recovers | 0.00/0.00/0.86 |
-| DE | j56 | a_gold | either form anywhere | 93 | 93 | 1.00 | [0.96, 1.00] | recovers | 0.00/0.00/0.86 |
-| DE | jrefit | a_gold | 93 | 93 | 1.00 | [0.96, 1.00] | recovers | 0.00/0.11/0.86 |
+| DE | j56 | a_gold | any generated token | 93 | 93 | 1.00 | [0.96, 1.00] | recovers (inflated by echo) | inflated by echo |
+| DE | j56 | a_gold | either form anywhere | 93 | 93 | 1.00 | [0.96, 1.00] | recovers (inflated by echo) | inflated by echo |
+| DE | jrefit | a_gold | 93 | 93 | 1.00 | [0.96, 1.00] | recovers (inflated by echo) | inflated by echo |
 | DE | jrefit | a_gold | last prompt token only | 93 | 20 | 0.22 | [0.14, 0.31] | not recovered | 0.92/0.92/0.92 |
-| DE | jrefit | a_gold | any generated token | 93 | 93 | 1.00 | [0.96, 1.00] | recovers | 0.00/0.11/0.83 |
-| DE | jrefit | a_gold | either form anywhere | 93 | 93 | 1.00 | [0.96, 1.00] | recovers | 0.00/0.11/0.83 |
-| DE | logit | a_gold | 93 | 93 | 1.00 | [0.96, 1.00] | recovers | 0.86/0.89/0.89 |
+| DE | jrefit | a_gold | any generated token | 93 | 93 | 1.00 | [0.96, 1.00] | recovers (inflated by echo) | inflated by echo |
+| DE | jrefit | a_gold | either form anywhere | 93 | 93 | 1.00 | [0.96, 1.00] | recovers (inflated by echo) | inflated by echo |
+| DE | logit | a_gold | 93 | 93 | 1.00 | [0.96, 1.00] | recovers (inflated by echo) | inflated by echo |
 | DE | logit | a_gold | last prompt token only | 93 | 18 | 0.19 | [0.13, 0.29] | not recovered | 0.92/0.92/0.92 |
-| DE | logit | a_gold | any generated token | 93 | 93 | 1.00 | [0.96, 1.00] | recovers | 0.86/0.86/0.89 |
-| DE | logit | a_gold | either form anywhere | 93 | 93 | 1.00 | [0.96, 1.00] | recovers | 0.86/0.86/0.89 |
-| RC | j56 | a_gold | 88 | 88 | 1.00 | [0.96, 1.00] | recovers | 0.00/0.25/0.89 |
+| DE | logit | a_gold | any generated token | 93 | 93 | 1.00 | [0.96, 1.00] | recovers (inflated by echo) | inflated by echo |
+| DE | logit | a_gold | either form anywhere | 93 | 93 | 1.00 | [0.96, 1.00] | recovers (inflated by echo) | inflated by echo |
+| RC | j56 | a_gold | 88 | 88 | 1.00 | [0.96, 1.00] | recovers (inflated by echo) | inflated by echo |
 | RC | j56 | a_gold | last prompt token only | 88 | 29 | 0.33 | [0.24, 0.43] | not recovered | 0.92/0.92/0.92 |
-| RC | j56 | a_gold | any generated token | 88 | 88 | 1.00 | [0.96, 1.00] | recovers | 0.00/0.25/0.89 |
-| RC | j56 | a_gold | either form anywhere | 88 | 88 | 1.00 | [0.96, 1.00] | recovers | 0.00/0.25/0.89 |
-| RC | j56 | b_intermediate | 55 | 51 | 0.93 | [0.83, 0.97] | recovers | 0.89/0.89/0.92 |
+| RC | j56 | a_gold | any generated token | 88 | 88 | 1.00 | [0.96, 1.00] | recovers (inflated by echo) | inflated by echo |
+| RC | j56 | a_gold | either form anywhere | 88 | 88 | 1.00 | [0.96, 1.00] | recovers (inflated by echo) | inflated by echo |
+| RC | j56 | b_intermediate | 55 | 51 | 0.93 | [0.83, 0.97] | recovers (inflated by echo) | inflated by echo |
 | RC | j56 | b_intermediate | last prompt token only | 55 | 50 | 0.91 | [0.80, 0.96] | recovers | 0.92/0.92/0.92 |
-| RC | j56 | b_intermediate | any generated token | 55 | 55 | 1.00 | [0.93, 1.00] | recovers | 0.64/0.89/0.89 |
-| RC | j56 | b_intermediate | either form anywhere | 55 | 55 | 1.00 | [0.93, 1.00] | recovers | 0.49/0.89/0.89 |
-| RC | jrefit | a_gold | 88 | 88 | 1.00 | [0.96, 1.00] | recovers | 0.00/0.25/0.89 |
+| RC | j56 | b_intermediate | any generated token | 55 | 55 | 1.00 | [0.93, 1.00] | recovers (inflated by echo) | inflated by echo |
+| RC | j56 | b_intermediate | either form anywhere | 55 | 55 | 1.00 | [0.93, 1.00] | recovers (inflated by echo) | inflated by echo |
+| RC | jrefit | a_gold | 88 | 88 | 1.00 | [0.96, 1.00] | recovers (inflated by echo) | inflated by echo |
 | RC | jrefit | a_gold | last prompt token only | 88 | 29 | 0.33 | [0.24, 0.43] | not recovered | 0.92/0.92/0.92 |
-| RC | jrefit | a_gold | any generated token | 88 | 88 | 1.00 | [0.96, 1.00] | recovers | 0.00/0.25/0.87 |
-| RC | jrefit | a_gold | either form anywhere | 88 | 88 | 1.00 | [0.96, 1.00] | recovers | 0.00/0.25/0.87 |
-| RC | jrefit | b_intermediate | 55 | 52 | 0.95 | [0.85, 0.98] | recovers | 0.89/0.89/0.92 |
+| RC | jrefit | a_gold | any generated token | 88 | 88 | 1.00 | [0.96, 1.00] | recovers (inflated by echo) | inflated by echo |
+| RC | jrefit | a_gold | either form anywhere | 88 | 88 | 1.00 | [0.96, 1.00] | recovers (inflated by echo) | inflated by echo |
+| RC | jrefit | b_intermediate | 55 | 52 | 0.95 | [0.85, 0.98] | recovers (inflated by echo) | inflated by echo |
 | RC | jrefit | b_intermediate | last prompt token only | 55 | 51 | 0.93 | [0.83, 0.97] | recovers | 0.92/0.92/0.92 |
-| RC | jrefit | b_intermediate | any generated token | 55 | 55 | 1.00 | [0.93, 1.00] | recovers | 0.86/0.89/0.89 |
-| RC | jrefit | b_intermediate | either form anywhere | 55 | 55 | 1.00 | [0.93, 1.00] | recovers | 0.83/0.89/0.89 |
-| RC | logit | a_gold | 88 | 88 | 1.00 | [0.96, 1.00] | recovers | 0.86/0.86/0.89 |
+| RC | jrefit | b_intermediate | any generated token | 55 | 55 | 1.00 | [0.93, 1.00] | recovers (inflated by echo) | inflated by echo |
+| RC | jrefit | b_intermediate | either form anywhere | 55 | 55 | 1.00 | [0.93, 1.00] | recovers (inflated by echo) | inflated by echo |
+| RC | logit | a_gold | 88 | 88 | 1.00 | [0.96, 1.00] | recovers (inflated by echo) | inflated by echo |
 | RC | logit | a_gold | last prompt token only | 88 | 20 | 0.23 | [0.15, 0.33] | not recovered | 0.92/0.92/0.92 |
-| RC | logit | a_gold | any generated token | 88 | 88 | 1.00 | [0.96, 1.00] | recovers | 0.86/0.86/0.89 |
-| RC | logit | a_gold | either form anywhere | 88 | 88 | 1.00 | [0.96, 1.00] | recovers | 0.86/0.86/0.89 |
-| RC | logit | b_intermediate | 55 | 47 | 0.85 | [0.74, 0.92] | recovers | 0.89/0.92/0.92 |
+| RC | logit | a_gold | any generated token | 88 | 88 | 1.00 | [0.96, 1.00] | recovers (inflated by echo) | inflated by echo |
+| RC | logit | a_gold | either form anywhere | 88 | 88 | 1.00 | [0.96, 1.00] | recovers (inflated by echo) | inflated by echo |
+| RC | logit | b_intermediate | 55 | 47 | 0.85 | [0.74, 0.92] | recovers (inflated by echo) | inflated by echo |
 | RC | logit | b_intermediate | last prompt token only | 55 | 45 | 0.82 | [0.70, 0.90] | recovers | 0.92/0.92/0.92 |
-| RC | logit | b_intermediate | any generated token | 55 | 55 | 1.00 | [0.93, 1.00] | recovers | 0.89/0.89/0.89 |
-| RC | logit | b_intermediate | either form anywhere | 55 | 55 | 1.00 | [0.93, 1.00] | recovers | 0.89/0.89/0.89 |
-| TU | j56 | a_gold | 75 | 75 | 1.00 | [0.95, 1.00] | recovers | 0.00/0.00/0.25 |
+| RC | logit | b_intermediate | any generated token | 55 | 55 | 1.00 | [0.93, 1.00] | recovers (inflated by echo) | inflated by echo |
+| RC | logit | b_intermediate | either form anywhere | 55 | 55 | 1.00 | [0.93, 1.00] | recovers (inflated by echo) | inflated by echo |
+| TU | j56 | a_gold | 75 | 75 | 1.00 | [0.95, 1.00] | recovers (inflated by echo) | inflated by echo |
 | TU | j56 | a_gold | last prompt token only | 75 | 0 | 0.00 | [0.00, 0.05] | not recovered | - |
-| TU | j56 | a_gold | any generated token | 75 | 75 | 1.00 | [0.95, 1.00] | recovers | 0.00/0.00/0.25 |
-| TU | j56 | a_gold | either form anywhere | 75 | 75 | 1.00 | [0.95, 1.00] | recovers | 0.00/0.00/0.25 |
-| TU | j56 | c_competitor | 75 | 36 | 0.48 | [0.37, 0.59] | not recovered | 0.89/0.92/0.94 |
+| TU | j56 | a_gold | any generated token | 75 | 75 | 1.00 | [0.95, 1.00] | recovers (inflated by echo) | inflated by echo |
+| TU | j56 | a_gold | either form anywhere | 75 | 75 | 1.00 | [0.95, 1.00] | recovers (inflated by echo) | inflated by echo |
+| TU | j56 | c_competitor | 75 | 36 | 0.48 | [0.37, 0.59] | not recovered (inflated by echo) | inflated by echo |
 | TU | j56 | c_competitor | last prompt token only | 75 | 0 | 0.00 | [0.00, 0.05] | not recovered | - |
-| TU | j56 | c_competitor | any generated token | 75 | 65 | 0.87 | [0.77, 0.93] | recovers | 0.00/0.25/0.86 |
-| TU | j56 | c_competitor | either form anywhere | 75 | 65 | 0.87 | [0.77, 0.93] | recovers | 0.00/0.25/0.86 |
-| TU | jrefit | a_gold | 75 | 75 | 1.00 | [0.95, 1.00] | recovers | 0.00/0.00/0.26 |
+| TU | j56 | c_competitor | any generated token | 75 | 65 | 0.87 | [0.77, 0.93] | recovers (inflated by echo) | inflated by echo |
+| TU | j56 | c_competitor | either form anywhere | 75 | 65 | 0.87 | [0.77, 0.93] | recovers (inflated by echo) | inflated by echo |
+| TU | jrefit | a_gold | 75 | 75 | 1.00 | [0.95, 1.00] | recovers (inflated by echo) | inflated by echo |
 | TU | jrefit | a_gold | last prompt token only | 75 | 0 | 0.00 | [0.00, 0.05] | not recovered | - |
-| TU | jrefit | a_gold | any generated token | 75 | 75 | 1.00 | [0.95, 1.00] | recovers | 0.00/0.00/0.26 |
-| TU | jrefit | a_gold | either form anywhere | 75 | 75 | 1.00 | [0.95, 1.00] | recovers | 0.00/0.00/0.26 |
-| TU | jrefit | c_competitor | 75 | 35 | 0.47 | [0.36, 0.58] | not recovered | 0.89/0.92/0.94 |
+| TU | jrefit | a_gold | any generated token | 75 | 75 | 1.00 | [0.95, 1.00] | recovers (inflated by echo) | inflated by echo |
+| TU | jrefit | a_gold | either form anywhere | 75 | 75 | 1.00 | [0.95, 1.00] | recovers (inflated by echo) | inflated by echo |
+| TU | jrefit | c_competitor | 75 | 35 | 0.47 | [0.36, 0.58] | not recovered (inflated by echo) | inflated by echo |
 | TU | jrefit | c_competitor | last prompt token only | 75 | 0 | 0.00 | [0.00, 0.05] | not recovered | - |
-| TU | jrefit | c_competitor | any generated token | 75 | 64 | 0.85 | [0.76, 0.92] | recovers | 0.00/0.25/0.86 |
-| TU | jrefit | c_competitor | either form anywhere | 75 | 64 | 0.85 | [0.76, 0.92] | recovers | 0.00/0.25/0.86 |
-| TU | logit | a_gold | 75 | 75 | 1.00 | [0.95, 1.00] | recovers | 0.86/0.89/0.89 |
+| TU | jrefit | c_competitor | any generated token | 75 | 64 | 0.85 | [0.76, 0.92] | recovers (inflated by echo) | inflated by echo |
+| TU | jrefit | c_competitor | either form anywhere | 75 | 64 | 0.85 | [0.76, 0.92] | recovers (inflated by echo) | inflated by echo |
+| TU | logit | a_gold | 75 | 75 | 1.00 | [0.95, 1.00] | recovers (inflated by echo) | inflated by echo |
 | TU | logit | a_gold | last prompt token only | 75 | 0 | 0.00 | [0.00, 0.05] | not recovered | - |
-| TU | logit | a_gold | any generated token | 75 | 75 | 1.00 | [0.95, 1.00] | recovers | 0.86/0.86/0.86 |
-| TU | logit | a_gold | either form anywhere | 75 | 75 | 1.00 | [0.95, 1.00] | recovers | 0.86/0.86/0.86 |
-| TU | logit | c_competitor | 75 | 36 | 0.48 | [0.37, 0.59] | not recovered | 0.89/0.92/0.97 |
+| TU | logit | a_gold | any generated token | 75 | 75 | 1.00 | [0.95, 1.00] | recovers (inflated by echo) | inflated by echo |
+| TU | logit | a_gold | either form anywhere | 75 | 75 | 1.00 | [0.95, 1.00] | recovers (inflated by echo) | inflated by echo |
+| TU | logit | c_competitor | 75 | 36 | 0.48 | [0.37, 0.59] | not recovered (inflated by echo) | inflated by echo |
 | TU | logit | c_competitor | last prompt token only | 75 | 0 | 0.00 | [0.00, 0.05] | not recovered | - |
-| TU | logit | c_competitor | any generated token | 75 | 64 | 0.85 | [0.76, 0.92] | recovers | 0.86/0.86/0.89 |
-| TU | logit | c_competitor | either form anywhere | 75 | 64 | 0.85 | [0.76, 0.92] | recovers | 0.86/0.86/0.89 |
+| TU | logit | c_competitor | any generated token | 75 | 64 | 0.85 | [0.76, 0.92] | recovers (inflated by echo) | inflated by echo |
+| TU | logit | c_competitor | either form anywhere | 75 | 64 | 0.85 | [0.76, 0.92] | recovers (inflated by echo) | inflated by echo |
+
+## Post hoc echo rules (§45 results review, 1a6e1e5)
+
+Every number in this section is **post hoc**. Rule A = readable anywhere in the answer span (post hoc, rule A): a hit on target X at counted position p does not count when the token fed in at p is one of X's pinned ids (either form). Rule B = readable before the answer is produced (post hoc, rule B): count only the counted positions up to and including the one that produces X's first occurrence: p is excluded once X is among input_ids[lp+1..p] (lp the last prompt token). The bare form at the last prompt token is unchanged. The fixed column is the pre-registered rule, inflated by echo (§45 results review); not evidence of readability before production. In F2, rule B mostly measures whether the note already held the target. Verdicts against the 0.70 / 0.55 bar are descriptive. Depth = first readable layer / 36. Rules A and B read every criterion before the final layer (for (b) and (c) the pre-registered call counts the final layer too; its before-final value is in brackets, the rules with the final layer are in the JSON). 'Last prompt token only' = both forms at the last prompt token (echo-free by construction).
+
+### dev (presentation only): post hoc
+
+| task | lens | criterion | format | n | fixed (inflated by echo) | rule A share [Wilson] | rule A verdict | rule A depth q1/q2/q3 | rule B share [Wilson] | rule B verdict | rule B depth q1/q2/q3 | last prompt token only |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| DE | j56 | a_gold | pooled | 93 | 1.00 | 1.00 [0.96, 1.00] | recovers (descriptive, post hoc) | 0.86/0.89/0.89 | 0.66 [0.55, 0.74] | not recovered (descriptive, post hoc) | 0.86/0.89/0.89 | 0.22 |
+| DE | j56 | a_gold | F1 | 54 | 1.00 | 1.00 [0.93, 1.00] | recovers (descriptive, post hoc) | 0.83/0.86/0.89 | 1.00 [0.93, 1.00] | recovers (descriptive, post hoc) | 0.83/0.86/0.89 | 0.24 |
+| DE | j56 | a_gold | F2 | 39 | 1.00 | 1.00 [0.91, 1.00] | recovers (descriptive, post hoc) | 0.89/0.89/0.89 | 0.18 [0.09, 0.33] | not recovered (descriptive, post hoc) | 0.92/0.92/0.92 | 0.18 |
+| DE | jrefit | a_gold | pooled | 93 | 1.00 | 1.00 [0.96, 1.00] | recovers (descriptive, post hoc) | 0.86/0.89/0.89 | 0.66 [0.55, 0.74] | not recovered (descriptive, post hoc) | 0.83/0.89/0.89 | 0.22 |
+| DE | jrefit | a_gold | F1 | 54 | 1.00 | 1.00 [0.93, 1.00] | recovers (descriptive, post hoc) | 0.83/0.88/0.89 | 1.00 [0.93, 1.00] | recovers (descriptive, post hoc) | 0.83/0.88/0.89 | 0.24 |
+| DE | jrefit | a_gold | F2 | 39 | 1.00 | 1.00 [0.91, 1.00] | recovers (descriptive, post hoc) | 0.89/0.89/0.89 | 0.18 [0.09, 0.33] | not recovered (descriptive, post hoc) | 0.92/0.92/0.92 | 0.18 |
+| DE | logit | a_gold | pooled | 93 | 1.00 | 1.00 [0.96, 1.00] | recovers (descriptive, post hoc) | 0.86/0.89/0.89 | 0.63 [0.53, 0.73] | not recovered (descriptive, post hoc) | 0.86/0.86/0.89 | 0.19 |
+| DE | logit | a_gold | F1 | 54 | 1.00 | 1.00 [0.93, 1.00] | recovers (descriptive, post hoc) | 0.86/0.86/0.89 | 1.00 [0.93, 1.00] | recovers (descriptive, post hoc) | 0.86/0.86/0.89 | 0.24 |
+| DE | logit | a_gold | F2 | 39 | 1.00 | 1.00 [0.91, 1.00] | recovers (descriptive, post hoc) | 0.86/0.89/0.92 | 0.13 [0.06, 0.27] | not recovered (descriptive, post hoc) | 0.92/0.92/0.92 | 0.13 |
+| RC | j56 | a_gold | pooled | 88 | 1.00 | 1.00 [0.96, 1.00] | recovers (descriptive, post hoc) | 0.86/0.89/0.89 | 0.60 [0.50, 0.70] | not recovered (descriptive, post hoc) | 0.83/0.89/0.89 | 0.33 |
+| RC | j56 | a_gold | F1 | 39 | 1.00 | 1.00 [0.91, 1.00] | recovers (descriptive, post hoc) | 0.83/0.86/0.89 | 1.00 [0.91, 1.00] | recovers (descriptive, post hoc) | 0.83/0.86/0.89 | 0.38 |
+| RC | j56 | a_gold | F2 | 49 | 1.00 | 1.00 [0.93, 1.00] | recovers (descriptive, post hoc) | 0.89/0.89/0.89 | 0.29 [0.18, 0.42] | not recovered (descriptive, post hoc) | 0.90/0.92/0.92 | 0.29 |
+| RC | j56 | b_intermediate | pooled | 55 | 0.93 (before final 0.89) | 0.89 [0.78, 0.95] | recovers (descriptive, post hoc) | 0.89/0.89/0.92 | 0.87 [0.76, 0.94] | recovers (descriptive, post hoc) | 0.89/0.89/0.92 | 0.91 |
+| RC | j56 | b_intermediate | F1 | 24 | 1.00 (before final 1.00) | 1.00 [0.86, 1.00] | recovers (descriptive, post hoc) | 0.89/0.89/0.89 | 1.00 [0.86, 1.00] | recovers (descriptive, post hoc) | 0.89/0.89/0.89 | 1.00 |
+| RC | j56 | b_intermediate | F2 | 31 | 0.87 (before final 0.81) | 0.81 [0.64, 0.91] | recovers (descriptive, post hoc) | 0.92/0.92/0.92 | 0.77 [0.60, 0.89] | recovers (descriptive, post hoc) | 0.92/0.92/0.92 | 0.84 |
+| RC | jrefit | a_gold | pooled | 88 | 1.00 | 1.00 [0.96, 1.00] | recovers (descriptive, post hoc) | 0.86/0.89/0.89 | 0.60 [0.50, 0.70] | not recovered (descriptive, post hoc) | 0.83/0.89/0.89 | 0.33 |
+| RC | jrefit | a_gold | F1 | 39 | 1.00 | 1.00 [0.91, 1.00] | recovers (descriptive, post hoc) | 0.83/0.86/0.89 | 1.00 [0.91, 1.00] | recovers (descriptive, post hoc) | 0.83/0.86/0.89 | 0.38 |
+| RC | jrefit | a_gold | F2 | 49 | 1.00 | 1.00 [0.93, 1.00] | recovers (descriptive, post hoc) | 0.89/0.89/0.89 | 0.29 [0.18, 0.42] | not recovered (descriptive, post hoc) | 0.92/0.92/0.92 | 0.29 |
+| RC | jrefit | b_intermediate | pooled | 55 | 0.95 (before final 0.91) | 0.91 [0.80, 0.96] | recovers (descriptive, post hoc) | 0.89/0.89/0.92 | 0.89 [0.78, 0.95] | recovers (descriptive, post hoc) | 0.89/0.89/0.92 | 0.93 |
+| RC | jrefit | b_intermediate | F1 | 24 | 1.00 (before final 1.00) | 1.00 [0.86, 1.00] | recovers (descriptive, post hoc) | 0.89/0.89/0.89 | 1.00 [0.86, 1.00] | recovers (descriptive, post hoc) | 0.89/0.89/0.89 | 1.00 |
+| RC | jrefit | b_intermediate | F2 | 31 | 0.90 (before final 0.84) | 0.84 [0.67, 0.93] | recovers (descriptive, post hoc) | 0.92/0.92/0.92 | 0.81 [0.64, 0.91] | recovers (descriptive, post hoc) | 0.92/0.92/0.92 | 0.87 |
+| RC | logit | a_gold | pooled | 88 | 1.00 | 1.00 [0.96, 1.00] | recovers (descriptive, post hoc) | 0.86/0.86/0.89 | 0.56 [0.45, 0.66] | not recovered (descriptive, post hoc) | 0.86/0.86/0.92 | 0.23 |
+| RC | logit | a_gold | F1 | 39 | 1.00 | 1.00 [0.91, 1.00] | recovers (descriptive, post hoc) | 0.86/0.86/0.89 | 1.00 [0.91, 1.00] | recovers (descriptive, post hoc) | 0.86/0.86/0.89 | 0.28 |
+| RC | logit | a_gold | F2 | 49 | 1.00 | 1.00 [0.93, 1.00] | recovers (descriptive, post hoc) | 0.86/0.89/0.89 | 0.20 [0.11, 0.34] | not recovered (descriptive, post hoc) | 0.92/0.92/0.94 | 0.18 |
+| RC | logit | b_intermediate | pooled | 55 | 0.85 (before final 0.78) | 0.78 [0.66, 0.87] | recovers (descriptive, post hoc) | 0.89/0.92/0.92 | 0.75 [0.62, 0.84] | recovers (descriptive, post hoc) | 0.89/0.92/0.92 | 0.82 |
+| RC | logit | b_intermediate | F1 | 24 | 1.00 (before final 1.00) | 1.00 [0.86, 1.00] | recovers (descriptive, post hoc) | 0.89/0.89/0.89 | 1.00 [0.86, 1.00] | recovers (descriptive, post hoc) | 0.89/0.89/0.89 | 0.96 |
+| RC | logit | b_intermediate | F2 | 31 | 0.74 (before final 0.61) | 0.61 [0.44, 0.76] | not recovered (descriptive, post hoc) | 0.92/0.92/0.92 | 0.55 [0.38, 0.71] | not recovered (descriptive, post hoc) | 0.92/0.92/0.92 | 0.71 |
+| TU | j56 | a_gold | pooled | 75 | 1.00 | 1.00 [0.95, 1.00] | recovers (descriptive, post hoc) | 0.86/0.89/0.89 | 0.32 [0.23, 0.43] | not recovered (descriptive, post hoc) | 0.83/0.83/0.86 | 0.00 |
+| TU | j56 | a_gold | F1 | 24 | 1.00 | 1.00 [0.86, 1.00] | recovers (descriptive, post hoc) | 0.83/0.83/0.86 | 1.00 [0.86, 1.00] | recovers (descriptive, post hoc) | 0.83/0.83/0.86 | 0.00 |
+| TU | j56 | a_gold | F2 | 51 | 1.00 | 1.00 [0.93, 1.00] | recovers (descriptive, post hoc) | 0.89/0.89/0.89 | 0.00 [0.00, 0.07] | not recovered (descriptive, post hoc) | - | 0.00 |
+| TU | j56 | c_competitor | pooled | 75 | 0.48 (before final 0.37) | 0.37 [0.27, 0.49] | not recovered (descriptive, post hoc) | 0.88/0.89/0.92 | 0.24 [0.16, 0.35] | not recovered (descriptive, post hoc) | 0.86/0.89/0.92 | 0.00 |
+| TU | j56 | c_competitor | F1 | 24 | 0.67 (before final 0.67) | 0.67 [0.47, 0.82] | not recovered (descriptive, post hoc) | 0.85/0.89/0.92 | 0.67 [0.47, 0.82] | not recovered (descriptive, post hoc) | 0.85/0.89/0.92 | 0.00 |
+| TU | j56 | c_competitor | F2 | 51 | 0.39 (before final 0.24) | 0.24 [0.14, 0.37] | not recovered (descriptive, post hoc) | 0.89/0.90/0.92 | 0.04 [0.01, 0.13] | not recovered (descriptive, post hoc) | 0.90/0.92/0.93 | 0.00 |
+| TU | jrefit | a_gold | pooled | 75 | 1.00 | 1.00 [0.95, 1.00] | recovers (descriptive, post hoc) | 0.86/0.89/0.89 | 0.32 [0.23, 0.43] | not recovered (descriptive, post hoc) | 0.83/0.85/0.86 | 0.00 |
+| TU | jrefit | a_gold | F1 | 24 | 1.00 | 1.00 [0.86, 1.00] | recovers (descriptive, post hoc) | 0.83/0.85/0.86 | 1.00 [0.86, 1.00] | recovers (descriptive, post hoc) | 0.83/0.85/0.86 | 0.00 |
+| TU | jrefit | a_gold | F2 | 51 | 1.00 | 1.00 [0.93, 1.00] | recovers (descriptive, post hoc) | 0.89/0.89/0.89 | 0.00 [0.00, 0.07] | not recovered (descriptive, post hoc) | - | 0.00 |
+| TU | jrefit | c_competitor | pooled | 75 | 0.47 (before final 0.37) | 0.37 [0.27, 0.49] | not recovered (descriptive, post hoc) | 0.89/0.89/0.92 | 0.23 [0.15, 0.33] | not recovered (descriptive, post hoc) | 0.86/0.89/0.92 | 0.00 |
+| TU | jrefit | c_competitor | F1 | 24 | 0.62 (before final 0.62) | 0.62 [0.43, 0.79] | not recovered (descriptive, post hoc) | 0.85/0.89/0.92 | 0.62 [0.43, 0.79] | not recovered (descriptive, post hoc) | 0.85/0.89/0.92 | 0.00 |
+| TU | jrefit | c_competitor | F2 | 51 | 0.39 (before final 0.25) | 0.25 [0.16, 0.39] | not recovered (descriptive, post hoc) | 0.89/0.89/0.92 | 0.04 [0.01, 0.13] | not recovered (descriptive, post hoc) | 0.90/0.92/0.93 | 0.00 |
+| TU | logit | a_gold | pooled | 75 | 1.00 | 1.00 [0.95, 1.00] | recovers (descriptive, post hoc) | 0.86/0.89/0.89 | 0.32 [0.23, 0.43] | not recovered (descriptive, post hoc) | 0.83/0.86/0.86 | 0.00 |
+| TU | logit | a_gold | F1 | 24 | 1.00 | 1.00 [0.86, 1.00] | recovers (descriptive, post hoc) | 0.83/0.86/0.86 | 1.00 [0.86, 1.00] | recovers (descriptive, post hoc) | 0.83/0.86/0.86 | 0.00 |
+| TU | logit | a_gold | F2 | 51 | 1.00 | 1.00 [0.93, 1.00] | recovers (descriptive, post hoc) | 0.89/0.89/0.89 | 0.00 [0.00, 0.07] | not recovered (descriptive, post hoc) | - | 0.00 |
+| TU | logit | c_competitor | pooled | 75 | 0.48 (before final 0.35) | 0.35 [0.25, 0.46] | not recovered (descriptive, post hoc) | 0.84/0.90/0.92 | 0.24 [0.16, 0.35] | not recovered (descriptive, post hoc) | 0.89/0.92/0.92 | 0.00 |
+| TU | logit | c_competitor | F1 | 24 | 0.62 (before final 0.62) | 0.62 [0.43, 0.79] | not recovered (descriptive, post hoc) | 0.89/0.92/0.92 | 0.62 [0.43, 0.79] | not recovered (descriptive, post hoc) | 0.89/0.92/0.92 | 0.00 |
+| TU | logit | c_competitor | F2 | 51 | 0.41 (before final 0.22) | 0.22 [0.12, 0.35] | not recovered (descriptive, post hoc) | 0.00/0.89/0.92 | 0.06 [0.02, 0.16] | not recovered (descriptive, post hoc) | 0.44/0.89/0.92 | 0.00 |
 
 ### Fit stability (j56 vs jrefit, before the final layer)
 
@@ -84,6 +138,20 @@ Answer marker present (format|present): {"F1|False": 216, "F2|False": 1, "F2|Tru
 - j56: on the matched failures the gold is not readable before the final layer on >= 0.70 of them (j56) (share 0.62, Wilson [0.55, 0.69], n=176)
 - jrefit: on the matched failures the gold is not readable before the final layer on >= 0.70 of them (jrefit) (share 0.62, Wilson [0.55, 0.69], n=176)
 - logit: on the matched failures the gold is not readable before the final layer on >= 0.70 of them (logit) (share 0.61, Wilson [0.53, 0.68], n=176)
+
+### Stage 2, post hoc (rules A/B; fixed departure layers struck as an echo artefact)
+
+| lens | rule | not readable before the final layer | share [Wilson] | departure layer buckets (paired) |
+|---|---|---|---|---|
+| j56 | fixed (inflated by echo) | 67/176 | 0.38 [0.31, 0.45] | 0: 84, 1-9: 24, 10-29: 9, 30+: 11, none: 9 |
+| j56 | rule A (post hoc) | 67/176 | 0.38 [0.31, 0.45] | 0: 2, 1-9: 0, 10-29: 1, 30+: 89, none: 45 |
+| j56 | rule B (post hoc) | 125/176 | 0.71 [0.64, 0.77] | 0: 2, 1-9: 0, 10-29: 1, 30+: 62, none: 72 |
+| jrefit | fixed (inflated by echo) | 67/176 | 0.38 [0.31, 0.45] | 0: 83, 1-9: 20, 10-29: 14, 30+: 10, none: 10 |
+| jrefit | rule A (post hoc) | 67/176 | 0.38 [0.31, 0.45] | 0: 2, 1-9: 0, 10-29: 3, 30+: 85, none: 47 |
+| jrefit | rule B (post hoc) | 125/176 | 0.71 [0.64, 0.77] | 0: 2, 1-9: 0, 10-29: 3, 30+: 57, none: 75 |
+| logit | fixed (inflated by echo) | 69/176 | 0.39 [0.32, 0.47] | 0: 2, 1-9: 2, 10-29: 0, 30+: 96, none: 37 |
+| logit | rule A (post hoc) | 69/176 | 0.39 [0.32, 0.47] | 0: 0, 1-9: 0, 10-29: 0, 30+: 99, none: 38 |
+| logit | rule B (post hoc) | 128/176 | 0.73 [0.66, 0.79] | 0: 0, 1-9: 0, 10-29: 0, 30+: 65, none: 72 |
 
 Failures by task, hardness and outcome: {"DE|H0|abstain": 11, "DE|H1|abstain": 11, "DE|H1|other": 4, "DE|H2|abstain": 11, "DE|H2|other": 14, "RC|H0|abstain": 6, "RC|H0|other": 2, "RC|H1|abstain": 9, "RC|H1|other": 18, "RC|H2|abstain": 8, "RC|H2|other": 13, "TU|H0|abstain": 2, "TU|H0|competitor": 3, "TU|H0|other": 6, "TU|H1|abstain": 11, "TU|H1|competitor": 12, "TU|H1|other": 7, "TU|H2|abstain": 7, "TU|H2|competitor": 12, "TU|H2|other": 9}
 

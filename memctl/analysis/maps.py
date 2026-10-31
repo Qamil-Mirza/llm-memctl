@@ -226,6 +226,44 @@ def readability_rule(ranks: np.ndarray, sp_cols: Sequence[int], bare_cols: Seque
     return {"readable": True, "first_layer": layer, "first_depth": layer / n_layers, "first_pos": pi, "best_rank": b}
 
 
+ECHO_RULES = ("A", "B")
+
+
+def echo_counted(counted: Sequence[int], input_at: Sequence[int], target_ids, rule: str, lp: int) -> list[int]:
+    """The counted positions left for one target under a post hoc echo rule (§45 results review, 1a6e1e5).
+
+    `input_at[p]` is the token fed in at stored position p (the readout at p is the distribution over the next token);
+    `target_ids` the target's pinned ids (both forms); `lp` the last prompt token's stored index. Stored positions
+    from `lp` on are contiguous sequence positions (`map_prompt` keeps every one).
+    Rule "A" (input-token exclusion): drop p when the token fed in at p is the target.
+    Rule "B" (production positions): keep only the positions up to and including the one that produces the target's
+    first occurrence after the prompt, i.e. drop p once the target is among the tokens fed in at lp+1..p.
+    The last prompt token is never dropped by B (nothing generated yet) and, its input being a template token, not
+    by A in practice; the bare form at the last prompt token is handled by the caller, unchanged."""
+    ids = {int(t) for t in target_ids}
+    if rule == "A":
+        return [p for p in counted if int(input_at[p]) not in ids]
+    if rule == "B":
+        first = next((q for q in range(lp + 1, len(input_at)) if int(input_at[q]) in ids), None)
+        return [p for p in counted if first is None or p < first]
+    raise ValueError(f"rule must be one of {ECHO_RULES}, not {rule!r}")
+
+
+def combine_calls(results: Sequence[dict]) -> dict:
+    """Several per-surface readability calls as one entity-set call: readable if any is; the earliest layer wins (the
+    earliest position on it); best rank the minimum."""
+    results = [c for c in results if c["readable"] is not None]
+    if not results:
+        return {"readable": None, "first_layer": None, "first_depth": None, "first_pos": None, "best_rank": None}
+    ranks = [c["best_rank"] for c in results if c["best_rank"] is not None]
+    best = min(ranks) if ranks else None
+    hits = [c for c in results if c["readable"]]
+    if not hits:
+        return {"readable": False, "first_layer": None, "first_depth": None, "first_pos": None, "best_rank": best}
+    h = min(hits, key=lambda c: (c["first_layer"], c["first_pos"]))
+    return {**h, "best_rank": best}
+
+
 def gold_trajectory(ranks: np.ndarray, columns: Sequence[int], from_pos: int) -> np.ndarray:
     """Per layer, the best rank of an entity over the positions from `from_pos` on (the stage 2 comparison line)."""
     return ranks[:, from_pos:, :][:, :, list(columns)].min(axis=(1, 2))
