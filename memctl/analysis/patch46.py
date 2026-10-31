@@ -9,9 +9,12 @@ B', B'', C1' in the three prompts; all three unused anywhere in the base prompt)
 B' (P', gold C1') or B'' (P'', gold C1, the k2 same-answer donor). Alignment per triple: equal token length, the
 supervisor's token at the same index, exactly that one token differing.
 
-Readout (rev 1 ruling 2): greedy until the first pool city or "unknown" in the generated text, or max_new (F1 48, F2
-64); outcome by that first item: "C1" / "C1p" / "other" (another city, or no city by max_new) / "abstain"
-("unknown"). Beside it: which of the triple's supervisor names occur before the city (the name-copy route).
+Readout (rev 4, 34d1b4d): the conclusion. F2: the first pool city or "unknown" on the "Answer:" line (§45 stop rule,
+max_new 160; no Answer line -> other). F1: the last pool city or "unknown" in the generation, run to end of turn or
+max_new 96. Outcome by that item: "C1" / "C1p" / "other" (another city, or none) / "abstain" ("unknown"). The same
+rule decides the solved filter, k3, Transfer and S2. Beside it: which of the triple's supervisor names occur in the
+text before the conclusion item (the name-copy route). The rev 1 first-city rule and the §45 rule are kept for the
+validate report only.
 """
 
 from __future__ import annotations
@@ -29,9 +32,9 @@ from memctl.analysis.maps import sha256_text, wilson
 METHOD_VERSION = "exp46_patch_v0"
 SEED = 46
 ROLES = ("P", "Pp", "Ppp")
-MAX_NEW_FIRST_CITY = {"F1": 48, "F2": 64}
-MAX_NEW_45 = {"F1": 48, "F2": 160}          # the fallback if the first-city rule fails validation (ruling 2)
-AGREE_MIN = 0.95
+MAX_NEW_FIRST_CITY = {"F1": 48, "F2": 64}  # rev 1 first-city rule: reported by validate only
+MAX_NEW_CONCLUSION = {"F1": 96, "F2": 160}  # rev 4: F1 to end of turn (max 96), F2 to the end of the Answer line
+MAX_NEW_45 = MAX_NEW_CONCLUSION
 TRANSFER_MIN, TRANSFER_LOWER_MIN, CONTROL_MAX = 0.70, 0.55, 0.10
 MID_STACK_L = 10
 HELD_PAIRS_MIN = 30
@@ -186,8 +189,42 @@ def classify_first(text: str, c1: str, c1p: str, cities: Sequence[str]) -> str:
     return "C1" if item == c1 else ("C1p" if item == c1p else "other")
 
 
-def names_before_city(text: str, names: Sequence[str], cities: Sequence[str]) -> list[str]:
-    hit = first_city(text, cities)
+def _items(text: str, cities: Sequence[str]) -> list[tuple[int, str]]:
+    hits = []
+    for item in list(cities) + ["unknown"]:
+        flags = re.IGNORECASE if item == "unknown" else 0
+        hits += [(m.start(), item) for m in re.finditer(r"\b" + re.escape(item) + r"\b", text, flags)]
+    return sorted(hits)
+
+
+def conclusion(text: str, fmt: str, cities: Sequence[str]) -> tuple[int, str] | None:
+    """(char offset in `text`, item) of the conclusion: F2 the first item on the last "Answer:" line; F1 the last item
+    in the generation. None if there is none (F2: no Answer line, or no item on it)."""
+    if fmt == "F2":
+        lower = text.lower()
+        marker = lower.rfind("answer:")
+        if marker < 0:
+            return None
+        start = marker + len("answer:")
+        line = text[start:].split("\n")[0]
+        hits = _items(line, cities)
+        return (start + hits[0][0], hits[0][1]) if hits else None
+    hits = _items(text, cities)
+    return hits[-1] if hits else None
+
+
+def classify_conclusion(text: str, fmt: str, c1: str, c1p: str, cities: Sequence[str]) -> str:
+    hit = conclusion(text, fmt, cities)
+    if hit is None:
+        return "other"
+    if hit[1] == "unknown":
+        return "abstain"
+    return "C1" if hit[1] == c1 else ("C1p" if hit[1] == c1p else "other")
+
+
+def names_before_city(text: str, names: Sequence[str], cities: Sequence[str], fmt: str = "F1") -> list[str]:
+    """Supervisor names in the text before the conclusion item (all of it when there is none)."""
+    hit = conclusion(text, fmt, cities)
     head = text if hit is None else text[:hit[0]]
     return [n for n in names if _present(n, head)]
 

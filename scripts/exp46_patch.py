@@ -14,8 +14,9 @@ memctl/analysis/patch46.py. Sites: S1 = P_B (the supervisor's token in sentence 
 the output of decoder layer l (HF hidden_states[l + 1]); a patch overwrites it at the site for one batch row, the
 prefix before the site is computed once per triple and repeated over the batch, the 36 layer variants of a pair run
 as one batch (--batch splits it). k3 (token-substitution floor) overwrites the input embedding at P_B with P''s:
-it must reproduce P''s baseline outcome on >= 0.95 of pairs. The readout rule comes from validate (first-city if
-agreement >= 0.95 on dev baselines, else the §45 rule with max_new 48 / 160). Nothing here prints an outcome except
+it must reproduce P''s baseline outcome on >= 0.95 of pairs. The readout is the rev 4 conclusion (F2: the city on the
+Answer line, max_new 160; F1: the last pool city or "unknown", to end of turn, max_new 96); validate (dev baselines)
+reports it beside the rev 1 first-city and the §45 rules and must have run before any patched stage. Nothing here prints an outcome except
 --smoke. Exit 3: validate not run. 6: triple alignment broken at run time. 9: stopped at the deadline.
 """
 
@@ -240,21 +241,23 @@ def readout_rule(root: Path) -> dict | None:
     return read_json(root / "readout.json")
 
 
-def stop_fn(rule: str, fmt: str, cities):
-    if rule == "first_city":
-        return lambda text: T.stop_now(text, cities)
-    if fmt == "F2":
-        return M.answer_line_done
-    return lambda text: False
+RULE = "conclusion"          # rev 4: the only rule that decides; validate reports the others beside it
 
 
-def max_new(rule: str, fmt: str) -> int:
-    return (T.MAX_NEW_FIRST_CITY if rule == "first_city" else T.MAX_NEW_45)[fmt]
+def stop_fn(fmt: str):
+    """F2: stop at the end of the Answer line; F1: run to end of turn (EOS) or max_new."""
+    return M.answer_line_done if fmt == "F2" else (lambda text: False)
 
 
-def outcome(rule: str, text: str, c1: str, c1p: str, cities) -> str:
-    if rule == "first_city":
-        return T.classify_first(text, c1, c1p, cities)
+def max_new(fmt: str) -> int:
+    return T.MAX_NEW_CONCLUSION[fmt]
+
+
+def outcome(text: str, fmt: str, c1: str, c1p: str, cities) -> str:
+    return T.classify_conclusion(text, fmt, c1, c1p, cities)
+
+
+def rule45(text: str, c1: str, c1p: str) -> str:
     o = M.classify(text, c1, [c1p])["outcome"]
     return {"gold": "C1", "competitor": "C1p"}.get(o, o)
 
@@ -265,8 +268,9 @@ SOLVED_AS = {"P": "C1", "Pp": "C1p", "Ppp": "C1"}
 # ---------------------------------------------------------------------------------------------- stages
 
 def stage_baselines(run: Runner, triple: dict, root: Path, names, cities) -> dict:
-    """(i) per role: full §45-length generation (F1 48, F2 160 to the end of the Answer line), the first-city
-    readout on its prefix, the §45 outcome, and the residuals at P_B and P_last (all layers)."""
+    """(i) per role: the rev 4 generation (F1 to end of turn, max 96; F2 to the end of the Answer line, max 160), its
+    conclusion outcome, beside it the rev 1 first-city readout on its prefix and the §45 outcome, and the residuals at
+    P_B and P_last (all layers)."""
     rec = {"triple_id": triple["P"]["triple_id"], "roles": {}}
     p = triple["P"]
     for role in T.ROLES:
@@ -275,53 +279,46 @@ def stage_baselines(run: Runner, triple: dict, root: Path, names, cities) -> dic
         if len(ids) != r["n_prompt_tokens"]:
             raise T.TripleAlignmentError(f"{r['case_id']}: {len(ids)} tokens, cases46 says {r['n_prompt_tokens']}")
         t = time.time()
-        g = run.generate(ids, len(ids) - 1, [("none", None, None)], T.MAX_NEW_45[r["format"]],
-                         M.answer_line_done if r["format"] == "F2" else (lambda text: False))[0]
+        g = run.generate(ids, len(ids) - 1, [("none", None, None)], max_new(r["format"]), stop_fn(r["format"]))[0]
         gen_s = time.time() - t
         first_text = run.tok.decode(g["ids"][:T.MAX_NEW_FIRST_CITY[r["format"]]], skip_special_tokens=True)
         resid = run.residuals(ids, [r["P_B"], len(ids) - 1])
         np.save(root / "resid" / f"{r['case_id']}.npy", resid)
         rec["roles"][role] = {"case_id": r["case_id"], "text": g["text"], "n_generated": len(g["ids"]),
                               "first_text": first_text,
+                              "conclusion": outcome(g["text"], r["format"], p["C1"], p["C1p"], cities),
                               "first_city": T.classify_first(first_text, p["C1"], p["C1p"], cities),
-                              "rule45": outcome("rule45", g["text"], p["C1"], p["C1p"], cities),
-                              "names_before_city": T.names_before_city(first_text, [p["B"], p["Bp"], p["Bpp"]], cities),
+                              "rule45": rule45(g["text"], p["C1"], p["C1p"]),
+                              "names_before_city": T.names_before_city(g["text"], [p["B"], p["Bp"], p["Bpp"]], cities,
+                                                                       r["format"]),
                               "token_at_PB": int(ids[r["P_B"]]), "gen_s": round(gen_s, 3)}
     return rec
 
 
+RULES = ("conclusion", "first_city", "rule45")
+
+
 def validate(root: Path, rows: list[dict]) -> dict:
-    """Ruling 2: first-city vs the §45 rule on every dev baseline generation; >= 0.95 -> first_city."""
-    agree = n = 0
-    disagreements = []
+    """Rev 4: on every dev baseline generation, the three rules' pairwise agreement, the solve rate under each, and
+    the disagreements. The rule in force stays the conclusion rule."""
+    recs = []
     for t in triples_of(rows):
         if t["P"]["split"] != "dev":
             continue
         b = read_json(root / "baselines" / f"{t['P']['triple_id']}.json")
-        if b is None:
-            continue
-        for role, r in b["roles"].items():
-            n += 1
-            if r["first_city"] == r["rule45"]:
-                agree += 1
-            else:
-                disagreements.append({"case_id": r["case_id"], "first_city": r["first_city"], "rule45": r["rule45"]})
-    share = agree / n if n else None
-    payload = {"n": n, "agree": agree, "share": share, "min": T.AGREE_MIN,
-               "rule": "first_city" if (share is not None and share >= T.AGREE_MIN) else "rule45",
-               "disagreements": disagreements}
+        if b is not None:
+            recs += [(role, r) for role, r in b["roles"].items()]
+    n = len(recs)
+    agree = {f"{a}|{b}": sum(r[a] == r[b] for _, r in recs) for i, a in enumerate(RULES) for b in RULES[i + 1:]}
+    solve = {k: sum(r[k] == SOLVED_AS[role] for role, r in recs) for k in RULES}
+    dis = [{"case_id": r["case_id"], **{k: r[k] for k in RULES}} for _, r in recs if len({r[k] for k in RULES}) > 1]
+    payload = {"n": n, "rule": RULE, "agreement": agree, "solved": solve, "disagreements": dis}
     write_json(root / "readout.json", payload)
     return payload
 
 
-def baseline_outcome(rule: str, role_rec: dict, p: dict, cities) -> str:
-    """A role's baseline outcome under the readout rule in force."""
-    return role_rec["first_city"] if rule == "first_city" else role_rec["rule45"]
-
-
-def solved(b: dict, rule: str) -> dict[str, bool]:
-    key = "first_city" if rule == "first_city" else "rule45"
-    return {role: b["roles"][role][key] == SOLVED_AS[role] for role in T.ROLES}
+def solved(b: dict, rule: str = RULE) -> dict[str, bool]:
+    return {role: b["roles"][role][RULE] == SOLVED_AS[role] for role in T.ROLES}
 
 
 def resid_of(root: Path, case_id: str) -> np.ndarray:
@@ -364,15 +361,15 @@ def stage_patch(run: Runner, triple: dict, root: Path, rule: str, stage: str, ci
     else:
         raise ValueError(stage)
     t = time.time()
-    gens = run.generate(ids, site, variants, max_new(rule, p["format"]), stop_fn(rule, p["format"], cities))
+    gens = run.generate(ids, site, variants, max_new(p["format"]), stop_fn(p["format"]))
     dt = time.time() - t
-    results = [{"kind": k, "layer": l, "outcome": outcome(rule, g["text"], p["C1"], p["C1p"], cities),
-                "names_before_city": T.names_before_city(g["text"], [p["B"], p["Bp"], p["Bpp"]], cities),
+    results = [{"kind": k, "layer": l, "outcome": outcome(g["text"], p["format"], p["C1"], p["C1p"], cities),
+                "names_before_city": T.names_before_city(g["text"], [p["B"], p["Bp"], p["Bpp"]], cities, p["format"]),
                 "n_generated": len(g["ids"]), "text": g["text"]} for (k, l), g in zip(tags, gens)]
     if stage == "s1":
         k3 = results[-1]
         k3["reproduces_Pp"] = k3["outcome"] == SOLVED_AS["Pp"]
-        k3["matches_Pp_baseline"] = k3["outcome"] == baseline_outcome(rule, b["roles"]["Pp"], p, cities)
+        k3["matches_Pp_baseline"] = k3["outcome"] == b["roles"]["Pp"][RULE]
     return {"triple_id": p["triple_id"], "split": p["split"], "entered": True, "solved": ok, "rule": rule,
             "stage": stage, "n_passes": len(variants), "s": round(dt, 3), "results": results}
 
@@ -462,7 +459,7 @@ def main() -> int:
     rows = load_jsonl(args.cases46)
     if args.stage == "validate":
         v = validate(root, rows)
-        print(json.dumps({k: v[k] for k in ("n", "agree", "share", "rule")}))
+        print(json.dumps({k: v[k] for k in ("n", "rule", "agreement", "solved")}))
         return 0
 
     if args.threads:

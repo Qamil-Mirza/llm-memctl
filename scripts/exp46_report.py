@@ -96,9 +96,9 @@ def build(probe_dir: Path, patch: Path, split: str, cases: dict) -> dict:
 
 def markdown(rep: dict) -> str:
     lines = [f"# §46 report ({rep['split']})", "", f"Pairs entered: {rep['pairs']} (with k2: {rep['pairs_with_k2']}). "
-             f"Readout rule: {(rep['readout'] or {}).get('rule')} (agreement {(rep['readout'] or {}).get('share')}).",
+             f"Readout rule: {(rep['readout'] or {}).get('rule')} (dev agreement {(rep['readout'] or {}).get('agreement')}).",
              f"k3 token-substitution floor: {rep['k3']['k']}/{rep['k3']['n']} (pass {rep['k3']['pass']}). "
-             f"L* at S1: {rep['l_star_s1']}.", "", "## S1 transfer by layer", "",
+             f"L* at S1: {rep['l_star_s1']} (S1 pairs n = {rep['pairs']}, k2 pairs n = {rep['pairs_with_k2']}).", "", "## S1 transfer by layer", "",
              "| layer | Transfer | lower | k1 | k2 | name-copy (patch) |", "|---|---|---|---|---|---|"]
     s1 = rep["s1"]
     for l in range(P.N_LAYERS):

@@ -105,6 +105,23 @@ def test_first_city_readout():
     assert T.names_before_city("Laura works in Durham", ["Laura", "Alice"], CITIES) == ["Laura"]
 
 
+def test_conclusion_readout_rev4():
+    restate = ("Based on the information provided:\n\n- Alice works in Chester.\n- Sarah works in Durham.\n"
+               "- Kate's supervisor is Laura.\n- Laura works in Durham.\n\nTherefore, Kate's supervisor, Laura, works in Durham.")
+    assert T.classify_first(restate, "Durham", "Chester", CITIES) == "C1p"            # the rev 1 misread
+    assert T.classify_conclusion(restate, "F1", "Durham", "Chester", CITIES) == "C1"
+    note = "Kate's supervisor is Laura; Laura works in Durham, Alice in Chester.\nAnswer: Chester\n"
+    assert T.classify_conclusion(note, "F2", "Durham", "Chester", CITIES) == "C1p"
+    assert T.classify_conclusion("Answer: unknown\n", "F2", "Durham", "Chester", CITIES) == "abstain"
+    assert T.classify_conclusion("Durham, no marker", "F2", "Durham", "Chester", CITIES) == "other"
+    assert T.classify_conclusion("Answer: Leeds or Durham", "F2", "Durham", "Chester", CITIES) == "other"   # first on the line
+    assert T.classify_conclusion("nothing", "F1", "Durham", "Chester", CITIES) == "other"
+    assert T.classify_conclusion("Durham? I do not know: unknown", "F1", "Durham", "Chester", CITIES) == "abstain"
+    assert T.names_before_city(restate, ["Laura", "Alice", "Sarah"], CITIES, "F1") == ["Laura", "Alice", "Sarah"]
+    assert T.names_before_city(note, ["Laura", "Alice"], CITIES, "F2") == ["Laura", "Alice"]
+    assert T.MAX_NEW_CONCLUSION == {"F1": 96, "F2": 160}
+
+
 def test_k1_vector_norm_matched():
     rng = np.random.default_rng(0)
     h, hp = np.zeros(16, np.float32), np.full(16, 2.0, np.float32)
