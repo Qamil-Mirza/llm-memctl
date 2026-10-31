@@ -184,3 +184,13 @@ hardness) cell**, 6 folds, every label present in train; identical folds for the
 case), so c1 measures how far base-case identity alone is decodable and selectivity = probe dev-CV − c1 dev-CV on the
 same folds; c2 on the H1/H2 cells (4 folds). Dev CV is therefore a within-base estimate (generalisation across format
 and hardness, base identity subtracted via c1); the across-base test is the single held read, criterion as rev 2.
+
+## Rev 4 (2026-10-30, build review `research/reviews/2026-10-30-exp46-build.md`): readout = the conclusion
+
+Rev 1 ruling 2 (first city, validated against the §45 rule) is withdrawn: the triple design puts C1′ in every prompt and
+the model restates the facts before concluding, so first-city and the §45 "both cities → other" rule both misread the
+model's correct conclusion (Executor's dev baselines, 1 of 21 rows, structural). Readout fixed now: F2 = the city on the
+`Answer:` line (§45 stop rule, max_new 160); F1 = the last pool city or "unknown" in the generation to end of turn or
+max_new 96. Classification C1 / C1′ / other / abstain by that item; no city → other. Used for the solved filter, k3,
+Transfer and S2 alike. `validate` reports the three rules' agreement and solve rates on the dev baselines and lists
+disagreements; it does not switch rules. Name-copy share computed on the text before the conclusion city.
