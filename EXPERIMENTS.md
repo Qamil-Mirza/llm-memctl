@@ -7405,6 +7405,228 @@ folds only.
 **Spend.** Laptop runs $0; one A40 pod for the 7B confirmation and rev 8 (about 17 min, about $0.16). All
 experiments ≈ $20.22 of $30.
 
+## 45. What do the lenses show of the answer computation, layer by layer and token by token? J-lens maps on controlled tasks, Qwen 2.5 3B (2026-10-30, pre-registered; pod run 2026-10-31)
+
+**Status: COMPLETE (descriptive). No §46.**
+- **The pre-registered readability criterion is inflated by echo.** It counts positions where a lens can only be
+  echoing the token just fed in, so its "recovers" verdicts (1.00 everywhere) and its depths (J-lens median 0.00) do
+  not measure what §45 asked. They stay in the report, marked "inflated by echo".
+- **Read with the two post hoc echo rules (labelled post hoc throughout),** the answer token becomes readable only in
+  the last six layers (first readable layer 30–33 of 36) on every task, format and role; no earlier intermediate is
+  readable with these lenses.
+- **Matched failures separate from their matched successes only at layer ≥ 30** (or never).
+- **Lens stability:** the 56-prompt lens is stable (agreement 0.998, Spearman 0.980); its 128-prompt refit scores the
+  §34 gate identically (0.014 vs the logit lens's 0.039) and reads the maps the same way; neither J-lens adds anything
+  over the logit lens on the 3B.
+- **No §46:** there is no intermediate or transition readable before layer 30 to name as a causal target, so the D-45
+  stopping rule applies (document, do not invent).
+
+Pre-registration `research/proposals/2026-10-30-exp45-jlens-maps.md`: rev 0 at 78d5ad1; rev 1 at 2d7122f (space form
+everywhere, bare form at the last prompt token only; counted positions = the last prompt token and the answer span; F2
+and stage 3 generate to the end of the `Answer:` line; the held half decides). Decisions: D-49 (the user's order: "amend
+D-45, draft §45 after the 7B lands") and D-51 (the pod: "Yes to the pod at 0.59 hard stop 2.50"). Reviews:
+- `research/reviews/2026-10-30-exp45-build.md` (2d7122f, addendum 5f00b6c);
+- `research/reviews/2026-10-30-exp45-results.md` (1a6e1e5): the recount, the echo artefact and the post hoc rules.
+
+Code: `scripts/exp45_cases.py`, `memctl/analysis/maps.py`, `scripts/exp45_maps.py`, `scripts/exp45_render.py`,
+`scripts/exp45_pod.sh` (7573325, aef32ae); `scripts/exp45_report.py` with the post hoc rules A and B (34c0472). Run
+`runs/exp45_maps/j56-jrefit-logit/` (per-prompt json and reports a43386b; post hoc reports 34c0472; npz maps, 1.7 GB, and
+the refit lens on disk only).
+
+**The question (proposal §1).** Why does a small model abstain or answer wrongly with sufficient evidence in context?
+§34–§44 read one token at one forced position. §45 asks what the lenses show of how the answer computation develops
+across layers and tokens, on tasks whose intermediate steps are known by construction. The output is maps, not claims
+about the model's computation: a miss is "not recovered by these lenses", never "not computed".
+
+**Design (fixed before the run).**
+- Model: Qwen 2.5 3B Instruct, bf16, one A40. Its own chat template and greedy generation: F1 up to 16 new tokens; F2
+  and stage 3 up to 160, stopping after the `Answer:` line.
+- Lenses: the §34 J-lens (56 prompts, sha `ddbdb32d…`); a refit J-lens (128 WikiText prompts, seed 1, the §34
+  settings, 68.5 min of the 75-min box); the logit lens. At every layer and position, the top-10 and the rank of every
+  pinned token: the first content token of every entity, in a space form and a bare form.
+- Cases: three tasks × 12 base cases × 4 variants × 2 formats × 3 hardness levels = 864 prompts.
+  - Direct extraction (DE): no intermediate.
+  - Relational composition (RC): intermediate = the supervisor's name.
+  - Temporal updating (TU): competitor = the old city.
+  - Variants: base, substitution, question change, order change. Formats: F1 plain chat; F2 the §23 memory-note
+    wrapper. Hardness: H0, plus 3 distractors (H1), plus 10 (H2).
+  - Even base cases form the dev half, odd the held half. **The held half decides**; dev is shown first.
+- Readable (fixed, rev 1): the space-form id in the lens top-10 at a counted position, or the bare-form id at the last
+  prompt token. Criterion (a), the gold, is read before the final layer. A criterion "recovers" at a share ≥ 0.70 with
+  a Wilson lower bound ≥ 0.55.
+- Stage 2: every failure, paired with the solved prompt of the same base case, variant and format at the lowest
+  hardness. The only sentence it can earn: "the gold is / is not readable before the final layer on ≥ 0.70 of the
+  matched failures". Stage 3: the 70 §44 rev 8 rows (clean and swap), descriptive. No causal test.
+
+**Run and coverage (pod rre3aw7agtsm42, A40 secure $0.59/h, 00:43:46–02:47:10 UTC 2026-10-31, ≈ 2 h 03 min).**
+- Chain 7069 s of the 14400 s stop: refit 4111 s (128/128 prompts), stage 1 2381 s, stage 3 400 s, eval 88 s.
+- Stage 1: 864/864 rows. Stage 3: 140/140.
+- Outcomes, held: gold 246 / other 88 / abstain 78 / competitor 20 (dev 256 / 73 / 76 / 27).
+- `Answer:` marker missing on 2 held F2 rows and 1 dev F2 row (F1 has no marker by design).
+- Stage 2, held: 186 failures, 78 at H2 (≥ 10, so the stage is read), 150 paired. Dev: 176, 74, 137.
+
+**The echo artefact (results review §2).** At layer 0 a J-lens decodes the token being fed in. F1 outputs restate the
+facts, so the gold is itself an input token at later generated positions, and the fixed rule counts those positions.
+- Recount (34c0472, all solved F1 prompts): 233 generated positions in 220 of the 228 solved F1 prompts have the gold's
+  space-form id as their input token. At layer 0, the gold is in the top 10 there on 129 of 233 for j56 and 122 for
+  jrefit (rank 1 on 54 and 41; median rank 7 and 9). For the logit lens its layer-0 rank is never below 8 (median 389).
+  - The review's "rank ≤ 7 on 233/233 for both J-lenses" is not reproduced by this recount; "≥ 8 on 233/233 for the
+    logit lens" is. This is open with the Advisor.
+- The logit lens has no depth-0 artefact. Its fixed 1.00, however, also rests on positions after the gold has been
+  produced, where the residual still carries the token at layers 30–33.
+- Two post hoc readings remove the echo:
+  - **Rule A (input-token exclusion), "readable anywhere in the answer span (post hoc, rule A)":** a hit on X at counted
+    position p does not count when the token fed in at p is X (either form).
+  - **Rule B (production positions), "readable before the answer is produced (post hoc, rule B)":** count only the
+    counted positions up to and including the one that produces X's first occurrence. In F2 the note usually states X
+    before `Answer:`, so for F2 rule B mostly measures whether the note already held X, not readability. It is read per
+    format.
+  - The bare form at the last prompt token is unchanged under both rules. Every rule-A/B number below is **post hoc**,
+    with the pre-registered number beside it.
+
+**Stage 1, held (decides): the gold, before the final layer.** Shares (Wilson lower bound) for j56 / jrefit / logit.
+Depth = first readable layer / 36, as quartiles.
+
+| task (n; F1, F2) | fixed, pre-registered (inflated by echo) | rule A, post hoc | rule A depth (j56; logit) | rule B all, post hoc | rule B F1 | rule B F2 | rule B depth (j56; logit) |
+|---|---|---|---|---|---|---|---|
+| DE (95; 49, 46) | 1.00 / 1.00 / 1.00; depth 0.00/0.00/0.86 (j56), 0.86/0.86/0.89 (logit) | 1.00 (0.96) all | 0.83/0.89/0.89; 0.86/0.86/0.89 | 0.62 / 0.62 / 0.60 (0.52 / 0.52 / 0.50) | 1.00 (0.93) | 0.22 / 0.22 / 0.17 | 0.83/0.86/0.89; 0.86/0.86/0.92 |
+| RC (79; 37, 42) | 1.00 all; depth 0.00/0.00/0.86 (j56), 0.86/0.89/0.89 (logit) | 1.00 (0.95) all | 0.86/0.89/0.89; 0.86/0.89/0.89 | 0.61 / 0.61 / 0.56 (0.50 / 0.50 / 0.45) | 1.00 (0.91) | 0.26 / 0.26 / 0.17 | 0.83/0.89/0.90; 0.86/0.89/0.92 |
+| TU (72; 25, 47) | 1.00 all; depth 0.00/0.00/0.25 (j56), 0.86/0.86/0.89 (logit) | 1.00 (0.95) all | 0.86/0.89/0.89; 0.86/0.86/0.89 | 0.35 (0.25) all | 1.00 (0.87) | 0.00 | 0.83/0.83/0.86; 0.86/0.86/0.86 |
+
+- The review's recount gives rule B on DE as 0.64 / 0.64 / 0.62 (F2 0.26 / 0.26 / 0.22), two rows more. Its rule B
+  matched only the space-form id when looking for the first occurrence. Here either form counts, as specified, and on
+  4 DE F2 rows the note states the gold in its bare form at the start of a line (for example "David lives in
+  York.\nAnswer: David"). Everything else in this table matches the review.
+- Under rule B the note already held the gold on 0.74–1.00 of the F2 rows (1 − the F2 column).
+- Last prompt token only (echo-free by construction; F1's first generated token is usually "Based"):
+  - Both forms, the pre-registered beside variant: DE 0.24 / 0.24 / 0.22, RC 0.30 / 0.30 / 0.20, TU 0.00.
+  - Space form only, the review's count: DE 0.13 / 0.13 / 0.14, RC 0.04 / 0.03 / 0.08, TU 0.00.
+- Dev (presentation) shows the same pattern: fixed 1.00 everywhere; rule A 1.00 with depth 0.83–0.89; rule B DE
+  0.66 / 0.66 / 0.63, RC 0.60 / 0.60 / 0.56, TU 0.32; F1 1.00; F2 DE 0.18 / 0.18 / 0.13, RC 0.29 / 0.29 / 0.20, TU 0.00.
+  - The review's dev figures (DE 0.61, RC 0.45) come from a count with the space form only and no bare form at the
+    last prompt token.
+
+**The other pinned entities, held, before the final layer (post hoc rules; j56 / jrefit / logit).**
+- **RC intermediate (the supervisor's name; n 50 = 23 F1 + 27 F2).**
+  - Fixed, as pre-registered (any layer, inflated by echo): 0.94 / 0.94 / 0.88. Before the final layer: 0.84 / 0.84 /
+    0.72.
+  - Rule A, post hoc: 0.84 (0.71) / 0.84 / 0.72 (0.58); F1 1.00; F2 0.70 (0.52) / 0.70 / 0.48.
+  - Rule B, post hoc: 0.84 / 0.84 / 0.70; F2 0.70 / 0.70 / 0.44 (0.28).
+  - Depth 0.89/0.89/0.92 under both rules.
+- **TU competitor (the old city; n 72 = 25 F1 + 47 F2).**
+  - Fixed, as pre-registered (any layer, inflated by echo): 0.47 / 0.49 / 0.43.
+  - Rule A, post hoc: 0.29 (0.20) / 0.29 / 0.26; F1 0.64 (0.45) / 0.68 / 0.52; F2 0.11 (0.05) / 0.09 / 0.13.
+  - Rule B, post hoc: 0.22 / 0.24 / 0.18; **F2 0.00 for every lens**. Depth 0.83–0.92.
+- Both match the review.
+
+**Stage 2, held: matched failures (186; 150 paired).** The pre-registered sentence asks whether the gold is not
+readable before the final layer on ≥ 0.70 of them.
+
+| reading | not readable before the final layer: j56 / jrefit / logit | sentence earned? |
+|---|---|---|
+| fixed (pre-registered; inflated by echo) | 65/186 = 0.35 (0.28, 0.42) / 65 / 67 = 0.36 | no |
+| rule A, post hoc | 65/186 = 0.35 (0.28, 0.42) / 65 / 67 | no |
+| rule B, post hoc | 124/186 = 0.67 (0.60, 0.73) / 124 / 127 = 0.68 | no |
+
+- On dev: fixed and A 67/176 = 0.38; B 125/176 = 0.71 (descriptive; held decides).
+- The review prints the fixed Wilson lower bound as 0.29 (0.2846, a rounding difference).
+
+Departure layer: the first layer where the paired success has the gold in the top 10 and the failure does not, on the
+pooled 287 pairs.
+
+| | 0 | 1–9 | 10–29 | 30+ | none |
+|---|---|---|---|---|---|
+| fixed j56 (**struck: echo artefact**) | 172 | 50 | 13 | 27 | 25 |
+| fixed logit (struck) | 10 | 6 | 4 | 194 | 73 |
+| rule A j56, post hoc | 2 | 0 | 1 | 189 | 95 |
+| rule A jrefit, post hoc | 2 | 0 | 5 | 181 | 99 |
+| rule A logit, post hoc | 0 | 1 | 4 | 205 | 77 |
+| rule B j56 / jrefit / logit, post hoc | 2 / 2 / 0 | 0 | 1 / 5 / 4 | 129 / 120 / 126 | 155 / 160 / 157 |
+
+These match the review (rule B departures are not in the review).
+
+**Stage 3: the 70 §44 rev 8 rows (clean gold, swap substitute; the counted span is after `Answer:` in the model's own
+note; before the final layer; descriptive, as pre-registered).**
+
+| target | lens | fixed (inflated by echo) | rule A, post hoc | rule B, post hoc |
+|---|---|---|---|---|
+| gold, clean rows | j56 | 35/70 = 0.50 | 34/70 = 0.49 (0.37, 0.60) | 10/70 = 0.14 (0.08, 0.24) |
+| gold, clean rows | jrefit / logit | 34 / 37 | 34 / 36 | 9 / 13 |
+| substitute, swap rows | j56 / jrefit / logit | 26 / 26 / 29 | 26 / 26 / 29 = 0.37–0.41 | 8 / 8 / 11 = 0.11–0.16 |
+
+- By §23 label (gold on clean rows, j56):
+  - rule A: refusal 4/14 = 0.29, success 20/38, wrong 10/18;
+  - rule B: refusal 1/14, success 5/38, wrong 4/18.
+- By §44 class (1 nat):
+  - rule A: answer_production 26/57, indeterminate 6/10, evidence_use 2/3;
+  - rule B: answer_production 7/57, indeterminate 3/10, evidence_use 0/3.
+- Substitute on swap rows, refusal label: 1/14 under every rule.
+- Median first readable layer (j56): 32 under rule A, 33 under B.
+- **Discrepancy with the review, open with the Advisor.**
+  - The review gives rule B 31/70 (refusal 4/14, answer_production 23/56, substitute 23/70). Its stage-3 recount
+    indexed `input_ids` by stored-position index. Stage 3 stores only a subset of prompt positions, so it compared
+    against the wrong tokens. With that indexing this code reproduces 31/70.
+  - Read correctly, rule B on stage 3 falls to 0.14 for the same reason as F2: the model's own note usually states the
+    answer before `Answer:`. Digit first tokens add to this (the "2" of a year counts as an occurrence of "25").
+  - So "about half of the clean rows" holds for rule A (anywhere in the answer span), not for rule B.
+  - The §44 class source here (`runs/exp44_swap/qwen3b_rev8/S`, `cls["1"]`) gives 57 answer-production rows at every
+    margin; the review has 56.
+- Under rules A and B the J-lenses read a digit gold early (layers 9–13) on a few stage-3 rows: "120", "2014.",
+  "$2,000", "10 minutes". These are within-number continuations (the position fed "1" predicts "2"), not an earlier
+  intermediate. The logit lens has none before layer 29 (2 rows at 29).
+
+**Lens stability (proposal §5).**
+- j56 against jrefit, held solved prompts: readability-call agreement 0.998 over 939 calls (pooled 0.997 over 1910);
+  trajectory Spearman median 0.980. That is "stable" under the pre-registered 0.20 rule.
+- The refit lens scores the §34 gate exactly as the 56-prompt lens did, with different weights (different sha,
+  n_prompts 128): mean pass@k in the 12–24 band 0.0140 against the logit lens's 0.0386; `pass_at_k_all` 0.1065 against
+  0.1069.
+- The review's sentence: "the 56-prompt lens is stable (agreement 0.998, Spearman 0.980); its 128-prompt refit scores
+  the §34 gate identically (0.014 vs the logit lens's 0.039) and reads the maps the same way; neither J-lens adds
+  anything over the logit lens on the 3B".
+
+**What was found.** In plain words:
+- On the solved controlled prompts the answer token shows up in the lens top 10 only in the last six layers (layer
+  30–33 of 36). It shows up at the position that produces it (F1: every row, rule B 1.00), or at the answer position
+  after a note that already says it (F2: rule A 1.00; by rule B the note already held it on 0.74–1.00 of F2 rows). No
+  lens reads it earlier at any counted position. At the last prompt token it is readable on 0.00–0.30 of rows with
+  both forms, 0.00–0.14 with the space form alone. (Post hoc rules; the pre-registered 1.00 is inflated by echo.)
+- The relational intermediate (the supervisor's name) and the temporal competitor (the old city) are readable only in
+  the same late band. At F2's answer position the competitor is not readable at all (0.00 by rule B, post hoc): the
+  lens sees the new city there and nothing of the old one before the final layer.
+- Matched failures: the gold is readable before the final layer at the production positions on about a third of them
+  (rule B 0.33 held, post hoc). It is readable anywhere in the answer span on about two thirds (rule A 0.65, post hoc),
+  because failing outputs restate the facts. Where a failure departs from its matched success, it does so at layer
+  ≥ 30 (189 of 287 pairs for j56 under rule A; 95 pairs never separate). The lenses cannot see a failure coming before
+  the last six layers.
+- On the §44 rows the gold is readable in the model's own answer span on about half of the clean rows (rule A 0.49–0.51,
+  post hoc) and on 0.29 of the refusals. It is readable before its first occurrence on only 0.13–0.19 (rule B, post hoc),
+  because the note usually states it first. The substitute is readable on 0.37–0.41 of swap rows (rule A). Median first
+  layer 32.
+
+**Why it matters.**
+- §45 adds to §34. The 3B's answer appears late in the stack in every format and task tried, and no earlier
+  intermediate is readable with these tools.
+- The three readouts are one readout: the two J-lenses agree with each other and with the logit lens, and a
+  128-prompt refit changes nothing. So the §34 lens caveat is settled as "stable, no better than the logit lens".
+- There is no specific intermediate or transition, readable before layer 30, from which a failure departs. So
+  there is no causal target for a §46, and the D-45 stopping rule applies: document, do not invent.
+
+**Caveats.**
+- The rules A and B were defined after the data existed (post hoc), to remove a mechanism found in the data. The
+  pre-registered columns are kept and marked "inflated by echo".
+- Rule B in F2 and stage 3 measures mostly whether the note already held the target.
+- "Not readable" means not recovered by these lenses (a top-10 statement about a linear readout), not "not computed".
+- F2's memory lines carry dates that increase with line order, so in TU the timestamp order is a second update cue
+  beside the wording (a format effect, which F2 is there to show). This also bears on the F2 competitor reading.
+- Digit golds are ambiguous first tokens (stage 3).
+- Toy prompts are not long-context memory; stage 3 is the bridge.
+- Greedy decoding, bf16 on the pod, one model and one family: nothing here generalises.
+- Two items are open with the Advisor: the stage-3 rule B discrepancy above, and the echo-rank figure.
+
+**Spend.** One A40 pod, ≈ 2 h 03 min, ≈ **$1.21** (balance 9.387 → 8.179). The post hoc rules, the reports and this text
+were $0 (laptop, no model load). All experiments ≈ **$21.43 of $30**.
+
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
 **Status: STOPPED at the regeneration sanity check; no gradient was computed.** Secondary to §34 (the J-lens
