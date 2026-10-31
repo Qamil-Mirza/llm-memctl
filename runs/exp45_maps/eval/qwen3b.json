@@ -1,0 +1,97 @@
+{
+ "reader": "qwen3b",
+ "lens": "runs/exp45_maps/lenses/qwen3b.pt",
+ "lens_sha256": "9c5d2da3a2eb369cd5f5ebcc1b19f60acb0f67307a35283c5553238583ba10eb",
+ "k": 10,
+ "band": [
+  12,
+  24
+ ],
+ "sets": {
+  "association": {
+   "n_items": 102,
+   "n_skipped": 0,
+   "pass_at_k": {
+    "jlens": 0.0,
+    "logit": 0.0
+   },
+   "pass_at_k_all": {
+    "jlens": 0.0,
+    "logit": 0.0
+   }
+  },
+  "multihop": {
+   "n_items": 93,
+   "n_skipped": 0,
+   "pass_at_k": {
+    "jlens": 0.010752688172043012,
+    "logit": 0.0
+   },
+   "pass_at_k_all": {
+    "jlens": 0.2849462365591398,
+    "logit": 0.27419354838709675
+   }
+  },
+  "multilingual": {
+   "n_items": 107,
+   "n_skipped": 0,
+   "pass_at_k": {
+    "jlens": 0.02102803738317757,
+    "logit": 0.002336448598130841
+   },
+   "pass_at_k_all": {
+    "jlens": 0.25,
+    "logit": 0.24766355140186916
+   }
+  },
+  "order-ops": {
+   "n_items": 55,
+   "n_skipped": 0,
+   "pass_at_k": {
+    "jlens": 0.0,
+    "logit": 0.0
+   },
+   "pass_at_k_all": {
+    "jlens": 0.0,
+    "logit": 0.0
+   }
+  },
+  "poetry": {
+   "n_items": 98,
+   "n_skipped": 0,
+   "pass_at_k": {
+    "jlens": 0.0,
+    "logit": 0.0
+   },
+   "pass_at_k_all": {
+    "jlens": 0.0,
+    "logit": 0.01020408163265306
+   }
+  },
+  "typo": {
+   "n_items": 96,
+   "n_skipped": 0,
+   "pass_at_k": {
+    "jlens": 0.052083333333333336,
+    "logit": 0.22916666666666666
+   },
+   "pass_at_k_all": {
+    "jlens": 0.10416666666666667,
+    "logit": 0.4375
+   }
+  }
+ },
+ "mean_pass_at_k": {
+  "jlens": 0.01397734314809232,
+  "logit": 0.038583852544132914
+ },
+ "mean_pass_at_k_all": {
+  "jlens": 0.10651881720430106,
+  "logit": 0.16159353023693648
+ },
+ "model_id": "Qwen/Qwen2.5-3B-Instruct",
+ "device": "cuda",
+ "dtype": "bfloat16",
+ "limit": null,
+ "wall_s": 78.55163750599604
+}

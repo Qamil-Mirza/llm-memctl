@@ -1,0 +1,1 @@
+{"runs": [{"stage": 3, "lens_set": "j56-jrefit-logit", "device": "cuda", "dtype": "bfloat16", "prompts": 140, "seconds_per_prompt": 2.576497383300947, "load_s": 4.274917164002545, "wall_s": 390.09832971100695, "stopped_at_deadline": false, "n_failed": 0, "peak_rss_mb": 4659.1171875}]}
