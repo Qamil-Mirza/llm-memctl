@@ -7627,6 +7627,241 @@ note; before the final layer; descriptive, as pre-registered).**
 **Spend.** One A40 pod, ≈ 2 h 03 min, ≈ **$1.21** (balance 9.387 → 8.179). The post hoc rules, the reports and this text
 were $0 (laptop, no model load). All experiments ≈ **$21.43 of $30**.
 
+## 46. Is the relevant intermediate present where the lenses cannot see it? A probe and an interchange intervention on the §45 cases, Qwen 2.5 3B (2026-10-30, pre-registered; pod run 2026-10-31)
+
+**Status: COMPLETE. Computed §5 verdict: row 4, "route late at P_last, instrument blind at P_B". Its second clause
+stands on the intervention arm; its first clause is not established, because the probe arm is uninformative by design
+(post hoc, labelled; the verdict is not revised).**
+- **Intervention (held, 55 unseen base cases):** patching the residual at the supervisor's name token from a prompt
+  with another supervisor moves the answer to that supervisor's city through layer 15 of 36 (L\* = 15; Transfer 0.80
+  at L15, 0.69 at L16, 0 from L33). Both content-matched controls stay at 0 (k1 0/55 at every layer; k2 0/47 except
+  1/47 at L20). The §45 lenses read nothing at that site at layers 2–29, so at P_B they are blind to a variable that
+  moves the answer.
+- **Probe (held):** no layer decodable for any read; accuracy 0.01–0.11 at P_last, at or below 1/12 at every layer.
+  Dev confounds label with base case (each of the 12 labels lives in one of 6 dev bases), so the dev-fitted probe
+  learned base identity; "not decodable at P_last before layer 30" is a property of its training data, not of the
+  representation.
+- **k3 substitution floor 52/55 = 0.945, below the fixed 0.95 bar by one pair.** The three misses go toward abstention,
+  which can only lower Transfer, so L\* stands with the shortfall stated beside it.
+- **S2 (the last prompt token) is 0 at every layer by construction**, not a negative.
+
+Pre-registration `research/proposals/2026-10-30-exp46-instrument-check.md`:
+- rev 0 at e70d03f;
+- rev 1 at 6ff90c8: aligned P / P′ / P″ triples replace the natural pairs (0 exist); first-city readout; c2 by dev CV;
+  the pod order and the $1.80 stop-and-ask;
+- rev 2 at 34d9586: H2 B″ from a distractor name; the batched hook; k3 as an input-embedding substitution;
+- rev 3 at 10505f3: dev-CV folds by (format × hardness) cell;
+- rev 4 at 34d1b4d: the readout is the conclusion;
+- rev 5 at 45bb089: "decodable" = held numbers only, the dev-CV clauses descriptive; the exact row-span solver.
+
+Decisions: D-53 (the user opened §46: "go on 2", after the Codex measurement audit) and D-54 (the pod: "Yes to the pod at
+0.59 hard stop 2.50", typed in both panes). Reviews:
+- `research/reviews/2026-10-30-exp46-build.md` (34d1b4d; addendum a5e86a1; §8 e57577a: dev recount, the rev 5 gate,
+  the design sha recomputed before the held read);
+- `research/reviews/2026-10-31-exp46-results.md` (13804dc): held recount, verdict, the probe-arm limitation, rulings.
+
+Code:
+- `memctl/analysis/probe46.py`, `memctl/analysis/patch46.py`;
+- `scripts/exp46_capture.py`, `exp46_probe.py`, `exp46_patch.py`, `exp46_report.py`;
+- the pod chain `exp46_pod.sh`, `exp46_pod_run.py`, `exp46_bundle.sh`, `exp46_d30.sh`;
+- `tests/test_exp46.py` (18 tests).
+
+Commits: b9562de (build), 959f97c (rev 4 readout), f3d7a3e and 2b24f6d (D-30 fixes), 4de18ca (attribution table),
+83d0546 (rev 5 code and the dev design, design sha `8b54cf5e…c67e`), cde2d08 (`design_committed.json`), 11d8f61 (the
+held read). Data: `runs/exp46_probe/cases46.jsonl` (§46 addition, sha `174e3ce4…`); runs
+`runs/exp46_probe/cuda-bfloat16/` (576 residual captures, 492 MB, on disk only; `design.json`, `probe_dev.json`,
+`probe_held.json` committed) and `runs/exp46_patch/cuda-bfloat16/` (per-triple json and reports).
+
+**The question (proposal §1).** §45 (F13) read the RC intermediate (the supervisor's name) and the TU cities only at
+layers 30–33. Is that a blind spot of vocabulary-projection lenses or the model's route? Three outcomes were fixed in
+advance:
+- the variable is linearly present mid-stack and causally carried (instrument blind spot);
+- it is not there before the late step (route late, lenses adequate);
+- it is present but moving it does not move the answer (represented, not used).
+
+Prior art predicts the first on toy tasks (Feng & Steinhardt 2023; Geva et al. 2023).
+
+**Design (fixed before the held read).**
+- Model: Qwen 2.5 3B Instruct, bf16, one A40 for the capture and the interventions; probe fits on the laptop CPU.
+- **Measurement A, probe.** On the §45 RC / TU prompts (576; outcomes reused from §45 stage 1, chat sha checked), the
+  residual (output of decoder layer l, layers 0–35) at:
+  - P_last: the last prompt token;
+  - RC P_q: A's name in the question;
+  - RC P_B: the supervisor's name in "{A}'s supervisor is {B}";
+  - TU: the first occurrence of each city.
+
+  A multinomial L2 logistic probe per (read, layer) is fitted on dev and read once on held. Reads: RC supervisor at
+  P_last (the §5 verdict read) and at P_q; TU current and superseded city at P_last. Controls:
+  - c1: Hewitt–Liang, a random label per base case;
+  - c2: presence, the first distractor's name;
+  - c3: chance.
+
+  Held prompts never share an (A, B) or (A, C1, C2) combination with dev (0 overlaps), and every held label occurs in
+  dev. **Decodable (rev 5) = held accuracy ≥ 0.70 with Wilson lower bound ≥ 0.55.**
+- **Measurement B, interchange intervention (RC).** For each RC v0 / v3 row × F1 / F2 × H0–H2 (144; 72 dev / 72 held),
+  a triple from the same text (`cases46.jsonl`, marked "§46 addition"):
+  - two extra facts, "{B′} works in {C1′}" and "{B″} works in {C1}", inserted in all three prompts at one seeded slot;
+  - the supervisor sentence names B (P, gold C1), B′ (P′, gold C1′) or B″ (P″, gold C1, the same-answer donor);
+  - 0 alignment drops (equal length, one token differs, at P_B);
+  - at H2 only one pool name is unused, so B″ is a distractor name with no "works in" fact (48 triples flagged; 0 with
+    a rival "lives in" city).
+
+  A pair enters if P and P′ are solved, and k2 also needs P″. Passes:
+  - S1: P's residual at (P_B, l) overwritten by P′'s, layers 0–35, greedy generation from P's own prefix cache;
+  - S2: the same at P_last, layers 0, 3, …, 33.
+
+  Controls:
+  - k1: P's residual plus a random vector of norm ‖h_P′ − h_P‖ (the §44 rev 6 difference-matched control);
+  - k2: the donor P″ (answer unchanged), share of C1′;
+  - k3: the input embedding at P_B overwritten by B′'s (token substitution), which must reproduce P′'s outcome on
+    ≥ 0.95 of pairs.
+
+  **Transfer(l)** = share of pairs concluding C1′. L\* = the largest layer such that every l ≤ L\* has Transfer ≥ 0.70,
+  lower bound ≥ 0.55, k1 ≤ 0.10 and k2 ≤ 0.10. Under 30 held pairs, the result counts as under-powered.
+- **Readout (rev 4): the conclusion.** F2: the first pool city or "unknown" on the `Answer:` line (max 160 tokens). F1:
+  the last pool city or "unknown" in the generation, to end of turn (max 96). Outcome C1 / C1′ / other / abstain. The
+  same rule decides the solved filter, k3, Transfer and S2.
+- **§5 decision rule (fixed in rev 0):**
+
+  | probe first decodable at P_last | L\* at S1 | verdict |
+  |---|---|---|
+  | ≤ 29 | ≥ 10 | instrument blind spot |
+  | none ≤ 29 | < 10 | route late, lenses adequate |
+  | ≤ 29 | < 10 | represented, not used |
+  | none ≤ 29 | ≥ 10 | route late at P_last, instrument blind at P_B |
+
+**What changed between rev 0 and the held read, and why (each before any patched pass or held read).**
+- Rev 0's natural pairs do not exist: v1 keeps the gold on 12 of 12 bases, and B′'s fact never appears in v0. Hence the
+  triples (rev 1).
+- "Greedy ≤ 8 tokens" cannot read the outcome: the gold first appears at generated token median 10, and within 8
+  tokens on 2 of 105 §45 rows. Rev 1 used a first-city rule.
+- The first-city rule misreads restatements. The model lists every fact, including the inserted C1′, before
+  concluding. Laptop F1 dev baselines (36 triples, pre-rev-4 code at max 48): solved as intended 100 / 96 / 91 of 108
+  under conclusion / first-city / §45 rule. Hence the conclusion readout (rev 4).
+- Base-grouped dev folds hold out the label itself (each dev label lives in one base). Hence (format × hardness) folds
+  (rev 3).
+- With those folds c1 is a near-sufficient statistic for the target within dev, so the dev-CV selectivity clause is
+  unsatisfiable by construction. Rev 5 made it descriptive.
+- Solver (rev 5, implementation): the first dev fit ran 10–70 s per fit at d 2048 (about 2 days) and was stopped after
+  8.5 h. The fit now projects the standardised features onto the span of the training rows (exact for L2: the optimum
+  lies in that span). Check on a dev fold: same penalised objective (25.803490 both, C 1, layer 10); the full fit's
+  weights lie in the row space to 1e-14; argmax identical on 12/12, 12/12 and 23/24 at C 0.01 / 0.1 / 1. The dev
+  probe then ran in 85 s.
+- **Disclosure (rev 5 §4):** the first equality check of the two solvers compared their argmax on held rows'
+  features. No held label was read and no accuracy computed. It was redone on the dev fold (the figures above), and
+  ruled not a selection on held, since exactness fixes the solver.
+
+**Run and coverage (pod zac774vlxnyj5f, A40 secure $0.59/h, EU-SE-1, created 07:18:11 UTC 2026-10-31, deleted
+≈ 07:42:40, ≈ 24.5 min).**
+- Pre-launch checks:
+  - 74, then 18 + neighbour suites, tests pass;
+  - D-30 PASS on 2b24f6d: fresh venv from the bundle; stub chain all ok; probe and report dev rc 0; both `--held`
+    refuse without the marker; the projection limit stops the chain (exit 7); the deadline cut is partial with no
+    traceback.
+- D-22 smoke on the pod (3 dev triples, passes forced): k3 3/3; about 0.056 s per pass at S1 (36 layers plus k3 in one
+  batch). Projection $0.263 against the $1.80 stop.
+- Chain 1276 s of the 14400 s stop: capture 32 s (576/576), baselines 405 s (432 prompts), validate, S1 dev + held
+  231 s, controls 342 s, S2 131 s; exit 0.
+- Dev readout check (216 dev baselines): conclusion vs §45 rule agree on 207, conclusion vs first-city on 160. Solved
+  as intended: 174 / 170 / 165 under conclusion / first-city / §45.
+- The dev design was frozen (`design.json`, sha `8b54cf5e…c67e`, `design_committed.json` at cde2d08). The Advisor
+  recomputed the sha from the committed code before the go. The held read ran once (11d8f61).
+
+**Measurement B, held (55 pairs entered; 47 with k2). Dev beside it (51; 47).**
+
+| layer | 0 | 1–3 | 4–9 | 10–15 | 16 | 17–25 | 26 | 27–31 | 32 | 33–35 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| Transfer held | 0.927 | 0.945 | 0.818–0.855 | 0.727 / 0.727 / 0.727 / 0.764 / 0.764 / 0.800 (LB 0.598–0.676) | 0.691 (0.560, 0.797) | 0.60–0.73 | 0.527 | 0.25–0.31 | 0.036 | 0 |
+| Transfer dev | 1.000 | 0.980 | 0.82–0.90 | 0.765 / 0.765 / 0.745 / 0.725 / 0.706 / 0.686 (LB at 15: 0.550) | 0.706 | 0.39–0.65 | 0.392 | 0.14–0.20 | 0.020 | 0 |
+
+- **L\* = 15 held** (dev 14: layer 15 misses the bar by its lower bound, 0.550 against 0.55 with the share 0.686).
+- **k1** 0/55 held (0/51 dev) at every layer. **k2** 0/47 held at every layer except L20 (1/47 = 0.021); 0/47 dev.
+  k2 is 0 under both the unused-name and the reused-distractor B″ groups.
+- **k3 52/55 = 0.945 (0.851, 0.981) held, FAIL by one pair** (dev 49/51 = 0.961, pass).
+  - The three held misses (RC03_v0_F2_H0, RC07_v0_F2_H2, RC11_v3_F2_H2) are all F2, and all are substitution →
+    abstain where P′'s own baseline concluded C1′. The generated note diverges in its first tokens.
+  - Direction of bias: an abstention is not a transfer, so the artefact lowers Transfer and cannot raise k1 or k2. It
+    biases against the L\* reported.
+  - Rev 0's alternative ("or the capture path is wrong") is not excluded. The Executor's reading (bf16 numerics in the
+    batched suffix pass, prefix cache split at P_B, against the batch-1 baseline) is plausible and unchecked.
+  - An optional dev-only batch-1 diagnostic is left to the user; the held misses are not re-run.
+- **S2** (P_last, layers 0, 3, …, 33): patch and k1 both 0/55 at every layer, held and dev. **This is zero by
+  construction:** P and P′ share the last prompt token, and the prefix cache still holds P's facts, which the model
+  restates before concluding. S2 says nothing about what P_last carries.
+- **Attribution × outcome (descriptive):** the supervisor the generation names before its conclusion (regex on
+  "{A}'s supervisor is X", "{A}'s supervisor, X,", "supervisor X", pool names only), against the outcome.
+
+  | layer | held | dev |
+  |---|---|---|
+  | 14 | B′/C1′ 38, B′/abstain 7, no name 8 | B′/abstain 7 |
+  | 20 | B′/C1′ 32, B′/abstain 15 | B′/abstain 10 |
+  | 27 | B/C1 18, B′/C1′ 15, B′/abstain 10 | |
+  | 33 | B/C1 44, none/C1 8 | |
+
+  Abstentions rise with the patch layer (held 3–4 at L0–3, 14–17 at L17–29), and the original supervisor B takes over
+  from L27.
+
+**Measurement A, probe (n 144 per read and split).**
+- Held, RC supervisor @ P_last, layers 0–35: 0.06 0.08 0.08 0.09 0.08 0.08 0.06 0.07 0.08 0.04 0.06 0.09 0.08 0.06 0.06
+  0.08 0.06 0.07 0.06 0.06 0.04 0.05 0.07 0.08 0.08 0.07 0.08 0.10 0.11 0.08 0.08 0.08 0.05 0.06 0.06 0.06.
+  - Lower bounds 0.02–0.07; mean 0.071.
+  - 1/12 = 0.083; c3 chance among names present 0.264; held c1 0.04–0.14.
+  - **No layer decodable.**
+- Held, the other reads (no layer decodable for any):
+  - RC @ P_q: 0.01–0.23 (max 0.229 at L3, LB 0.17);
+  - TU current: 0.01–0.10;
+  - TU superseded: 0.01–0.10, a redundant read (a bijection of TU current within each base case; identical at 34 of
+    36 dev layers).
+- Dev CV (descriptive, rev 5), probe / c1 / c2 for RC @ P_last: 0.896 / 0.931 / 0.688 at L0, 0.444 / 0.549 / 0.292 at
+  L29, 0.972 / 0.958 / 0.667 at L35. Chance 0.264; c1 ≥ probe at 33 of 36 layers.
+  - RC @ P_q: c1 1.000 at every layer.
+  - TU current: 0.729 / 0.965 at L0, 0.750 / 0.993 at L35.
+  - dev_ok (the former gate) holds at no layer for any read.
+
+**The probe arm's limitation (post hoc, labelled; the verdict is not revised).**
+- The dev probe fits base-case identity, not the supervisor's name. Dev has 6 RC base cases and 12 labels, each in one
+  base only (B in v0 / v2 / v3, B′ in v1), so within dev the label is a function of (base, variant). No dev-fitted
+  probe can separate "the supervisor's name" from "this base case". The held read is a genuine across-base test of a
+  probe that had no across-base training signal.
+- Two facts say the arm is uninformative rather than negative:
+  - At L31–35 the probe is at 1/12, although the dev-only §45 audit put the supervisor's name at median rank 6 at the
+    last prompt token at L33. A readable signal exists there that this probe cannot pick up.
+  - The same design at P_q is also at chance, although the questioner's name is the token under it.
+- So the first clause of row 4 ("route late at P_last") is **not established**. The second ("instrument blind at P_B")
+  rests on the intervention arm alone and stands.
+- Deciding the first clause would take many base cases per label, with names varied independently of everything else:
+  a new case list, not a re-fit (results review §4).
+
+**What was found.** In plain words:
+- The 3B writes "who the supervisor is" into its internal state at the supervisor's name and uses it to pick the city
+  through the first 15 of 36 layers. Swap in another supervisor's state there and the answer follows on 0.73–0.95 of
+  unseen cases. A random push of the same size, or a donor with the same answer, does nothing.
+- The §45 lenses saw nothing at that position before layer 30, so there they were blind to something that drives the
+  answer.
+- When the swap comes in the middle layers and fails, the model usually names the new supervisor and then says
+  "unknown", rather than answering with the old city.
+- Whether the same information can be read at the answer position before layer 30 is still open. The probe could not
+  learn it from this case list.
+
+**Why it matters.**
+- §45's "late" picture is, at the entity position, a limit of the instrument, not the model's route.
+- The intervention arm meets one of the two verdicts that open the §44 bridge (proposal §6): the same intervention on
+  the §44 rows, asking whether moving the gold's binding changes refuse against answer. That is a separate amendment
+  and the user's decision. The probe arm would need the new case list before it could carry weight there.
+- D-45 / D-53: §46 is documented and closed. No rescue variant, no re-fit, no new probe.
+
+**Caveats.**
+- k3 below its bar by one pair (above); the capture path is not proven exact on held F2.
+- The triples are a §46 addition, with two extra "works in" facts beyond the §45 prompts.
+- Greedy decoding, bf16, one model, toy prompts.
+- The attribution table is a regex description.
+- S2 is uninformative by construction.
+- "Not decodable" is a statement about this probe and this training set.
+- No sentence here says "erased", "suppressed" or "overridden" (proposal §5).
+
+**Spend.** One A40 pod, ≈ 24.5 min, ≈ **$0.24**. Laptop F1 dev baselines, probe fits, D-30 and the reports: $0. All
+experiments ≈ **$21.67 of $30**.
+
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
 **Status: STOPPED at the regeneration sanity check; no gradient was computed.** Secondary to §34 (the J-lens
