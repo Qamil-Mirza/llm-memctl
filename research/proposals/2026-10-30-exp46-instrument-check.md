@@ -173,3 +173,14 @@ design below fits at every hardness. Rulings:
   The **held** criterion is accuracy ≥ 0.70 with lower bound ≥ 0.55 and chance reported; the selectivity and presence
   clauses of §3 are dev-CV conditions, read before the held read. Held selectivity is reported as accuracy − 1/12 and
   labelled as such.
+
+## Rev 3 (2026-10-30, Advisor ruling on the probe fold scheme)
+
+Rev 2's "dev CV grouped by base case" gives accuracy 0 by construction: each probe label (RC supervisor, TU current,
+TU superseded) occurs in exactly one dev base case (base i uses perm[i+1], perm[i+2]; dev = even i), so holding out a
+base holds out its label. The held read is unaffected (every held label occurs in dev as some dev base's v1 B′; the
+held bases are unseen name/city combinations). Ruling: the Executor's scheme. Dev CV folds grouped by **(format ×
+hardness) cell**, 6 folds, every label present in train; identical folds for the main probe and for c1 (labels per base
+case), so c1 measures how far base-case identity alone is decodable and selectivity = probe dev-CV − c1 dev-CV on the
+same folds; c2 on the H1/H2 cells (4 folds). Dev CV is therefore a within-base estimate (generalisation across format
+and hardness, base identity subtracted via c1); the across-base test is the single held read, criterion as rev 2.
