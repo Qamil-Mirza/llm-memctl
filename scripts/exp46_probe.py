@@ -48,11 +48,9 @@ def load_capture(capture: Path, cases_path: Path) -> list[dict]:
     """One record per captured prompt: meta json + residuals + the case row (for prompt-level labels)."""
     cases = {json.loads(l)["case_id"]: json.loads(l) for l in cases_path.read_text().splitlines() if l.strip()}
     rows = []
-    for meta_path in sorted(capture.glob("*.json")):
-        if meta_path.name.startswith("_"):
-            continue
-        meta = json.loads(meta_path.read_text())
-        z = np.load(capture / f"{meta['case_id']}.npz")
+    for npz in sorted(capture.glob("*.npz")):         # one per captured prompt (probe outputs live beside them)
+        meta = json.loads(npz.with_suffix(".json").read_text())
+        z = np.load(npz)
         rows.append({"meta": meta, "case": cases[meta["case_id"]], "resid": z["resid"],
                      "sites": [str(s) for s in z["sites"]]})
     return rows

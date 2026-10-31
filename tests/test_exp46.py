@@ -228,6 +228,8 @@ def test_held_probe_refuses_without_marker(tmp_path, monkeypatch):
     (cap / f"{c['case_id']}.json").write_text(json.dumps(meta))
     np.savez(cap / f"{c['case_id']}.npz", resid=np.zeros((3, 36, 4), np.float32),
              sites=np.array(["P_last", "P_B", "P_q"]))
+    (cap / "probe_dev.json").write_text("{}")                 # probe outputs beside the capture are not prompts
+    (cap / "design.json").write_text("{}")
     monkeypatch.setattr(sys, "argv", ["exp46_probe.py", "--capture", str(cap), "--held"])
     assert E.main() == E.EXIT_DESIGN
     assert not (cap / "probe_held.json").exists()
