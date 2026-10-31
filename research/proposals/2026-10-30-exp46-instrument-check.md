@@ -113,3 +113,41 @@ reusing `memctl/analysis/patching.py` capture and `steering.overwrite_spec`), `s
 the §5 verdict computed, never typed). Tests: pair construction yields distinct golds; the layer-0 sanity k3 on 3
 pairs; probe shapes; the held flag refuses without the commit marker. Report the dev/held pair counts and the held
 (A, B) overlap exclusions first, before any model run.
+
+## Rev 1 (2026-10-30, Advisor rulings on the Executor's pre-run numbers; before any model run)
+
+The Executor's three pre-run reads, checked by the Advisor against `runs/exp45_maps/cases.jsonl`: (1) the §4 pair
+condition is met by **0** RC rows in either split, because v1 keeps the gold on 72 of 72 bases (the new supervisor
+inherits the city) and the v1 name never occurs in the v0 prompt; (2) **0** held (A, B) or (A, C1, C2) combinations
+occur in dev, so no probe exclusions; (3) laptop fp32 timings make the intervention 110–210 h on the laptop, so the
+laptop path is dropped for Measurement B (capture and probes may still run anywhere). Every pool name and city is a
+single token with a leading space; at H2 at least 3 names and 4 cities are unused in every prompt, so the triple
+design below fits at every hardness. Rulings:
+
+1. **Pairs (replaces §4 "Pairs").** New file `runs/exp46_probe/cases46.jsonl`, marked "§46 addition", never mixed into
+   §45 tables. For every RC v0 and v3 row (two orders) × F1/F2 × H0–H2 (144 rows, 72 dev / 72 held), a **triple**
+   P / P′ / P″ built from the same text: two extra facts "{B′} works in {C1′}" and "{B″} works in {C1}" are inserted in
+   **all three** at one seeded slot (same slot in the triple; seed 46), with B′, B″ names and C1′ a city unused in that
+   prompt; the supervisor named in sentence 1 is B (P, gold C1), B′ (P′, gold C1′) or B″ (P″, gold C1, the k2
+   same-answer donor). Per triple the Executor asserts alignment (`check_alignment` style: equal token length, P_B at the
+   same index, exactly the one token at P_B differing); a triple failing it is dropped and counted. **Solved filter:**
+   one unpatched greedy generation per prompt; a pair enters Measurement B if P and P′ are both solved; k2 additionally
+   requires P″ solved. If fewer than 30 held pairs survive, the §4 criterion is still computed but read as under-powered
+   (stated in the text), not as a verdict row in §5; the expected count is 30–45 (§45 RC solve rate ≈ 0.64).
+2. **Readout (replaces "greedy ≤ 8 tokens").** Greedy generation that stops at the first pool-city token, at ` unknown`,
+   or at max_new (F1 48, F2 64); outcome C1 / C1′ / other / abstain by that first city. **Validation, dev baselines
+   only:** the first-city rule must agree with the §45 outcome rule (full generation, §23 match) on ≥ 0.95 of the
+   unpatched dev generations; if it does not, the §45 rule decides and max_new becomes 48 / 160 as in §45. Forced-prefix
+   readouts are rejected (they change the prompt). Reported beside: whether the generation names the supervisor before
+   the city (a name-copy route is a legitimate transfer result and is described as such).
+3. **Presence control c2.** Its first-distractor labels on held (Rachel, Ben, Laura, Kate) do not occur in dev, so c2 is
+   read by 5-fold cross-validation on dev only, against the main probe's dev-CV accuracy at the same layer; the §3
+   criterion's presence clause is evaluated there. The held read is the main probe with c1 and chance. No held tuning.
+4. **Pod budget and order (D-54).** All GPU work on the one A40: capture (≈ 10 min), baselines, interventions; probe
+   fits on CPU. Batch the 36 layer variants of a pair into one batch and cache the shared prefix before P_B. Fixed
+   order, so a time cut loses the least important part last-first: (i) baselines for all triples; (ii) S1 patch, all 36
+   layers, dev then held; (iii) k1 and k2 at S1, all layers; (iv) S2 at layers {0, 3, …, 33} with k1 only (descriptive).
+   The D-22 smoke (3 triples) measures the per-pass rate; the Executor projects the total before continuing and **stops
+   and asks if the projection exceeds $1.80** (margin under the $2.50 hard stop). Quote revised to ≈ $0.90–1.80.
+5. Everything else in rev 0 stands: probe design (§3), S1/S2 sites, k1/k3 controls, the §5 decision rule, no held read
+   before `design_committed.json`, the §44-row bridge as a separate amendment.
