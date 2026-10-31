@@ -151,3 +151,25 @@ design below fits at every hardness. Rulings:
    and asks if the projection exceeds $1.80** (margin under the $2.50 hard stop). Quote revised to ≈ $0.90–1.80.
 5. Everything else in rev 0 stands: probe design (§3), S1/S2 sites, k1/k3 controls, the §5 decision rule, no held read
    before `design_committed.json`, the §44-row bridge as a separate amendment.
+
+## Rev 2 (2026-10-30, Advisor rulings on the Executor's build notes)
+
+- **H2 names.** The Advisor's rev 1 count ("≥ 3 free names at H2") was wrong: it missed the "works as" distractor
+  facts. Whole-word count: H2 rows have exactly 1 unused name (always the §45 v1 supervisor). Ruling: the Executor's
+  option (b). At H2, B′ = the one unused name (the main P/P′ pair stays clean); B″, used only by the k2 same-answer
+  donor, reuses a distractor name, preferring a name whose distractor facts carry no city at all ("works as"), else one
+  with a "lives in" fact; each such triple is flagged `b2_reuses_distractor` (and `b2_has_rival_city` when a "lives in"
+  fact exists), and k2 is reported split by the flag. 144 triples stand. Option (a) would leave ≈ 20 held pairs; option
+  (c) alters §45 text.
+- **Position-indexed hook.** Accepted (`steering.overwrite_spec` only patches the last position). Required test: with
+  the site set to the last position, the new hook reproduces the `overwrite_spec` output on one prompt to within bf16
+  tolerance, so the overwrite semantics are the same object.
+- **k3.** Accepted: the token-substitution floor is the input-embedding overwrite at P_B (must reproduce P′'s output on
+  ≥ 0.95 of pairs); the layer-0 *output* patch is part of the S1 profile, not the sanity.
+- **c1 (Hewitt–Liang) and the probe's dev CV.** The Executor is right that per-base-case random labels are at chance on
+  new held bases by construction. Ruling: the main probe's dev CV is **grouped by base case** (no base-identity leakage
+  into the generalisation estimate); c1 is read by dev CV with prompt-level folds (where a representation that encodes
+  base identity can be memorised, which is what the control measures); the presence control c2 by dev CV as rev 1.
+  The **held** criterion is accuracy ≥ 0.70 with lower bound ≥ 0.55 and chance reported; the selectivity and presence
+  clauses of §3 are dev-CV conditions, read before the held read. Held selectivity is reported as accuracy − 1/12 and
+  labelled as such.
