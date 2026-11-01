@@ -7862,6 +7862,229 @@ Prior art predicts the first on toy tasks (Feng & Steinhardt 2023; Geva et al. 2
 **Spend.** One A40 pod, ≈ 24.5 min, ≈ **$0.24**. Laptop F1 dev baselines, probe fits, D-30 and the reports: $0. All
 experiments ≈ **$21.67 of $30**.
 
+## 47. Does the evidence's value reach the answer computation on in-view failures? The §46 interchange at the evidence span on the §44 rows, Qwen 2.5 3B (2026-10-31, pre-registered; pod run 2026-10-31)
+
+**Status: COMPLETE (pooled read). B0 PASS, B1 yes, B2 "answer production on these rows" as computed, B3 / B4
+descriptive. The §44 bridge is closed (D-45 / D-56).**
+- **On the 26 rows whose forced readout follows the evidence (13 successes, 13 failures: 8 wrong, 5 refusal), the
+  gold's value stays in the residual at its own evidence token(s) through layer 30 of 36.** The answer position reads
+  it from there at layers 31–32, identically on failures and on successes.
+  - Transfer 13/13 at L0–21 and 11/13 at L27–30 in both classes, 0 from L33.
+  - The difference-matched random vector moves it on 0 of 936 reads.
+  - Embedding substitution reproduces the swap prompt on 26/26.
+- **Ruling 1 (Advisor):** the entry filter is §44's class rule, so every entered row is a §44 answer-production row.
+  B2 confirms §44's classification layer by layer. It cannot find an evidence-use failure, because such a row never
+  enters.
+- **For Q18:** the §44 rev 8 sample contains no evidence-use failure. The distinction is documented on one side only
+  and is not established as a contrast (D-45).
+
+Pre-registration `research/proposals/2026-10-31-exp47-bridge.md`:
+- rev 0 at be2b9e5;
+- rev 1 at a9b70ff: sites = exactly the differing positions, all occurrences; thresholds 11/13; fork readout;
+  Answer-line stop at 160; logits_to_keep / chunks; smoke rows; k1 and the two sanities as the controls.
+
+Decisions: D-56 (the user opened the bridge: "go bridge skip"), D-57 (the build: "build"), D-58 (the pod: "Yes to the
+pod at 0.59 hard stop 1.50", typed in both panes). Reviews:
+- `research/reviews/2026-10-31-exp47-build.md` (ACCEPT at 1689372 after the report condition; D-30 e5ea27f);
+- `research/reviews/2026-10-31-exp47-results.md` (e9cdef1): the independent recount, rulings 1–10.
+
+Code:
+- `memctl/analysis/bridge47.py`;
+- `scripts/exp47_rows.py`, `exp47_patch.py`, `exp47_report.py`;
+- the pod chain `exp47_pod.sh`, `exp47_pod_run.py`, `exp47_bundle.sh`, `exp47_d30.sh`;
+- `tests/test_exp47.py` (8 tests).
+
+Commits: ffc8aa1 (build), 1689372 (review condition), e5ea27f (D-30 log), 83876e5 (the run, read once). Rows
+`runs/exp47_bridge/rows47.jsonl` (sha `d7fa444d…`). Run `runs/exp47_bridge/cuda-float32/`: 36 per-row json, report
+sha256 `0b8fea91…87e5`. fp32 (the §44 rows were read in fp32). **Read once, pooled.** All 70 rows were read under §44
+(logit Δ, classes, P1 patching) and §45 stage 3; there is no unread split. The thresholds are §46's, fixed before the
+build, so no choice was made on these rows.
+
+**The question (proposal §1).** When the 3B fails with the evidence in view, is the evidence's binding carried to and
+used by the answer computation (a failure downstream, of answer production), or not (a failure of evidence use)? §44
+asked this with logit differences at the answer position and a swap whose validity read failed. §47 applies the tool
+that reached validity in §46 to the §44 rows, unchanged: interchange of the residual at the evidence token itself,
+with a difference-matched control.
+
+**Design (fixed before the run).**
+- **Rows.** The 70 §44 rev 8 swap rows (clean prompt with the gold G in one evidence line; swap prompt with the
+  substitute S in its place, every other byte identical). A row is position-aligned when clean and swap have equal
+  token length: 36 of 70 (success 20 / refusal 6 / wrong 10). The §44 forced ids are rebuilt with §44's own code and
+  sha-checked against the S files.
+  - Sites S1 = exactly the differing token positions, every occurrence: 1 position on 18 rows, 2 on 8, 3 on 4, 4 on 3,
+    8 on 2, 9 on 1.
+  - Three rows carry the gold more than once in the evidence line (3e321797, 8b9d4367, c7cf7dfd; all success, all
+    entered).
+- **Entry.** A row enters the Transfer read if its forced-P1 preference follows the evidence at 1 nat (Δ_clean > 0 >
+  Δ_swap and Δ_clean − Δ_swap ≥ 1): 26 = success 13 / refusal 5 / wrong 8. Entered rows' Δ_clean runs 0.33 … 26.57 and Δ_swap −26.51 …
+  −2.62.
+  - **This filter is §44's class rule at margin 1.** So all 26 entered rows carry the §44 class answer_production,
+    and the 10 non-entered rows are indeterminate 7 and evidence_use 3. This is a property of the design, recorded in
+    the results review (ruling 1). Rev 0 §7's sentence that the class labels are "never inputs to B1–B3" is corrected
+    there; the proposal is not edited after the read.
+- **Passes, per row, every layer 0–35.**
+  - The clean prompt's residual (output of decoder layer l) at the sites is overwritten by the swap run's at the same
+    positions. The prefix before the first site is cached; the suffix is recomputed (logits for the last position
+    only, chunks of 19 variants).
+  - **Readout (i):** Δ = logit(G) − logit(S) at P1 under the §34 forced `Answer:`, from a copy of the patched cache.
+    T(l) = (Δ_patched − Δ_clean) / (Δ_swap − Δ_clean); "transferred" = T ≥ 0.5.
+  - **Readout (ii):** greedy generation from the other copy to the end of the Answer line (max 160); G / S / unknown
+    / other, D1-normalised.
+- **Controls.**
+  - k1: per site position, h_clean plus a random direction of norm ‖h_swap − h_clean‖.
+  - k3: the swap tokens' input embeddings at the sites (the swap prompt itself), which must reproduce the swap run's
+    forced top-1 and generated outcome on ≥ 0.95 of entered rows.
+  - No same-answer donor (k2) can be built on natural rows (rev 1 ruling 7).
+  - S2 = P1 of the forced sequence, layers 0, 3, …, 33, patch and k1, readout (i).
+- **Sanity, per row:** |T(35)| < 0.05; |1 − T(k3)| < 0.05; |Δ − Δ_§44| < 0.05 on the unpatched clean and swap runs.
+  More than 5 % failing exits.
+- **Criterion (§46 §4 verbatim).** L*_class = the largest layer such that every l ≤ L* has Transfer ≥ 0.70, Wilson
+  lower bound ≥ 0.55 and k1 ≤ 0.10. With 13 entered rows per class this needs 11/13 (LB 0.578; 10/13 has LB 0.497).
+  L* ≥ 10 is mid-stack carriage.
+- **Reads.**
+  - B0: k3.
+  - B1: L*_success (≥ 10: §46's carriage holds on natural rows).
+  - B2: L*_failure against L*_success (≥ 10 on both: the failure is downstream of evidence use; < 10 on failures
+    only: evidence-use failure).
+  - B3: refuse ↔ answer (descriptive under 8 refusal rows).
+  - B4: per-row tables and S2.
+
+**Run (pod yhnu0jzbs8rl67, A40 secure $0.59/h, EU-SE-1, created 23:40:33 UTC 2026-10-31, deleted 00:14:24 UTC,
+lifetime 33 min 51 s).**
+- Pre-launch: 8 tests (26 with §46's); D-30 PASS (fresh venv from the bundle, stub chain, projection stop, deadline
+  cut).
+- Laptop measure on 5809eb10: CPU fp32. Peak RSS was set by the model load, so the GPU peak was measured on the pod.
+- D-22 smoke on ec81a493 / 7401057b / 5809eb10:
+  - per-row 26.5 / 83.9 / 61.7 s;
+  - peak CUDA 19.5 GB, so batch 19 (the rule: 10 above 36 GB);
+  - k3 3/3; sanities 0; |Δ − Δ_§44| 0.0000 on all six baselines.
+- Projection $0.613: the slowest smoke row × 36 × 1.15 plus the seconds spent. Below the $1.00 exit, so the chain
+  continued under the approved $1.50 stop.
+- Rows 1653 s (45.9 s per row; the slowest, 0e4e4c46, 112 s); chain 1923 s; exit 0.
+- Sanity across all 36 rows: 0 failures (max |T(35)| 0.0014, max |1 − T(k3)| 0.0007, max |Δ − Δ_§44| 8e-5).
+- The Advisor recounted every number below from the 36 per-row files with an independent script: 0 mismatches.
+
+**Results.**
+
+**B0: k3 26/26 = 1.000 (LB 0.871), PASS;** 36/36 on all rows (forced top-1 and generated outcome both equal the swap
+run's).
+
+**B1 and B2: L\* = 30 for both classes.** Transfer (readout (i)), k of n entered rows with T ≥ 0.5; k1 in brackets.
+
+| layers | success (13) | failure (13: 8 wrong, 5 refusal) | pooled (26) |
+|---|---|---|---|
+| 0–21 | 13 [0] | 13 [0] | 26 |
+| 22–26 | 13 [0] | 12 [0] | 25 |
+| 27–30 | 11 [0] | 11 [0] | 22 |
+| 31 | 5 [0] | 9 [0] | 14 |
+| 32 | 2 [0] | 2 [0] | 4 |
+| 33–35 | 0 [0] | 0 [0] | 0 |
+
+- The 11/13 bar holds at every layer through 30 in both classes. L31 fails on the share for success (0.385) and on
+  the lower bound for failure (0.692, LB 0.424).
+- k1 over the 936 control reads on entered rows: T max 0.344, min −0.241, median 0.006, 0 at or above 0.5.
+- 71 of 936 patch reads fall in [0.3, 0.7), almost all at L25–32, none at L0–24.
+- Without the three multi-occurrence rows (descriptive): success n 10, L* 30.
+- Per-row L* (last layer of the initial run with T ≥ 0.5), entered rows: 21 on 1 row (59524333, wrong), 26 on 3
+  (c19f7a0b refusal; 3e321797, 95bcc1c8 success), 30 on 7, 31 on 11, 32 on 4. Medians: success 30 (n 13), refusal
+  31 (n 5), wrong 31 (n 8).
+- **B1 reads "yes"** (L* ≥ 10): the carriage holds on natural rows. **B2 reads, as computed, "the binding is carried
+  and used on failures as on successes: the failure is downstream of evidence use (answer production), on these
+  rows".**
+- **Caveat on B2, in the result itself (ruling 1).**
+  - Every entered failure is a §44 answer-production row by construction of the entry filter, so B2 could not have
+    found an evidence-use failure: such a row never enters.
+  - What B2 adds to §44 is layer resolution. On the 13 failures whose readout follows, the gold's value is carried at
+    its own positions through layer 30 and read from there at layers 31–32, and the random-vector control never moves
+    it, exactly as on the 13 successes.
+  - The §44 classification of these rows is confirmed mechanistically. It is not extended to a class §44 did not find.
+- **S2 at P1:** patching the answer position alone moves the readout only from layer 33 (share with T ≥ 0.5: 0.038
+  at L21–24, 0.077 at L27–30, 0.962 at L33). This is identical to §44's forward patch on the same rows (0 disagreements
+  in 312 layer-row reads, max |ΔT| 1e-5). It is a **pipeline validation** (two code paths agree), not a result.
+- **Generated readout (ii):**
+  - Baselines, entered rows (clean → swap):
+    - success G 11 / unknown 1 / other 1 → S 9 / G 1 / unknown 2 / other 1;
+    - refusal unknown 5 → unknown 3 / other 2;
+    - wrong other 6 / G 2 → other 6 / unknown 2.
+  - Consistency with the §23 labels: the refusal rows refuse under this readout on 6/6 (5/5 entered); the success
+    rows give the gold on 15/20 (11/13 entered). The §23 label was scored on a different generation path.
+  - Patched success rows give S on 8–9 of 13 at L0–18 (the swap baseline gives 9), 5–7 at L19–30, 4 at L31, 1 at L32,
+    0 from L33; G returns from L31 and is back at the clean 11 at L33. k1 never lowers G below 10.
+  - **The generated outcome tracks the forced Δ at L0–18 and lags it at L19–30**, where "unknown" rises. Readout (ii)
+    is weaker than readout (i).
+
+**B3 and the induced abstentions (descriptive; 5 and 13 rows).**
+- **Refusal rows.** All 5 entered refusal rows refuse at baseline under this readout. The patch produces the
+  substitute's answer S on 1 row at L17, 2 at L18–19 and 1 at L20–31; k1 produces an answer on 0/5 at every layer
+  except two single reads (G at L15–16 on one row). The two rows:
+  - 01493427 (gold 25, substitute 33; knowledge-update) gives S at L17–19 and L22–31.
+  - ed4ddc30 (gold 20, substitute 32; knowledge-update) gives S at L18–21.
+
+  **The swap prompt itself gives "other" on 01493427 and "unknown" on ed4ddc30**, so neither the gold text nor the
+  substitute text yields the answer there. The patched generations are confabulated multi-entry recaps ("12 from
+  2023/11/30 + 33 from 2023/12/20"; "32 dozen eggs … on 2023/03/09 … on 2023/03/15"). B3's share minus k1: 0.20 at
+  L17, 0.40 at L18–19, 0.20 at L20–31. Five rows; nothing is claimed. In §44–§47 this is the only content-bearing
+  intervention that turned an in-view refusal into an answer, and the answer was the substitute's, the wrong one.
+- **Induced abstention on success rows.** Patch "unknown" exceeds k1's by 0.08 at L0–12, 0.15–0.23 at L13–18,
+  0.23–0.38 at L19–29, 0.15 at L30, and 0 from L31. Three rows abstain under the patch where neither the clean prompt,
+  the swap prompt nor k1 does: b6019101 (L19–29), c7cf7dfd (L17–21), ec81a493 (L13–30). This is the same mixed-state
+  pattern as §46's 14–17/55 abstentions at L17–29: the sites carry the substitute while every later position's state
+  below layer l was computed from the gold.
+
+**Non-entered rows (10; descriptive only, not read).**
+- indeterminate 7 (success 4, wrong 2, refusal 1) and evidence_use 3 (all success: 26bdc477, 5e1b23de, 6aeb4375).
+- The three evidence_use rows have |Δ_swap − Δ_clean| of 0.96, 0.02 and 0.17, so the forced readout barely
+  distinguishes gold from substitute on them. On two, clean and swap generate the same outcome. T is numerically
+  meaningless there (5e1b23de's runs 0.5–4.7). These are rows on which this readout is insensitive, not rows on which
+  the evidence fails to arrive.
+- On the seven indeterminate rows with usable denominators (2–17 nats), the T profiles have the entered rows' shape
+  (about 1 at L0–20, falling through L21–31, 0 from L33).
+- k3 reproduces the swap on all 10. The report's L* for these rows is driven by the two near-zero denominators and
+  is not quoted.
+
+**Comparison with §46 (ruling 3).**
+- §46's L* was 15, at the supervisor-name token, with the readout at the generated city two hops away (name →
+  workplace → city). Here the readout is the gold value itself, one hop (span → forced P1), and the value stays at
+  its own positions until the final read.
+- The two depths are not in tension: each measures the depth at which the reading position stops consulting the
+  written position for that task.
+- T ≈ 1 at L0–21 is expected whenever the readout copies the span's value: below the layer at which P1 reads the
+  sites, a patched residual there is equivalent to the token substitution (k3 = 1.0). The non-trivial content is the
+  reading depth (31–32) with the controls at 0.
+- "§46's mid-stack carriage holds on natural rows" is true. The bridge does not replicate §46's L* 15; it measures a
+  different hop.
+
+**What was found.** In plain words:
+- On the §44 rows whose answer follows the evidence, the model keeps the evidence's value at the evidence's own
+  tokens until layer 30 of 36 and copies it into the answer at layers 31–32.
+- It does this the same way when its final answer is wrong or a refusal as when it is right.
+- A random push of the same size never moves the answer.
+- On these failures the evidence's value is available to the answer computation layer by layer, and the failure
+  happens after that.
+- But §44's sample had no failure of the other kind, so §47 could not compare the two kinds.
+
+**Reading for Q18 (ruling 2).**
+- §44's classes at 1 nat were refusal 11 / 0 / 3 and wrong 15 / 0 / 3 (answer production / evidence use /
+  indeterminate). The only evidence_use rows are three successes with a near-zero readout difference.
+- On these extractive single-hop rows every classifiable failure is an answer-production failure, and §47 shows that
+  the carriage behind that class is layer for layer the same as on successes.
+- The distinction Q18 asks for is therefore **documented on one side only; not established as a contrast**. D-45
+  applies: document, do not invent a population that would supply the missing class.
+
+**Limits.**
+- Rev 0 §7 as corrected: the entry filter is the §44 class rule (ruling 1).
+- Only equal-length substitutes: 36 of 70 rows, biased toward short golds of the same surface type.
+- Extractive single-hop rows only.
+- One model, greedy decoding, fp32.
+- Readout (i) is a forced first-token logit difference. Readout (ii) lags readout (i) at L19–30.
+- No same-answer control on natural rows.
+- 5 refusal rows make B3 descriptive.
+- The rows were previously read for other measurements (pooled).
+- No sentence here says "suppressed", "erased", "overridden" or "gate".
+
+**Spend.** One A40 pod, ≈ **$0.33** (lifetime 33 min 51 s at $0.59/h; billing record pending). Laptop build, tests,
+D-30 and the report: $0. All experiments ≈ **$22.00 of $30** (D-58).
+
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
 **Status: STOPPED at the regeneration sanity check; no gradient was computed.** Secondary to §34 (the J-lens
