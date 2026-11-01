@@ -7865,7 +7865,7 @@ experiments ≈ **$21.67 of $30**.
 ## 47. Does the evidence's value reach the answer computation on in-view failures? The §46 interchange at the evidence span on the §44 rows, Qwen 2.5 3B (2026-10-31, pre-registered; pod run 2026-10-31)
 
 **Status: COMPLETE (pooled read). B0 PASS, B1 yes, B2 "answer production on these rows" as computed, B3 / B4
-descriptive. The §44 bridge is closed (D-45 / D-56).**
+descriptive. The §44 bridge closes under D-45 / D-56 (record change D-59 pending the user's Go).**
 - **On the 26 rows whose forced readout follows the evidence (13 successes, 13 failures: 8 wrong, 5 refusal), the
   gold's value stays in the residual at its own evidence token(s) through layer 30 of 36.** The answer position reads
   it from there at layers 31–32, identically on failures and on successes.
@@ -7926,7 +7926,7 @@ with a difference-matched control.
   - The clean prompt's residual (output of decoder layer l) at the sites is overwritten by the swap run's at the same
     positions. The prefix before the first site is cached; the suffix is recomputed (logits for the last position
     only, chunks of 19 variants).
-  - **Readout (i):** Δ = logit(G) − logit(S) at P1 under the §34 forced `Answer:`, from a copy of the patched cache.
+  - **Readout (i):** Δ = logit(G) − logit(S) at P1 under the §44 forced `Answer:` tail, from a copy of the patched cache.
     T(l) = (Δ_patched − Δ_clean) / (Δ_swap − Δ_clean); "transferred" = T ≥ 0.5.
   - **Readout (ii):** greedy generation from the other copy to the end of the Answer line (max 160); G / S / unknown
     / other, D1-normalised.
@@ -7958,7 +7958,8 @@ lifetime 33 min 51 s).**
   - per-row 26.5 / 83.9 / 61.7 s;
   - peak CUDA 19.5 GB, so batch 19 (the rule: 10 above 36 GB);
   - k3 3/3; sanities 0; |Δ − Δ_§44| 0.0000 on all six baselines.
-- Projection $0.613: the slowest smoke row × 36 × 1.15 plus the seconds spent. Below the $1.00 exit, so the chain
+- Projection $0.613: the slowest smoke row × 36 × 1.15 plus the seconds spent; above the Advisor's $0.30–0.50 quote
+  (the rule projects the slowest smoke row over all rows); below the $1.00 exit, so the chain
   continued under the approved $1.50 stop.
 - Rows 1653 s (45.9 s per row; the slowest, 0e4e4c46, 112 s); chain 1923 s; exit 0.
 - Sanity across all 36 rows: 0 failures (max |T(35)| 0.0014, max |1 − T(k3)| 0.0007, max |Δ − Δ_§44| 8e-5).
@@ -7983,7 +7984,8 @@ run's).
 - The 11/13 bar holds at every layer through 30 in both classes. L31 fails on the share for success (0.385) and on
   the lower bound for failure (0.692, LB 0.424).
 - k1 over the 936 control reads on entered rows: T max 0.344, min −0.241, median 0.006, 0 at or above 0.5.
-- 71 of 936 patch reads fall in [0.3, 0.7), almost all at L25–32, none at L0–24.
+- 71 of 936 patch reads fall in [0.3, 0.7): none at L0–15, one each at L16–19, three per layer at L20–26, six per
+  layer at L27–29, then 10 / 12 / 6 at L30 / 31 / 32.
 - Without the three multi-occurrence rows (descriptive): success n 10, L* 30.
 - Per-row L* (last layer of the initial run with T ≥ 0.5), entered rows: 21 on 1 row (59524333, wrong), 26 on 3
   (c19f7a0b refusal; 3e321797, 95bcc1c8 success), 30 on 7, 31 on 11, 32 on 4. Medians: success 30 (n 13), refusal
@@ -8015,7 +8017,8 @@ run's).
 
 **B3 and the induced abstentions (descriptive; 5 and 13 rows).**
 - **Refusal rows.** All 5 entered refusal rows refuse at baseline under this readout. The patch produces the
-  substitute's answer S on 1 row at L17, 2 at L18–19 and 1 at L20–31; k1 produces an answer on 0/5 at every layer
+  substitute's answer S on 1 row at L0 (ad7109d1: a recap naming "132 points" that the §23 rule does not class as a
+  refusal, scored S by the D1 rule), 0 at L1–16, 1 at L17, 2 at L18–19 and 1 at L20–31; k1 produces an answer on 0/5 at every layer
   except two single reads (G at L15–16 on one row). The two rows:
   - 01493427 (gold 25, substitute 33; knowledge-update) gives S at L17–19 and L22–31.
   - ed4ddc30 (gold 20, substitute 32; knowledge-update) gives S at L18–21.
@@ -8023,9 +8026,9 @@ run's).
   **The swap prompt itself gives "other" on 01493427 and "unknown" on ed4ddc30**, so neither the gold text nor the
   substitute text yields the answer there. The patched generations are confabulated multi-entry recaps ("12 from
   2023/11/30 + 33 from 2023/12/20"; "32 dozen eggs … on 2023/03/09 … on 2023/03/15"). B3's share minus k1: 0.20 at
-  L17, 0.40 at L18–19, 0.20 at L20–31. Five rows; nothing is claimed. In §44–§47 this is the only content-bearing
+  L0, 0 at L1–14, −0.20 at L15–16 (k1's two G reads), 0.20 at L17, 0.40 at L18–19, 0.20 at L20–31. Five rows; nothing is claimed. In §44–§47 this is the only content-bearing
   intervention that turned an in-view refusal into an answer, and the answer was the substitute's, the wrong one.
-- **Induced abstention on success rows.** Patch "unknown" exceeds k1's by 0.08 at L0–12, 0.15–0.23 at L13–18,
+- **Induced abstention on success rows.** Patch "unknown" exceeds k1's by 0.08–0.15 at L0–12, 0.08–0.23 at L13–18,
   0.23–0.38 at L19–29, 0.15 at L30, and 0 from L31. Three rows abstain under the patch where neither the clean prompt,
   the swap prompt nor k1 does: b6019101 (L19–29), c7cf7dfd (L17–21), ec81a493 (L13–30). This is the same mixed-state
   pattern as §46's 14–17/55 abstentions at L17–29: the sites carry the substitute while every later position's state
@@ -8034,11 +8037,11 @@ run's).
 **Non-entered rows (10; descriptive only, not read).**
 - indeterminate 7 (success 4, wrong 2, refusal 1) and evidence_use 3 (all success: 26bdc477, 5e1b23de, 6aeb4375).
 - The three evidence_use rows have |Δ_swap − Δ_clean| of 0.96, 0.02 and 0.17, so the forced readout barely
-  distinguishes gold from substitute on them. On two, clean and swap generate the same outcome. T is numerically
+  distinguishes gold from substitute on them. On all three, clean and swap generate the same outcome. T is numerically
   meaningless there (5e1b23de's runs 0.5–4.7). These are rows on which this readout is insensitive, not rows on which
   the evidence fails to arrive.
-- On the seven indeterminate rows with usable denominators (2–17 nats), the T profiles have the entered rows' shape
-  (about 1 at L0–20, falling through L21–31, 0 from L33).
+- On the seven indeterminate rows with usable denominators (2–17 nats), the T profiles end like the entered rows' (0 from
+  L33) but fall earlier on two of them (5809eb10 drops below 0.5 from L18, ccb36322 from L19); per-row L* 17–32.
 - k3 reproduces the swap on all 10. The report's L* for these rows is driven by the two near-zero denominators and
   is not quoted.
 
