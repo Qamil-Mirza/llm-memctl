@@ -1,6 +1,8 @@
 # §48 (side track): one learned memory controller with the full menu, under a storage cap
 
-**Status: DRAFT rev 0 (Advisor, 2026-11-01). Not pre-registered; nothing is built until the user and the review agree
+**Status: DRAFT rev 0a (Advisor, 2026-11-01; rev 0a: the controller allocates the context window every turn and may retrieve on any turn, user request).**
+
+**Status line of rev 0:** DRAFT rev 0 (Advisor, 2026-11-01). Not pre-registered; nothing is built until the user and the review agree
 the text.** Side track under D-60: it does not change the thesis scope (D-45) or any thesis claim.
 
 ## 1. Why
@@ -52,21 +54,23 @@ retrieved), DELETED (gone). Caps: ACTIVE ≤ A tokens, ARCHIVE ≤ S tokens.
 | COMPACT | ACTIVE → shorter ACTIVE copy; original DELETED | the item is rewritten shorter (extractive compressor in the free stages) | the detail a later question needs may be cut |
 | COMPACT_AND_ARCHIVE | short copy stays ACTIVE; original → ARCHIVE | a stub in view, full text retrievable | spends both tiers |
 | CONSOLIDATE (set action) | ≥ 2 ACTIVE items → one merged ACTIVE item; sources DELETED (or ARCHIVED) | merges restated or related items | merged item can be long or lose a fact (Exp 3) |
-| RETRIEVE (at a question) | ARCHIVE → ACTIVE | brings up to k = 8 stored items into view | prompt tokens; a wrong pick wastes the slot |
+| RETRIEVE (any turn) | ARCHIVE → ACTIVE | brings stored items back into view, up to k = 8 per turn, within the ACTIVE cap | prompt tokens; a wrong pick wastes the slot |
 | **DROP_FROM_ARCHIVE (new, build item)** | ARCHIVE → DELETED | frees storage | the engine's EVICT acts on ACTIVE only today, and archiving is refused when storage is full, so a storage cap needs this |
 
-**Input to the controller at each step** (a new turn has just arrived):
+**The ACTIVE tier is the reader's context window.** It is never emptied by rule (unlike the selector's `keep_none`): on every turn the controller receives the full list of what is in the window and decides, item by item, what stays. What survives, plus anything retrieved, plus the new turn, is exactly what the reader sees on that turn.
+
+**Input to the controller at each step** (a new turn has just arrived and is always placed in view):
 - per active item: the existing item features (`memctl/features.py`, 24 plus `bridge_score` in version 2: age, tokens, source, fidelity, access counts,
   similarity to the current turn and to other items, specific-token density, retrieval score, bridge score) plus new
   ones: is-compacted, is-consolidated, times retrieved;
 - global: active and archive fill against their caps, step / horizon, whether a question is pending;
-- at a question: the question text, and the shortlist of 32 archive candidates from fusion search with their features.
+- every turn: a shortlist of up to 32 archive candidates from fusion search, queried with the new turn (and, at a question, with the question text), with their features.
 
 **Output:**
 - at an ordinary step: one action per active item from {KEEP, EVICT, ARCHIVE, COMPACT, COMPACT_AND_ARCHIVE}, plus at most
   one CONSOLIDATE over candidate pairs (pairs proposed by similarity above a threshold, so the choice stays small),
   plus DROP_FROM_ARCHIVE when storage would overflow;
-- at a question: which ≤ 8 of the 32 candidates to RETRIEVE (the selector's head, unchanged in form);
+- every turn: which ≤ 8 of the shortlisted candidates to RETRIEVE into the window (possibly none), the selector's head extended to every turn; at a question this is the last decision before the reader answers;
 - if the chosen actions break a cap, the harness's fallback removes oldest-first and counts each as a forced removal.
 
 **Network:** the same small DeepSets-style scorer as Exp 4/§19 (per-item MLP with pooled context), with a 5-way action
@@ -76,7 +80,9 @@ outputs masked.
 **Training:**
 1. Hindsight labels from the stream: for each item, which later questions it serves and how many tokens it costs.
 2. Teacher: greedy hindsight plan (questions served per stored token, D1 least-regret recipe), for the full menu and
-   for the restricted menu.
+   for the restricted menu. The teacher may retrieve ahead of a question (an item is worth bringing into view on the
+   turns before a question that needs it); the controller can learn this only from cues visible at the time (for
+   example the topic returning), and the share of its retrievals made before a question is reported.
 3. Imitation (DAgger): roll out the current policy, ask the teacher what it would do at the states the policy
    actually visits, add those labels, retrain; a few rounds. Loss: cross-entropy on each item's action, listwise loss
    on the retrieval picks.
@@ -96,8 +102,9 @@ outputs masked.
 - **Two tiers with caps instead of §21's fixed rule.** Active memory (what the reader sees besides retrieved items) has
   a cap A tokens; the archive has a cap S tokens, much smaller than the history. Raw turns arrive into active memory;
   nothing leaves except by a controller action or by the harness's budget fallback (counted as forced removals).
-- **Every step the controller may apply any operation in §2 to any active item; at a question it retrieves up to k = 8
-  archive items (the selector's job, fusion search shortlist).**
+- **Every turn the controller may apply any operation in §2 to any active item and retrieve up to k = 8 archive items
+  (fusion-search shortlist queried with the new turn). A question is a turn whose answer is scored; retrieval is not
+  reserved for it.**
 - Caps are declared before any gate read. Proposal for review: A = 400 tokens, S chosen so that archive-everything
   overflows on every conversation (S ≈ 10% of the median conversation's tokens; the exact value fixed on development
   conversations from token counts only, before any accuracy is computed).
