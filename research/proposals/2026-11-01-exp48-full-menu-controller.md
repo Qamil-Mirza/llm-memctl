@@ -1,6 +1,6 @@
 # §48 (side track): one learned memory controller with the full menu, under a storage cap
 
-**Status: DRAFT rev 0a (Advisor, 2026-11-01; rev 0a: the controller allocates the context window every turn and may retrieve on any turn, user request).**
+**Status: DRAFT rev 0b (Advisor, 2026-11-01; rev 0a: the controller allocates the context window every turn and may retrieve on any turn; rev 0b: prompt cap 3,000 tokens from the measured context-rot onset; both user requests).**
 
 **Status line of rev 0:** DRAFT rev 0 (Advisor, 2026-11-01). Not pre-registered; nothing is built until the user and the review agree
 the text.** Side track under D-60: it does not change the thesis scope (D-45) or any thesis claim.
@@ -105,9 +105,23 @@ outputs masked.
 - **Every turn the controller may apply any operation in §2 to any active item and retrieve up to k = 8 archive items
   (fusion-search shortlist queried with the new turn). A question is a turn whose answer is scored; retrieval is not
   reserved for it.**
-- Caps are declared before any gate read. Proposal for review: A = 400 tokens, S chosen so that archive-everything
-  overflows on every conversation (S ≈ 10% of the median conversation's tokens; the exact value fixed on development
-  conversations from token counts only, before any accuracy is computed).
+- Caps are declared before any gate read (rev 0b, user 2026-11-01: a prompt cap below the window, because context
+  rot is already measured here).
+  - **Prompt cap A = 3,000 tokens (primary).** Source: §13a / F7, measured before this proposal: the 7B reader's
+    accuracy peaks near 3k prompt tokens and falls beyond it on both benchmarks (LoCoMo 0.299 at 2.9k → 0.273 at
+    7.4k; LongMemEval 0.438 at 3.2k → 0.372 at 5.4k; "unknown" with all evidence in view 0.079 at 399 tokens →
+    0.296 at 6,223), matching LongMemEval's own report of an 8B reader dropping past about 3k retrieved tokens. The
+    reader's window (32,768 tokens, Qwen2.5 config) is the hard physical limit, not the operating cap: a whole LoCoMo
+    conversation is about 11k–22k tokens (words × 1.35, measured 2026-11-01), so a window-sized cap would never bind
+    and the scripted reader would score "keep everything" as perfect. The scripted reader cannot see context rot;
+    the cap carries that knowledge into the free stages.
+  - **Secondary caps A = 1,500 and 6,000 tokens** (free stages only, descriptive), to show whether any advantage of
+    the full menu grows or shrinks with memory pressure. Not a tuning knob: the primary claim is read at 3,000 only.
+  - The 3k onset was measured for one reader (Qwen2.5-7B-Instruct) and one prompt family; stage 2 uses the same
+    reader, so the cap and the reader agree.
+  - **Storage cap S:** chosen so that archive-everything overflows on every conversation (S ≈ 10% of the median
+    conversation's tokens), the exact value fixed on development conversations from token counts only, before any
+    accuracy is computed.
 
 ## 4. Arms
 
@@ -167,6 +181,6 @@ from such sentences. LoCoMo is natural text, but the result is a statement about
 
 ## 9. Decisions for the user (before review)
 
-1. The caps (A, S) or the rule for fixing S from token counts.
+1. ~~The caps~~ Prompt cap settled (A = 3,000 primary; 1,500 / 6,000 descriptive, rev 0b). Still open: the storage cap S, or the rule for fixing it from token counts.
 2. Measurement option for compacted items (§6).
 3. Whether stage 2 is wanted at all (paid), or the side track stays free.
