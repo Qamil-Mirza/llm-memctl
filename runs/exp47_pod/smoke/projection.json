@@ -1,0 +1,10 @@
+{
+ "elapsed_s": 269.0,
+ "per_row_s_max": 83.85206580162048,
+ "run_projection_s": 3471.4755241870876,
+ "total_s": 3740.4755241870876,
+ "dollars": 0.613,
+ "limit": 1.0,
+ "rate": 0.59,
+ "stop_and_ask": false
+}
