@@ -1,0 +1,165 @@
+# §48 (side track): one learned memory controller with the full menu, under a storage cap
+
+**Status: DRAFT rev 0 (Advisor, 2026-11-01). Not pre-registered; nothing is built until the user and the review agree
+the text.** Side track under D-60: it does not change the thesis scope (D-45) or any thesis claim.
+
+## 1. Why
+
+No controller in this programme was ever trained with the whole menu of memory operations at once:
+
+| work | data | what a learned controller could do |
+|---|---|---|
+| Exp 4 | synthetic | keep / evict |
+| Exp 4b, D1, D2 | synthetic | evict, archive, retrieve |
+| Exp 3 | synthetic | all eight operations, **hand-written rules only** (no learning) |
+| §14 | LongMemEval | a learned "needed later?" model deciding what moves to the archive |
+| §15–§19 (the selector) | LongMemEval | retrieve only; "archive every turn" fixed |
+| §20–§22 | LoCoMo (§21 lossy task) | which turns go into one 100-token note per session |
+
+On LongMemEval and LoCoMo as usually posed (free unlimited archive, questions after the stream), the extra operations
+have nothing to decide: query-blind eviction cannot beat "archive everything, retrieve at the question" (§14a, F8).
+A full-menu controller trained there would most likely relearn the selector. The question only has content where
+memory is bounded and questions arrive during the stream. §21a showed that such a task on real conversations has
+headroom (oracle − best rule +0.177 (+0.126, +0.224)) that no learner closed (F10).
+
+**Question.** Under a fixed storage cap on real conversations with questions during the stream, does a single learned
+controller that may keep, evict, archive, retrieve, compact, compact-and-archive and consolidate beat the same
+controller restricted to archive and retrieve, at the same cap?
+
+## 2. What already exists (no new infrastructure claimed)
+
+- Operations: `memctl/memory/engine.py` implements KEEP, EVICT, MOVE_TO_ARCHIVE, RETRIEVE_FROM_ARCHIVE, COMPACT,
+  COMPACT_AND_ARCHIVE, CONSOLIDATE, NO_OP (PROMOTE/DEMOTE/PIN/UNPIN/UPDATE/SUPERSEDE have no handler; out of scope).
+- Compression: `memctl/memory/compress.py` (Truncate, Extractive, LLM compressor; Dedup and LLM consolidator).
+- Search ("vector store"): `memctl/retrieval.py` lexical (BM25), dense (sentence-transformers, bge-small), fusion.
+  The archive is searched in memory; no external vector database is needed at LoCoMo scale.
+- Task: the §21 lossy LoCoMo stream (`memctl/analysis/lossy_gate.py`), questions asked d = 1–6 sessions after their
+  last evidence, scripted reader (correct iff the evidence is in view).
+- Training: DAgger imitation and PPO/GRPO loops in `memctl/rl/`; per-write hindsight credit from §22.
+
+## 2b. Mechanics: the actions, input, output, training and evaluation (requested by the user before any build)
+
+**Where an item can be.** ACTIVE (in the prompt: the reader sees it), ARCHIVE (stored, searchable, unseen until
+retrieved), DELETED (gone). Caps: ACTIVE ≤ A tokens, ARCHIVE ≤ S tokens.
+
+**The discrete actions** (one per active item per step, except consolidate and retrieve):
+
+| action | moves | effect | cost / risk |
+|---|---|---|---|
+| KEEP | stays ACTIVE | nothing changes (the engine only checks the item exists) | spends prompt tokens every step |
+| EVICT | ACTIVE → DELETED | gone for good | cannot be undone |
+| ARCHIVE | ACTIVE → ARCHIVE | out of the prompt, still searchable | spends storage; refused if storage is full |
+| COMPACT | ACTIVE → shorter ACTIVE copy; original DELETED | the item is rewritten shorter (extractive compressor in the free stages) | the detail a later question needs may be cut |
+| COMPACT_AND_ARCHIVE | short copy stays ACTIVE; original → ARCHIVE | a stub in view, full text retrievable | spends both tiers |
+| CONSOLIDATE (set action) | ≥ 2 ACTIVE items → one merged ACTIVE item; sources DELETED (or ARCHIVED) | merges restated or related items | merged item can be long or lose a fact (Exp 3) |
+| RETRIEVE (at a question) | ARCHIVE → ACTIVE | brings up to k = 8 stored items into view | prompt tokens; a wrong pick wastes the slot |
+| **DROP_FROM_ARCHIVE (new, build item)** | ARCHIVE → DELETED | frees storage | the engine's EVICT acts on ACTIVE only today, and archiving is refused when storage is full, so a storage cap needs this |
+
+**Input to the controller at each step** (a new turn has just arrived):
+- per active item: the existing item features (`memctl/features.py`, 24 plus `bridge_score` in version 2: age, tokens, source, fidelity, access counts,
+  similarity to the current turn and to other items, specific-token density, retrieval score, bridge score) plus new
+  ones: is-compacted, is-consolidated, times retrieved;
+- global: active and archive fill against their caps, step / horizon, whether a question is pending;
+- at a question: the question text, and the shortlist of 32 archive candidates from fusion search with their features.
+
+**Output:**
+- at an ordinary step: one action per active item from {KEEP, EVICT, ARCHIVE, COMPACT, COMPACT_AND_ARCHIVE}, plus at most
+  one CONSOLIDATE over candidate pairs (pairs proposed by similarity above a threshold, so the choice stays small),
+  plus DROP_FROM_ARCHIVE when storage would overflow;
+- at a question: which ≤ 8 of the 32 candidates to RETRIEVE (the selector's head, unchanged in form);
+- if the chosen actions break a cap, the harness's fallback removes oldest-first and counts each as a forced removal.
+
+**Network:** the same small DeepSets-style scorer as Exp 4/§19 (per-item MLP with pooled context), with a 5-way action
+head per item, a pairwise consolidate score, and the retrieval logit. R1 uses the same network with the non-archive
+outputs masked.
+
+**Training:**
+1. Hindsight labels from the stream: for each item, which later questions it serves and how many tokens it costs.
+2. Teacher: greedy hindsight plan (questions served per stored token, D1 least-regret recipe), for the full menu and
+   for the restricted menu.
+3. Imitation (DAgger): roll out the current policy, ask the teacher what it would do at the states the policy
+   actually visits, add those labels, retrain; a few rounds. Loss: cross-entropy on each item's action, listwise loss
+   on the retrieval picks.
+4. Optional RL stage only if declared before stage 1 (F5: RL never beat imitation here).
+5. Cross-fitted: leave-one-conversation-out within the 6 development conversations.
+
+**Evaluation:**
+- Scripted reader (free): a question is correct iff its evidence is in view at the question (compaction caveat §6).
+- Primary metric: accuracy on old-evidence questions (evidence ≥ w sessions back), conversation-clustered 95% CI.
+- Secondary (descriptive): tokens in view at the question, storage used, forced removals, share of each action,
+  accuracy by evidence age.
+- Read once on the 4 held conversations after all choices are committed; stage 2 adds a real reader (paid).
+
+## 3. The task (changes from §21 in bold)
+
+- LoCoMo categories 1–4, 10 conversations, questions during the stream as in §21 (d by hash of question id).
+- **Two tiers with caps instead of §21's fixed rule.** Active memory (what the reader sees besides retrieved items) has
+  a cap A tokens; the archive has a cap S tokens, much smaller than the history. Raw turns arrive into active memory;
+  nothing leaves except by a controller action or by the harness's budget fallback (counted as forced removals).
+- **Every step the controller may apply any operation in §2 to any active item; at a question it retrieves up to k = 8
+  archive items (the selector's job, fusion search shortlist).**
+- Caps are declared before any gate read. Proposal for review: A = 400 tokens, S chosen so that archive-everything
+  overflows on every conversation (S ≈ 10% of the median conversation's tokens; the exact value fixed on development
+  conversations from token counts only, before any accuracy is computed).
+
+## 4. Arms
+
+- **R0 archive-all (FIFO overflow):** archive every turn; when the archive is full, evict the oldest. Retrieval by the
+  §19-style scorer. This is "the selector under a cap".
+- **R1 restricted learned:** the learned controller with only archive / evict-from-archive / retrieve.
+- **F1 full learned:** the same network and training with the full menu.
+- **H rules:** Exp 3's best full-menu rule (salience + compact-and-archive), §21's first-turns note rule adapted to caps.
+- **O oracles:** a hindsight teacher for the full menu (O-full) and for the restricted menu (O-restricted). Exact
+  optimisation is combinatorial; the teacher is greedy by questions-served per stored token, the D1 least-regret
+  recipe, stated as a heuristic upper reference, not a true optimum.
+
+## 5. Stages and gates (each read once on its declared data)
+
+**Stage 0, free (CPU, scripted reader): is there headroom for the menu?**
+- Read: O-full − O-restricted on old-evidence questions, conversation-clustered CI.
+- Gate: ≥ +0.05 with lower bound > 0. Below it: the menu adds nothing even with hindsight at this cap; document and
+  stop (D-45 stopping rule), with the cap stated as the scope.
+
+**Stage 1, free: does the learned full menu beat the learned restricted menu?**
+- Training: imitation of the matching teacher (DAgger), cross-fitted leave-one-conversation-out, as §21's `learned`.
+  An RL stage is optional and not expected to help (F5: RL never beat imitation); if run, it is declared before.
+- Claim C1: F1 − R1 > 0 (95% CI, conversation-clustered). Claim C2 (descriptive): which operations F1 uses, by share
+  of decisions and by evidence age. Claim C3 (descriptive): F1 − R0.
+- Not a claim: F1 against the oracles beyond reporting the gap closed.
+
+**Stage 2, paid, separate pre-registration: real reader.** Qwen2.5-7B-Instruct (or the 3B) answers on the stage 1 arms,
+the LLM compressor as a compaction variant. Quote, hard stop and the two-pane approval before any pod (D-40 cap $30;
+spend ≈ $22.00).
+
+## 6. The open measurement problem (must be settled before stage 0)
+
+The scripted reader marks a question correct iff its evidence turns are in view. Compaction and consolidation keep
+part of a turn, so "in view" is undefined for a compacted turn. Options for review:
+- (a) **Answer-string survival:** a compacted item counts as carrying the evidence iff the normalised gold answer
+  string survives in it. Measure first, on development conversations, how often the gold string appears in its own
+  evidence turn at all (if rarely, (a) is unusable).
+- (b) Extractive compaction only, by whole sentences, with sentence-level evidence derived from (a) on the raw turn.
+- (c) Skip the scripted reader for compaction arms and run them only in stage 2 (paid).
+Recommendation: (a) with the coverage check first; if coverage < 0.7, (b).
+
+Exp 3's confound applies: an extractive compressor that keeps "specific" sentences is near-lossless on text built
+from such sentences. LoCoMo is natural text, but the result is a statement about the compressor used.
+
+## 7. Discipline
+
+- Development: 6 conversations; held: 4 conversations read once after all choices (cap, features, teacher, arms) are
+  committed. Leave-one-out cross-fitting stays within the development set until the held read.
+- LongMemEval composed episodes (§21's planned corroboration row) as a second free check, declared before.
+- Commit and hash this text before any gate run; a stub run of the full pipeline before the first real read.
+
+## 8. What would change the plan
+
+- Stage 0 fails: the side track closes with the documented cap; no stage 1.
+- §6 coverage too low for (a) and (b): stage 1 runs without compaction arms and says so.
+- C1 fails: report "under this cap the full menu adds nothing learnable over archive and retrieve".
+
+## 9. Decisions for the user (before review)
+
+1. The caps (A, S) or the rule for fixing S from token counts.
+2. Measurement option for compacted items (§6).
+3. Whether stage 2 is wanted at all (paid), or the side track stays free.
