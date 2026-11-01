@@ -1,6 +1,6 @@
 # §48 (side track): one learned memory controller with the full menu, under a storage cap
 
-**Status: DRAFT rev 0b (Advisor, 2026-11-01; rev 0a: the controller allocates the context window every turn and may retrieve on any turn; rev 0b: prompt cap 3,000 tokens from the measured context-rot onset; both user requests).**
+**Status: DRAFT rev 0c (Advisor, 2026-11-01; rev 0a: the controller allocates the context window every turn and may retrieve on any turn; rev 0b: prompt cap 3,000 tokens from the measured context-rot onset; rev 0c: the user's decisions on §9 and the Advisor's self-review fixes, D-61).**
 
 **Status line of rev 0:** DRAFT rev 0 (Advisor, 2026-11-01). Not pre-registered; nothing is built until the user and the review agree
 the text.** Side track under D-60: it does not change the thesis scope (D-45) or any thesis claim.
@@ -125,8 +125,9 @@ outputs masked.
 
 ## 4. Arms
 
-- **R0 archive-all (FIFO overflow):** archive every turn; when the archive is full, evict the oldest. Retrieval by the
-  §19-style scorer. This is "the selector under a cap".
+- **R0 archive-all (FIFO overflow):** archive every turn except the new one; when the archive is full, drop the
+  oldest. Every turn, retrieve by the §19-style scorer from the shortlist up to the prompt cap. This is "the selector
+  under a cap", with the same every-turn retrieval as the learned arms so the comparison isolates the menu.
 - **R1 restricted learned:** the learned controller with only archive / evict-from-archive / retrieve.
 - **F1 full learned:** the same network and training with the full menu.
 - **H rules:** Exp 3's best full-menu rule (salience + compact-and-archive), §21's first-turns note rule adapted to caps.
@@ -181,6 +182,28 @@ from such sentences. LoCoMo is natural text, but the result is a statement about
 
 ## 9. Decisions for the user (before review)
 
-1. ~~The caps~~ Prompt cap settled (A = 3,000 primary; 1,500 / 6,000 descriptive, rev 0b). Still open: the storage cap S, or the rule for fixing it from token counts.
-2. Measurement option for compacted items (§6).
-3. Whether stage 2 is wanted at all (paid), or the side track stays free.
+1. **Decided (D-61).** Prompt cap A = 3,000 primary (1,500 / 6,000 descriptive). Storage cap S = 10% of the median
+   development conversation's tokens, computed from token counts only before any accuracy is read, so archive-everything
+   overflows on every conversation.
+2. **Decided (D-61): option (a), answer-string survival,** with the coverage check first on development conversations;
+   if coverage < 0.70, option (b).
+3. **Decided (D-61): stage 2 is wanted.** It still needs its own pre-registration, a quote from measured timings, a
+   hard stop, and the two-pane approval before any pod; nothing about the pod is pre-approved.
+
+## 10. Advisor self-review (rev 0c, before the build hand-off)
+
+- **Scoring with several evidence turns.** A question is correct only if *all* its evidence is in view (as §21);
+  under answer-string survival, a compacted or merged item counts for an evidence turn only if the gold string survives
+  in it. For multi-evidence questions the gold string may sit in one turn only; the coverage check reports this case
+  separately and it is declared, not repaired after the read.
+- **Every-turn retrieval cannot exceed the cap.** Retrieved items count against A on the turn they arrive; the
+  controller's own picks are cut to fit before the harness fallback, and forced removals are reported per arm.
+- **The teacher is a heuristic, not an optimum** (greedy by questions served per stored token). "Oracle" in tables
+  means this teacher; stage 0's gate compares two heuristic teachers on the same footing, and that is the claim.
+- **LongMemEval corroboration** uses the existing composed mid-stream episodes (§14–§15), same caps, declared before;
+  it does not decide any claim.
+- **Build items for the Executor (nothing else is new):** DROP_FROM_ARCHIVE handler; capped two-tier environment on
+  the §21 stream with every-turn shortlist; per-item 5-way action head, pairwise consolidate score and every-turn
+  retrieval head; full-menu and restricted teachers; DAgger loop with the masked restricted variant; coverage check for
+  answer-string survival; stub run of the whole pipeline with timing of one fold (for the stage-2 quote and the ETA).
+- **Stopping rule (D-45 spirit):** if stage 0 fails, document the cap as scope and stop; no rescue variant.
