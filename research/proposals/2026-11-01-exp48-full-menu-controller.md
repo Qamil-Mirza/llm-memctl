@@ -1,6 +1,8 @@
 # §48 (side track): one learned memory controller with the full menu, under a storage cap
 
-**Status: DRAFT rev 0c (Advisor, 2026-11-01; rev 0a: the controller allocates the context window every turn and may retrieve on any turn; rev 0b: prompt cap 3,000 tokens from the measured context-rot onset; rev 0c: the user's decisions on §9 and the Advisor's self-review fixes, D-61).**
+**Status: FROZEN at rev 0c (user, 2026-11-01, D-62): not built; to be picked up later from the GitHub issue.**
+
+**Status before freezing:** DRAFT rev 0c (Advisor, 2026-11-01; rev 0a: the controller allocates the context window every turn and may retrieve on any turn; rev 0b: prompt cap 3,000 tokens from the measured context-rot onset; rev 0c: the user's decisions on §9 and the Advisor's self-review fixes, D-61).**
 
 **Status line of rev 0:** DRAFT rev 0 (Advisor, 2026-11-01). Not pre-registered; nothing is built until the user and the review agree
 the text.** Side track under D-60: it does not change the thesis scope (D-45) or any thesis claim.
