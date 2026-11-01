@@ -7950,7 +7950,7 @@ with a difference-matched control.
   - B4: per-row tables and S2.
 
 **Run (pod yhnu0jzbs8rl67, A40 secure $0.59/h, EU-SE-1, created 23:40:33 UTC 2026-10-31, deleted 00:14:24 UTC,
-lifetime 33 min 51 s).**
+lifetime 33 min 51 s; $0.34 posted: GPU $0.333 + disk $0.007).**
 - Pre-launch: 8 tests (26 with §46's); D-30 PASS (fresh venv from the bundle, stub chain, projection stop, deadline
   cut).
 - Laptop measure on 5809eb10: CPU fp32. Peak RSS was set by the model load, so the GPU peak was measured on the pod.
@@ -8085,8 +8085,7 @@ run's).
 - The rows were previously read for other measurements (pooled).
 - No sentence here says "suppressed", "erased", "overridden" or "gate".
 
-**Spend.** One A40 pod, **$0.34 billed** (billing record: $0.183 on 2026-10-31 + $0.157 on 2026-11-01; lifetime 33 min 51 s
-at $0.59/h gave ≈ $0.33). Laptop build, tests,
+**Spend.** One A40 pod, **$0.34 posted** (GPU $0.333 + disk $0.007; lifetime 33 min 51 s at $0.59/h). Laptop build, tests,
 D-30 and the report: $0. All experiments ≈ **$22.00 of $30** (D-58).
 
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
