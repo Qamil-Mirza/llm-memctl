@@ -43,8 +43,19 @@ def joint_rows(rows, root, split="held") -> list[dict]:
                     "base_key": r["base_key"], "cls": "fa" if x["outcome"] == "abstain" else "ans",
                     "s": x["S"]["s"] if x["S"]["valid"] else None, "m": x["margins"]["m_city"],
                     "m_commit": x["margins"]["m_commit"], "kv": (x.get("KV") or {}).get("kv"),
-                    "q5": (x.get("q5") or {}).get("producing_m_city")})
+                    "q5": (x.get("q5") or {}).get("producing_m_city"), "city_first": city_first(x.get("answer"))})
     return out
+
+
+def city_first(answer: str | None) -> bool:
+    """Post-hoc (Advisor recount 2026-11-02): the answer line's first word is a pool city ("Answer: York") rather than
+    a name ("Answer: David lives in York"), so the P_ans step is the step that commits to the city."""
+    import re
+    import exp45_cases as C
+    if not answer:
+        return False
+    w = re.findall(r"[A-Za-z]+", answer)
+    return bool(w) and w[0] in C.CITIES
 
 
 def una_rel_rows(rows, root, split="held") -> list[dict]:
@@ -153,6 +164,36 @@ def stage1(rows, root) -> dict:
           "spearman_kv_m_answered": W.spearman(np.array([r["kv"] for r in kv]), np.array([r["m"] for r in kv])) if len(kv) > 2 else None,
           "n": len(sv), "n_kv": len(kv),
           "kv_mean": {c: _m([r["kv"] for r in jr if r["cls"] == c and r["kv"] is not None]) for c in ("fa", "ans")}}
+    q4["per_task"] = {"label": "added after the read, descriptive; the pooled value is a composition effect across tasks"}
+    for t in TASKS:
+        a_t = [r for r in ans if r["task"] == t]
+        st = [r for r in a_t if r["s"] is not None]
+        kt = [r for r in a_t if r["kv"] is not None]
+        q4["per_task"][t] = {
+            "n": len(st), "spearman_s_m": W.spearman(np.array([r["s"] for r in st]), np.array([r["m"] for r in st])) if len(st) > 2 else None,
+            "n_kv": len(kt), "spearman_kv_m": W.spearman(np.array([r["kv"] for r in kt]), np.array([r["m"] for r in kt])) if len(kt) > 2 else None,
+            "s_mean": _m([r["s"] for r in st]), "m_mean": _m([r["m"] for r in a_t]), "kv_mean": _m([r["kv"] for r in kt])}
+    # post-hoc sensitivity (Advisor recount): answered rows restricted to city-first answers; FA rows unchanged
+    sens = {"label": "post-hoc sensitivity (Advisor recount 2026-11-02), not pre-registered; answered rows restricted to "
+                     "city-first answer lines; the pre-registered states above stand. delta_m applies the §4.4 cell rule "
+                     "(fallback to task x hardness when fine cells cover < 50% of FA); fine_cells_forced beside it"}
+    for t in TASKS:
+        J = [r for r in jr if r["task"] == t and (r["cls"] == "fa" or r["city_first"])]
+        n_name_first = sum(1 for r in jr if r["task"] == t and r["cls"] == "ans" and not r["city_first"])
+        by_b = {}
+        for r in J:
+            by_b.setdefault(r["base_key"], []).append(r)
+        d = W.cell_delta(J, "m")
+        ci = W.boot_bases(list(by_b), lambda smp: W.cell_delta([x for b in smp for x in by_b[b]], "m", d["coarse"])["delta"])
+        dfine = W.cell_delta(J, "m", coarse=False)
+        cfine = W.boot_bases(list(by_b), lambda smp: W.cell_delta([x for b in smp for x in by_b[b]], "m", False)["delta"])
+        sens[t] = {"fine_cells_forced": {"delta_m": dfine["delta"], "n_cells": dfine["n_cells"],
+                                         "covered_fa": dfine["covered_fa"], "lo95": cfine["lo95"], "hi95": cfine["hi95"],
+                                         "note": "fine cells kept although they cover < 50% of FA when covered/n_fa < 0.5"},
+                   "answered_name_first_excluded": n_name_first,
+                   "n_ans_city_first": sum(r["cls"] == "ans" for r in J), "n_fa": sum(r["cls"] == "fa" for r in J),
+                   "delta_m": d["delta"], "coarse": d["coarse"], "n_cells": d["n_cells"], "covered_fa": d["covered_fa"],
+                   "lo95": ci["lo95"], "hi95": ci["hi95"]}
     q5o = {"spearman_producing_vs_p_ans": W.spearman(np.array([r["q5"] for r in q5]), np.array([r["m"] for r in q5]))
            if len(q5) > 2 else None, "n": len(q5), "note": "exploratory read-site dependence; no caching claim"}
     # F1 diagnostic
@@ -169,7 +210,7 @@ def stage1(rows, root) -> dict:
                 and pt[t] >= W.OPEN_PAIRS and pb[t] >= W.OPEN_BASES]
     opens = bool(eligible) and design.get("layer") is not None and bool(design.get("noop_ok"))
     rep = {"design_sha256": A.design_sha(design), "outcomes_held": {"|".join(k): n for k, n in sorted(oc.items())},
-           "tasks": tasks, "s_all_gold_abstain": s_all, "una_rel_s_by_hardness": una, "una_wrong_city": una_wrong, "Q-2": q2, "Q-3": q3, "Q-4": q4, "Q-5": q5o,
+           "tasks": tasks, "s_all_gold_abstain": s_all, "una_rel_s_by_hardness": una, "una_wrong_city": una_wrong, "Q-2": q2, "Q-3": q3, "Q-4": q4, "Q-5": q5o, "posthoc_city_first_sensitivity": sens,
            "F1_diagnostic": f1d, "eligible_tasks": eligible, "stage2_opens": opens,
            "stage2_open_note": ("opens" if opens else "does not open: " + ("no eligible task" if not eligible else
                                 "no layer / no-op failed on dev"))}
@@ -257,7 +298,10 @@ def markdown(rep) -> str:
     L += ["", "## Q-2 flip pairs (selected, conditional)", f"- pairs {s1['Q-2']['n_pairs']} from {s1['Q-2']['n_bases']} bases",
           f"- paired M_city (abstained − answered): {_ci(s1['Q-2']['paired_m_city'])}",
           f"- paired s: {_ci(s1['Q-2']['paired_s'])}", "", "## Q-4 / Q-5", f"- {json.dumps(s1['Q-4'])}",
-          f"- {json.dumps(s1['Q-5'])}", "", f"## Stage 2: {s1['stage2_open_note']}"]
+          f"- {json.dumps(s1['Q-5'])}", "", "## Post-hoc sensitivity (not pre-registered)",
+          f"- {s1['posthoc_city_first_sensitivity']['label']}"] + [
+          f"- {t}: {json.dumps(v)}" for t, v in s1["posthoc_city_first_sensitivity"].items() if t != "label"] + [
+          "", f"## Stage 2: {s1['stage2_open_note']}"]
     s2 = rep["stage2"]
     if s2.get("run"):
         L += [f"- {k}: {_ci(v)}" + (f"; p {v['p_boot']:.4f}, Holm {s2['holm'].get(k.rsplit('|', 1)[0])}" if 'p_boot' in v else "")
