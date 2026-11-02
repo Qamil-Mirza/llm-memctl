@@ -129,3 +129,19 @@ the user has made the decision.
   - The usual pod conditions apply: the D-22 smoke, the D-30 bundle test, one pod at a time, and list-pods empty from both panes.
 - **Time.** The user asked for results today within about 4–5 h. Rev 1a fixes a timing-only scale-down rule and a stage-2-only wall-clock stop.
 - **Authority.** The user's "Go for it, and I want you to run the experiments such that we can get the results by today that is less than 4-5 hours if possbile" (Advisor pane, 2026-11-02).
+
+## D-71 (2026-11-02) — §50 closed under D-45; stage 2 not opened
+
+- **What.** §50 is documented as read once on held. The basis is the results review `research/reviews/2026-11-02-exp50-results.md` (76f2e64) and the report in commit f482de6. STATE F17 records it.
+- **Result.**
+  - The elicited sufficiency measure failed its pre-registered gate in all three tasks. S is invalid, so no B, C or Joint profile can be assigned.
+  - The gold-versus-rival-city margin is lower on false abstentions than on answers in DE and RC, but stays large.
+  - TU is underpowered.
+  - Stage 2 did not open. No causal claim is made.
+- **Caveats attached.**
+  - The DE margin is partly read at a name token (49/94 answered rows). A post hoc sensitivity check gives a larger gap and does not revise the state.
+  - The answer-bearing rule was fixed on the dev audit before the design commit.
+  - Q-4 pooled correlations are a composition effect across tasks.
+- **Next.** No rescue variant. A sufficiency measure read inside the model, and the margin read at the city-producing position, would be a new proposal under a separate decision.
+- **Spend.** About $1.31 GPU plus disk, within the $3.00 cap (D-70). The programme total is about $24.2 of $30, with the posted figure pending.
+- **Authority.** The user's "Go, record §50 as closed" (Advisor pane, 2026-11-02).
