@@ -143,10 +143,69 @@ class Engine:
         return np.stack(out)
 
 
-def load_engine(backend: str, threads: int, dtype: str | None) -> Engine:
+class FakeEngine(Engine):
+    """Canned engine for tests and the D-30 bundle chain (no model): baselines per prompt (gold, unknown or a wrong
+    city by a hash), residuals = noise + a gold-city signal, a non-zero added vector releases to the gold or 'Derby'.
+    Exercises every stage end to end; its outcomes mean nothing."""
+
+    L, D = 4, 24
+
+    def __init__(self, rows):
+        import exp45_cases as C
+        self.n_layers, self.hidden = self.L, self.D
+        self.gold = {r["prompt"]: r["gold"] for r in rows}
+        self.gold.update({r["prompt_r4"]: r["gold"] for r in rows if r["prompt_r4"]})
+        self.cities = list(C.CITIES)
+        self.basis = np.random.default_rng(1).standard_normal((12, self.D)) * 3
+
+    def chat_ids(self, prompt):
+        return list(prompt.encode())
+
+    def decode(self, ids):
+        return bytes(ids).decode()
+
+    def _prompt_of(self, text):
+        return max((p for p in self.gold if text.startswith(p)), key=len)
+
+    def _baseline_text(self, prompt):
+        g = self.gold[prompt]
+        h = int(hashlib.sha256(prompt.encode()).hexdigest(), 16) % 3
+        item = "unknown" if (g is None or h == 0) else (g if h == 1 else "Derby" if g != "Derby" else "York")
+        return f"Note on it.\nAnswer: {item}\n" if "Note:" in prompt else f" {item}."
+
+    delay = 0.0          # D-30 deadline test only (FAKE_DELAY_S, baselines stage)
+
+    def generate(self, ids, specs, max_new, stop):
+        if self.delay:
+            time.sleep(self.delay)
+        text = self.decode(ids)
+        p = self._prompt_of(text)
+        rest = self._baseline_text(p)[len(text) - len(p):]
+        nonzero = [s for s in specs if s.vector is not None and np.any(s.vector)]
+        if not nonzero:
+            out = rest if len(text) == len(p) else rest.split("\n")[0] + "\n"
+            return list(out.encode())
+        g = self.gold[p]
+        out = f" {g}\n" if (g and int(st.vector_sha(nonzero[0].vector), 16) % 2 == 0) else " Derby\n"
+        return list(out.encode())
+
+    def capture(self, ids, positions):
+        p = self._prompt_of(self.decode(ids))
+        g = self.gold[p]
+        rng = np.random.default_rng(int(hashlib.sha256(p.encode()).hexdigest()[:8], 16))
+        sig = self.basis[self.cities.index(g)] if g else np.zeros(self.D)
+        return np.stack([np.stack([rng.standard_normal(self.D) + sig * (l + 1) / self.L for l in range(self.L)])
+                         for _ in positions]).astype(np.float32)
+
+
+def load_engine(backend: str, threads: int, dtype: str | None, model: str = MODEL_ID, rows=None) -> Engine:
+    """'hf' (the 3B, or `model` = a local weights dir such as the pod's tiny random stub), 'stub' (steering's byte
+    stub) or 'fake' (FakeEngine: canned, for the D-30 chain)."""
     if backend == "stub":
         return Engine(st.StubEngine())
-    return Engine(st.HFEngine(MODEL_ID, threads=threads, dtype=dtype))
+    if backend == "fake":
+        return FakeEngine(rows)
+    return Engine(st.HFEngine(model, threads=threads, dtype=dtype))
 
 
 def stop_fn(fmt: str):
@@ -621,8 +680,11 @@ def smoke(e: Engine, rows: list[dict], root: Path, n: int) -> int:
     write_json(root / "report.json", rep)
     ok = not missing and bool(noops) and all(noops)
     n_rows = len(sub)
+    n_arm_files = len(list((root / "arms_dev").glob("*.json"))) + len(list((root / "arms_held").glob("*.json")))
     payload = {"n_rows": n_rows, "timing_s": timing_s, "per_row_baseline_s": (timing_s["baselines_dev"] +
                timing_s["baselines_held"]) / n_rows, "plan_arms": dict(Counter(a for _, a in plan)),
+               "n_arm_files": n_arm_files,
+               "per_arm_s": (timing_s["arms_dev"] + timing_s["arms_held"]) / max(1, n_arm_files),
                "missing": missing, "noop_reproduces": f"{sum(noops)}/{len(noops)}", "design_alpha": design["alpha"],
                "pass": ok}
     write_json(root / "smoke.json", payload)
@@ -640,7 +702,8 @@ def main(argv=None) -> int:
     ap.add_argument("--split", choices=("dev", "held"), default="dev")
     ap.add_argument("--cases", type=Path, default=CASES)
     ap.add_argument("--out", type=Path, default=OUT)
-    ap.add_argument("--backend", choices=("hf", "stub"), default="hf")
+    ap.add_argument("--backend", choices=("hf", "stub", "fake"), default="hf")
+    ap.add_argument("--model", default=MODEL_ID, help="weights dir (the pod's stub check); default the 3B")
     ap.add_argument("--dtype", default=None)
     ap.add_argument("--threads", type=int, default=8)
     ap.add_argument("--deadline-s", type=float, default=None)
@@ -653,7 +716,7 @@ def main(argv=None) -> int:
 
     if args.stage == "probe-dev":
         out = probe_dev(rows, root)
-        print(json.dumps({k: out[k] for k in ("layer_pre", "layer_f1", "layer_ans", "layer_suff", "n_dev_pool")}))
+        print(json.dumps({k: out[k] for k in ("layer_pre", "layer_f1", "layer_ans", "layer_suff", "n_tune_pool", "r1_estimable")}))
         return 0
     if args.stage == "design":
         d = make_design(rows, root, args.cases)
@@ -673,7 +736,7 @@ def main(argv=None) -> int:
             print(f"design guard: {err}", file=sys.stderr)
             return EXIT_DESIGN
 
-    e = load_engine(args.backend, args.threads, args.dtype)
+    e = load_engine(args.backend, args.threads, args.dtype, args.model, rows)
     if args.smoke:
         if root.resolve().is_relative_to((ROOT / "runs" / "exp49").resolve()):
             print("smoke outputs go outside runs/exp49/ (e.g. runs/exp49_smoke/)", file=sys.stderr)
@@ -683,6 +746,8 @@ def main(argv=None) -> int:
         timing(e, rows, root)
         return 0
     if args.stage == "baselines":
+        if args.backend == "fake":
+            e.delay = float(os.environ.get("FAKE_DELAY_S", "0"))
         todo = [r for r in rows if r["split"] == args.split]
         if args.limit:
             todo = todo[:args.limit]

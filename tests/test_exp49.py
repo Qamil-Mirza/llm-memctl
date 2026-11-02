@@ -285,54 +285,7 @@ def test_shuffled_labels_keep_one_label_per_base():
 
 # ---------------------------------------------------------------------------------------------- whole chain (fake)
 
-class FakeEngine(R.Engine):
-    """Canned baselines per prompt (gold, unknown or a wrong city by a hash), residuals = noise + a gold-city signal;
-    a non-zero added vector releases to the decoded target if it is a pool city in the vector's sha, else 'Derby'."""
-
-    L, D = 4, 24
-
-    def __init__(self, rows):
-        self.n_layers, self.hidden = self.L, self.D
-        self.gold = {r["prompt"]: r["gold"] for r in rows}
-        self.gold.update({r["prompt_r4"]: r["gold"] for r in rows if r["prompt_r4"]})
-        self.cities = list(C.CITIES)
-        self.basis = np.random.default_rng(1).standard_normal((12, self.D)) * 3
-
-    def chat_ids(self, prompt):
-        return list(prompt.encode())
-
-    def decode(self, ids):
-        return bytes(ids).decode()
-
-    def _prompt_of(self, text):
-        return max((p for p in self.gold if text.startswith(p)), key=len)
-
-    def _baseline_text(self, prompt):
-        g = self.gold[prompt]
-        h = int(hashlib.sha256(prompt.encode()).hexdigest(), 16) % 3
-        item = "unknown" if (g is None or h == 0) else (g if h == 1 else "Derby" if g != "Derby" else "York")
-        return f"Note on it.\nAnswer: {item}\n" if "Note:" in prompt else f" {item}."
-
-    def generate(self, ids, specs, max_new, stop):
-        text = self.decode(ids)
-        p = self._prompt_of(text)
-        base = self._baseline_text(p)
-        rest = base[len(text) - len(p):]
-        nonzero = [s for s in specs if s.vector is not None and np.any(s.vector)]
-        if not nonzero:
-            out = rest if len(text) == len(p) else rest.split("\n")[0] + "\n"
-            return list(out.encode())
-        g = self.gold[p]
-        out = f" {g}\n" if (g and int(st.vector_sha(nonzero[0].vector), 16) % 2 == 0) else " Derby\n"
-        return list(out.encode())
-
-    def capture(self, ids, positions):
-        p = self._prompt_of(self.decode(ids))
-        g = self.gold[p]
-        rng = np.random.default_rng(int(hashlib.sha256(p.encode()).hexdigest()[:8], 16))
-        sig = self.basis[self.cities.index(g)] if g else np.zeros(self.D)
-        return np.stack([np.stack([rng.standard_normal(self.D) + sig * (l + 1) / self.L for l in range(self.L)])
-                         for _ in positions]).astype(np.float32)
+FakeEngine = R.FakeEngine
 
 
 def test_whole_chain_on_fake_engine(rows, tmp_path):
