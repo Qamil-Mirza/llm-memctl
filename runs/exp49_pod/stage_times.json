@@ -1,0 +1,119 @@
+{
+ "stages": [
+  {
+   "stage": "install",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 26,
+   "t_offset_s": 0,
+   "note": ""
+  },
+  {
+   "stage": "population",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 0,
+   "t_offset_s": 26,
+   "note": ""
+  },
+  {
+   "stage": "stub_check",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 32,
+   "t_offset_s": 26,
+   "note": ""
+  },
+  {
+   "stage": "download",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 15,
+   "t_offset_s": 58,
+   "note": ""
+  },
+  {
+   "stage": "smoke",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 108,
+   "t_offset_s": 73,
+   "note": ""
+  },
+  {
+   "stage": "projection",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 0,
+   "t_offset_s": 181,
+   "note": ""
+  },
+  {
+   "stage": "baselines_dev",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 673,
+   "t_offset_s": 181,
+   "note": ""
+  },
+  {
+   "stage": "probe_dev",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 72,
+   "t_offset_s": 854,
+   "note": ""
+  },
+  {
+   "stage": "arms_dev",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 62,
+   "t_offset_s": 926,
+   "note": ""
+  },
+  {
+   "stage": "design",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 0,
+   "t_offset_s": 988,
+   "note": ""
+  },
+  {
+   "stage": "wait_mark",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 142,
+   "t_offset_s": 988,
+   "note": ""
+  },
+  {
+   "stage": "baselines_held",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 655,
+   "t_offset_s": 1130,
+   "note": ""
+  },
+  {
+   "stage": "arms_held",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 801,
+   "t_offset_s": 1785,
+   "note": ""
+  },
+  {
+   "stage": "report",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 3,
+   "t_offset_s": 2586,
+   "note": ""
+  }
+ ],
+ "hard_stop_s": 11532,
+ "self_stop_s": 13332,
+ "engine": "hf"
+}

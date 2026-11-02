@@ -211,6 +211,14 @@ def held_report(rows, root) -> dict:
             "n_bases": len(recs), "n_released": len(released), "n_cf_city": sum(hits), "n_ans_gold": sum(ans_gold),
             "tracking_among_released": rate([r["base_key"] for r, _ in released], hits),
             "cf_city_rate_all": rate([r["base_key"] for r, _ in recs], [x["item"] == r["cf_city"] for r, x in recs])}
+    cf_rate = float(np.mean([B[r["case_id"]]["outcome"] == "abstain" for r in held if r["set"] == "CF"]))
+    ans_rate = float(np.mean([B[r["case_id"]]["outcome"] == "abstain" for r in held if r["set"] == "ANS"
+                              and r["format"] == "F2" and r["hardness"] == "H1"]))
+    q3["cf_vs_ans_h1_abstain_rate"] = {
+        "cf_h1": cf_rate, "ans_h1": ans_rate,
+        "note": "the M2b population is conditioned on both baselines abstaining; held unsteered CF-H1 abstain rate "
+                f"{cf_rate:.3f} vs ANS-F2-H1 {ans_rate:.3f} ({'lower' if cf_rate < ans_rate else 'not lower'})"}
+    q3["cf_baselines"] = dict(Counter(B[r["case_id"]]["outcome"] for r in held if r["set"] == "CF"))
     rep["Q-3"] = q3
     # Q-4 gates on the union pool
     f_h1 = [r for r in false_ab if r["hardness"] == "H1"]
@@ -252,13 +260,35 @@ def held_report(rows, root) -> dict:
     kw = [r["base_key"] for r in f1w]
     lf_gain = diff(kw, [lf[r["case_id"]]["outcome"] == "gold" for r in f1w],
                    [lr[r["case_id"]]["outcome"] == "gold" for r in f1w])
+    f1c = [r for r in f1w if B[r["case_id"]]["outcome"] in WRONGS]       # city-wrong only (no degenerate)
+    kc = [r["base_key"] for r in f1c]
     rep["Q-5"] = {"n_f1_wrong": len(f1w), "n_f1_gold": len(f1g),
+                  "n_f1_wrong_degenerate": sum(B[r["case_id"]]["outcome"] == "degenerate" for r in f1w),
+                  "note": "F1-wrong = not gold (B3: no-city trials stay in, unrepaired); the city-wrong-only "
+                          "population (LF's firing population) is reported beside it",
+                  "LF_minus_random_gold_on_city_wrong": diff(kc, [lf[r["case_id"]]["outcome"] == "gold" for r in f1c],
+                                                             [lr[r["case_id"]]["outcome"] == "gold" for r in f1c]),
+                  "n_f1_city_wrong": len(f1c),
                   "fired_wrong": sum(lf[r["case_id"]]["fired"] for r in f1w),
                   "fired_gold": sum(lf[r["case_id"]]["fired"] for r in f1g),
                   "LF_minus_random_gold_on_wrong": lf_gain,
                   "LF_gold_on_wrong": rate(kw, [lf[r["case_id"]]["outcome"] == "gold" for r in f1w]),
                   "kept_correct_on_gold": rate([r["base_key"] for r in f1g],
                                                [lf[r["case_id"]]["outcome"] == "gold" for r in f1g])}
+    # dev α components (tune H1), from the dev arm files: is R1 inert or a one-for-one trade?
+    pool = R.read_json(root / "probe" / "tune_pool.json") or {}
+    comp = {}
+    for a in A.ALPHAS:
+        o = {c: (R.dev_arm(root, c, "R1", a) or {}).get("outcome") for c in pool}
+        f = [o[c] for c in pool if pool[c]["set"] == "ANS"]
+        g = [o[c] for c in pool if pool[c]["set"] == "UNA"]
+        comp[str(a)] = {"n_false": len(f), "gold_false": float(np.mean([x == "gold" for x in f])) if f else None,
+                        "abstain_false": float(np.mean([x == "abstain" for x in f])) if f else None,
+                        "n_genuine": len(g), "unsupported_genuine": float(np.mean([x in A.UNSUPPORTED for x in g])) if g else None,
+                        "abstain_genuine": float(np.mean([x == "abstain" for x in g])) if g else None}
+    rep["dev_alpha_components"] = {"by_alpha": comp, "chosen": design["alpha"],
+                                   "rule": "objective tied at every α -> the smaller α (tie rule, B4)"
+                                   if len(set(design["alpha_objective"].values())) == 1 else "objective maximum"}
     # decoding
     dec = decoding(rows, root, P, design)
     rep["M1"] = dec
@@ -314,6 +344,8 @@ def markdown(rep: dict) -> str:
         L += [f"  - {k}: {fmt_ci(v)}" for k, v in q.items() if k != "U"]
     L += ["", "## Q-5 F1 replication (labelled)"] + [f"- {k}: {fmt_ci(v) if isinstance(v, dict) else v}"
                                                      for k, v in rep["Q-5"].items()]
+    L += ["", "## Dev α components (tune H1)", f"- {rep['dev_alpha_components']['rule']}"] + [
+        f"- α {a}: {json.dumps(v)}" for a, v in rep["dev_alpha_components"]["by_alpha"].items()]
     L += ["", "## Q-6 (descriptive)", f"- {rep['Q-6']['reading']}",
           f"- difference of repair gains: {fmt_ci(rep['Q-6']['difference'])}", "",
           "## M1 decoding (diagnostics)"]
