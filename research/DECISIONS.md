@@ -112,3 +112,20 @@ the user has made the decision.
     - "A limit of the instrument, not the model's route" becomes an instrument check replicating the known lens-versus-patching caveat. The computed §5 verdict stands as recorded.
   - **F15.** Labelled exploratory, selected population; "identically" becomes "the same pattern (n 13 per class; no equivalence test)"; "downstream of evidence availability" is limited to the forced readout and this population.
 - **Authority.** The user's "Go" on 2026-11-02 ("Go, and update the slides too"). The matching deck wording is updated in the same pass.
+
+## D-70 (2026-11-02) — §50 opened: elicited-sufficiency and city-margin profiles of false abstentions after an answer-bearing note (rev 1 + rev 1a)
+
+- **What.** §50 is opened as pre-registered in `research/proposals/2026-11-02-exp50-why-false-abstention.md`:
+  - rev 1, commit 032b1b1, after Codex's 14-point review `/tmp/exp50-rev0-codex-review.md`;
+  - the rev 1a time-budget amendment.
+- **Design.**
+  - Stage 1 is descriptive: Δ_S and Δ_M, with operational profile labels.
+  - Stage 2 is conditional: subspace-restricted residual interventions, reported as a conditional analysis on the same held cases.
+  - One held read per stage. The result is documented whatever it is (D-45). No rescue variant.
+- **Not a reopening of §49** (D-68 stands).
+- **Spend.**
+  - Hard cap $3.00 for all of §50, inside the $30 programme cap (D-40); spend to date is about $22.85.
+  - The cap needs the user's own approval line in the Executor pane, and the Executor creates no pod without it.
+  - The usual pod conditions apply: the D-22 smoke, the D-30 bundle test, one pod at a time, and list-pods empty from both panes.
+- **Time.** The user asked for results today within about 4–5 h. Rev 1a fixes a timing-only scale-down rule and a stage-2-only wall-clock stop.
+- **Authority.** The user's "Go for it, and I want you to run the experiments such that we can get the results by today that is less than 4-5 hours if possbile" (Advisor pane, 2026-11-02).

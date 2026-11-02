@@ -437,3 +437,23 @@ Each uses a base-clustered paired CI.
 ## Suggested one-line summary for meetings
 
 "We have a reviewed draft of a follow-up. It asks what separates the cases where the model writes the right answer in its note and then says 'unknown' from the cases where it answers. Does its own yes/no judgement of the evidence differ, or does its preference for the right city over the others differ? A conditional causal check follows if either does. It is not yet built or funded, and there are no results."
+
+## Rev 1a amendment (2026-11-02, before any build): time budget
+
+**The user's order:** "Go for it, and I want you to run the experiments such that we can get the results by today that is less than 4-5 hours if possbile".
+
+These rules are fixed before any build or data. None depends on results.
+
+1. **One pod session for everything.** Dev and held run in one pod session, in this order:
+   - dev;
+   - the Advisor's 40-row audit and the dev gate read, done from files pulled off the pod while the pod waits. The pod's idle cost is accepted under the cap;
+   - the design-file commit;
+   - held stage 1;
+   - held stage 2, if it opens.
+
+   Only the Executor writes the design file, and it does so after the Advisor's "design OK".
+2. **Scale-down rule, fixed in advance.** The one-unit timing may project the whole pod session above 2.5 h, or above the $3.00 cap. If so, the Executor halves the bases to 24 per task in both splits. It decides this from timing alone, before any dev output, and records it.
+
+   With 24 bases, the per-task feasibility rules (§4.3, §5) stay as written. A task that falls short is reported as underpowered.
+3. **Wall-clock stop for stage 2 only.** Suppose stage 2 cannot finish within about 4.5 h of the "Go" (D-70) and inside the cap. Then it is not run, and the record says "stage 2 not run (time budget)". That is a scheduling outcome, not a result. Stage 1 is never cut for time once started.
+4. **Build review.** It covers the build-order tests and the core analysis code. It is not a line-by-line review. Anything not reviewed is listed in the build review.
