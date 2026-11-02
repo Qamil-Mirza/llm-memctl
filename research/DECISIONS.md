@@ -100,3 +100,15 @@ the user has made the decision.
   - Option B (localisation) was gated on A′ showing decoded information beyond the visible note. It does not open on this result. Option C stays last and unopened.
 - **Spend.** One L40S pod (vgg9yi8dwzqe1v): billing posted $0.8467 (GPU $0.8405 + disk $0.0063). The guard pod 6ya4wnygo4efq7 cost $0.0003. §49 $0.847 of $5; the programme ≈ $22.85 of $30.
 - **Authority.** The user's "Go" on 2026-11-02 ("Yes and yes": record changes and slide updates).
+
+## D-69 (2026-11-02) — STATE F13–F15 wording corrected to the contribution audit; no verdict changed
+
+- **Basis.** The 2026-11-01 contribution audit with Addendum 1 (Codex corrections A1.3) and the Option D outline (`research/briefings/2026-11-01-option-d-thesis-outline.md`, "Open items").
+- **Changes (wording only; every number and every pre-registered verdict is unchanged).**
+  - **F13.** "Readable with any lens" becomes "any of the three vocabulary lenses". The blind-spot sentence now says it is a known limit of vocabulary projection at non-predicting positions (Patchscopes §4.2; J-lens paper §3.5.1, A.12, §9.1), an instrument property, and the lenses are "stable under refit, not validated as complete".
+  - **F14.**
+    - "Writes the supervisor's identity … and uses it causally" becomes "the residual at the name token carries what sets the concluded city"; a whole-residual swap does not separate name identity from a binding ID.
+    - The layer profile is labelled a replication of the known source-token profile (Feng & Steinhardt; Gur-Arieh et al.; Lookbacks; Geva et al.); the fade's cause is untested (no attention knockout or freeze).
+    - "A limit of the instrument, not the model's route" becomes an instrument check replicating the known lens-versus-patching caveat. The computed §5 verdict stands as recorded.
+  - **F15.** Labelled exploratory, selected population; "identically" becomes "the same pattern (n 13 per class; no equivalence test)"; "downstream of evidence availability" is limited to the forced readout and this population.
+- **Authority.** The user's "Go" on 2026-11-02 ("Go, and update the slides too"). The matching deck wording is updated in the same pass.
