@@ -98,5 +98,5 @@ the user has made the decision.
 - **Ruling.** §49 closes as documented (EXPERIMENTS.md §49, STATE F16).
   - No rescue variant: no selective re-gate, no new calibration population (D-45).
   - Option B (localisation) was gated on A′ showing decoded information beyond the visible note. It does not open on this result. Option C stays last and unopened.
-- **Spend.** One L40S pod (vgg9yi8dwzqe1v) ≈ $0.84, an estimate until billing posts. The guard pod 6ya4wnygo4efq7 cost $0.00. §49 ≈ $0.85 of $5; the programme ≈ $22.85 of $30.
+- **Spend.** One L40S pod (vgg9yi8dwzqe1v): billing posted $0.8467 (GPU $0.8405 + disk $0.0063). The guard pod 6ya4wnygo4efq7 cost $0.0003. §49 $0.847 of $5; the programme ≈ $22.85 of $30.
 - **Authority.** The user's "Go" on 2026-11-02 ("Yes and yes": record changes and slide updates).
