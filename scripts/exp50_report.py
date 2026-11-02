@@ -116,6 +116,14 @@ def stage1(rows, root) -> dict:
                     xs.append({"task": t, "hardness": r["hardness"], "gold": r["gold"],
                                "cls": "fa" if x["outcome"] == "abstain" else "ans", "s": x["S"]["s"]})
         s_all[t] = W.cell_delta(xs, "s")
+    # UNA descriptives (build review note 1): S on UNA-rel by task x hardness; wrong-city answers on UNA rows
+    una = {}
+    for t in TASKS:
+        for h in ("H0", "H1", "H2"):
+            v = [r["s"] for r in ur if r["task"] == t and r["hardness"] == h]
+            una[f"{t}|{h}"] = {"n": len(v), "s_mean": _m(v), "yes_rate": _m([x >= 0.5 for x in v])}
+    una_wrong = dict(Counter(f"{r['task']}|{r['set']}" for r in held if r["set"] in ("UNA-rel", "UNA-swap")
+                             and R.rec_of(root, r["case_id"])["outcome"] in ("wrong", "competitor")))
     # Q-2 flip pairs
     pairs = R.flip_pairs(rows, root, "held")
     q2 = {"n_pairs": len(pairs), "n_bases": len({p["base_key"] for p in pairs}),
@@ -152,8 +160,8 @@ def stage1(rows, root) -> dict:
     for r in held:
         if r["format"] == "F1":
             x = R.rec_of(root, r["case_id"])
-            f1.setdefault(x["outcome"], []).append(x["f1_margins"]["m_city"])
-    f1d = {k: {"n": len(v), "mean": _m(v)} for k, v in f1.items()}
+            f1.setdefault(x["outcome"], []).append(None if x["f1_margins"] is None else x["f1_margins"]["m_city"])
+    f1d = {k: {"n": len(v), "n_no_city": sum(m is None for m in v), "mean": _m(v)} for k, v in f1.items()}
     # opening rule
     pt = Counter(p["task"] for p in pairs)
     pb = {t: len({p["base_key"] for p in pairs if p["task"] == t}) for t in TASKS}
@@ -161,7 +169,7 @@ def stage1(rows, root) -> dict:
                 and pt[t] >= W.OPEN_PAIRS and pb[t] >= W.OPEN_BASES]
     opens = bool(eligible) and design.get("layer") is not None and bool(design.get("noop_ok"))
     rep = {"design_sha256": A.design_sha(design), "outcomes_held": {"|".join(k): n for k, n in sorted(oc.items())},
-           "tasks": tasks, "s_all_gold_abstain": s_all, "Q-2": q2, "Q-3": q3, "Q-4": q4, "Q-5": q5o,
+           "tasks": tasks, "s_all_gold_abstain": s_all, "una_rel_s_by_hardness": una, "una_wrong_city": una_wrong, "Q-2": q2, "Q-3": q3, "Q-4": q4, "Q-5": q5o,
            "F1_diagnostic": f1d, "eligible_tasks": eligible, "stage2_opens": opens,
            "stage2_open_note": ("opens" if opens else "does not open: " + ("no eligible task" if not eligible else
                                 "no layer / no-op failed on dev"))}

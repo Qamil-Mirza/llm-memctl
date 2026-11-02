@@ -172,10 +172,12 @@ def test_projector_algebra():
     assert np.allclose(arms["W"]["state"], h_d, atol=1e-5)
     assert not np.allclose(arms["P-S"]["disp"] + arms["P-M"]["disp"], arms["P-span"]["disp"])   # handled by Π
     assert abs(arms["P-perp"]["disp"] @ u_s) < 1e-9 and abs(arms["P-perp"]["disp"] @ u_m) < 1e-9
-    rs = W.rand_states(h_r, arms["P-S"]["disp"], "p", "S")
+    rs = W.rand_states(h_r, arms["P-S"]["disp"], "p", "S", delta=delta)
     assert len(rs) == 5 and all(np.isclose(np.linalg.norm(x - h_r), arms["P-S"]["norm"], rtol=1e-5) for x in rs)
-    assert all(float((x - h_r) @ arms["P-S"]["disp"]) >= 0 for x in rs)
-    assert np.array_equal(rs[0], W.rand_states(h_r, arms["P-S"]["disp"], "p", "S")[0])
+    assert all(float((x - h_r) @ delta) >= 0 for x in rs)                 # fix 3: sign against the whole Δ
+    neg = W.rand_states(h_r, arms["P-S"]["disp"], "p", "S", delta=-delta)
+    assert all(np.allclose(a - h_r, -(b - h_r), atol=1e-5) for a, b in zip(rs, neg))
+    assert np.array_equal(rs[0], W.rand_states(h_r, arms["P-S"]["disp"], "p", "S", delta=delta)[0])
 
 
 def test_noop_replay_on_stub_model():
@@ -208,6 +210,10 @@ def test_whole_chain_on_fake_engine(tmp_path):
     sm = json.loads((root / "smoke.json").read_text())
     assert sm["pass"] and sm["stage2_dev"]["noop_reproduces"] == 1.0
     assert {"W", "P-S", "P-span", "P-perp", "Rand-S", "Same"} <= set(sm["s2held_arms"])
+    same = [json.loads(p.read_text()) for p in (root / "s2held").glob("*__Same.json")]
+    for x in same:                                                      # fix 1: the arm's own recipient
+        rid = x["recipient"]
+        assert ("_ANS" in rid) and x["donor"].split("_")[0] != rid.split("_")[0]
     rep = json.loads((root / "report.json").read_text())
     assert set(rep["stage1"]["tasks"]) == {"DE", "RC", "TU"}
     REP.markdown(rep)

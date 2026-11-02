@@ -250,14 +250,18 @@ def rand_seed(pair: str, arm: str, k: int) -> int:
     return int(hashlib.sha256(f"50-{pair}-{arm}-{k}".encode()).hexdigest()[:8], 16)
 
 
-def rand_states(h_r: np.ndarray, disp: np.ndarray, pair: str, arm: str, k_seeds: int = RAND_SEEDS) -> list[np.ndarray]:
-    """h_r + ‖disp‖ · r̂ · sign(r̂ᵀΔ_arm) for k seeded unit vectors (the sign taken against the arm's displacement)."""
+def rand_states(h_r: np.ndarray, disp: np.ndarray, pair: str, arm: str, k_seeds: int = RAND_SEEDS,
+                delta: np.ndarray | None = None) -> list[np.ndarray]:
+    """h_r + ‖patch_X‖ · r̂ · sign(r̂ᵀΔ) for k seeded unit vectors: the norm is the arm's displacement ‖disp‖, the sign is
+    taken against the whole Δ = h_donor − h_recipient (spec §5; build review fix 3). `delta` defaults to `disp` only
+    for callers without a donor."""
     out = []
     norm = float(np.linalg.norm(disp))
+    ref = np.asarray(disp if delta is None else delta, np.float64)
     for k in range(k_seeds):
         r = np.random.default_rng(rand_seed(pair, arm, k)).standard_normal(len(h_r))
         r /= np.linalg.norm(r)
-        sgn = 1.0 if float(r @ disp) >= 0 else -1.0
+        sgn = 1.0 if float(r @ ref) >= 0 else -1.0
         out.append((np.asarray(h_r, np.float64) + norm * sgn * r).astype(np.float32))
     return out
 

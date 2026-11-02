@@ -218,8 +218,15 @@ def measure_row(e, r: dict, root: Path, T: Tok) -> dict:
     arrays = {}
     t1 = time.perf_counter()
     if fmt == "F1":
-        _, lg = tf_pass(e, ids, [], [len(ids) - 1])
-        rec["f1_margins"] = W.margins(lg[0], r["gold"], T.city, T.unknown)
+        # build review fix 2: read at the position that produces the first pool city of the model's own output
+        import re
+        hits = sorted((m.start(), c) for c in cities() for m in re.finditer(r"\b" + re.escape(c) + r"\b", text))
+        k = token_at_char(e, gen, hits[0][0]) if hits else None
+        if k is None:
+            rec["f1_margins"] = None
+        else:
+            _, lg = tf_pass(e, ids + gen[:k], [], [len(ids) + k - 1])
+            rec["f1_margins"] = W.margins(lg[0], r["gold"], T.city, T.unknown) | {"first_city": hits[0][1], "token_k": k}
     else:
         px = A.ans_prefix(gen, e.decode)
         j, ok, why = px["j"], px["ok"], px["why"]
@@ -387,7 +394,12 @@ def fit_u_m(rows, root, layer, part="dev-fit") -> np.ndarray | None:
             continue
         diffs.append(np.mean([arr(root, x["case_id"], "p_ans")[layer] for x in top], 0) -
                      np.mean([arr(root, x["case_id"], "p_ans")[layer] for x in bot], 0))
+        FIT_U_M_INFO["cells"] = FIT_U_M_INFO.get("cells", 0) + 1
+        FIT_U_M_INFO["rows"] = FIT_U_M_INFO.get("rows", 0) + len(rs)
     return W.unit(np.mean(diffs, axis=0)) if diffs else None
+
+
+FIT_U_M_INFO: dict = {}
 
 
 def stage2_dev(e, rows, root, deadline) -> dict:
@@ -425,7 +437,9 @@ def stage2_dev(e, rows, root, deadline) -> dict:
         out["noop_reproduces"] = float(np.mean(noop)) if noop else None
         out["noop_n"] = len(noop)
         out["noop_ok"] = bool(noop) and float(np.mean(noop)) >= W.NOOP_MIN
+        FIT_U_M_INFO.clear()
         u_s, u_m = fit_u_s(rows, root, layer), fit_u_m(rows, root, layer)
+        out["u_m_fit"] = {"cells_used": FIT_U_M_INFO.get("cells", 0), "rows_used": FIT_U_M_INFO.get("rows", 0)}
         np.savez(root / "s2dev" / "directions.npz", **{k: v for k, v in (("u_s", u_s), ("u_m", u_m)) if v is not None})
         out["u_s_defined"], out["u_m_defined"] = u_s is not None, u_m is not None
         out["cos_s_m"] = float(u_s @ u_m) if (u_s is not None and u_m is not None) else None
@@ -542,9 +556,11 @@ def make_design(rows, root, cases: Path) -> dict:
                         "delta_s_frac": W.DELTA_S_FRAC, "r_s_min": W.R_S_MIN, "mass_min": W.MASS_MIN,
                         "feasibility": [W.FEAS_N, W.FEAS_BASES], "open": [W.OPEN_PAIRS, W.OPEN_BASES],
                         "rand_seeds": W.RAND_SEEDS, "cos_max": W.COS_MAX,
-                        "same_outcome": "forward: answered donor -> the pair's answered recipient; reverse: abstained "
-                                        "donor -> the pair's abstained recipient; same task x hardness, other base, "
-                                        "nearest |M_commit|"}}
+                        "same_outcome": "the arm's own recipient; donor from another base with the recipient's outcome "
+                                        "(forward: abstained -> abstained, gold rate; reverse: answered -> answered, "
+                                        "abstain rate); same task x hardness; same gold city preferred, then nearest "
+                                        "|M_commit|; pairs without a same-city donor flagged",
+                        "f1_margin_site": "the teacher-forced position producing the first pool city of the F1 output"}}
     write_json(root / "design.json", design)
     return {"design_sha256": A.design_sha(design), **design}
 
@@ -555,7 +571,9 @@ def mark_design(root: Path, commit: str) -> dict:
 
 # ---------------------------------------------------------------------------------------------- stage 2 (held)
 
-def same_outcome_donor(pool: list[dict], root: Path, rec_row: dict, outcome: str, exclude_base: str) -> str | None:
+def same_outcome_donor(pool: list[dict], root: Path, rec_row: dict, outcome: str, exclude_base: str) -> tuple[str | None, bool]:
+    """Build review fix 1: a donor from another base with the recipient's own outcome, same task x hardness; prefer the
+    same gold city, then the nearest |M_commit|. Returns (case_id or None, same_city)."""
     target = rec_of(root, rec_row["case_id"])["margins"]["m_commit"]
     cands = []
     for r in pool:
@@ -563,8 +581,11 @@ def same_outcome_donor(pool: list[dict], root: Path, rec_row: dict, outcome: str
             continue
         x = rec_of(root, r["case_id"])
         if x and x["outcome"] == outcome and x.get("answer_bearing") and x["p_ans_ok"]:
-            cands.append((abs(x["margins"]["m_commit"] - target), r["case_id"]))
-    return min(cands)[1] if cands else None
+            cands.append((r["gold"] != rec_row["gold"], abs(x["margins"]["m_commit"] - target), r["case_id"]))
+    if not cands:
+        return None, False
+    best = min(cands)
+    return best[2], not best[0]
 
 
 def stage2_held(e, rows, root, deadline, stop_at: float | None = None, force: bool = False) -> int:
@@ -591,10 +612,13 @@ def stage2_held(e, rows, root, deadline, stop_at: float | None = None, force: bo
             for x in ("S", "M", "span"):
                 key = {"S": "P-S", "M": "P-M", "span": "P-span"}[x]
                 if key in arms:
-                    jobs.append((f"Rand-{x}", W.rand_states(h_r, arms[key]["disp"], p["pair"] + direction, x), arms[key]["norm"]))
-            so_out = "gold" if direction == "forward" else "abstain"
-            so_rec = p["answered"] if direction == "forward" else p["abstained"]
-            sod = same_outcome_donor(pool, root, by[so_rec], so_out, p["base_key"])
+                    jobs.append((f"Rand-{x}", W.rand_states(h_r, arms[key]["disp"], p["pair"] + direction, x,
+                                                            delta=np.asarray(h_d, np.float64) - np.asarray(h_r, np.float64)),
+                                 arms[key]["norm"]))
+            # same-outcome control (fix 1): the recipient is the row this direction's arms patch; the donor shares its
+            # outcome (forward: an abstained donor into the abstained row; reverse: an answered donor into the answered row)
+            so_rec = rid
+            sod, so_same_city = same_outcome_donor(pool, root, by[rid], b["outcome"], p["base_key"])
             for arm, states, norm in jobs:
                 path = root / "s2held" / f"{p['pair']}__{direction}__{arm}.json"
                 if path.exists():
@@ -611,7 +635,7 @@ def stage2_held(e, rows, root, deadline, stop_at: float | None = None, force: bo
                 rr = by[so_rec]
                 o = patched_outcome(e, rr, rec_of(root, so_rec), layer, arr(root, sod, "p_ans")[layer])
                 write_json(path, {"pair": p["pair"], "direction": direction, "arm": "Same", "donor": sod,
-                                  "recipient": so_rec, "outcomes": [o["outcome"]]})
+                                  "recipient": so_rec, "same_city_donor": so_same_city, "outcomes": [o["outcome"]]})
     write_json(root / "s2held" / "status.json", {"run": True})
     return 0
 
