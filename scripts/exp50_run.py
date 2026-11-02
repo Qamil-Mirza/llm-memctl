@@ -561,8 +561,29 @@ def make_design(rows, root, cases: Path) -> dict:
                                         "abstain rate); same task x hardness; same gold city preferred, then nearest "
                                         "|M_commit|; pairs without a same-city donor flagged",
                         "f1_margin_site": "the teacher-forced position producing the first pool city of the F1 output"}}
+    notes = read_json(root / "design_notes.json")
+    if notes:
+        design["notes"] = notes                      # Advisor rulings at the design OK (dev-derived; before held)
     write_json(root / "design.json", design)
     return {"design_sha256": A.design_sha(design), **design}
+
+
+def recompute_answer_bearing(rows, root, split: str = "dev") -> dict:
+    """No model calls: recompute the answer-bearing flag of every `split` row from its stored note with the current
+    rule; the previous value is kept as answer_bearing_v0. Returns the change counts."""
+    ch = Counter()
+    for r in rows:
+        if r["split"] != split or r["format"] != "F2":
+            continue
+        x = rec_of(root, r["case_id"])
+        if x is None:
+            continue
+        new = W.answer_bearing(x["note"], r["gold"], r["task"], cities()) if r["set"] == "ANS" else False
+        old = x.get("answer_bearing_v0", x.get("answer_bearing"))
+        x["answer_bearing_v0"], x["answer_bearing"] = old, new
+        ch[(r["task"], bool(old), bool(new))] += 1
+        write_json(root / "rows" / f"{r['case_id']}.json", x)
+    return {f"{t}|{o}->{n}": c for (t, o, n), c in sorted(ch.items())}
 
 
 def mark_design(root: Path, commit: str) -> dict:

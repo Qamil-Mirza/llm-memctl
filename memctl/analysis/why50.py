@@ -3,8 +3,9 @@ profile labels, the S validity gate, the stage-2 projector and arm vectors, Holm
 
 Spec: research/proposals/2026-11-02-exp50-why-false-abstention.md rev 1 (+ rev 1a); D-70. Fixed choices of this build
 (the proposal leaves them open; each is stamped into the design file):
-- Answer-bearing note: SOME occurrence of the gold (word boundary) has none of the negators within the 6 words before
-  it; for TU the gold is also the last pool city mentioned in the note.
+- Answer-bearing note: SOME occurrence of the gold (word boundary) has none of "not", "no longer", "never" within the 6
+  words before it and is not the city right after "moved from"; for TU the gold is also the last pool city mentioned in
+  the note. (Rule fixed on the dev audit before the design commit: 5/40 TU false negatives, "moved from X to {gold}".)
 - S gate AUROC: answered ANS rows (outcome gold, valid S) against UNA-rel rows (all hardness) and, separately, answered
   ANS-H1 against UNA-swap (H1); 95% CI by base bootstrap within the task. Yes rates: answered ANS >= 0.70, and UNA-rel
   and UNA-swap each <= 0.30. Polarity agreement over every dev-check row with both scores valid.
@@ -56,7 +57,11 @@ def answer_bearing(note: str, gold: str | None, task: str, cities: Sequence[str]
     ok = False
     for m in occ:
         before = " ".join(re.findall(r"[A-Za-z']+", note[:m.start()])[-NEG_WINDOW:]).lower()
-        if not any(re.search(r"\b" + re.escape(n) + r"\b", before) for n in NEGATORS):
+        # dev-audit fix (design OK, 2026-11-02): "moved from" negates only the city right after it ("moved from {gold}");
+        # "not", "no longer", "never" keep the 6-word window
+        window_neg = any(re.search(r"\b" + re.escape(n) + r"\b", before) for n in NEGATORS if n != "moved from")
+        moved_from_gold = re.search(r"\bmoved from\s*$", note[:m.start()], re.IGNORECASE) is not None
+        if not window_neg and not moved_from_gold:
             ok = True
             break
     if not ok:

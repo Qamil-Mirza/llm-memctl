@@ -116,6 +116,9 @@ def test_answer_bearing_rule():
     assert W.answer_bearing("Ben lives in York.", "York", "DE", cities)
     assert not W.answer_bearing("Ben does not live in York.", "York", "DE", cities)
     assert not W.answer_bearing("Ben moved from York to Leeds.", "York", "TU", cities)
+    assert W.answer_bearing("Henry moved from Derby to Brighton.", "Brighton", "TU", cities)     # dev-audit fix
+    assert W.answer_bearing("Paul moved from Liverpool to Derby", "Derby", "TU", cities)
+    assert not W.answer_bearing("Paul moved from Derby.", "Derby", "DE", cities)
     assert W.answer_bearing("Ben lived in Leeds, later moved to York.", "York", "TU", cities)
     assert not W.answer_bearing("Ben is in York; before that Leeds.", "York", "TU", cities)      # not last city
     assert W.answer_bearing("not that one. Ben is known to live in York.", "York", "DE", cities)   # negator 7+ words back
