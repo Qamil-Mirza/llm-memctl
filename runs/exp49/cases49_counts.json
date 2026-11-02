@@ -1,6 +1,6 @@
 {
  "seed": 49,
- "cases49_sha256": "d8fad80e400114de8d0168a8166505dd03dd9e328cd0c297f5d7ea4336246731",
+ "cases49_sha256": "d11894ac2b868ef58204274cb44979953b3727adb74a9ad57e8924922ef0e82b",
  "pass": true,
  "problems": {
   "counts": [],
@@ -210,7 +210,10 @@
    "UNA-F2": 144,
    "ANS-F1": 72
   },
-  "r4_removed": " If the memory does not contain the answer, reply: unknown",
+  "r4_removed": [
+   " If the memory does not contain the answer, reply: unknown",
+   " Reply unknown only if the memory has nothing at all on the topic."
+  ],
   "f2_instruction": "Below is your memory of a long conversation, followed by a question about it. Answer with a short phrase that states the fact asked for. If the memory does not contain the answer, reply: unknown",
   "dev": "even base index",
   "held": "odd base index",

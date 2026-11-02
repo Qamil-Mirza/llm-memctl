@@ -89,8 +89,9 @@ def test_nuisance_fact_and_line_count(rows):
 
 def test_r4_prompt(rows):
     r = next(x for x in rows if x["format"] == "F2")
-    assert G.R4_SENTENCE in r["prompt"] and G.R4_SENTENCE not in r["prompt_r4"]
-    assert r["prompt_r4"] == r["prompt"].replace(G.R4_SENTENCE, "")
+    assert G.R4_SENTENCE in r["prompt"] and G.R4_SENTENCE_NOTE in r["prompt"]
+    assert r["prompt_r4"] == r["prompt"].replace(G.R4_SENTENCE, "").replace(G.R4_SENTENCE_NOTE, "")
+    assert all("unknown" not in x["prompt_r4"].lower() for x in rows if x["format"] == "F2")
     assert all(x["prompt_r4"] is None for x in rows if x["format"] == "F1")
 
 
@@ -107,7 +108,8 @@ def test_classify_and_utility():
     assert A.classify(None, "York", [], cities)["outcome"] == "degenerate"
     assert A.answer_text("note York\nAnswer: Leeds\nmore", "F2") == " Leeds"
     assert A.answer_text("no marker", "F2") is None
-    assert [A.utility(o, 2) for o in ("gold", "abstain", "wrong", "degenerate")] == [1, 0, -2, -2]
+    assert [A.utility(o, 2) for o in ("gold", "abstain", "wrong", "competitor", "degenerate")] == [1, 0, -2, -2, 0]
+    assert "degenerate" not in A.UNSUPPORTED
 
 
 def _bytes_decode(ids):
@@ -201,6 +203,27 @@ def test_r1_unestimable_is_no_release():
     assert np.isclose(np.linalg.norm(v), 0.5 * 4.0)
 
 
+def test_lf_vector_and_r3_norm():
+    mu = {"a": np.array([1.0, 0, 0]), "b": np.array([0.0, 1, 0])}
+    h = np.array([3.0, 4.0, 0.0], np.float32)
+    v = A.lf_vector(h, mu, "a", "b", 2.0)
+    assert np.isclose(np.linalg.norm(v), 2.0 * 5.0)
+    assert np.allclose(v / np.linalg.norm(v), np.array([1, -1, 0]) / np.sqrt(2))
+
+    class E:
+        hidden = 3
+    rec = {}
+    def fake_release(e, r, b, specs):
+        rec["v"] = specs[0].vector
+        return {"outcome": "wrong"}
+    orig, R.release = R.release, fake_release
+    try:
+        out = R.r1_trial(E(), {"case_id": "x"}, {}, h, {"mu_abst": None, "mu_ans": {}}, "zz", 1, 0.5, random_arm="R3")
+    finally:
+        R.release = orig
+    assert out["status"] == "ok" and np.isclose(np.linalg.norm(rec["v"]), 0.5 * 5.0)   # R3 defined without R1
+
+
 def test_cluster_boot():
     keys = ["a", "a", "b", "b"]
     out = A.cluster_boot(keys, [1, 1, 0, 0], n=2000)
@@ -217,14 +240,33 @@ def test_readings():
 
 
 def test_design_guard(tmp_path):
+    root = tmp_path / "run"
+    root.mkdir()
     with pytest.raises(PermissionError):
-        A.require_design(tmp_path)
-    (tmp_path / "design.json").write_text(json.dumps({"alpha": 1.0}))
-    (tmp_path / A.DESIGN_MARKER).write_text(json.dumps({"commit": "abc", "design_sha256": "wrong"}))
+        A.require_design(root)
+    (root / "design.json").write_text(json.dumps({"alpha": 1.0}))
+    (root / A.DESIGN_MARKER).write_text(json.dumps({"commit": "abc", "design_sha256": "x"}))
+    with pytest.raises(PermissionError):                       # not a git repo / no such commit
+        A.require_design(root)
+    commit = R.smoke_commit(root)
+    R.mark_design(root, commit)
+    assert A.require_design(root) == {"alpha": 1.0}
+    R.mark_design(root, "0" * 40)                              # a commit that does not exist
     with pytest.raises(PermissionError):
-        A.require_design(tmp_path)
-    R.mark_design(tmp_path, "abc")
-    assert A.require_design(tmp_path) == {"alpha": 1.0}
+        A.require_design(root)
+    R.mark_design(root, commit)
+    (root / "design.json").write_text(json.dumps({"alpha": 2.0}))   # working tree differs from the committed blob
+    m = json.loads((root / A.DESIGN_MARKER).read_text())
+    m["design_sha256"] = A.design_sha({"alpha": 2.0})
+    (root / A.DESIGN_MARKER).write_text(json.dumps(m))
+    with pytest.raises(PermissionError):                       # marker sha vs committed blob mismatch
+        A.require_design(root)
+    (root / "design.json").write_text(json.dumps({"alpha": 1.0}))
+    m["design_sha256"] = A.design_sha({"alpha": 1.0})
+    (root / A.DESIGN_MARKER).write_text(json.dumps(m))
+    (root / "design.json").write_text(json.dumps({"alpha": 1.0}) + " ")
+    with pytest.raises(PermissionError):                       # bytes differ from the blob
+        A.require_design(root)
     assert R.main(["--stage", "arms-held", "--out", str(tmp_path / "none")]) == R.EXIT_DESIGN
 
 
@@ -308,7 +350,7 @@ def test_whole_chain_on_fake_engine(rows, tmp_path):
     assert d["alpha"] in A.ALPHAS and d["dev_noop_reproduces"] == "20/20"
     with pytest.raises(PermissionError):
         R.run_arms_held(e, rows, root, None)
-    R.mark_design(root, "test")
+    R.mark_design(root, R.smoke_commit(root))
     assert R.run_baselines(e, [r for r in rows if r["split"] == "held"], root, None) == 0
     assert R.run_arms_held(e, rows, root, None) == 0
     rep = REP.held_report(rows, root)

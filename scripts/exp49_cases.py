@@ -26,9 +26,9 @@ Fixed choices (each recorded in cases49_counts.json "design"):
   §45's templates, stated). UNA = the ANS prompt with the query's city fact(s) replaced, in place, by the same number
   of ordinary distractor lines about other people (the base's distractors 4 and 5, which H1 never uses). Same line
   count, same hardness slots; the only difference is whether the queried relation exists.
-- R4 (proposal §3): `prompt_r4` = the F2 prompt with the sentence " If the memory does not contain the answer, reply:
-  unknown" removed from the §23 instruction. The Chain-of-Note text (REASONING_INSTRUCTIONS) is unchanged, so its
-  "Reply unknown only if the memory has nothing at all on the topic." stays (stated, not a choice of this script).
+- R4 (proposal §3, build review fix 1): `prompt_r4` = the F2 prompt with both "unknown" sentences removed: " If the
+  memory does not contain the answer, reply: unknown" (§23 instruction) and " Reply unknown only if the memory has
+  nothing at all on the topic." (Chain-of-Note text); checked: no "unknown" (any case) remains in any prompt_r4.
 """
 
 from __future__ import annotations
@@ -59,6 +59,7 @@ PETS = ("cat", "dog", "rabbit", "parrot")
 SETS = ("ANS", "CF", "UNA")
 SIZES = {("ANS", "F2"): 432, ("CF", "F2"): 144, ("UNA", "F2"): 144, ("ANS", "F1"): 72}   # rows per split
 R4_SENTENCE = " If the memory does not contain the answer, reply: unknown"
+R4_SENTENCE_NOTE = " Reply unknown only if the memory has nothing at all on the topic."   # build review fix 1
 QUESTIONS = {"DE": "Where does {A} live?", "RC": "In which city does {A}'s supervisor work?",
              "TU": "Where does {A} live now?"}
 
@@ -155,9 +156,12 @@ def core(task: str, b: dict, kind: str) -> dict:
 
 
 def r4_prompt(prompt: str) -> str:
-    if prompt.count(R4_SENTENCE) != 1:
-        raise ValueError("the R4 sentence is not in the F2 prompt exactly once")
-    return prompt.replace(R4_SENTENCE, "")
+    """Both "unknown" sentences removed (the §23 instruction's and the Chain-of-Note line, build review fix 1)."""
+    for sent in (R4_SENTENCE, R4_SENTENCE_NOTE):
+        if prompt.count(sent) != 1:
+            raise ValueError(f"{sent!r} is not in the F2 prompt exactly once")
+        prompt = prompt.replace(sent, "")
+    return prompt
 
 
 def cities_in(text: str) -> list[str]:
@@ -249,8 +253,8 @@ def check_cases(rows: list[dict], tokenizer=None) -> dict:
         for d in r["distractors"]:
             if d["name"] in core_names or d["value"] in core_cities or d["value"] == r["nuisance_job"]:
                 pr["distractor_overlap"].append(f"{r['case_id']}: {d}")
-        if r["prompt_r4"] is not None and ("If the memory does not contain the answer" in r["prompt_r4"]):
-            pr["counts"].append(f"{r['case_id']}: R4 sentence still present")
+        if r["prompt_r4"] is not None and "unknown" in r["prompt_r4"].lower():
+            pr["counts"].append(f"{r['case_id']}: 'unknown' in prompt_r4")
     nfacts = {}
     for r in rows:
         if r["format"] == "F2" and r["hardness"] == "H1":
@@ -298,7 +302,7 @@ def write_cases(rows: list[dict], out: Path, problems: dict, seed: int) -> dict:
                "counts": counts(rows),
                "design": {"names": C.NAMES, "cities": C.CITIES, "jobs": C.JOBS, "pets": PETS,
                           "questions": QUESTIONS, "sizes_per_split": {f"{k[0]}-{k[1]}": v for k, v in SIZES.items()},
-                          "r4_removed": R4_SENTENCE, "f2_instruction": C.F23_INSTRUCTION,
+                          "r4_removed": [R4_SENTENCE, R4_SENTENCE_NOTE], "f2_instruction": C.F23_INSTRUCTION,
                           "dev": "even base index", "held": "odd base index", "tokenizer": TOKENIZER_ID,
                           "labels": "4 seeded permutations per task x split; CF deranged per block"}}
     (out / "cases49_counts.json").write_text(json.dumps(summary, indent=1))

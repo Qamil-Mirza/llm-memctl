@@ -8,7 +8,8 @@ Spec: research/proposals/2026-11-01-exp49-legible-abstentions.md rev 0a §3-§5 
 base-clustered percentile bootstrap (10k resamples, seed 0; abst49.cluster_boot). Pools (held, baseline-defined):
 false abstentions = ANS-F2 rows whose baseline is "unknown"; genuine = UNA-F2 rows whose baseline is "unknown"; the
 abstention pool for U is their union at its natural held proportions. "Wrong" for decoding and the F1 arm = another
-pool city (wrong or competitor). The §5 reading is computed from the Q-P intervals (rule in `reading`).
+pool city (wrong or competitor). Degenerate outputs score 0 in U and are not unsupported (build review fix 4); their
+rate is reported per arm and set. The §5 reading is computed from the Q-P intervals (rule in `reading`).
 Writes <out>/report.json and report.md (or report_dev.*).
 """
 
@@ -152,7 +153,13 @@ def held_report(rows, root) -> dict:
                 and B[r["case_id"]]["p_ans_ok"]]
     genuine = [r for r in held if r["set"] == "UNA" and B[r["case_id"]]["outcome"] == "abstain"
                and B[r["case_id"]]["p_ans_ok"]]
+    meta = R.read_json(root / "probe" / "probe_dev.json")
     rep: dict = {"design": design, "design_sha256": A.design_sha(design),
+                 "centroid_notes": {"pooled_fallback_at_P_ans": "no-op: F1 has no Answer: site, so the B3 pooled "
+                                    "F1 + F2 fallback adds no trial at P_ans",
+                                    "unestimable_classes_P_ans": sorted(c for c, v in meta["mu_ans_source"].items() if v is None),
+                                    "unestimable_classes_F1": sorted(c for c, v in meta["mu_f1_source"].items() if v is None),
+                                    "label_counts_by_part": meta.get("label_counts_by_part")},
                  "baselines_held": baseline_table(rows, root, "held"), "exclusions": exclusions(rows, root),
                  "noop_held": f"{sum(x['reproduces'] for x in noops)}/{len(noops)}",
                  "n_false_abstentions": len(false_ab), "n_genuine_abstentions": len(genuine),
@@ -169,13 +176,14 @@ def held_report(rows, root) -> dict:
             st = Counter(arm(root, r["case_id"], a).get("status", "ok") for r in pop)
             rates[f"{popname}|{a}"] = {c: rate(keys, [x == c for x in o])["est"] for c in A.CLASSES} | {
                 "status": dict(st),
-                "n": len(o), "unsupported": rate(keys, [x in ("wrong", "competitor", "degenerate") for x in o]),
+                "n": len(o), "unsupported": rate(keys, [x in A.UNSUPPORTED for x in o]),
+                "degenerate_rate": rate(keys, [x == "degenerate" for x in o]),
                 "gold": rate(keys, [x == "gold" for x in o])}
     rep["arm_rates"] = rates
     # Q-P and Q-2
     kf, kg = [r["base_key"] for r in false_ab], [r["base_key"] for r in genuine]
     gold = {a: [x == "gold" for x in outs(false_ab, a)] for a in A.ARMS}
-    unsup = {a: [x in ("wrong", "competitor", "degenerate") for x in outs(genuine, a)] for a in ("R1", "R2", "R3", "R4")}
+    unsup = {a: [x in A.UNSUPPORTED for x in outs(genuine, a)] for a in ("R1", "R2", "R3", "R4")}
     qp_gold, qp_uns = diff(kf, gold["R1"], gold["R3"]), diff(kg, unsup["R1"], unsup["R3"])
     rep["Q-P"] = {"gold_R1_minus_R3_false": qp_gold, "unsupported_R1_minus_R3_genuine": qp_uns,
                   "reading": reading(qp_gold, qp_uns, design.get("r1_estimable", True))}
@@ -288,6 +296,7 @@ def markdown(rep: dict) -> str:
          f"τ_c {rep['design']['tau_c']}, τ_s {rep['design']['tau_s']}.", "",
          f"Held false abstentions {rep['n_false_abstentions']}, genuine {rep['n_genuine_abstentions']}"
          + (" (under 30: read with its width, no rescue)" if rep["false_abst_under_min"] else "") + ".", "",
+         f"Centroids: {json.dumps(rep['centroid_notes'])}.", "",
          f"No-op replays (held): {rep['noop_held']}. Exclusions (no P_ans): {json.dumps(rep['exclusions'])}.", "",
          "## Q-P (primary)", f"- gold R1 − R3 on false abstentions: {fmt_ci(rep['Q-P']['gold_R1_minus_R3_false'])}",
          f"- unsupported R1 − R3 on genuine abstentions: {fmt_ci(rep['Q-P']['unsupported_R1_minus_R3_genuine'])}",

@@ -19,9 +19,11 @@ the design file):
   (site, ℓ*) over gold-outcome trials with gold c, F2 if >= 5, else pooled F1 + F2 if >= 5 (at P_ans F1 has no
   site, so the fallback adds nothing there), else unestimable -> that R1 trial is "no release". μ_abst over ANS-F2
   false abstentions with a P_ans, >= 20, else R1 is not estimable as a whole.
-- Utility: +1 gold, 0 abstain, −λ for wrong, competitor or degenerate (a degenerate output is not an abstention).
-- The F1 replication arm adds α_LF·(μ_ĉ − μ_e) at ℓ*_F1(P_pre), step 0, gated on a pool-city output e with ĉ ≠ e;
-  its random control is a matched-norm seeded vector at the same site.
+- Utility: +1 gold, −λ wrong or competitor, 0 abstain or degenerate (§40 / §42; build review fix 4); degenerate rates
+  are reported per arm and set.
+- The F1 replication arm adds α_LF·‖h‖·unit(μ_ĉ − μ_e) (Legible Failures' form, build review fix 2) at ℓ*_F1(P_pre),
+  step 0, gated on a pool-city output e with ĉ ≠ e; its random control is a seeded vector of norm α_LF·‖h‖.
+- R3 is a seeded random vector of norm α·‖h‖ on every trial (defined where R1 is unestimable too).
 """
 
 from __future__ import annotations
@@ -48,7 +50,7 @@ R2_LAYER, R2_ALPHA = 29, 2.0          # B5: R2 (one-position), added at P_ans on
 NOOP_PER_SPLIT = 20
 R2_FILE = Path("runs/exp38_dev/qwen3b/directions.npz")
 CLASSES = ("gold", "abstain", "competitor", "wrong", "degenerate")
-UNSUPPORTED = ("wrong", "competitor", "degenerate")
+UNSUPPORTED = ("wrong", "competitor")          # build review fix 4: degenerate is not counted as unsupported
 ARMS = ("R1", "R2", "R3", "R4", "Dgold")
 BOOT_N, BOOT_SEED = 10_000, 0
 HELD_FALSE_ABST_MIN = 30
@@ -85,11 +87,12 @@ def classify(answer: str | None, gold: str | None, competitors: Sequence[str], c
 
 
 def utility(outcome: str, lam: float) -> float:
+    """+1 gold, −λ wrong or competitor (unsupported), 0 abstain or degenerate (§40 / §42; build review fix 4)."""
     if outcome == "gold":
         return 1.0
-    if outcome == "abstain":
-        return 0.0
-    return -lam
+    if outcome in UNSUPPORTED:
+        return -lam
+    return 0.0
 
 
 # ---------------------------------------------------------------------------------------------- P_ans prefix
@@ -249,8 +252,9 @@ def r2_vector(path: Path = R2_FILE) -> dict:
     return exp40.check_direction(v, hashlib.sha256(raw).hexdigest())
 
 
-def lf_vector(mu: dict[str, np.ndarray], target: str, output: str, alpha: float = 1.0) -> np.ndarray:
-    return (alpha * (mu[target] - mu[output])).astype(np.float32)
+def lf_vector(h: np.ndarray, mu: dict[str, np.ndarray], target: str, output: str, alpha: float) -> np.ndarray:
+    """Legible Failures' repair: α·‖h‖·unit(μ_target − μ_output) (float32)."""
+    return (alpha * np.linalg.norm(h.astype(np.float64)) * unit(mu[target] - mu[output])).astype(np.float32)
 
 
 # ---------------------------------------------------------------------------------------------- gates and utility
@@ -351,14 +355,42 @@ def design_sha(design: dict) -> str:
     return hashlib.sha256(json.dumps(design, sort_keys=True).encode()).hexdigest()
 
 
+def _git(repo: Path, *args: str, binary: bool = False):
+    import subprocess
+    out = subprocess.run(["git", "-C", str(repo), *args], capture_output=True)
+    if out.returncode != 0:
+        return None
+    return out.stdout if binary else out.stdout.decode().strip()
+
+
+def repo_relpath(path: Path) -> tuple[Path, str]:
+    """(repo top level, path relative to it) of a file, via git."""
+    top = _git(Path(path).resolve().parent, "rev-parse", "--show-toplevel")
+    if top is None:
+        raise PermissionError(f"{path} is not inside a git repository")
+    return Path(top), str(Path(path).resolve().relative_to(Path(top).resolve()))
+
+
 def require_design(root: Path) -> dict:
-    """Held stages refuse unless design.json exists and design_committed.json names a commit and its sha."""
+    """Held stages refuse unless (build review fix 3): design.json and design_committed.json exist; the marker's commit
+    exists (`git cat-file -e`); `git show <commit>:<path>` of design.json hashes (design_sha) to the marker's sha; and
+    the working-tree design.json is byte-equal to that blob."""
     d, m = Path(root) / "design.json", Path(root) / DESIGN_MARKER
     if not d.exists() or not m.exists():
         raise PermissionError(f"{m} is missing: commit the dev design before any held stage")
-    design, marker = json.loads(d.read_text()), json.loads(m.read_text())
-    if not marker.get("commit"):
+    marker = json.loads(m.read_text())
+    commit = marker.get("commit")
+    if not commit:
         raise PermissionError(f"{m} names no commit")
-    if marker.get("design_sha256") != design_sha(design):
-        raise PermissionError(f"{m}: design_sha256 does not match design.json")
-    return design
+    top, rel = repo_relpath(d)
+    if _git(top, "cat-file", "-e", f"{commit}^{{commit}}") is None:
+        raise PermissionError(f"{m}: commit {commit} does not exist")
+    blob = _git(top, "show", f"{commit}:{rel}", binary=True)
+    if blob is None:
+        raise PermissionError(f"{m}: {rel} is not in commit {commit}")
+    committed = json.loads(blob.decode())
+    if design_sha(committed) != marker.get("design_sha256"):
+        raise PermissionError(f"{m}: the committed design.json does not hash to the marker's design_sha256")
+    if d.read_bytes() != blob:
+        raise PermissionError(f"{d} differs from its blob in commit {commit}")
+    return committed

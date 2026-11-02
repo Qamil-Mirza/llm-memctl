@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """§49 legible abstentions: baselines with captures, dev probes, dev α sweep, design, held arms. Resumable per row.
 
-    .venv/bin/python scripts/exp49_run.py --stage timing                         # ONE unit: F2 baseline + captures + release
-    .venv/bin/python scripts/exp49_run.py --smoke 4 --out runs/exp49_pod/smoke   # D-22: every stage on a few dev rows
+    .venv/bin/python scripts/exp49_run.py --stage timing --out runs/exp49_timing  # ONE unit of each kind
+    .venv/bin/python scripts/exp49_run.py --smoke 5 --out runs/exp49_smoke/run    # D-22: the whole chain on dev bases
     python scripts/exp49_run.py --stage baselines --split dev                    # generations + residuals (both sites)
     python scripts/exp49_run.py --stage probe-dev                                # probes, ℓ* per site, cross-fit dev decodes
     python scripts/exp49_run.py --stage arms-dev                                 # gate-tune: R1 and LF at α 0.5/1/2, no-ops
@@ -295,6 +295,8 @@ def probe_dev(rows: list[dict], root: Path) -> dict:
            "mu_ans_source": mu_ans["source"], "mu_ans_n": mu_ans["n"], "mu_f1_source": mu_f1["source"],
            "mu_f1_n": mu_f1["n"], "n_abst_centroid": len(ab), "r1_estimable": mu_abst is not None,
            "n_tune_pool": len(pool), "n_tune_pool_false": sum(v["set"] == "ANS" for v in pool.values()),
+           "label_counts_by_part": {pt: dict(sorted(Counter(r["gold"] for r in ans if part[r["case_id"]] == pt).items()))
+                                    for pt in A.PARTS},
            "n_tune_f1": len(tune_f1), "parts": dict(Counter(part[r["case_id"]] for r in dev if r["set"] == "ANS"
                                                              and r["format"] == "F2" and r["hardness"] == "H1")),
            "weights_sha256": hashlib.sha256(weights).hexdigest(), "centroids_sha256": A.array_sha(arrays)}
@@ -332,16 +334,20 @@ NO_RELEASE = {"outcome": "abstain", "item": "unknown", "text": None, "released":
 
 def r1_trial(e: Engine, r: dict, b: dict, h: np.ndarray, P: dict, target: str, layer: int, alpha: float,
              random_arm: str | None = None) -> dict:
-    """R1 (or D-gold with target = gold, or R3 with `random_arm`: matched to the R1 norm). B3: no μ_abst -> not
-    estimable; no centroid for the target -> unestimable, scored as no release (the trial stays an abstention)."""
+    """R1 (or D-gold with target = gold). B3: no μ_abst -> not estimable; no centroid for the target -> unestimable,
+    scored as no release (the trial stays an abstention). With `random_arm` (R3): a seeded vector of norm α·‖h‖ on
+    every trial, defined whether or not R1 is (build review ruling 8)."""
     rec = {"layer": layer, "alpha": alpha, "target": target}
+    if random_arm:
+        norm = alpha * float(np.linalg.norm(h.astype(np.float64)))
+        v = A.random_like(norm, len(h), r["case_id"], random_arm)
+        return {**rec, "status": "ok", "released": True, "vector_sha256": st.vector_sha(v),
+                **release(e, r, b, [st.add_spec(layer, v, steps=(0,))])}
     if P["mu_abst"] is None:
         return {**rec, **NO_RELEASE, "status": "R1 not estimable"}
     if target not in P["mu_ans"]:
         return {**rec, **NO_RELEASE, "status": "R1 unestimable"}
     v = A.r1_vector(h, P["mu_ans"], P["mu_abst"], target, alpha)
-    if random_arm:
-        v = A.random_like(float(np.linalg.norm(v.astype(np.float64))), len(v), r["case_id"], random_arm)
     return {**rec, "status": "ok", "released": True, "vector_sha256": st.vector_sha(v),
             **release(e, r, b, [st.add_spec(layer, v, steps=(0,))])}
 
@@ -364,7 +370,7 @@ def noop_rows(rows: list[dict], root: Path, split: str) -> list[dict]:
 def f1_trial(e: Engine, r: dict, b: dict, root: Path, P: dict, lf: int, alpha: float, arm: str) -> dict:
     """Legible Failures' repair on F1 (labelled replication): fires iff the output is a pool city e with a centroid
     and the P_pre decode ĉ ≠ e (with a centroid); adds α_LF·(μ_ĉ − μ_e) (LF) or a matched-norm seeded vector (LFrand)
-    at ℓ*_F1, step 0. B3: no city -> not applied, stays in the F1-wrong denominator unrepaired."""
+    at ℓ*_F1, step 0; LF = α·‖h‖·unit(μ_ĉ − μ_e) (build review fix 2). B3: no city -> not applied, stays in the F1-wrong denominator unrepaired."""
     h = resid(root, r["case_id"])[0, lf]
     c_hat = str(P["models"]["f1"].predict(h[None])[0])
     e_out = b["item"] if b["outcome"] in ("gold", "competitor", "wrong") else None
@@ -372,7 +378,7 @@ def f1_trial(e: Engine, r: dict, b: dict, root: Path, P: dict, lf: int, alpha: f
     rec = {"c_hat": c_hat, "e_out": e_out, "fired": bool(fire), "layer": lf, "alpha": alpha}
     if not fire:
         return {**rec, "outcome": b["outcome"], "item": b["item"], "text": None}
-    v = A.lf_vector(P["mu_f1"], c_hat, e_out, alpha)
+    v = A.lf_vector(h, P["mu_f1"], c_hat, e_out, alpha)
     if arm == "LFrand":
         v = A.random_like(float(np.linalg.norm(v.astype(np.float64))), len(v), r["case_id"], "LFrand")
     gen = e.generate(e.chat_ids(r["prompt"]), [st.add_spec(lf, v, steps=(0,))], A.MAX_NEW["F1"], lambda t: False)
@@ -450,8 +456,13 @@ def make_design(rows: list[dict], root: Path, cases: Path | None = None) -> dict
 
 
 def mark_design(root: Path, commit: str) -> dict:
+    """The marker the held stages check against git (abst49.require_design): commit, design sha, repo-relative path."""
     design = read_json(root / "design.json")
-    m = {"commit": commit, "design_sha256": A.design_sha(design)}
+    try:
+        rel = A.repo_relpath(root / "design.json")[1]
+    except PermissionError:
+        rel = None
+    m = {"commit": commit, "design_sha256": A.design_sha(design), "path": rel}
     write_json(root / A.DESIGN_MARKER, m)
     return m
 
@@ -571,6 +582,18 @@ def smoke_cases(rows: list[dict], n_per_task: int) -> list[dict]:
     return out
 
 
+def smoke_commit(root: Path) -> str:
+    """The smoke's design commit lives in a throwaway git repo inside the smoke dir (never the project repo), so the
+    held guard runs its real git checks."""
+    import subprocess
+    g = ["git", "-C", str(root), "-c", "user.name=smoke", "-c", "user.email=smoke@localhost"]
+    if not (root / ".git").exists():
+        subprocess.run(["git", "init", "-q", str(root)], check=True)
+    subprocess.run(g + ["add", "-f", "design.json"], check=True)
+    subprocess.run(g + ["commit", "-q", "-m", "smoke design", "--allow-empty"], check=True)
+    return subprocess.run(g + ["rev-parse", "HEAD"], check=True, capture_output=True).stdout.decode().strip()
+
+
 def smoke(e: Engine, rows: list[dict], root: Path, n: int) -> int:
     """D-22: the whole chain on smoke_cases (dev bases only), centroid minimums relaxed to 1, a placeholder design
     marker (smoke dir only), then the report. Checks: every no-op replay reproduces its baseline continuation token for
@@ -587,7 +610,7 @@ def smoke(e: Engine, rows: list[dict], root: Path, n: int) -> int:
     t = time.time(); probe_dev(sub, root); timing_s["probe_dev"] = time.time() - t
     t = time.time(); run_arms_dev(e, sub, root, None); timing_s["arms_dev"] = time.time() - t
     design = make_design(sub, root, cases)
-    mark_design(root, "SMOKE-placeholder-not-a-commit")
+    mark_design(root, smoke_commit(root))
     t = time.time(); run_baselines(e, [r for r in sub if r["split"] == "held"], root, None); timing_s["baselines_held"] = time.time() - t
     t = time.time(); run_arms_held(e, sub, root, None); timing_s["arms_held"] = time.time() - t
     plan = held_plan(sub, root)
@@ -652,6 +675,9 @@ def main(argv=None) -> int:
 
     e = load_engine(args.backend, args.threads, args.dtype)
     if args.smoke:
+        if root.resolve().is_relative_to((ROOT / "runs" / "exp49").resolve()):
+            print("smoke outputs go outside runs/exp49/ (e.g. runs/exp49_smoke/)", file=sys.stderr)
+            return 2
         return smoke(e, rows, root, args.smoke)
     if args.stage == "timing":
         timing(e, rows, root)
