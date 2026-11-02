@@ -1,0 +1,29 @@
+exp50 pod chain; engine hf; RUNPOD_POD_ID setyp1fhtaqavw57f; run -> runs/exp50/run
+deadlines: HARD_STOP_S=8077 s, SELF_STOP_S=8977 s, MARK_WAIT_S=3600 s; projection limit $3.00 at $1.09/h
+watchdog pid 212: pod stops itself at +8977 s
+preflight ok: 18 files present; out runs/exp50_pod
+torch 2.8.0+cu128 transformers 5.17.0 sklearn 1.9.1
+gpu NVIDIA L40S 44.4 GiB
+stage install (ok, rc 0): elapsed 24 s (total 24 s of 8077)
+{"rows": 2914, "by_split": {"dev": 1469, "held": 1445}, "problems": []}
+stage population (ok, rc 0): elapsed 0 s (total 24 s of 8077)
+stub qwen3b: 36 layers, width 32, vocab 151665 -> runs/exp50_pod/stub_models/qwen3b
+stub check: 3 rows, rerun rewrote none
+stage stub_check (ok, rc 0): elapsed 27 s (total 51 s of 8077)
+download Qwen/Qwen2.5-3B-Instruct: 10 s -> /root/.cache/huggingface/hub/models--Qwen--Qwen2.5-3B-Instruct/snapshots/aa8e72537993ba99e69dfaafa59ed015b17504d1
+stage download (ok, rc 0): elapsed 11 s (total 62 s of 8077)
+stage smoke (ok, rc 0): elapsed 262 s (total 324 s of 8077)
+{"elapsed_s": 324.0, "n_rows": 2914, "per_row_measure_s": 0.9598710325857004, "per_release_s": 0.33271694302558896, "run_projection_s": 5798.843575307478, "total_s": 8522.843575307477, "dollars": 2.581, "limit": 3.0, "rate": 1.09, "stop_and_ask": false}
+stage projection (ok, rc 0): elapsed 0 s (total 324 s of 8077)
+stage measure_dev (ok, rc 0): elapsed 1563 s (total 1887 s of 8077)
+stage stage2_dev (ok, rc 0): elapsed 447 s (total 2334 s of 8077)
+stage dev_summary (ok, rc 0): elapsed 1 s (total 2335 s of 8077)
+dev.ready: pull the dev files for the gate read and audit; after design OK the laptop writes, commits and ships design.json + .git + design_committed.json (waiting up to 3600 s)
+wait-mark: design verified against its commit after 232 s
+stage wait_mark (ok, rc 0): elapsed 232 s (total 2567 s of 8077)
+stage measure_held (ok, rc 0): elapsed 1477 s (total 4044 s of 8077)
+stage stage1_report (ok, rc 0): elapsed 19 s (total 4063 s of 8077)
+stage stage2_held (ok, rc 0): elapsed 9 s (total 4072 s of 8077)
+stage report (ok, rc 0): elapsed 0 s (total 4072 s of 8077)
+{"baselines": 0, "arms_dev": 0, "arms_held": 0, "design": true, "report": true}
+all stages done in 4072 s (report 0); copy back before the self-stop at +8977 s

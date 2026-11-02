@@ -1,0 +1,12 @@
+{
+ "elapsed_s": 324.0,
+ "n_rows": 2914,
+ "per_row_measure_s": 0.9598710325857004,
+ "per_release_s": 0.33271694302558896,
+ "run_projection_s": 5798.843575307478,
+ "total_s": 8522.843575307477,
+ "dollars": 2.581,
+ "limit": 3.0,
+ "rate": 1.09,
+ "stop_and_ask": false
+}
