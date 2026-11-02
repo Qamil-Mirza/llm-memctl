@@ -8088,6 +8088,125 @@ run's).
 **Spend.** One A40 pod, **$0.34 posted** (GPU $0.333 + disk $0.007; lifetime 33 min 51 s at $0.59/h). Laptop build, tests,
 D-30 and the report: $0. All experiments ≈ **$22.00 of $30** (D-58).
 
+## 49. Does a target decoded from the failing model release correct answers on false abstentions, and what does it cost where the evidence is insufficient? Decoded-target repair against random, a content-free push and an instruction change, Qwen 2.5 3B (2026-11-01, pre-registered rev 0a/0b; pod run 2026-11-02)
+
+**Status: COMPLETE (STATE F16, D-68). Q-P SHOWN as direction-specific recovery against random; NOT selective. Q-6 not
+interpretable. Closes under D-45; B does not open on this result.**
+- **Who the false abstentions are.** 152 of the 165 held false abstentions already name the gold city in the
+  model's own note before it writes "Answer: unknown". Before the note (P_pre), the 12-way probe is below the
+  in-prompt candidate floor on every subset. So these failures are "note, then refuse", not a hidden answer the
+  model never writes down. "Legible" does not apply to them.
+- **Q-P (primary).** On 165 held false abstentions (90 bases), decoded-target repair R1 releases the gold city
+  0.903 of the time, against 0.067 for a matched-norm random vector R3. R1 − R3 = **+0.836 [+0.774, +0.894]**
+  (paired, base-clustered bootstrap).
+  - On the 144 genuine abstentions (unanswerable twins), R1 names a city on **144/144**. Unsupported R1 − R3 =
+    +1.000 [+1.000, +1.000].
+  - The recovery is direction-specific, and it is not selective.
+  - R1 outputs the probe's pick on every trial (ANS 165/165, UNA 144/144, CF 51/51), so its gold rate equals the
+    P_ans probe accuracy (149/165). The repair adds no information beyond the decode, and the decode at P_ans mostly
+    reads the note.
+  - By note flag, R1 releases gold on 146/152 when the note names the gold and on 3/13 when it does not.
+- **R1 against the content-free push R2.** R2 is the §38/§40 layer-29 vector at α 2, here at P_ans only.
+  - Gold on false abstentions: R1 0.903 against R2 0.927. R1 − R2 = −0.024 [−0.069, +0.013], so no difference is
+    shown.
+  - Unsupported on genuine abstentions: R2 0.188 against R1 1.000.
+  - The decoded target adds nothing measurable over the content-free push, and it costs more where the evidence is
+    absent.
+- **R4, the instruction change.** Both "unknown" sentences are removed from the prompt.
+  - Gold on false abstentions: 1.000.
+  - Unsupported on genuine abstentions: 0.451 (degenerate 0.500).
+  - Damage on held correct answers: 3/265.
+  - R1 − R4 gold = −0.097 [−0.149, −0.052].
+- **Gates (secondary; templates only).** On H1 abstentions (56 false, 144 genuine), a P_pre sufficiency probe
+  (G-suff) separates the two classes almost perfectly (AUROC 0.999).
+  - G-suff fires on 96.4% of false and 0.7% of genuine abstentions.
+  - U(G-suff) − U(never) = +0.235 [+0.179, +0.283] at λ 1, and +0.215 at λ 2.
+  - G-content gives +0.125 [+0.080, +0.169].
+  - UNA twins are built by template (the city fact replaced by distractor lines, at H1 only), so surface cues may
+    remain (Codex review point 1); this is not general recognition of evidence sufficiency.
+- **Q-6 (abstention against wrong-answer repair): not interpretable.** The *Legible Failures* calibration did not
+  reproduce on F1: LF − random gold on F1-wrong = +0.043 [−0.065, +0.152] (n 46, 24 of them no-city), and
+  +0.091 [−0.136, +0.318] on city-wrong only (n 22). No contrast between abstentions and wrong answers is claimed.
+
+Pre-registration `research/proposals/2026-11-01-exp49-legible-abstentions.md`: rev 0a; rev 0b amendments B1–B8 from
+Codex's review, before any build.
+
+Decisions:
+- D-63 (the user opened §49 and set the $5 pod allowance);
+- D-64 (the user's standing pod approval in the Executor pane);
+- D-67 (price cap raised to $1.20/h, dollar limits unchanged, after no A40 / A6000 capacity).
+
+Reviews:
+- `research/reviews/2026-11-01-exp49-build.md` (PASS after 4 fixes, 88bae3e);
+- `research/reviews/2026-11-02-exp49-results.md` (ACCEPT; independent recount from the per-trial files).
+
+Code:
+- `memctl/analysis/abst49.py`;
+- `scripts/exp49_cases.py`, `exp49_run.py`, `exp49_report.py`;
+- the pod chain `exp49_pod.sh`, `exp49_pod_run.py`, `exp49_bundle.sh`, `exp49_d30.sh` (D-30 PASS from a fresh venv:
+  exits 0 / 7 / 9 / 11);
+- `tests/test_exp49.py` (22 tests).
+
+Commits:
+- e349f22 (build), 88bae3e (review fixes), c5af1a3 (pod path);
+- **952cc80, the design file**, committed before any held output existed and verified by the pod against its own
+  shallow clone;
+- 24b9272, the held read: read once, report sha256 `580ef394…`.
+
+Run details:
+- Cases `runs/exp49/cases49.jsonl` (sha `d11894ac…`; 1,584 rows, 792 per split, split by base parity, twins in
+  their base's split).
+- Run `runs/exp49/run/`, with per-trial `baselines/`, `arms_dev/` and `arms_held/`.
+- Pod vgg9yi8dwzqe1v: one secure L40S, OC-AU-1, $1.09/h, fp32, single rows; 2,589 s of compute, about 46 min
+  lifetime, about $0.84 (billing figure pending).
+- A laptop dev run was started and abandoned at 18/792 for speed (archived, unused).
+
+**Design (fixed before the held read; design.json in 952cc80).**
+- **Population.** Independent bases with gold balanced over 12 cities per split × task. City questions only
+  (DE / RC / TU). Each base yields:
+  - ANS-F2 at H0 / H1 / H2;
+  - a counterfactual twin CF-H1 (gold → another city);
+  - an unanswerable twin UNA-H1 (the city fact(s) replaced by the same number of distractor lines; one nuisance
+    fact in every prompt, B1);
+  - ANS-F1 at H1 (24 bases per task).
+- **Sites.** P_pre is the last chat-template token (the assistant-header newline), as in §45/§46 P_last. P_ans is the last token of the model's own teacher-forced prefix
+  through "Answer:".
+- **Dev parts.** Dev is split fit / select / gate-tune (dev index mod 3). Chosen values:
+  - ℓ*: P_pre 35, F1 35, P_ans 33; sufficiency probe layer 24 (select AUROC on H1).
+  - α (R1) 0.5 by the tie rule: the objective was flat at −0.105 for every α, because R1 releases every tune trial
+    at α 0.5 already (gold 0.895 on 19 false, unsupported 1.000 on 47 genuine).
+  - α_LF 0.5.
+  - τ_c 0.983, τ_s 0.736.
+  - All 12 centroids are estimable from F2.
+- **Arms at P_ans** (step 0, greedy, 16 tokens): R1 = α·‖h‖·unit(μ_ĉ − μ_abst); R2 (one-position); R3 random at norm
+  α·‖h‖; D-gold (diagnostic). R4 regenerates from the R4 prompt.
+- **Scoring.** patch46 `first_city`, no judge. Degenerate scores 0 in U.
+- **Sanity.** No-op replays: 20/20 dev and 20/20 held reproduce the baseline continuation token for token.
+
+**Held baselines.**
+
+| Set | Outcomes |
+|---|---|
+| ANS-F2 | gold 265, abstain 165, degenerate 2 (no Answer: marker; excluded from M2 / M3) |
+| CF-F2 | gold 86, abstain 57, degenerate 1 |
+| UNA-F2 | abstain 144 / 144 |
+| ANS-F1 | gold 26, wrong 6, competitor 16, degenerate 24 |
+
+**Q-3, tracking (H1).** On the 51 bases where both the ANS-H1 and the CF-H1 baselines abstain, R1 and R2 each
+release on 51 and name the CF city on 50: tracking 0.980 [0.941, 1.000] each, with their own denominators and not
+compared with each other. The held CF-H1 abstention rate (0.396) is not lower than ANS-F2-H1's (0.389).
+
+**M1 decoding (diagnostic).** At P_ans the probe reads F2-abstain at 0.903: 0.961 when the note names the gold, 0.231
+when it does not; the shuffled-label probe is at about 0.08. At P_pre it reads F2-abstain 0.127 and F1-wrong 0.136,
+against candidate floors 0.42 and 0.29. So decoding at P_ans is mostly reading the note.
+
+**Spend.** One L40S pod, about **$0.84** at $1.09/h (lifetime about 46 min; the billing figure has not posted yet and
+replaces this estimate when it does). A guard-deleted L40S (6ya4wnygo4efq7, about 1 s) posted $0.00. The laptop build,
+D-30 and timing: $0. §49 total about $0.85 of its $5 allowance (D-63 / D-64). All experiments ≈ **$22.85 of $30**.
+
+**Limits.** Synthetic templates only. The repair acts at P_ans on the model's own prefix, so it shows an effect
+there, not the source of the natural failure. The F1/F2 contrast is bundled. One held read; no rescue (D-45).
+
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
 **Status: STOPPED at the regeneration sanity check; no gradient was computed.** Secondary to §34 (the J-lens
