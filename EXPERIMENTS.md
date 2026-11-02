@@ -8207,6 +8207,161 @@ guard-deleted L40S (6ya4wnygo4efq7, about 1 s) posted $0.0003. The laptop build,
 **Limits.** Synthetic templates only. The repair acts at P_ans on the model's own prefix, so it shows an effect
 there, not the source of the natural failure. The F1/F2 contrast is bundled. One held read; no rescue (D-45).
 
+## 50. What separates a false "unknown" after an answer-bearing note from an answer? Elicited sufficiency and city-margin profiles, Qwen 2.5 3B (2026-11-02, pre-registered rev 1 + rev 1a; pod run 2026-11-02)
+
+**Status: COMPLETE, stage 1 only (STATE F17, D-71). The elicited sufficiency measure S is invalid in every task (dev
+gate failed), so no profile label is possible. The city margin Δ_M is "lower" on false abstentions in DE and RC; TU is
+underpowered. Stage 2 did not open. Closed under D-45.**
+- **The elicited sufficiency measure failed.** Asked "Does the memory give enough information to tell …? Reply yes
+  or no.", the 3B says "no":
+  - on most answered rows in RC (yes rate 0.01) and TU (0.29);
+  - on every unanswerable row (UNA-rel yes rate 0.00 in every task × hardness cell);
+  - and the reversed question agrees with it on only 0.18–0.44 of rows.
+  - This is a "no"-leaning response, not a sufficiency judgement. So §50 cannot say whether false abstentions involve
+    a sufficiency misjudgement.
+- **The gold-versus-rival-city margin is lower on false abstentions than on answers** of the same task, hardness and
+  city: DE Δ_M **−1.21 [−2.77, −0.05]**, RC **−3.13 [−3.87, −2.22]** logits ("lower" in both).
+  - It is also lower within 47 content-matched flip pairs (rep a against rep b): −2.50 [−3.96, −1.28].
+  - The margin stays large: the mean M_city on false abstentions is DE 13.2, RC 15.9, TU 9.8 logits. The model still
+    clearly prefers the right city over the others when it refuses.
+  - What it loses is the comparison against " unknown". Only about a quarter to a third of false abstentions are near
+    ties (|z_gold − z_unknown| < 1): DE 0.23, RC 0.35, TU 0.29.
+- **This is the pattern a "not sure enough" account predicts. It cannot confirm that account:**
+  - M_city is an output-side margin, not a validated confidence measure.
+  - The alternative (sufficiency) could not be measured.
+  - DE's margin is partly read at the wrong token (post hoc caveat below).
+- **No causal claim.** Stage 2 did not open (no task has a profile), and no arm was run.
+
+Pre-registration `research/proposals/2026-11-02-exp50-why-false-abstention.md`:
+- rev 1 at 032b1b1 (Codex rev 0 review resolved point by point);
+- rev 1a at 4590dda (time budget: one pod session, timing-only scale-down, stage-2-only wall-clock stop, cap $3.00).
+
+Decisions: D-70 (the user opened §50: "Go for it…"; pod spend "up to $3.00 total", typed in the Executor pane), D-71
+(closed under D-45; the user's "Go, record §50 as closed"). Reviews:
+- `research/reviews/2026-11-02-exp50-build.md` (PASS after 3 fixes, 43e45b0);
+- `research/reviews/2026-11-02-exp50-results.md` (ACCEPT; independent recount from the per-row files; post hoc caveat).
+
+Code:
+- `memctl/analysis/why50.py`;
+- `scripts/exp50_cases.py`, `exp50_run.py`, `exp50_report.py`;
+- the pod chain `exp50_pod.sh`, `exp50_pod_run.py`, `exp50_bundle.sh`, `exp50_d30.sh` (D-30 PASS from a fresh venv:
+  exits 0 / 7 / 9 / 11);
+- `tests/test_exp50.py` (16 tests).
+- The §49 engine, guard and shallow-clone mark are reused.
+
+Commits:
+- 3ed2258 (build), 43e45b0 (review fixes);
+- 088af4a (answer-bearing rule fixed on the dev audit);
+- **0a43669, the design file**, committed after the Advisor's design OK, before any held row existed, and verified by
+  the pod against its own shallow clone;
+- f482de6, the held stage-1 read (read once);
+- d535a56 and 7d69805, the report additions after the read (per-task Q-4, post hoc sensitivity; pre-registered
+  numbers asserted unchanged).
+
+Run details:
+- Cases `runs/exp50/cases50.jsonl` (sha `c6eb5ed7…`, 2,914 rows). Report `runs/exp50/run/stage1_report.json`; per-row
+  `runs/exp50/run/rows/`.
+- One secure L40S at $1.09/h (A40 and A6000 unavailable), fp32, single rows. Lifetime about 72 min; 4,072 s of chain.
+
+**Design (fixed before the held read).**
+- **Cases.** New cases from the §49 generator at seed 50; 48 bases per task per split (the timing projected 1.9 h,
+  so no scale-down). Sets per split:
+  - ANS rep a (H0 / H1 / H2);
+  - ANS rep b (every timestamp shifted +7 days, nothing else changed);
+  - UNA-rel at every hardness;
+  - UNA-swap at H1 (byte-identical memory, a question about a distractor with only a job line; 104 bases had no such
+    distractor and contribute no row);
+  - ANS-F1 at H1.
+  - 6 exact duplicates of §49 prompts were dropped; 72 of 288 bases share a core tuple with §49 (reported).
+  - Splits: dev-fit (base ≡ 0 mod 4), dev-check (≡ 2 mod 4), held (odd).
+- **Measures.**
+  - S = P_yes / (P_yes + P_no) over four token variants each, in a separate prompt. The yes+no mass was ≥ 0.5 on
+    every dev F2 row.
+  - M_city = z_gold − max of the other 11 cities, and M_commit = z_gold − z_" unknown", both at P_ans (the last token
+    of the model's own teacher-forced output through "Answer:").
+  - K_v: an elicited 0–9 rating, expected digit.
+- **S validity gate (dev-check; all three conditions per task).** It **failed in all three tasks**:
+
+| Task | Answered | AUROC vs UNA-rel | AUROC vs UNA-swap | Yes rate (answered / rel / swap) | Polarity agreement |
+|---|---|---|---|---|---|
+| DE | 47 | 0.997 [0.990, 1.000] | 1.000 | 0.70 / 0.00 / 0.00 | 0.34 |
+| RC | 105 | 0.704 [0.655, 0.752] | 0.552 [0.412, 0.695] | 0.01 / 0.00 / 0.00 | 0.18 |
+| TU | 133 | 0.996 [0.988, 1.000] | 1.000 | 0.29 / 0.00 / 0.00 | 0.44 |
+
+  - The UNA-swap rows were few in dev-check (about 15–20 per task); the gate was not rescued.
+- **Answer-bearing note rule, fixed on the dev audit before the design commit.** The Advisor hand-checked 40 dev-check
+  notes; the rule agreed on 35. All 5 disagreements were TU "moved from X to {gold}", where "moved from" fell inside
+  the 6-word window before a destination gold. The fix: "moved from" negates only the city right after it.
+  - The dev flags were recomputed from the stored notes with no model calls (64 TU rows changed). Agreement after the
+    fix: 40/40.
+  - The 64 newly flagged dev TU rows have no K_v (it was elicited only on rows flagged at measure time). Held rows
+    were measured under the fixed rule.
+- **Stage-2 dev quantities (descriptive only).** They were computed on the pre-fix flags:
+  - ℓ = 26: the first layer where the whole-residual patch releases gold on ≥ 50% of the 60 dev flip pairs (50 bases),
+    at 0.58.
+  - No-op replay 120/120.
+  - u_S transfer: AUROC 0.971 [0.949, 0.987] (pass).
+  - u_M transfer: Spearman 0.253 (fails the 0.30 bar, so P-M is untestable).
+  - cos(u_S, u_M) = 0.16.
+
+**Held stage 1** (joint population: ANS-F2 rows with an answer-bearing note, outcome gold or abstain, defined
+M_city; pipeline intervals, 10k base resamples within task):
+
+| Task | False abstentions (bases) | Answered (bases) | Cells | Δ_M (logits) | 95% CI | State | Profile |
+|---|---|---|---|---|---|---|---|
+| DE | 180 (48) | 94 (39) | fine; 126/180 covered | −1.209 | [−2.766, −0.052] | lower | Other (S invalid, M lower) |
+| RC | 57 (30) | 223 (48) | fine; 57/57 covered | −3.129 | [−3.872, −2.216] | lower | Other (S invalid, M lower) |
+| TU | 14 (9) | 258 (48) | fine; 14/14 covered | −4.43 | [−7.29, −1.71] | underpowered | none |
+
+- AUROC_M: DE 0.55, RC 0.90, TU 0.89. Standardised Δ_M: DE −0.42, RC −1.86.
+- **Stage 2 does not open:** no task has a B-, C- or Joint-compatible profile.
+
+**Post hoc caveat: DE's margin is partly read at the wrong token (Advisor recount; it does not revise the state).**
+- In DE, **49 of 94 answered rows begin their answer with a name**, for example "Answer: David lives in York" (TU 15
+  of 258, RC 0 of 223). For those rows the token after "Answer:" is the name, so M at P_ans is not read at the step
+  that commits to the city.
+- With answered rows restricted to city-first answers (45 in DE):
+  - under the §4.4 cell rule (fine cells cover only 76/180 = 42% < 50%, so task × hardness cells): DE Δ_M
+    **−5.03 [−6.27, −3.90]**;
+  - fine cells forced, beside it: −4.36 [−5.94, −3.08], covering 76 false abstentions.
+  - RC is unchanged (no name-first rows). TU is −4.72 [−7.34, −2.20], still underpowered.
+- The direction is unchanged and the gap larger. The pre-registered DE value (−1.209, "lower") stands in the record
+  with this caveat.
+- For any follow-up: read the margin at the position that produces the first city of the model's own output.
+
+**Secondary quantities.**
+- **Q-2** (selected, conditional): 47 flip pairs from 43 bases (DE 24, RC 15, TU 8). Paired M_city (abstained −
+  answered) −2.500 [−3.960, −1.279]; paired s −0.011 [−0.033, +0.004] (S invalid, not read).
+- **Q-4.** The pooled Spearman values among answered rows (s with M_city −0.56; K_v with M_city −0.54) are a
+  composition effect across tasks: RC has the highest margins and s ≈ 0, K_v ≈ 0. Within task (added after the read,
+  descriptive):
+
+| Task | n | ρ(s, M_city) | ρ(K_v, M_city) | mean s | mean K_v |
+|---|---|---|---|---|---|
+| DE | 94 | +0.02 | −0.18 | 0.71 | 2.11 |
+| RC | 223 | −0.11 | +0.22 | 0.004 | 0.05 |
+| TU | 258 | −0.15 | +0.19 | 0.24 | 2.82 |
+
+  K_v ≈ 0.05 on RC suggests the verbal-rating prompt fails there, as S does.
+- **Q-5** (exploratory): Spearman of M_city at the note's producing position with M_city at P_ans = 0.11 (n 826).
+  Descriptive only; no caching claim.
+- **UNA.** Wrong-city answers on 14 of 1,008 held UNA rows.
+- **F1 diagnostic.** M_city at the first-city position: gold +22.2 (n 34), wrong −20.7 (11), competitor −22.0 (9);
+  18 degenerate rows have no city. This is output consistency, as expected.
+
+**Spend.** One L40S pod, about **$1.31** at $1.09/h (lifetime about 72 min). The billing figure had posted only
+partly ($0.24) at the time of writing and replaces this estimate when it is final. The laptop build, tests, D-30 and
+timing: $0. All experiments ≈ **$24.2 of $30** (STATE spend line).
+
+**Limits.**
+- One model, synthetic city templates with a finite pool, F2 only.
+- S and K_v are elicited in separate prompts and failed here. M_city is an output-side margin, not validated as an
+  internal construct, and in DE it is partly read at a name token.
+- The answer-bearing rule is lexical plus an audit, and was fixed once on dev.
+- Q-2 uses selected flip pairs.
+- One held read; no rescue (D-45). A better sufficiency measure, or the margin read at the city-producing position,
+  would be a new proposal under a separate decision.
+
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
 **Status: STOPPED at the regeneration sanity check; no gradient was computed.** Secondary to §34 (the J-lens
