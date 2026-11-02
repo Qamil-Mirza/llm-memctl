@@ -8158,7 +8158,7 @@ Run details:
   their base's split).
 - Run `runs/exp49/run/`, with per-trial `baselines/`, `arms_dev/` and `arms_held/`.
 - Pod vgg9yi8dwzqe1v: one secure L40S, OC-AU-1, $1.09/h, fp32, single rows; 2,589 s of compute, about 46 min
-  lifetime, about $0.84 (billing figure pending).
+  lifetime, $0.847 posted.
 - A laptop dev run was started and abandoned at 18/792 for speed (archived, unused).
 
 **Design (fixed before the held read; design.json in 952cc80).**
@@ -8200,9 +8200,9 @@ compared with each other. The held CF-H1 abstention rate (0.396) is not lower th
 when it does not; the shuffled-label probe is at about 0.08. At P_pre it reads F2-abstain 0.127 and F1-wrong 0.136,
 against candidate floors 0.42 and 0.29. So decoding at P_ans is mostly reading the note.
 
-**Spend.** One L40S pod, about **$0.84** at $1.09/h (lifetime about 46 min; the billing figure has not posted yet and
-replaces this estimate when it does). A guard-deleted L40S (6ya4wnygo4efq7, about 1 s) posted $0.00. The laptop build,
-D-30 and timing: $0. §49 total about $0.85 of its $5 allowance (D-63 / D-64). All experiments ≈ **$22.85 of $30**.
+**Spend.** One L40S pod, **$0.847 posted** (GPU $0.840 + disk $0.006; lifetime about 46 min at $1.09/h). A
+guard-deleted L40S (6ya4wnygo4efq7, about 1 s) posted $0.0003. The laptop build, D-30 and timing: $0. §49 total
+**$0.847** of its $5 allowance (D-63 / D-64). All experiments ≈ **$22.85 of $30**.
 
 **Limits.** Synthetic templates only. The repair acts at P_ans on the model's own prefix, so it shows an effect
 there, not the source of the natural failure. The F1/F2 contrast is bundled. One held read; no rescue (D-45).
