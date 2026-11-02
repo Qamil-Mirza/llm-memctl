@@ -139,7 +139,7 @@ the user has made the decision.
   - TU is underpowered.
   - Stage 2 did not open. No causal claim is made.
 - **Caveats attached.**
-  - The DE margin is partly read at a name token (49/94 answered rows). A post hoc sensitivity check gives a larger gap and does not revise the state.
+  - The DE margin is partly read at a name token (49/94 answered rows). A post hoc sensitivity check gives a larger gap (−5.03 under the §4.4 cell rule) and does not revise the state.
   - The answer-bearing rule was fixed on the dev audit before the design commit.
   - Q-4 pooled correlations are a composition effect across tasks.
 - **Next.** No rescue variant. A sufficiency measure read inside the model, and the margin read at the city-producing position, would be a new proposal under a separate decision.
