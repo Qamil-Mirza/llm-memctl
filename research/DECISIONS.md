@@ -143,5 +143,5 @@ the user has made the decision.
   - The answer-bearing rule was fixed on the dev audit before the design commit.
   - Q-4 pooled correlations are a composition effect across tasks.
 - **Next.** No rescue variant. A sufficiency measure read inside the model, and the margin read at the city-producing position, would be a new proposal under a separate decision.
-- **Spend.** About $1.31 GPU plus disk, within the $3.00 cap (D-70). The programme total is about $24.2 of $30, with the posted figure pending.
+- **Spend.** Billing posted $1.319 for pod yp1fhtaqavw57f (GPU $1.310 + disk $0.009), within the $3.00 cap (D-70). The programme total is about $24.17 of $30.
 - **Authority.** The user's "Go, record §50 as closed" (Advisor pane, 2026-11-02).
