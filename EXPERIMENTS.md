@@ -8261,7 +8261,8 @@ Commits:
 Run details:
 - Cases `runs/exp50/cases50.jsonl` (sha `c6eb5ed7…`, 2,914 rows). Report `runs/exp50/run/stage1_report.json`; per-row
   `runs/exp50/run/rows/`.
-- One secure L40S at $1.09/h (A40 and A6000 unavailable), fp32, single rows. Lifetime about 72 min; 4,072 s of chain.
+- Pod yp1fhtaqavw57f: one secure L40S at $1.09/h (A40 and A6000 unavailable), fp32, single rows. Lifetime about
+  72 min; 4,072 s of chain; $1.319 posted.
 
 **Design (fixed before the held read).**
 - **Cases.** New cases from the §49 generator at seed 50; 48 bases per task per split (the timing projected 1.9 h,
@@ -8349,9 +8350,8 @@ M_city; pipeline intervals, 10k base resamples within task):
 - **F1 diagnostic.** M_city at the first-city position: gold +22.2 (n 34), wrong −20.7 (11), competitor −22.0 (9);
   18 degenerate rows have no city. This is output consistency, as expected.
 
-**Spend.** One L40S pod, about **$1.31** at $1.09/h (lifetime about 72 min). The billing figure had posted only
-partly ($0.24) at the time of writing and replaces this estimate when it is final. The laptop build, tests, D-30 and
-timing: $0. All experiments ≈ **$24.2 of $30** (STATE spend line).
+**Spend.** One L40S pod, **$1.319 posted** (GPU $1.310 + disk $0.009; lifetime about 72 min at $1.09/h), inside the
+§50 cap of $3.00. The laptop build, tests, D-30 and timing: $0. All experiments ≈ **$24.2 of $30** (STATE spend line).
 
 **Limits.**
 - One model, synthetic city templates with a finite pool, F2 only.
