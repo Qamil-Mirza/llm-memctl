@@ -66,7 +66,7 @@ import exp51_common as CM  # noqa: E402
 
 PRICES = {"input": 4.0, "output": 20.0, "cache_read": 0.20, "cache_write_5m": 5.0, "cache_write_1h": 8.0}  # $/MTok
 STOP_USD = 45.0
-DRY_STOP_USD, DRY_MAX_TURNS = 3.0, 10          # the tooling dry run (F0 review item 2)
+DRY_STOP_USD, DRY_MAX_TURNS = 3.0, 15          # the tooling dry runs (F0 review item 2; 15 turns from D3)
 API_CONFIG = {"url": "https://api.anthropic.com/v1/messages", "model": "claude-opus-5-5", "max_tokens": 16000,
               "anthropic_version": "2023-06-01", "effort": "high", "cache_ttl": "1h",
               "thinking": {"type": "adaptive", "display": "summarized"}}   # D3: the between-tool prose is recorded
@@ -693,7 +693,7 @@ def main(argv=None) -> int:
     p.add_argument("--i-have-the-go", action="store_true", help="required for --client api")
     p.add_argument("--dry", action="store_true", help="the tooling dry run: dummy model and DRY- rows only")
     p.add_argument("--stop-usd", type=float, default=None, help="harness stop (<= $45; the dry run uses $3)")
-    p.add_argument("--max-turns", type=int, default=None, help="turn cap (<= the bound; the dry run uses 10)")
+    p.add_argument("--max-turns", type=int, default=None, help="turn cap (<= the bound; the dry run caps at 15)")
     a = p.parse_args(argv)
     run = Path(a.run)
     if a.cmd == "setup":
