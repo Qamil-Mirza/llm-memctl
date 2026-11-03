@@ -100,6 +100,8 @@ def f0() -> dict:
                               "sub-word spellings such as 'unk' + 'nown' are outside it",
             "rates": "base-weighted: each base with >= 1 row in a population has weight 1, equal within it",
             "strict_marker_nm_exp50_dev": "runs/exp51/build_notes/exp50_dev_nm_rows.json (14 rows)",
+            "e_fa_support_bases": "E bases with >= 1 FA row (B0, of 48): DE 44, RC 35, TU 15; TU is below the 20-base "
+                                  "minimum on E, as §3 anticipated (declared, not a deviation)",
             "inline_answer_rate_exp49_50": "3 of 1,440 F2 outputs had an inline ' Answer:' (NM under the strict "
                                            "marker)"},
     }
