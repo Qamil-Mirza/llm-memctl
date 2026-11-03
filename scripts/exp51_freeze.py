@@ -84,6 +84,24 @@ def f0() -> dict:
         "allowed_analysis": "means, covariances, projections, PCA/SVD, closed-form solves computed once; no autograd, "
                             "optimisers or iterative loss-based fitting (sandbox: numpy and tokenizers only)",
         "sources_sha256": {s: hashlib.sha256((ROOT / s).read_bytes()).hexdigest() for s in SOURCES},
+        "amendments_pre_F0": [
+            {"id": "A1", "what": "T-format dropped; E 48 / S 32 / H 48 / T-city 24 bases per task",
+             "why": "the rev 1a sizes did not fit the DE / TU key pool (152 bases > 144 keys; uniform r would be "
+                    "0.958); §10 names the transfer sets as secondary and first to drop",
+             "authority": "Advisor build review ruling 2; the user's 'yes drop T-format' (Advisor pane, 2026-11-02)",
+             "superseded_case_list": "runs/exp51/superseded/cases51_r0958.jsonl",
+             "b0_reuse": "E B0 records whose prompt is byte-identical in the new list are carried over"}],
+        "deviations": [
+            {"id": "D1", "what": "B5 direction from B0-abstained vs B0 gold-answered ANS rows (§5.2 says "
+                                 "'B0-answered')", "why": "wrong answers would mix error with commitment",
+             "authority": "Advisor build review ruling 7"}],
+        "disclosures": {
+            "b1_subword_gap": "the B1 rule (decoded, lower-cased, stripped text begins 'unknown') gives 6 ids; "
+                              "sub-word spellings such as 'unk' + 'nown' are outside it",
+            "rates": "base-weighted: each base with >= 1 row in a population has weight 1, equal within it",
+            "strict_marker_nm_exp50_dev": "runs/exp51/build_notes/exp50_dev_nm_rows.json (14 rows)",
+            "inline_answer_rate_exp49_50": "3 of 1,440 F2 outputs had an inline ' Answer:' (NM under the strict "
+                                           "marker)"},
     }
 
 

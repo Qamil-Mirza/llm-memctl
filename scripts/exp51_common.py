@@ -9,7 +9,7 @@ Fixed choices of this build:
   len(decode(gen[:k])) >= the marker's end; P_ans = n_prompt + j − 1 (absolute). If decode(gen[:j]) does not end with
   "\\nAnswer:" (the ':' merged into a longer token) the row has no usable P_ans and is NM for P_ans analyses
   (counted; §49 handled merged tokens the same way).
-- Sealed splits (H, Tcity, Tformat): `rows(split)` refuses them unless `allow_sealed=True`, which only the guarded
+- Sealed splits (H, Tcity; T-format dropped before F0): `rows(split)` refuses them unless `allow_sealed=True`, which only the guarded
   confirmatory stage passes (after the F2 commit check).
 """
 
@@ -32,7 +32,7 @@ from memctl.analysis import why50 as W  # noqa: E402
 
 CASES = ROOT / "runs/exp51/cases51.jsonl"
 RUN = ROOT / "runs/exp51/run"
-SEALED = ("H", "Tcity", "Tformat")
+SEALED = ("H", "Tcity")                     # T-format dropped before F0 (build review ruling 2)
 OPEN_SPLITS = ("E", "S")
 B1_GRID = (-1.0, -2.0, -4.0, -8.0, -16.0, float("-inf"))
 B1_SIGNED_GRID = (-16.0, -8.0, -6.0, -4.0, -3.0, -2.0, -1.0, -0.5, 0.5, 1.0, 2.0, 3.0, 4.0, 6.0, 8.0, 16.0)

@@ -202,12 +202,16 @@ class Engine51:
         return out.logits[0, -1]
 
     def generate(self, ids: list[int], arm: Arm | None = None, mode: str = "total", max_new: int | None = None,
-                 edit: tuple | None = None, capture_resid: bool = False) -> GenResult:
-        """mode 'total' (prompt ids; triggers online) or 'prefix' (stored ids through P_ans; triggers on from step 0).
+                 edit: tuple | None = None, capture_resid: bool = False, text_before: str = "") -> GenResult:
+        """mode 'total' (prompt ids; triggers online), 'prefix' (stored ids through P_ans; triggers on from step 0) or
+        'resume' (the B1 / B4 shortcut, build review 8c: B0's ids through its FIRST marker, triggers on from step 0,
+        the total-effect stop rule applied to `text_before` + the new text, max_new = 160 − tokens already generated).
         `edit` = (edit_id, dose) is applied for the call and reverted after (None: whatever is applied stays)."""
         arm = arm or Arm()
         torch = self.torch
         max_new = max_new or (MAX_NEW_TOTAL if mode == "total" else MAX_NEW_RELEASE)
+        if mode == "resume" and max_new <= 0:
+            raise ValueError("resume needs max_new > 0")
         t0 = time.perf_counter()
         if edit is not None:
             self.edits.apply(*edit)
@@ -234,7 +238,7 @@ class Engine51:
             else:
                 cache = self._prefill(ids[:-1])
             gen: list[int] = []
-            trigger = 0 if mode == "prefix" else None
+            trigger = 0 if mode in ("prefix", "resume") else None
             pos, tok = len(ids) - 1, ids[-1]
             stop = "max_new"
             bias = arm.bias
@@ -257,6 +261,9 @@ class Engine51:
                 if trigger is None and MARKER in text:
                     trigger = len(gen)          # the marker's last token is the input of step len(gen)
                 if mode == "total" and _answer_line_done(text):
+                    stop = "answer_line"
+                    break
+                if mode == "resume" and _answer_line_done(text_before + text):
                     stop = "answer_line"
                     break
                 if mode == "prefix" and "\n" in text and text.strip():
@@ -312,6 +319,31 @@ class Engine51:
         for (key, p), v in captures["comp"].items():
             comp.setdefault(key, {})[p] = v
         return {"resid": resid, "comp": comp, "logits": lg, "wall_s": time.perf_counter() - t0, "n_tokens": len(ids)}
+
+
+    def generate_batch(self, batch: list[list[int]], max_new: int = MAX_NEW_TOTAL) -> list[list[int]]:
+        """(d) measurement only: left-padded greedy batch generation (HF generate), every sequence run to EOS or
+        max_new, then each cut post hoc where the batch-1 total-effect stop rule would have stopped (greedy decoding
+        is causal, so the cut equals stopping early)."""
+        torch = self.torch
+        pad = self.tok.pad_token_id if self.tok.pad_token_id is not None else self.tok.eos_token_id
+        L = max(len(x) for x in batch)
+        inp = torch.tensor([[pad] * (L - len(x)) + x for x in batch])
+        att = torch.tensor([[0] * (L - len(x)) + [1] * len(x) for x in batch])
+        with torch.no_grad():
+            out = self.net.generate(input_ids=inp, attention_mask=att, max_new_tokens=max_new, do_sample=False,
+                                    eos_token_id=list(self.stop_ids), pad_token_id=pad)
+        res = []
+        for row in out[:, L:].tolist():
+            gen = []
+            for t in row:
+                if t in self.stop_ids:
+                    break
+                gen.append(t)
+                if _answer_line_done(self.decode(gen)):
+                    break
+            res.append(gen)
+        return res
 
 
 def _answer_line_done(text: str) -> bool:

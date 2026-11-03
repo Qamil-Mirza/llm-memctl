@@ -252,6 +252,16 @@ FIXTURES = [
     ("two_cities_one_clause", _t("Leeds or York"), "York", (), "", "conflicting", None),
     ("no_longer_then_now", _t("Alice no longer lives in Leeds; she lives in York."), "York", (), "", "gold", "York"),
     ("lowercase_city", _t("york"), "York", (), "", "gold", "York"),
+    # build review ruling 4: one fixture per added cue
+    ("cue_mentions", _t("The memory mentions York. York."), "York", (), "", "gold", "York"),
+    ("cue_used_to", _t("She used to live in Leeds; now York."), "York", (), "", "gold", "York"),
+    ("cue_not_sure", _t("Not sure."), "York", (), "", "abstention", None),
+    ("cue_uncertain", _t("Uncertain."), "York", (), "", "abstention", None),
+    ("cue_formerly", _t("Formerly Leeds, now York."), "York", (), "", "gold", "York"),
+    ("cue_previously", _t("Previously Leeds; York now."), "York", (), "", "gold", "York"),
+    ("cue_not_for_him", _t("Leeds was mentioned, but not for him."), "Leeds", (), "", "abstention", None),
+    ("cue_not_for_them", _t("York and Leeds are mentioned, not for them."), "York", (), "", "abstention", None),
+    ("cue_whether", _t("Whether York or Leeds is unclear."), "York", (), "", "abstention", None),
 ]
 
 

@@ -102,7 +102,7 @@ def inventory(run: Path) -> dict:
     add("5", "H prefix: B0 + M candidate + revert + B6 x 5 + f-int + matched B1", 10 * hm, P)
     add("5", "H prefix: transplant + clamp", 2 * hm, P + 2 * R)
     add("5", "H reads: f (manipulations) + predictor features", H["all"] + H["ANS"], R)
-    for tsplit in ("Tcity", "Tformat"):
+    for tsplit in ("Tcity",):                                  # T-format dropped before F0
         add("5", f"{tsplit} total effect: B0 + B1-B5 + R candidate (7 arms)", 7 * rc[tsplit]["all"], T,
             "separate transfer report; first to drop", secondary=True)
     add("5", "H hybrid answer-site (secondary): M candidate + B0", 2 * hm, P, "secondary", secondary=True)

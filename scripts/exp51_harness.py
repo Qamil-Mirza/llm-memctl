@@ -28,7 +28,12 @@ Fixed choices of this build (to be checked at the dry run, which is the first re
   with a 1-hour TTL on the system prompt, the tool list and the latest user turn. The field names follow the
   current Messages API documentation as far as this build knows them; the dry run verifies them and the first
   response's usage block before any E access.
-- A turn = one API call. An end_turn without a tool call gets the fixed reply NUDGE.
+- A turn = one successful API call. An end_turn without a tool call gets the fixed reply NUDGE.
+- Build review ruling 9: on stop_reason "max_tokens" no tool_use in that response is run (each gets an error
+  tool_result; without one the reply is MAXTOK_NUDGE); on "refusal" the run stops with that reason; every tool input
+  is validated against its schema before it runs. Transient API errors (408, 429, 5xx, 529, timeouts, connection
+  errors) are retried with backoff 2^k s (max 60), each attempt ledgered as kind "api_retry" (not an editor failed
+  request); 5 consecutive errors stop the run.
 """
 
 from __future__ import annotations
@@ -58,6 +63,7 @@ PY = Path(sys.base_prefix)
 SITE = ROOT / ".venv/lib/python3.13/site-packages"
 SANDBOX_PKGS = ("numpy", "numpy.libs", "tokenizers")
 NUDGE = "Continue with your plan, or call `finish` if you are done."
+MAXTOK_NUDGE = "Your last message hit the max_tokens limit and was cut off. Continue, in shorter steps."
 RUN_TIMEOUT_S = 1800
 
 SYSTEM = ("You are working in a sandboxed research workspace. You can run Python (numpy only) in /work, send metered "
@@ -330,6 +336,40 @@ TOOLS = [
 ]
 
 
+def validate_input(schema: dict, value, path: str = "input") -> list[str]:
+    """A minimal JSON-schema check for the tool schemas above (type, required, properties, enum, maximum)."""
+    errs = []
+    t = schema.get("type")
+    types = {"object": dict, "string": str, "integer": int, "array": list, "boolean": bool, "number": (int, float)}
+    if t in types and (not isinstance(value, types[t]) or (t in ("integer", "number") and isinstance(value, bool))):
+        return [f"{path}: expected {t}"]
+    if "enum" in schema and value not in schema["enum"]:
+        errs.append(f"{path}: {value!r} not in {schema['enum']}")
+    if "maximum" in schema and isinstance(value, (int, float)) and value > schema["maximum"]:
+        errs.append(f"{path}: {value} > {schema['maximum']}")
+    if t == "object":
+        for k in schema.get("required", []):
+            if k not in value:
+                errs.append(f"{path}.{k}: required")
+        for k, sub in schema.get("properties", {}).items():
+            if k in value:
+                errs += validate_input(sub, value[k], f"{path}.{k}")
+    return errs
+
+
+TOOL_SCHEMAS = {t["name"]: t["input_schema"] for t in TOOLS}
+MAX_CONSECUTIVE_API_ERRORS = 5
+TRANSIENT_HTTP = (408, 429, 500, 502, 503, 504, 529)
+
+
+class TransientAPIError(Exception):
+    """429 / 5xx / 529 / timeout: retried with backoff, ledgered as an API retry (not an editor failed request)."""
+
+
+def backoff_s(k: int) -> float:
+    return min(60.0, 2.0 ** k)
+
+
 class Meter:
     def __init__(self, path: Path):
         self.path = Path(path)
@@ -383,8 +423,17 @@ class ApiClient:
         req = urllib.request.Request(self.cfg["url"], data=json.dumps(self.body(messages)).encode(), method="POST",
                                      headers={"x-api-key": _api_key(), "anthropic-version": self.cfg["anthropic_version"],
                                               "content-type": "application/json"})
-        with urllib.request.urlopen(req, timeout=900) as r:
-            return json.loads(r.read())
+        import socket
+        import urllib.error
+        try:
+            with urllib.request.urlopen(req, timeout=900) as r:
+                return json.loads(r.read())
+        except urllib.error.HTTPError as ex:
+            if ex.code in TRANSIENT_HTTP:
+                raise TransientAPIError(f"HTTP {ex.code}") from None
+            raise RuntimeError(f"API HTTP {ex.code}: {ex.read()[:500]!r}") from None   # the body never holds the key
+        except (urllib.error.URLError, socket.timeout, TimeoutError, ConnectionError) as ex:
+            raise TransientAPIError(f"{type(ex).__name__}") from None
 
 
 class DummyClient:
@@ -398,6 +447,10 @@ class DummyClient:
     def __call__(self, messages: list) -> dict:
         content = self.script[min(self.i, len(self.script) - 1)]
         self.i += 1
+        if content == "TRANSIENT":
+            raise TransientAPIError("scripted 529")
+        if isinstance(content, dict):                      # {"stop_reason": ..., "content": [...]}
+            return {"content": content["content"], "stop_reason": content["stop_reason"], "usage": dict(self.usage)}
         stop = "tool_use" if any(c["type"] == "tool_use" for c in content) else "end_turn"
         return {"content": content, "stop_reason": stop, "usage": dict(self.usage)}
 
@@ -427,6 +480,7 @@ class Harness:
         self.subs = self.run / "submissions"
         self.subs.mkdir(exist_ok=True)
         self.n_req = 0
+        self.sleep = time.sleep
 
     def log(self, obj: dict) -> None:
         with open(self.transcript, "a") as f:
@@ -464,6 +518,7 @@ class Harness:
         messages = [{"role": "user", "content": INSTRUCTION}]
         t_start = time.time()
         reason = None
+        consecutive = 0
         while True:
             t = self.ledger.totals()
             if t["turns"] >= self.bounds["turns"]:
@@ -476,24 +531,50 @@ class Harness:
                 reason = f"cost stop (${self.meter.usd():.2f} measured)"
                 break
             t0 = time.perf_counter()
-            resp = self.client(messages)
+            try:
+                resp = self.client(messages)
+            except TransientAPIError as ex:
+                consecutive += 1
+                self.ledger.add({"kind": "api_retry", "ok": True, "error": str(ex), "consecutive": consecutive,
+                                 "wall_s": round(time.perf_counter() - t0, 2)})
+                if consecutive >= MAX_CONSECUTIVE_API_ERRORS:
+                    reason = f"{consecutive} consecutive API errors ({ex})"
+                    break
+                self.sleep(backoff_s(consecutive))
+                continue
+            consecutive = 0
             wall = time.perf_counter() - t0
             self.meter.add(resp.get("usage", {}), wall)
-            self.ledger.add({"kind": "turn", "ok": True, "wall_s": round(wall, 2)})
-            self.log({"role": "assistant", "content": resp["content"], "usage": resp.get("usage")})
+            self.ledger.add({"kind": "turn", "ok": True, "wall_s": round(wall, 2),
+                             "stop_reason": resp.get("stop_reason")})
+            self.log({"role": "assistant", "content": resp["content"], "usage": resp.get("usage"),
+                      "stop_reason": resp.get("stop_reason")})
+            stop_reason = resp.get("stop_reason")
+            if stop_reason == "refusal":
+                reason = "refusal (stop_reason)"
+                break
             messages.append({"role": "assistant", "content": resp["content"]})
             uses = [c for c in resp["content"] if c.get("type") == "tool_use"]
             if not uses:
-                messages.append({"role": "user", "content": NUDGE})
-                self.log({"role": "user", "content": NUDGE})
+                msg = MAXTOK_NUDGE if stop_reason == "max_tokens" else NUDGE
+                messages.append({"role": "user", "content": msg})
+                self.log({"role": "user", "content": msg})
                 continue
             results, done = [], False
             for u in uses:
-                if u["name"] == "finish":
-                    done = True
-                    out = {"ok": True}
+                if stop_reason == "max_tokens":
+                    out = {"error": "your message hit max_tokens, so this tool call may be truncated and was NOT run; "
+                                    "send a shorter call"}
                 else:
-                    out = self.tool(u["name"], u["input"])
+                    errs = validate_input(TOOL_SCHEMAS[u["name"]], u.get("input")) if u["name"] in TOOL_SCHEMAS \
+                        else [f"unknown tool {u['name']!r}"]
+                    if errs:
+                        out = {"error": "invalid tool input, not run: " + "; ".join(errs)}
+                    elif u["name"] == "finish":
+                        done = True
+                        out = {"ok": True}
+                    else:
+                        out = self.tool(u["name"], u["input"])
                 results.append({"type": "tool_result", "tool_use_id": u["id"], "content": json.dumps(out)[:60000]})
             self.log({"role": "user", "content": results})
             messages.append({"role": "user", "content": results})

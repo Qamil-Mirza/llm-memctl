@@ -31,18 +31,16 @@ T_CITIES = ["London", "Oxford", "Bristol", "Glasgow", "Sheffield", "Plymouth", "
 
 @pytest.fixture(scope="module")
 def small_cases():
-    sizes = {"E": 4, "S": 3, "H": 4, "Tcity": 2, "Tformat": 2}
+    sizes = {"E": 4, "S": 3, "H": 4, "Tcity": 2}
     rows, info = G.build_cases(sizes, T_CITIES)
     return rows, info, sizes
 
 
 def test_feasibility_reports_reduction():
     f = G.feasibility()
-    assert f["fits_at_1"] is False and f["de_tu_bases_requested"] == 152 and 0 < f["r"] < 1
-    s = f["sizes"]
-    assert G.allocate({k: v for k, v in s.items() if k != "Tcity"}, list(G.C.NAMES), list(G.C.CITIES)) is not None
-    bigger = G.scaled(G.SIZES, f["r"] + 0.001)
-    assert G.allocate({k: v for k, v in bigger.items() if k != "Tcity"}, list(G.C.NAMES), list(G.C.CITIES)) is None
+    assert f["fits_at_1"] is True and f["de_tu_bases_requested"] == 128 and f["r"] == 1.0   # T-format dropped
+    with_tf = G.feasibility({**G.SIZES, "Tformat": 24})                  # the rev 1a plan did not fit (r 0.958)
+    assert with_tf["fits_at_1"] is False and with_tf["r"] == pytest.approx(0.958)
 
 
 def test_thirteen_rows_closure_and_keys(small_cases):
@@ -73,8 +71,7 @@ def test_cf_and_tcity(small_cases):
             assert r["gold"] == r["cf_city"] != r["base_gold"]
         if r["split"] == "Tcity":
             assert not [c for c in G.C.CITIES if c in r["prompt"]]
-        if r["split"] == "Tformat":
-            assert G.T_FORMAT_INSTRUCTION in r["prompt"]
+        assert r["split"] != "Tformat"
 
 
 def test_old_prompt_hash_excluded(small_cases):
@@ -560,3 +557,81 @@ def test_make_b6(engine, tmp_path):
     e.edits.apply(ids[3])
     e.edits.revert()
     e.edits.assert_clean()
+
+
+def test_b2_prefix_straddling_token(engine, small_cases):
+    """Build review: B0's last note token carries the marker's newline ('.\\n'); the note keeps the ids before it, the
+    leftover '.' is encoded with the B2 tail, and the text is note + tail exactly."""
+    e = engine
+    row = next(r for r in small_cases[0] if r["set"] == "ANS")
+    dot_nl = e.tok.convert_tokens_to_ids(e.tok.tokenize(".\n"))
+    assert len(dot_nl) == 1, "the tokenizer has no single '.\\n' token"
+    gen = e.encode("Alice is in York") + dot_nl + e.encode("Answer:") + e.encode(" unknown\n")
+    ids = e.chat_ids(row["prompt"])
+    d = CM.designated(e.decode, gen)
+    assert d["ok"]
+    rec = {"prompt_ids": ids, "gen_ids": gen, "j": d["j"], "n_prompt": len(ids)}
+    note, left = CM.note_ids(e, rec)
+    assert left == "." and e.decode(note) == "Alice is in York"
+    b2 = CM.b2_prefix(e, row, rec)
+    assert e.decode(b2[len(ids):]) == "Alice is in York.\nDo not reply unknown.\nAnswer:"
+    assert b2[:len(ids) + len(note)] == ids + note                  # B0's own note ids, unchanged
+    b3 = CM.b3_prefix(e, row, rec)
+    assert b3[-d["j"]:] == gen[:d["j"]]                             # B3 keeps B0's ids through the marker
+    plain = e.encode("Alice is in York.") + e.encode("\nAnswer:") + e.encode(" York\n")
+    rec2 = {**rec, "gen_ids": plain, "j": CM.designated(e.decode, plain)["j"]}
+    n2, l2 = CM.note_ids(e, rec2)
+    assert e.decode(n2) + l2 == "Alice is in York."
+
+
+def test_harness_stop_reasons_validation_and_retries(service):
+    import exp51_harness as H
+    svc, rows = service
+    paired = {"type": "tool_use", "id": "p", "name": "forward",
+              "input": {"request": {"type": "paired", "rows": [rows[0]["case_id"]], "arms": [{}, {}]}}}
+    script = [{"stop_reason": "max_tokens", "content": [paired]},           # truncated: must not run
+              [{"type": "tool_use", "id": "v", "name": "run_python", "input": {"timeout_s": 5}}],   # no code: invalid
+              "TRANSIENT", "TRANSIENT",
+              [{"type": "tool_use", "id": "f", "name": "finish", "input": {"summary": "ok"}}]]
+    h = H.Harness(svc.run, H.DummyClient(script), service=svc)
+    slept = []
+    h.sleep = slept.append
+    out = h.loop()
+    assert out["reason"] == "finish" and out["ledger"]["passes"] == 0 and out["ledger"]["python_runs"] == 0
+    assert out["ledger"]["turns"] == 3 and out["ledger"]["failed_requests"] == 0 and slept == [2.0, 4.0]
+    tr = [json.loads(l) for l in (svc.run / "transcript.jsonl").read_text().splitlines()]
+    results = [c for t in tr if t["role"] == "user" and isinstance(t["content"], list) for c in t["content"]]
+    assert "NOT run" in results[0]["content"] and "invalid tool input" in results[1]["content"]
+    retries = [e for e in svc.ledger.entries if e["kind"] == "api_retry"]
+    assert len(retries) == 2
+    h2 = H.Harness(svc.run, H.DummyClient(["TRANSIENT"] * 6), service=svc)
+    h2.sleep = lambda s: None
+    assert h2.loop()["reason"].startswith("5 consecutive API errors")
+    h3 = H.Harness(svc.run, H.DummyClient([{"stop_reason": "refusal", "content": [{"type": "text", "text": "no"}]}]),
+                   service=svc)
+    assert h3.loop()["reason"].startswith("refusal")
+
+
+def test_validate_input():
+    import exp51_harness as H
+    assert H.validate_input(H.TOOL_SCHEMAS["run_python"], {"code": "x"}) == []
+    assert H.validate_input(H.TOOL_SCHEMAS["run_python"], {"code": 3})
+    assert H.validate_input(H.TOOL_SCHEMAS["run_python"], {"code": "x", "timeout_s": 10 ** 6})
+    bad = {"edit_id": "e", "kind": "other"}
+    errs = H.validate_input(H.TOOL_SCHEMAS["submit"], bad)
+    assert any("kind" in e for e in errs) and any("signed_endpoint" in e for e in errs)
+
+
+def test_shortcut_parity_dummy(engine, small_cases, tmp_path):
+    import exp51_run as RUN
+    import exp51_engine as EN
+    e = engine
+    row = next(r for r in small_cases[0] if r["split"] == "E" and r["set"] == "ANS")
+    rec = RUN.run_b0_row(e, row, tmp_path, T_CITIES)
+    arm = EN.Arm(bias={"ids": [e.encode(" unknown")[0]], "value": -4.0, "mode": "online"})
+    full = e.generate(list(rec["prompt_ids"]), arm, mode="total")
+    sc = RUN.shortcut_row(e, row, rec, arm, T_CITIES)
+    assert full.gen_ids == sc["gen_ids"]                # the dummy never writes a marker: both equal B0
+    fake = {**rec, "first_trigger_step": 3}
+    g = RUN.shortcut_row(e, row, fake, arm, T_CITIES)
+    assert g["gen_ids"][:3] == rec["gen_ids"][:3] and len(g["gen_ids"]) <= EN.MAX_NEW_TOTAL

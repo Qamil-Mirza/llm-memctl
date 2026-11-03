@@ -1,5 +1,6 @@
 #!/usr/bin/env python
-"""§51: the case list for agent-proposed weight edits (E, S at seed 51; H at 52; T-city and T-format at 53). Data
+"""§51: the case list for agent-proposed weight edits (E, S at seed 51; H at 52; T-city at 53; T-format dropped
+before F0, build review ruling 2). Data
 only; the Qwen2.5 tokenizer is read (offline) for the T-city single-token and pool-token checks; no model is loaded.
 
     HF_HUB_OFFLINE=1 .venv/bin/python scripts/exp51_cases.py --feasibility       # the finite-pool check only
@@ -64,9 +65,12 @@ from memctl.analysis import maps as M  # noqa: E402
 
 OUT = Path("runs/exp51")
 TASKS = ("DE", "RC", "TU")
-SPLITS = ("E", "S", "H", "Tcity", "Tformat")                    # generation order (fixed)
-SEEDS = {"E": 51, "S": 51, "H": 52, "Tcity": 53, "Tformat": 53}
-SIZES = {"E": 48, "S": 32, "H": 48, "Tcity": 24, "Tformat": 24}   # bases per task (§3), before any reduction
+# Pre-F0 amendment (Advisor ruling 2 of the stage-1 build review, the user's "yes drop T-format", 2026-11-02): T-format
+# is dropped, which restores E 48 / S 32 / H 48 (the DE / TU key pool, 144, held 152 bases with it). T_FORMAT_* stay
+# below only to document the dropped wording.
+SPLITS = ("E", "S", "H", "Tcity")                               # generation order (fixed)
+SEEDS = {"E": 51, "S": 51, "H": 52, "Tcity": 53}
+SIZES = {"E": 48, "S": 32, "H": 48, "Tcity": 24}                # bases per task (§3), before any reduction
 MAX_ATTEMPTS = 1000
 SHIFT_DAYS = F.SHIFT_DAYS
 OLD_CASES = (Path("runs/exp49/cases49.jsonl"), Path("runs/exp50/cases50.jsonl"))

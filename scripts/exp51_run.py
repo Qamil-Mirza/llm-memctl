@@ -204,6 +204,80 @@ def noop_gate(e, rws: list[dict], run: Path, tc: list[str]) -> dict:
     return res
 
 
+# ---------------------------------------------------------------------------------------------- (c) and (d)
+
+def shortcut_row(e, row: dict, rec: dict, arm: "EN.Arm", tc) -> dict:
+    """The B1 / B4 online total effect as B0's ids through its first marker + a triggered continuation."""
+    t = rec.get("first_trigger_step")
+    if t is None:
+        return {"gen_ids": list(rec["gen_ids"]), "text": rec["text"], "no_marker": True}   # never triggers: = B0
+    ids = list(rec["prompt_ids"]) + list(rec["gen_ids"][:t])
+    head = e.decode(rec["gen_ids"][:t])
+    g = e.generate(ids, arm, mode="resume", max_new=EN.MAX_NEW_TOTAL - t, text_before=head)
+    gen = list(rec["gen_ids"][:t]) + g.gen_ids
+    return {"gen_ids": gen, "text": e.decode(gen), "gen_s": round(g.wall_s, 3)}
+
+
+def parity(e, rws: list[dict], run: Path, tc, n: int = 24) -> dict:
+    """Build review 8c: B1 −4 and B4 α 2, full online vs the shortcut, on n mixed E rows; any token mismatch blocks."""
+    b1_ids = CM.b1_token_set(e.tok)
+    arms = {"B1_-4": EN.Arm(bias={"ids": b1_ids, "value": -4.0, "mode": "online"}),
+            "B4_2": EN.Arm(steer={"layer": EN.STEER_LAYER, "vector": CM.b4_vector(2.0), "mode": "online"})}
+    have = [r for r in rws if CM.b0("E", r["case_id"], run) is not None]
+    groups = {}
+    for r in have:
+        groups.setdefault((r["task"], r["set"] if r["set"] in ("ANS", "CF") else "UNA"), []).append(r)
+    pick, i = [], 0
+    while len(pick) < n and any(len(v) > i for v in groups.values()):
+        pick += [v[i] for _, v in sorted(groups.items()) if len(v) > i]
+        i += 1
+    pick = pick[:n]
+    out = {"rows": [], "mismatch": []}
+    for r in pick:
+        rec = CM.b0("E", r["case_id"], run)
+        for name, arm in arms.items():
+            t0 = time.perf_counter()
+            full = e.generate(list(rec["prompt_ids"]), arm, mode="total")
+            t_full = time.perf_counter() - t0
+            t0 = time.perf_counter()
+            sc = shortcut_row(e, r, rec, arm, tc)
+            t_sc = time.perf_counter() - t0
+            same = full.gen_ids == sc["gen_ids"]
+            item = {"case_id": r["case_id"], "arm": name, "equal": same, "full_s": round(t_full, 2),
+                    "shortcut_s": round(t_sc, 2), "cls_full": CM.grade(r, full.text, tc)["cls"],
+                    "cls_shortcut": CM.grade(r, sc["text"], tc)["cls"], "no_marker": sc.get("no_marker", False),
+                    "trigger_full": full.trigger_step, "trigger_b0": rec.get("first_trigger_step")}
+            if not same:
+                k = next((j for j, (a, b) in enumerate(zip(full.gen_ids, sc["gen_ids"])) if a != b),
+                         min(len(full.gen_ids), len(sc["gen_ids"])))
+                item["first_diff"] = k
+                out["mismatch"].append(f"{r['case_id']}:{name}")
+            out["rows"].append(item)
+    out["n_rows"], out["pass"] = len(pick), not out["mismatch"]
+    return out
+
+
+def batching(e, rws: list[dict], run: Path, tc, sizes=(8, 16), n: int = 32) -> dict:
+    """Build review 8d, measurement only: B0 at batch 8 and 16 vs the batch-1 B0 records (token and class agreement,
+    rows per hour)."""
+    have = [r for r in rws if CM.b0("E", r["case_id"], run) is not None][:n]
+    recs = [CM.b0("E", r["case_id"], run) for r in have]
+    b1_s = sum(x["gen_s"] for x in recs)
+    out = {"n_rows": len(have), "batch1_rows_per_h": round(3600 * len(have) / b1_s, 1), "by_size": {}}
+    for bs in sizes:
+        t0 = time.perf_counter()
+        gens = []
+        for i in range(0, len(have), bs):
+            gens += e.generate_batch([list(x["prompt_ids"]) for x in recs[i:i + bs]])
+        wall = time.perf_counter() - t0
+        tok_eq = sum(g == x["gen_ids"] for g, x in zip(gens, recs))
+        cls_eq = sum(CM.grade(r, e.decode(g), tc)["cls"] == x["cls"] for r, g, x in zip(have, gens, recs))
+        out["by_size"][str(bs)] = {"rows_per_h": round(3600 * len(have) / wall, 1), "wall_s": round(wall, 1),
+                                   "token_equal": tok_eq, "class_equal": cls_eq,
+                                   "peak_rss_gb": round(EN.peak_rss_gb(), 2)}
+    return out
+
+
 # ---------------------------------------------------------------------------------------------- B6
 
 def make_b6(e, candidate_id: str, dose: float, seeds=CM.B6_SEEDS) -> dict[int, str]:
@@ -340,7 +414,8 @@ def require_f2(run: Path) -> dict:
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--stage", required=True, choices=("timing", "b0", "noop", "b5-fit", "inventory", "arm"))
+    p.add_argument("--stage", required=True, choices=("timing", "b0", "noop", "b5-fit", "inventory", "arm", "parity",
+                                                      "batching"))
     p.add_argument("--split", default="E")
     p.add_argument("--sets", default=None, help="comma list of sets (default all)")
     p.add_argument("--n", type=int, default=24)
@@ -371,7 +446,9 @@ def main(argv=None) -> int:
         print(json.dumps(timing(e, CM.rows("E"), run, tc), indent=1))
         return 0
     if a.stage == "b0":
-        return run_b0(e, rws, run, deadline, tc)
+        by_task = [[r for r in rws if r["task"] == t] for t in ("DE", "RC", "TU")]
+        order = [r for grp in __import__("itertools").zip_longest(*by_task) for r in grp if r is not None]
+        return run_b0(e, order, run, deadline, tc)            # tasks interleaved, so RC / TU exist early
     if a.stage == "noop":
         have = [r for r in rws if CM.b0(r["split"], r["case_id"], run) is not None]
         by_task = {t: [r for r in have if r["task"] == t] for t in ("DE", "RC", "TU")}
@@ -382,6 +459,16 @@ def main(argv=None) -> int:
         CM.write_json(run / "noop_gate.json", res)
         print(json.dumps({k: v for k, v in res.items() if k != "rows"}))
         return 0 if res["pass"] else 3
+    if a.stage == "parity":
+        res = parity(e, rws, run, tc, a.n)
+        CM.write_json(run / "parity_shortcut.json", res)
+        print(json.dumps({k: v for k, v in res.items() if k != "rows"}))
+        return 0 if res["pass"] else 3
+    if a.stage == "batching":
+        res = batching(e, rws, run, tc)
+        CM.write_json(run / "batching.json", res)
+        print(json.dumps(res))
+        return 0
     if a.stage == "b5-fit":
         if a.split != "E":
             raise SystemExit("B5 is fit on E only")
