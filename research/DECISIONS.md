@@ -145,3 +145,28 @@ the user has made the decision.
 - **Next.** No rescue variant. A sufficiency measure read inside the model, and the margin read at the city-producing position, would be a new proposal under a separate decision.
 - **Spend.** Billing posted $1.319 for pod yp1fhtaqavw57f (GPU $1.310 + disk $0.009), within the $3.00 cap (D-70). The programme total is about $24.17 of $30.
 - **Authority.** The user's "Go, record §50 as closed" (Advisor pane, 2026-11-02).
+
+## D-72 (2026-11-02) — §51 opened: agent-proposed weight edits for note-then-unknown (rev 1a)
+
+- **What.** §51 is opened as pre-registered in `research/proposals/2026-11-02-exp51-agent-weight-editing.md`, rev 1a,
+  final commit 15ec3ee. Codex reviewed it four times (the planning reviews, the rev 0 and rev 1 reviews, and the rev 1a
+  amendment check), and §13 is the binding build contract.
+- **Design.**
+  - One fresh Claude editor run on Qwen2.5-3B, in a curated workspace that holds only E.
+  - Two independent branches: R (repair; O1 and O2 confirmatory, with Holm across B1–B5) and M (mechanism; M1–M3 with
+    Holm).
+  - S is used for selection. H and T are sealed and read once after the F2 freeze. No rescue variant and no second
+    editor run (D-45).
+- **Not a reopening** of §49 (D-68) or §50 (D-71). The B/C labels are not revived.
+- **Spend.**
+  - **Editor:** Claude Opus 5.5 through the Anthropic API, with its key in `.env` and a **$50 Console workspace spend
+    limit** covering all §51 editor usage, the dry run included. The harness stops itself at $45.
+  - **GPU:** none is approved by this decision. Exploration and S run on the laptop at $0. Any pod (H/T, the replay
+    check) needs an inventory-based quote, a hard stop, the user's approval, and the user's own line in the Executor
+    pane, inside the $30 programme cap (D-40; about $5.8 remains).
+- **Build gates.**
+  - Stage 1 is the laptop build, reviewed by the Advisor: the no-op gate, peak RSS, timing, inventory, the grader
+    fixtures, and the partition audit with collision closure.
+  - Then F0 and F1, then the dummy-model dry run, and only then the editor run.
+- **Authority.** The user's "Go on §51" (Advisor pane, 2026-11-02). The editor decision is the user's "Opus 5.5 with a
+  $50 cap is fine" (same pane, same day).
