@@ -45,7 +45,9 @@ import resource
 import shutil
 import subprocess
 import sys
+import socket
 import time
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -457,8 +459,6 @@ class ApiClient:
         req = urllib.request.Request(self.cfg["url"], data=json.dumps(self.body(messages)).encode(), method="POST",
                                      headers={"x-api-key": _api_key(), "anthropic-version": self.cfg["anthropic_version"],
                                               "content-type": "application/json"})
-        import socket
-        import urllib.error
         try:
             with urllib.request.urlopen(req, timeout=900) as r:
                 return json.loads(r.read())

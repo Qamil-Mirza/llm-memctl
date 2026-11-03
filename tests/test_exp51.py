@@ -758,3 +758,42 @@ def test_dry_run_caps(service):
     out = h.loop()
     assert out["reason"] == "turn bound" and out["ledger"]["turns"] == 3
     assert H.Harness(svc.run, H.DummyClient(loop_forever), service=svc, stop_usd=99).stop_usd == H.STOP_USD
+
+
+def test_api_client_call_path_mocked(monkeypatch):
+    """The real ApiClient.__call__ path with urlopen mocked (no network): headers, body, error classes."""
+    import io
+    import urllib.error
+    import exp51_harness as H
+    seen = {}
+
+    class R(io.BytesIO):
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    def fake_open(req, timeout):
+        seen["headers"] = {k.lower(): v for k, v in req.header_items()}
+        seen["body"] = json.loads(req.data)
+        return R(json.dumps({"content": [{"type": "text", "text": "hi"}], "stop_reason": "end_turn",
+                             "usage": {"input_tokens": 1, "output_tokens": 1}}).encode())
+    monkeypatch.setattr(H, "_api_key", lambda: "test-key-not-real")
+    monkeypatch.setattr(H.urllib.request, "urlopen", fake_open)
+    out = H.ApiClient()([{"role": "user", "content": "x"}])
+    assert out["stop_reason"] == "end_turn" and seen["headers"]["x-api-key"] == "test-key-not-real"
+    assert seen["body"]["model"] == "claude-opus-5-5" and "x-api-key" not in json.dumps(seen["body"])
+
+    def raise_529(req, timeout):
+        raise urllib.error.HTTPError(req.full_url, 529, "overloaded", {}, io.BytesIO(b"{}"))
+    monkeypatch.setattr(H.urllib.request, "urlopen", raise_529)
+    with pytest.raises(H.TransientAPIError):
+        H.ApiClient()([{"role": "user", "content": "x"}])
+
+    def raise_400(req, timeout):
+        raise urllib.error.HTTPError(req.full_url, 400, "bad", {}, io.BytesIO(b'{"error": "bad request"}'))
+    monkeypatch.setattr(H.urllib.request, "urlopen", raise_400)
+    with pytest.raises(RuntimeError) as ex:
+        H.ApiClient()([{"role": "user", "content": "x"}])
+    assert "test-key-not-real" not in str(ex.value)
