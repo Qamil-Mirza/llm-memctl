@@ -72,6 +72,7 @@ import exp51_common as CM  # noqa: E402
 
 PRICES = {"input": 4.0, "output": 20.0, "cache_read": 0.20, "cache_write_5m": 5.0, "cache_write_1h": 8.0}  # $/MTok
 STOP_USD = 45.0
+CONTEXT_STOP_TOKENS = 900_000   # Opus 5.5 window 1M (standard price throughout); stop cleanly before a 400
 DRY_STOP_USD, DRY_MAX_TURNS = 3.0, 15          # the tooling dry runs (F0 review item 2; 15 turns from D3)
 API_CONFIG = {"url": "https://api.anthropic.com/v1/messages", "model": "claude-opus-5-5", "max_tokens": 16000,
               "anthropic_version": "2023-06-01", "effort": "high", "cache_ttl": "1h",
@@ -430,6 +431,15 @@ class Meter:
     def usd(self) -> float:
         return sum(c["usd"] if c.get("placeholder") else cost_of(c["usage"]) for c in self.calls)
 
+    def context_tokens(self) -> int:
+        """The last measured call's prompt plus output (the next prompt's floor)."""
+        for c in reversed(self.calls):
+            if not c.get("placeholder"):
+                u = c["usage"]
+                return sum(u.get(k, 0) or 0 for k in ("input_tokens", "cache_read_input_tokens",
+                                                       "cache_creation_input_tokens", "output_tokens"))
+        return 0
+
     def add_placeholder(self, usd: float) -> None:
         """A call that may have been billed but never answered (in flight at a crash): booked at its worst case and
         never trued up downward."""
@@ -455,7 +465,7 @@ def cost_of(u: dict) -> float:
 
 def worst_case_usd(messages: list, max_tokens: int) -> float:
     chars = len(json.dumps(messages)) + len(json.dumps(TOOLS)) + len(SYSTEM)
-    return (chars / 3.0) * PRICES["cache_write_1h"] / 1e6 + max_tokens * PRICES["output"] / 1e6
+    return (chars / 2.5) * PRICES["cache_write_1h"] / 1e6 + max_tokens * PRICES["output"] / 1e6   # measured 2.9 chars / token
 
 
 class ApiClient:
@@ -511,7 +521,8 @@ class DummyClient:
         if content == "TRANSIENT":
             raise TransientAPIError("scripted 529")
         if isinstance(content, dict):                      # {"stop_reason": ..., "content": [...]}
-            return {"content": content["content"], "stop_reason": content["stop_reason"], "usage": dict(self.usage)}
+            return {"content": content["content"], "stop_reason": content["stop_reason"], "usage": dict(self.usage),
+                    **({"stop_details": content["stop_details"]} if "stop_details" in content else {})}
         stop = "tool_use" if any(c["type"] == "tool_use" for c in content) else "end_turn"
         return {"content": content, "stop_reason": stop, "usage": dict(self.usage)}
 
@@ -663,6 +674,9 @@ class Harness:
             if (time.time() - t_start) / 3600 > self.bounds["wall_hours"]:
                 reason = "wall-clock bound"
                 break
+            if self.meter.context_tokens() + len(json.dumps(messages[-1])) / 2.5 > CONTEXT_STOP_TOKENS:
+                reason = f"context bound ({self.meter.context_tokens()} prompt tokens at the last call)"
+                break
             if self.meter.usd() + worst_case_usd(messages, API_CONFIG["max_tokens"]) > self.stop_usd:
                 reason = f"cost stop (${self.meter.usd():.2f} measured)"
                 break
@@ -683,10 +697,13 @@ class Harness:
             self.meter.add(resp.get("usage", {}), wall)
             self.ledger.add({"kind": "turn", "ok": True, "wall_s": round(wall, 2),
                              "stop_reason": resp.get("stop_reason")})
-            self.log({"role": "assistant", "content": resp["content"], "usage": resp.get("usage"),
-                      "stop_reason": resp.get("stop_reason")})
             stop_reason = resp.get("stop_reason")
+            rec = {"role": "assistant", "content": resp["content"], "usage": resp.get("usage"), "stop_reason": stop_reason}
             if stop_reason == "refusal":
+                rec["stop_details"] = resp.get("stop_details")
+            self.log(rec)
+            if stop_reason == "refusal":
+                self.ledger.add({"kind": "refusal", "ok": True, "stop_details": resp.get("stop_details")})
                 reason = "refusal (stop_reason)"
                 break
             messages.append({"role": "assistant", "content": resp["content"]})

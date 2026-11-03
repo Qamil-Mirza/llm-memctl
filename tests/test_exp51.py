@@ -863,7 +863,7 @@ def test_resume_after_crash_in_api_call(service):
                                                                abs=1e-6)
     calls = json.loads((svc.run / "api_usage.json").read_text())
     assert [c.get("placeholder", False) for c in calls] == [False, True, False]
-    assert out["usd"] == pytest.approx(2 * H.cost_of(H.DummyClient([]).usage) + lost[0]["usd"], abs=1e-5)
+    assert out["usd"] == pytest.approx(2 * H.cost_of(H.DummyClient([]).usage) + lost[0]["usd"], abs=1e-4)   # usd: 4 dp
     pre = (svc.run / "transcript.pre_resume.1.jsonl").read_text()
     assert len(pre.splitlines()) == 2 and (svc.run / "transcript.jsonl").read_text().startswith(pre)
 
@@ -977,3 +977,33 @@ def test_scripted_end_to_end_every_tool_path(service, engine, monkeypatch):
     t = out["ledger"]
     assert t["passes"] == 3 and t["saved_edits"] == 1 and t["failed_requests"] == 1 and t["turns"] == 8
     engine.edits.assert_clean()
+
+
+def test_context_bound_stops_cleanly(service):
+    import exp51_harness as H
+    svc, rows = service
+    big = {"input_tokens": 2, "cache_read_input_tokens": H.CONTEXT_STOP_TOKENS - 100, "cache_creation_input_tokens": 50,
+           "output_tokens": 100}
+    out = H.Harness(svc.run, H.DummyClient([[{"type": "text", "text": "x"}]], usage=big), service=svc).loop()
+    assert out["reason"].startswith("context bound") and out["ledger"]["turns"] == 1
+
+
+def test_refusal_ends_the_run_and_records_stop_details(service):
+    import exp51_harness as H
+    svc, rows = service
+    sd = {"type": "refusal", "category": "reasoning_extraction", "explanation": "x"}
+    out = H.Harness(svc.run, H.DummyClient([{"stop_reason": "refusal", "content": [], "stop_details": sd}]), service=svc).loop()
+    assert out["reason"] == "refusal (stop_reason)"
+    assert [e for e in svc.ledger.entries if e["kind"] == "refusal"][0]["stop_details"] == sd
+    last = json.loads((svc.run / "transcript.jsonl").read_text().splitlines()[-1])
+    assert last["stop_details"] == sd and last["stop_reason"] == "refusal"
+    with pytest.raises(RuntimeError):
+        H.Harness(svc.run, H.DummyClient([FINISH]), service=svc).loop(resume=True)
+
+
+def test_cost_model_backtest_and_stop():
+    import exp51_freeze as FZ
+    for v in FZ._backtest().values():
+        assert v["model_usd"] == pytest.approx(v["measured_usd"], rel=0.05)
+    assert FZ.cost_model(120, 7500, 2000, 10)["harness_stop"]["turn"] < 120
+    assert FZ.cost_model(120, 2400, 545)["harness_stop"] is None

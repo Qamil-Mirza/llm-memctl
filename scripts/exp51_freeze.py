@@ -3,7 +3,7 @@
 Advisor commits the file (the commit is the freeze record; its sha256 is the manifest hash).
 
     HF_HUB_OFFLINE=1 .venv/bin/python scripts/exp51_freeze.py --point F0     # -> runs/exp51/freeze/F0_draft.json
-    .venv/bin/python scripts/exp51_freeze.py --point F1 --r <reduction>      # -> F1_draft.json
+    .venv/bin/python scripts/exp51_freeze.py --point F1                      # -> F1_draft.json (r computed)
 
 F0 holds: checkpoint and tokenizer revisions with file hashes; the editor's model and API settings; the instruction
 and system text; prompt formats and max_new_tokens; generator rules, seeds, sizes and the case-list hash; the
@@ -41,6 +41,9 @@ SOURCES = ("scripts/exp51_cases.py", "scripts/exp51_common.py", "scripts/exp51_e
            "scripts/exp51_bundle.sh", "scripts/exp51_pod_measure.sh", "scripts/exp51_d30.sh",
            "scripts/exp51_s_bundle.sh", "scripts/exp51_pod_s.sh", "scripts/exp51_ht_bundle.sh", "scripts/exp51_pod_ht.sh",
            "tests/test_exp51.py")
+F1_EXTRA_SOURCES = ("scripts/exp51_stop.sh",)
+F0_COMMIT, F0_SHA = "d29263a", "3ed50681f3001527d06cc2e1183187250991d3f39886975ef88946089ed3a9e7"
+DRY_RUNS = (ROOT / "runs/exp51/dryrun_api", ROOT / "runs/exp51/dryrun_api2")
 
 
 def sha_text(t: str) -> str:
@@ -179,17 +182,206 @@ def f0() -> dict:
     }
 
 
+def _sha(path) -> str:
+    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+
+
+def _head() -> str:
+    """The F1 build commit. The manifest's source shas only mean something if the sources are committed."""
+    import subprocess
+    git = lambda *a: subprocess.run(("git", *a), cwd=ROOT, capture_output=True, text=True, check=True).stdout.strip()
+    dirty = git("status", "--porcelain", "--", *SOURCES, *F1_EXTRA_SOURCES)
+    if dirty:
+        raise SystemExit(f"F1 is built from committed sources; uncommitted:\n{dirty}")
+    return git("rev-parse", "--short", "HEAD")
+
+
+def _projection() -> dict:
+    """r = min(1, 48 h / projected time for 30 passes) from the laptop inventory (runs/exp51/run/inventory.json):
+    the slowest pass type at its worst case. A sensitivity line takes every edited paired sequence to 160 tokens."""
+    inv = json.loads((CM.RUN / "inventory.json").read_text())
+    worst = {i["what"]: i["cpu_h"] for i in inv["items"] if "30 " in i["what"] and "worst case" in i["what"]}
+    t = json.loads((CM.RUN / "timing.json").read_text())
+    dec = [(u["b0_total_s"] - u["read_s"]) / u["n_gen"] for u in t["units"]]
+    s_row_160 = max(u["read_s"] for u in t["units"]) + max(dec) * EN.MAX_NEW_TOTAL
+    paired_160_h = 30 * SV.BOUNDS_F0["paired_pairs"] * s_row_160 / 3600
+    proj = max(worst.values())
+    return {"inventory_sha256": _sha(CM.RUN / "inventory.json"), "timing_sha256": _sha(CM.RUN / "timing.json"),
+            "worst_case_30_passes_h": worst, "projected_h": proj, "r": min(1.0, 48.0 / proj),
+            "sensitivity": {"decode_s_per_token_max": round(max(dec), 3), "s_per_row_at_160_tokens": round(s_row_160, 1),
+                            "paired_30_passes_all_160_tokens_h": round(paired_160_h, 1),
+                            "r_if_used": round(min(1.0, 48.0 / paired_160_h), 3),
+                            "note": "not the rule's basis (B0 mean length is the inventory unit); the 48 h wall bound "
+                                    "stops the run in that case"}}
+
+
+def _dry_runs() -> dict:
+    out = {}
+    for d in DRY_RUNS:
+        calls = json.loads((d / "api_usage.json").read_text())
+        real = [c for c in calls if not c.get("placeholder")]
+        out[d.name] = {"calls": len(real), "usd": round(sum(c["usd"] for c in real), 4),
+                       "usd_per_call": [round(c["usd"], 4) for c in real],
+                       "new_tokens_per_call": round(sum(c["usage"].get("cache_creation_input_tokens", 0)
+                                                        for c in real) / len(real)),
+                       "output_tokens_per_call": round(sum(c["usage"]["output_tokens"] for c in real) / len(real)),
+                       "api_usage_sha256": _sha(d / "api_usage.json"), "transcript_sha256": _sha(d / "transcript.jsonl")}
+    return out
+
+
+def cost_model(turns: int, new: int, out: int, expiries: int = 0, c0: int = 2900) -> dict:
+    """Per call: context x cache read + new x 1h write + out x output price. `new` is the cache write of a call, which
+    already holds the previous call's output (measured: context growth = the write), so the context grows by `new`
+    only. An expiry re-writes the whole context once (write price instead of read). The harness stops when measured
+    usd + the next call's worst case passes $45, so the run ends before $45; turn_at_stop applies that reserve."""
+    P = H.PRICES
+    ctx, usd, at_stop, at_ctx = c0, 0.0, None, None
+    every = turns // expiries if expiries else None
+    for k in range(1, turns + 1):
+        reserve = (ctx * 2.9 / 2.5) * P["cache_write_1h"] / 1e6 + H.API_CONFIG["max_tokens"] * P["output"] / 1e6
+        if at_stop is None and usd + reserve > H.STOP_USD:
+            at_stop = {"turn": k, "usd_measured": round(usd, 2), "reserve_usd": round(reserve, 2)}
+        if at_ctx is None and ctx > H.CONTEXT_STOP_TOKENS:
+            at_ctx = k
+        usd += (ctx * P["cache_read"] + new * P["cache_write_1h"] + out * P["output"]) / 1e6
+        if every and k % every == 0 and k // every <= expiries:
+            usd += ctx * (P["cache_write_1h"] - P["cache_read"]) / 1e6
+        ctx += new
+    return {"usd_if_never_stopped": round(usd, 2), "context_tokens_at_end": ctx, "harness_stop": at_stop,
+            "turn_at_context_stop": at_ctx}
+
+
+def _backtest() -> dict:
+    """The model at each dry run's own means, against its measured cost."""
+    out = {}
+    for name, v in _dry_runs().items():
+        m = cost_model(v["calls"], v["new_tokens_per_call"], v["output_tokens_per_call"])
+        out[name] = {"model_usd": m["usd_if_never_stopped"], "measured_usd": v["usd"]}
+    return out
+
+
+def cost_estimate(turns: int) -> dict:
+    d = _dry_runs()
+    new = max(v["new_tokens_per_call"] for v in d.values())
+    out = max(v["output_tokens_per_call"] for v in d.values())
+    sc = {"dry_like": (new, out, 0), "expected": (4000, 1000, 3), "high_no_expiries": (7500, 2000, 0),
+          "high": (7500, 2000, 10)}
+    return {"turns": turns, "assumptions": {k: {"new_tokens_per_call": a, "output_tokens_per_call": b,
+                                                "cache_expiries": e} for k, (a, b, e) in sc.items()},
+            "scenarios": {k: cost_model(turns, a, b, e) for k, (a, b, e) in sc.items()},
+            "backtest": _backtest(),
+            "usd_per_expiry": {f"{c // 1000}k_context": round(c * (H.PRICES["cache_write_1h"] - H.PRICES["cache_read"])
+                                                             / 1e6, 2) for c in (100_000, 300_000, 500_000, 900_000)},
+            "harness_stop_usd": H.STOP_USD, "console_cap_usd": 50,
+            "basis": "Measured: the per-call means and the back-test (dry runs 1-2). Judgement, not measurement: the "
+                     "real-run scenarios. The dry runs used a dummy model, so real thinking and tool output are "
+                     "scaled up: 'expected' about 1.7x the dry write and 1.8x the dry output, 'high' about 3.1x and "
+                     "3.7x (7,500 per call reaches the 900k context stop at turn 120). Forward results stay small in "
+                     "the real run (dry: about 400 chars; arrays go to npz files), so growth comes from run_python "
+                     "stdout (<= 20k chars), the editor's code and its thinking. Expiries are the largest uncertainty: "
+                     "the 1h cache lapses when a tool call plus generation passes 1 h start to start. At B0 mean "
+                     "length a largest paired pass (both arms edited) takes about 52 min and a largest read pass about "
+                     "54 min, so only near-largest passes or lengthened outputs lapse; a crash resume can add one."}
+
+
+def f1() -> dict:
+    proj = _projection()
+    bounds = {k: (v if k in ("submissions",) else type(v)(v * proj["r"])) for k, v in SV.BOUNDS_F0.items()}
+    counts = json.loads((ROOT / "runs/exp51/cases51_counts.json").read_text())
+    d2 = {"scripts/exp51_harness.py": ("c115a9fb78dbed95e62f39cb743ab09c0d17c9e3a9f5d27d65dac2d35ed54c69",
+                                       "ef298273497e94e775659969b0bfa378b57353e3194dd94484b4acf90021f659"),
+          "tests/test_exp51.py": ("f10c82f1488fac0172b3077998101b17c8a7a59fdb7b4e66d86b1ac1d24c9b6d",
+                                  "37d923bd0724b258d62e2c79e9485c0dcf40e38cfbadc70f5f70bb2d77f92819")}
+    d3_old = {"scripts/exp51_harness.py": d2["scripts/exp51_harness.py"][1],
+              "tests/test_exp51.py": d2["tests/test_exp51.py"][1],
+              "scripts/exp51_service.py": "b0979e2d834b4807f9c81091cb22d59c55919a202af8fb980d35cfadd860c67e",
+              "scripts/exp51_engine.py": "59d5ca562794a728761f139cbbef6d2df1a281fb12cdb8ba4599f0e47a91c5a1",
+              "scripts/exp51_freeze.py": "e4891791541cdc6d5b2478745095ba3b6458601938b1ac998e0a5857c55e6baf",
+              "scripts/exp51_stop.sh": None}
+    return {
+        "point": "F1", "status": "DRAFT (not frozen until committed by the Advisor)",
+        "f0": {"commit": F0_COMMIT, "manifest": "runs/exp51/freeze/F0_draft.json", "sha256": F0_SHA,
+               "manifest_sha256_now": _sha(OUT / "F0_draft.json")},
+        "split_sizes_bases_per_task": counts["sizes"], "n_rows": counts["n_rows"],
+        "cases51_sha256": counts["cases51_sha256"],
+        "reduction": proj,
+        "bounds_final": bounds, "bounds_within_f0_maxima": all(bounds[k] <= v for k, v in SV.BOUNDS_F0.items()),
+        "resource_caps": {"harness_stop_usd": H.STOP_USD, "console_workspace_cap_usd": 50,
+                          "context_stop_tokens": H.CONTEXT_STOP_TOKENS, "context_window_tokens": 1_000_000,
+                          "sandbox_rlimit_as_gib": 6, "python_run_timeout_s": H.RUN_TIMEOUT_S,
+                          "laptop_peak_rss_gb": json.loads((CM.RUN / "timing.json").read_text())["peak_rss_gb"]},
+        "workload_inventory": {"file": "runs/exp51/run/inventory.json", "sha256": proj["inventory_sha256"]},
+        "meter_validation": {"dry_runs": _dry_runs(), "meter_usd": 0.6965, "console_usd": 0.71,
+                             "gap": "about $0.01: the one call in flight at dry run 2's kill (billed, never answered)",
+                             "verdict": "PASS (Advisor, 2026-11-03); prices equal the published Opus 5.5 table "
+                                        "($4 / $20, 1h write $8, 5m write $5, cache read $0.20; 1M window at "
+                                        "standard price)"},
+        "editor_cost_estimate": cost_estimate(bounds["turns"]),
+        "deviations": [
+            {"id": "D2", "what": "ApiClient imported urllib.error inside __call__ (UnboundLocalError before any "
+                                 "request; dry run attempt 1 sent nothing, $0); module-level imports + a mocked-"
+                                 "network test", "commit": "d2f1cee", "authority": "Advisor (ACCEPT)",
+             "sha256_old_new": d2, "frozen_content_changed": False},
+            {"id": "D3", "what": ["thinking {type adaptive, display summarized} so the editor's between-tool notes "
+                                  "are recorded by transcript logging",
+                                  "loop --resume (messages rebuilt verbatim from transcript.jsonl; cut-off tool "
+                                  "calls answered INTERRUPTED; transcript.pre_resume.<n>.jsonl copy; ledger kind "
+                                  "resume)",
+                                  "lost-call placeholder on resume (worst case, never trued down)",
+                                  "harness_pid.json + exp51_stop.sh (launch and stop by the harness's own process "
+                                  "group)",
+                                  "context stop at 900k prompt tokens (clean stop before the 1M window's 400)",
+                                  "worst-case token estimate chars / 2.5 (was / 3; measured 2.9)",
+                                  "dummy36 backend; refusal wording names valid layers; save_edit accepts /work/ "
+                                  "spec paths (containment check kept)", "DRY_MAX_TURNS 10 -> 15",
+                                  "$0 scripted end-to-end and resume tests",
+                                  "stop_details logged on a refusal (transcript and ledger kind refusal)",
+                                  "exp51_freeze.py: the F1 builder and cost model; refuses to rebuild F0"],
+             "commits": ["475be08", "f0a97b9", "645c6ad", _head()],
+             "authority": "Advisor (ACCEPT 475be08; required items of the dry-run reviews)",
+             "sha256_old_new": {f: (o, _sha(ROOT / f)) for f, o in d3_old.items()},
+             "frozen_content_changed": True,
+             "frozen_content_changed_items": ["API request: thinking display summarized (what is returned changes; "
+                                              "what the editor is told does not)", "dry_run.max_turns 10 -> 15"],
+             "frozen_content_unchanged_check": {"tools_sha256": sha_text(json.dumps(H.TOOLS, sort_keys=True,
+                                                                          separators=(",", ":"))),
+                                      "instruction_sha256": sha_text(H.INSTRUCTION),
+                                      "system_sha256": sha_text(H.SYSTEM), "stop_usd": H.STOP_USD}}],
+        "rules": {
+            "resume": "A resume after an infrastructure or harness crash is the same run, not a second editor run "
+                      "(D-45 is not engaged). Messages are rebuilt verbatim from transcript.jsonl (append-only); the "
+                      "ledger and api_usage.json carry the bounds and the meter.",
+            "lost_call": "On resume, if the transcript ends on a user record, one call is booked at its worst case "
+                         "(context at the 1h write price + max_tokens at the output price) as a meter placeholder and "
+                         "ledger kind lost_call_placeholder; never trued down.",
+            "refusal": "PROPOSED, Advisor rules: a refusal ends the run (one run only; no same-request retry, no "
+                       "fallback model). stop_details goes into the transcript and ledger; submissions already made "
+                       "stand and go on to replay; the result is documented under D-45.",
+            "launch": ["cd ~/Code/llm-memctl; the Console workspace limit is $50 and the key is in .env",
+                       ".venv/bin/python scripts/exp51_harness.py setup --run runs/exp51/editor_run",
+                       ".venv/bin/python scripts/exp51_harness.py check --run runs/exp51/editor_run (must pass)",
+                       "setsid .venv/bin/python scripts/exp51_harness.py loop --run runs/exp51/editor_run "
+                       "--client api --backend hf --i-have-the-go > runs/exp51/editor_run/loop.log 2>&1 &",
+                       "the harness writes runs/exp51/editor_run/harness_pid.json; check own_group is true",
+                       "stop only with scripts/exp51_stop.sh runs/exp51/editor_run (kills the recorded process "
+                       "group; never $! or pgrep)",
+                       "after a crash: the same command with --resume (no other change)"]},
+        "sources_sha256": {s: _sha(ROOT / s) for s in SOURCES + F1_EXTRA_SOURCES},
+    }
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--point", choices=("F0",), required=True)
+    p.add_argument("--point", choices=("F0", "F1"), required=True)
     a = p.parse_args(argv)
     OUT.mkdir(parents=True, exist_ok=True)
-    m = f0()
+    if a.point == "F0" and (OUT / "F0_draft.json").exists():
+        raise SystemExit("F0 is frozen (d29263a); it is not rebuilt")
+    m = f0() if a.point == "F0" else f1()
     text = json.dumps(m, indent=1, sort_keys=True, default=lambda x: None if x != x else x)
     path = OUT / f"{a.point}_draft.json"
     path.write_text(text)
-    print(json.dumps({"path": str(path), "sha256": hashlib.sha256(text.encode()).hexdigest(),
-                      "b1_tokens": m["comparators"]["B1"]["n_tokens"]}))
+    print(json.dumps({"path": str(path), "sha256": hashlib.sha256(text.encode()).hexdigest()}))
     return 0
 
 
