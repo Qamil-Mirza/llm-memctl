@@ -155,6 +155,16 @@ def main(argv=None) -> int:
         res["steps"]["read_b1"] = {"rows": k, "s_per_row": round((time.perf_counter() - t0) / k, 3),
                                    "mem_gb": gpu_mem_gb(e)}
         save()
+    # the route gate fixed before measurement: the production layout (the largest batch) vs the laptop batch-1 B0
+    if batched:
+        bs_prod = max(batched)
+        st = res["steps"][f"total_b{bs_prod}"]
+        res["route_gate"] = {"rule": "graded-class agreement with CPU batch-1 >= 62/64 -> batched route usable; "
+                                     "token mismatches disclosed (Advisor re-check, 2026-11-02)",
+                             "layout": f"batch {bs_prod}, rows sorted by case id", "n": st["rows"],
+                             "class_agree": st["class_equal_laptop"], "token_agree": st["token_equal_laptop"],
+                             "threshold": 62 if st["rows"] == 64 else None,
+                             "usable": bool(st["rows"] == 64 and st["class_equal_laptop"] >= 62)}
     res["done"] = True
     save()
     print(json.dumps({k: v for k, v in res.items() if k != "engine"}))

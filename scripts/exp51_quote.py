@@ -25,6 +25,10 @@ EST = {"full_b1": 2.5, "full_batched": 0.35, "resume_batched": 0.25, "prefix_bat
 FIXED_S = {"pod start + image": 300, "install": 240, "download 3B": 180, "D-22 smoke (dummy)": 180,
            "copy back + checks": 300}
 FACTOR = 1.30
+RULE = ("Fixed before any GPU measurement (Advisor re-check, 2026-11-02): one backend and one fixed batch layout per "
+        "split for every confirmatory arm, B0 included. GPU batched vs CPU batch-1 on the 64 measurement E rows: graded-"
+        "class agreement >= 62/64 -> the batched route is usable (token mismatches disclosed); below -> not used for "
+        "confirmatory work.")
 
 
 def rows(bases: int) -> dict:
@@ -92,18 +96,24 @@ def measured_units(path: Path) -> dict:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--measured", default=None)
-    p.add_argument("--rate", type=float, default=0.59)
+    p.add_argument("--rates", default="0.59,0.35", help="A40 secure, community ($/h, live read 2026-11-02)")
     a = p.parse_args(argv)
     unit = measured_units(Path(a.measured)) if a.measured else dict(EST)
-    q = quote(unit, a.rate)
+    rates = [float(x) for x in a.rates.split(",")]
+    q = quote(unit, rates[0])
     q["basis"] = "measured" if a.measured else "ESTIMATED (no pod timing yet)"
-    q["batch1_everything_usd"] = quote({**unit, "full_batched": unit["full_b1"],
-                                        "resume_batched": unit["full_b1"] * 0.4,
-                                        "prefix_batched": unit["prefix_b1"]}, a.rate)["usd"]
+    q["rule_fixed_before_measurement"] = RULE
+    q["by_rate"] = {}
+    for r, label in zip(rates, ("secure", "community", "other")):
+        qr = quote(unit, r)
+        b1 = quote({**unit, "full_batched": unit["full_b1"], "resume_batched": unit["full_b1"] * 0.4,
+                    "prefix_batched": unit["prefix_b1"]}, r)
+        q["by_rate"][label] = {"rate_usd_h": r, "usd": qr["usd"], "hard_stop_usd": qr["hard_stop_usd"],
+                               "usd_without_secondary": qr["usd_without_secondary"],
+                               "batch1_everything_usd": b1["usd"]}
     out = ROOT / "runs/exp51/run/gpu_quote.json"
     out.write_text(json.dumps(q, indent=1))
-    print(json.dumps({k: q[k] for k in ("basis", "run_h", "total_h", "usd", "usd_without_secondary", "hard_stop_usd",
-                                        "batch1_everything_usd")}))
+    print(json.dumps({"basis": q["basis"], "total_h": q["total_h"], "by_rate": q["by_rate"]}))
     return 0
 
 
