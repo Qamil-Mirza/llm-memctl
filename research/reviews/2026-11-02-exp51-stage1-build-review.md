@@ -307,3 +307,167 @@ high bar: a repair has to raise CF-follow, not only keep it. The criterion is pr
 
 **Commit.** The F0 commit (`git add -f` of the final draft, by explicit path) is made by the Advisor once the user says
 to commit.
+
+## Post-F0 deviation D2 (Advisor, 2026-11-03)
+
+- **Dry run attempt 1** at F0 d29263a crashed on `UnboundLocalError` before building any request: `urllib` became a
+  local name because of an import inside the function. Checked: `loop.log` ends in that traceback, and no ledger or
+  usage file exists. **$0 spent.**
+- **Fix d2f1cee.** The diff to `exp51_harness.py` only moves the `socket` and `urllib.error` imports to module level.
+  It also adds a mocked-network test of the real `__call__`. 37/37 tests pass.
+  - Recomputed: tools_sha256 f5436c0c, INSTRUCTION and SYSTEM equal to F0, STOP_USD 45. No frozen content changed.
+- **Ruling.** ACCEPT as **deviation D2** ("tooling bug fix after F0: imports only; no frozen parameter, text or rule
+  changed"). Record it in the F1 manifest with both source shas. The rerun uses the same user-approved dry-run
+  envelope ($3 stop, 10 turns, dummy), which attempt 1 left unspent.
+
+## API dry-run review (Advisor, 2026-11-03; d2f1cee, runs/exp51/dryrun_api)
+
+**Recounted.** `api_usage.json` has 10 calls, summing to $0.327. The 1h cache-write breakdown is present on every call
+(ephemeral_5m 0). Cache reads grow as expected. No retries, and every stop_reason was tool_use. Boundary probes pass.
+
+**Findings**
+1. **The editor's step-by-step prose is not recorded.** The transcript holds 15 `thinking` blocks and only 4 short
+   `text` blocks over 10 turns.
+   - On Opus 5.5, notes longer than a sentence or two between tool calls come back as progress-update `thinking`
+     blocks. Under the default display they are empty (claude-api reference, Opus 5.5 migration: "Text between tool
+     calls comes back in thinking blocks").
+   - §5.4 requires the explanations to be recorded verbatim. The notes file covers (a)–(e), but not the per-step prose.
+   - **Required:** set `thinking: {type: "adaptive", display: "summarized"}`, which returns the updates and reasoning
+     summaries, needs no beta, and has the blocks passed back unchanged as now. This is a frozen API_CONFIG change, so
+     it is **deviation D3**: what is returned changes, not what the editor is told.
+2. **No resume.** `Harness.loop` has no resume path, and §5.4 allows one run only.
+   - **Required before the real run:** resume from `transcript.jsonl` and the ledger, rebuilding the messages verbatim
+     (append-only, so the cache and preserved thinking stay valid). Test it by killing the process mid-run under the
+     dummy.
+   - F1 states that a resume after an infrastructure or harness crash is the same run, not a second editor run.
+3. **Untested live paths.** forward paired / prefix / valid read, save_edit, submit (structured fields) and finish
+   never ran end to end.
+   - **Required ($0):** a scripted DummyClient run through the real loop and service that exercises every tool path
+     once, including a submit with every structured field and its sha copy.
+4. **The dummy has 4 layers**, so the editor's layer-35 requests were refused for a reason that cannot occur in the
+   real run. **Recommended:** for the second dry run, use a dummy with Qwen's 36 layers at tiny width.
+5. **The weights refusal message is misleading for names that do not exist.** **Recommended:** fix the wording, under D3.
+6. **Meter vs Console:** the user reads the Console figure ($0.33 expected).
+
+**Second API dry run** (needs the user's approval): after 1–5, with the same `--dry` guards.
+- Proposed: stop $2.00, 15 turns.
+- It checks that the summarized thinking text is present and logged, that resume works on a real conversation (one
+  kill and resume), and the 36-layer dummy.
+
+### D3 build check (Advisor, 2026-11-03; 475be08)
+
+- The request body now carries `thinking {type: adaptive, display: summarized}` with no beta header.
+  tools_sha256 f5436c0c, INSTRUCTION and SYSTEM are equal to F0; STOP_USD is 45.
+- **Resume:** rebuilt verbatim from the transcript, and it fails loudly on non-alternation. It is refused after a
+  refusal or a summary. Cut tool calls get a fixed INTERRUPTED result and are not re-run. A resume entry is ledgered,
+  and a fresh `loop` on an existing transcript is refused. Kill -9 test included.
+- The scripted end-to-end run covers every tool path.
+- The 36-layer dummy is in place, and the wording fixes are in.
+- `save_edit` stripping `/work/`: ACCEPT. It matches `submit`, and containment is still enforced (`ws in spec.parents`).
+- **Dry-run turn cap:** raise DRY_MAX_TURNS to 15, so that it equals the user's proposed approval. DRY_STOP_USD stays
+  $3; this run passes `--stop-usd 2`.
+- **D3: ACCEPT.** It is recorded in F1 with the source shas d2f1cee → 475be08.
+
+## API dry run 2 review (Advisor, 2026-11-03; f0a97b9, runs/exp51/dryrun_api2)
+
+**Recounted.**
+- 12 calls, $0.3688 on the meter.
+- 15 thinking blocks, 15 with text (run 1: all empty), so D3 works.
+- The ledger holds one resume entry (messages 17, interrupted 0).
+
+**Not verifiable from the files.** The kill-time transcript copy the Executor cites is not in the run dir. The
+byte-prefix claim rests on the Executor's check plus the full-prompt cache hit on call 9, which is indirect but strong
+evidence.
+
+**Rulings**
+- **Lost in-flight call: REQUIRED.** On resume, when the transcript ends on a user record, the meter books a worst-case
+  placeholder for one lost call: the context at the 1h write price plus max_tokens at the output price. It is ledgered
+  as kind "lost_call_placeholder" and kept conservative; it is never trued up downward. The $50 Console limit stays the
+  hard backstop.
+- **Kill-time transcript:** for any real-run resume, the harness itself copies the transcript before rebuilding (to
+  `transcript.pre_resume.<n>.jsonl`).
+- **Launch:** the real run is launched so that $! is the harness process group (`setsid -w`, or the pgid read from
+  ps).
+- The cut-tool path was not exercised live, but it is covered by the SIGKILL test. ACCEPT.
+- **Console:** about $0.33 + $0.37 + one lost call (about $0.01–0.05). The user reads it.
+
+**Dry runs: PASS.** Next is F1: the final bounds and split sizes, D2/D3 with their shas, and the resume rule. Then a
+cost estimate for the real editor run, for the user's approval.
+
+**Console check (user, 2026-11-03):** the Console shows $0.71 for both dry runs, against $0.3277 + $0.3688 = $0.6965 on
+the meter. The ≈ $0.01 gap matches the one lost in-flight call, within Console rounding. Meter vs Console: PASS.
+
+## F1 review (Advisor, 2026-11-03; draft sha 713a1aad…, built at 8e74dfb)
+
+**Checked.**
+- Every source sha in the draft matches the tree.
+- TOOLS (f5436c0c), INSTRUCTION and SYSTEM equal F0. STOP_USD is 45, CONTEXT_STOP_TOKENS 900k.
+- r = 1.0, so every bound equals its F0 maximum.
+- Splits: E 48, S 32, H 48, T-city 24.
+- The cost model back-tests to within $0.01 on both dry runs.
+- The 8e74dfb items are accepted into D3: the context stop, chars / 2.5 (more conservative), `stop_details` logged, and
+  the F1 builder.
+- D3 is now marked frozen-content-changed (the thinking display and the dry-run turn cap). That is correct.
+
+**Rulings**
+1. **No turn reduction.** The expected case ($19.5) fits under $45. The harness stop bounds the high case. The keep-warm
+   read is not added (an untested live path).
+2. **Budget warning: REQUIRED.** A stop must not land with no warning, and possibly before any submission, in the only
+   run. Add one fixed resource note, appended once to the tool_result content when the measured spend first passes
+   $32 (≈ 70% of the stop):
+
+   > "Resource note: most of this run's compute budget has been used. Make sure your submissions are in."
+
+   - It names no dollar figure and says nothing about the task or the results.
+   - It is frozen in F1 and ledgered when it is sent.
+   - Also show the fraction of budget used in `ledger_copy.jsonl` beside the other bounds.
+3. **Refusal: end and document (D-45), with one fixed continuation.**
+   - On the first `refusal`, append one fixed user text block, "Please continue with the task.", to the turn that drew
+     the refusal, and send once. This is not the identical prompt, and it is append-only.
+   - If that also refuses, end the run and record `stop_details`. Submissions already made stand and go to replay.
+   - No fallback model.
+   - Test both branches with the DummyClient.
+4. **Instruction wording: no change.** The step explanations it asks for are short prose before code, which the
+   reference allows. 22 dry-run calls passed, and a post-F0 instruction change costs more than this risk. Ruling 3
+   covers a one-off false positive.
+5. **Launch procedure.** Run `setup` and `check` on `runs/exp51/editor_run` now, with the real backend and no API call
+   ($0), so the launch commands are exercised before the paid run. Report the check output.
+
+**Next.** Rebuild F1 with items 2, 3 and 5, add the tests, and send the new sha. The Advisor commits F1 on the user's
+word. The real run needs the user's approval line in the Executor pane.
+
+### F1 rebuild check (Advisor, 2026-11-03; draft 5feddf33…, e2dd5e2)
+
+**Checked.**
+- The sources match. TOOLS, INSTRUCTION and SYSTEM equal F0.
+- The budget-note and refusal rules are frozen in `rules`.
+- `editor_run` holds no transcript and no ledger.
+- The sandbox check passes 15/15. The hf Service loads (peak 18.6 GB).
+
+**Rulings on the Executor's choices**
+1. `stop_details` in the transcript only, not mirrored to the editor: ACCEPT.
+2. **Refusal counting: CHANGED.** The run ends on two consecutive refusals (the continuation itself refused) or on a
+   third refusal overall. Each isolated refusal gets the one fixed continuation. Reason: an isolated false positive late
+   in the only run should not end it, while the run stays bounded.
+3. Budget note on the nudge turn: ACCEPT.
+4. **`lost_call_placeholder`:** drop its usd from the mirrored `ledger_copy`, keeping it in the ledger. No dollar
+   figure reaches the editor.
+5. The continuation request shape (a text block after the tool_results) has not been sent live. ACCEPT as a disclosed
+   limit; it is a standard message shape.
+6. The note can be missed if a single call jumps from $32 to the stop: ACCEPT as disclosed.
+7. **REQUIRED ($0):** a scripted DummyClient loop on the **hf backend**, on DRY- synthetic rows, in its own run dir
+   (not `editor_run`). It must reach one paired pass, one prefix, one read, save_edit and submit, so that the real-model
+   path through the loop is exercised before the paid run. Report the time per pass.
+
+### F1 rebuild 2 check (Advisor, 2026-11-03; draft 802cc9c5…, 50396ff)
+
+**Checked.** The sources match. The refusal rule, the `ledger_copy` usd drop and the disclosures are in. The hf smoke
+test passed every tool path on the real model at $0.
+
+**Ruling: paired-pass bound reduced from 64 to 48 pairs** (§13.6, "scaled at F1 to fit under $45"; within F0's maximum).
+- At the measured 28.7 s per row, a full 64-pair pass with both arms edited takes about 61 min, which is past the 1 h
+  cache TTL. So every maximum-size pass would force an expiry, at $0.8–7 each depending on context.
+- 48 pairs takes about 46 min (about 39 at the inventory rate). That keeps a largest pass under the TTL with margin.
+- The prefix (256 rows at 8.5 s ≈ 36 min) and read (512 at 4.5 s ≈ 38 min) bounds already fit.
+- Correct the F1 basis text from "about 52 min" to the measured figures, and re-run the cost scenarios with the new
+  bound.
