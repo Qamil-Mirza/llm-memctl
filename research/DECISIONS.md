@@ -170,3 +170,29 @@ the user has made the decision.
   - Then F0 and F1, then the dummy-model dry run, and only then the editor run.
 - **Authority.** The user's "Go on §51" (Advisor pane, 2026-11-02). The editor decision is the user's "Opus 5.5 with a
   $50 cap is fine" (same pane, same day).
+
+## D-73 (2026-11-03) — Programme cap raised from $30 to $36; §51 S + H + T-city on one batched A40 job
+
+- **What.** The programme cap (D-40) goes from $30 to $36. The money is for §51's stage-4 compute: S, H and T-city, the
+  §10 replay check, and the fixed steps, on an A40 secure at batch 64 with strict fp32.
+  Measured quote (`runs/exp51/run/gpu_quote.json`, basis "measured"): 16.14 pod-hours, **$9.52, hard stop $10.95**.
+  Spend before this job is about $24.21, so the job fits under $36 with its stop.
+- **Basis.**
+  - The timing pod (1t1acrr39w08aw, 264 s, about $0.04) passed the route gate that was fixed before the measurement:
+    64/64 graded-class and 64/64 token agreement with laptop CPU batch-1, at batch 64.
+  - Rejected options:
+    - grid cuts (still over the cap, and they weaken the study);
+    - TF32 (changes the numerics, and probably still over with the stop);
+    - H on the laptop (about 5 days, and the GPU part still exceeds the old cap);
+    - all on the laptop (2–3 weeks);
+    - waiting for the community tier ($0.35/h; still over, none available).
+- **Unchanged.** This does not approve the pod.
+  - It still needs: F0 and F1; the dry run; the editor run; the build review of the stage-4 chain; D-22 and D-30; the
+    re-read of the live price at creation (above $0.59/h → stop and ask); and the user's own approval line in the
+    Executor pane, with the price and the stop.
+  - Never two pods. list-pods empty afterwards, from both panes.
+  - **H and T outputs are generated only after F2 is frozen and committed.** If F2 needs a human step, S and H/T run as
+    separate pods, each quoted and approved on its own.
+  - The D-72 editor budget ($50 workspace limit) is separate and unchanged.
+- **Authority.** The user's "Do A" (Advisor pane, 2026-11-03), answering the option "raise the cap to $36 and run it all
+  as one GPU job".
