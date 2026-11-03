@@ -635,3 +635,19 @@ def test_shortcut_parity_dummy(engine, small_cases, tmp_path):
     fake = {**rec, "first_trigger_step": 3}
     g = RUN.shortcut_row(e, row, fake, arm, T_CITIES)
     assert g["gen_ids"][:3] == rec["gen_ids"][:3] and len(g["gen_ids"]) <= EN.MAX_NEW_TOTAL
+
+
+def test_generate_batched_matches_batch1_dummy(engine, small_cases):
+    import exp51_engine as EN
+    e = engine
+    rows = sorted([r for r in small_cases[0] if r["split"] == "E"][:5], key=lambda r: r["case_id"])
+    batch = [e.chat_ids(r["prompt"]) for r in rows]
+    assert len({len(x) for x in batch}) > 1                            # padding is exercised
+    unk = [e.encode(" unknown")[0]]
+    for arm, mode in ((EN.Arm(), "total"), (EN.Arm(bias={"ids": unk, "value": -4.0, "mode": "whole"}), "total"),
+                      (EN.Arm(steer={"layer": 1, "vector": np.ones(e.hidden) * 0.1, "mode": "prefix"}), "prefix")):
+        got = e.generate_batched(batch, arm, mode=mode, max_new=12)
+        ref = [e.generate(x, arm, mode=mode, max_new=12) for x in batch]
+        assert [g.gen_ids for g in got] == [r.gen_ids for r in ref]
+    with pytest.raises(ValueError):
+        e.generate_batched(batch, EN.Arm(hybrid=True))

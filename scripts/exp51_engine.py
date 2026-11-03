@@ -92,22 +92,29 @@ class GenResult:
 
 class Engine51:
     def __init__(self, snapshot: Path = SNAPSHOT, threads: int = 16, edit_dir: Path | None = None,
-                 verify_disk: bool = True):
+                 verify_disk: bool = True, device: str = "cpu"):
         import torch
         import transformers
         from transformers import AutoModelForCausalLM, AutoTokenizer
         torch.set_num_threads(threads)
+        self.device = device
+        if device != "cpu":
+            # the GPU route: strict float32 (no TF32), every new tensor on the device
+            torch.backends.cuda.matmul.allow_tf32 = False
+            torch.backends.cudnn.allow_tf32 = False
+            torch.set_default_device(device)
         self.torch, self.snapshot, self.threads = torch, Path(snapshot), threads
         t0 = time.perf_counter()
         self.tok = AutoTokenizer.from_pretrained(str(snapshot))
-        self.net = AutoModelForCausalLM.from_pretrained(str(snapshot), dtype=torch.float32).eval()
+        self.net = AutoModelForCausalLM.from_pretrained(str(snapshot), dtype=torch.float32).to(device).eval()
         self.load_s = time.perf_counter() - t0
         self.layers = self.net.model.layers
         self.n_layers, self.hidden = len(self.layers), self.net.config.hidden_size
         self.stop_ids = {self.tok.convert_tokens_to_ids("<|im_end|>"), self.tok.eos_token_id}
         self.edits = ED.EditLayer(self.net, snapshot if verify_disk else None,
                                   edit_dir or (ROOT / "runs/exp51/edits"))
-        self.name = f"hf-{transformers.__version__}-torch-{torch.__version__}-cpu-float32-t{threads}"
+        self.name = (f"hf-{transformers.__version__}-torch-{torch.__version__}-cpu-float32-t{threads}" if device == "cpu"
+                     else f"hf-{transformers.__version__}-torch-{torch.__version__}-{device}-float32-notf32")
         self._offset = 0
         self._step_no = None
         self._hooks: list = []
@@ -175,7 +182,7 @@ class Engine51:
                     src = h if out is None else out          # captures see the output after any op
                     for p in captures["positions"]:
                         if lo <= p < lo + T:
-                            captures["comp"][(key, p)] = src[0, p - lo].detach().float().numpy().copy()
+                            captures["comp"][(key, p)] = src[0, p - lo].detach().float().cpu().numpy().copy()
                 if out is None:
                     return None
                 return (out,) + tuple(output[1:]) if tup else out
@@ -225,7 +232,7 @@ class Engine51:
                 def fn(module, inputs, output):
                     h = output[0] if isinstance(output, tuple) else output
                     if h.shape[1] == 1:
-                        cur[l] = h[0, -1].detach().float().numpy().copy()
+                        cur[l] = h[0, -1].detach().float().cpu().numpy().copy()
                 return fn
             handles += [layer.register_forward_hook(mk(l)) for l, layer in enumerate(self.layers)]
         try:
@@ -291,7 +298,7 @@ class Engine51:
         def mk(l):
             def fn(module, inputs, output):
                 h = output[0] if isinstance(output, tuple) else output
-                saved[l] = h[0, list(positions)].detach().float().numpy().copy()
+                saved[l] = h[0, list(positions)].detach().float().cpu().numpy().copy()
             return fn
         t0 = time.perf_counter()
         if edit is not None:
@@ -309,7 +316,7 @@ class Engine51:
                 full = out.logits[0].float()
                 rows = [full[order.index(p)] for p in logit_positions]
                 lg = torch.stack(rows)
-                lg = (lg if logit_ids is None else lg[:, list(logit_ids)]).numpy().copy()
+                lg = (lg if logit_ids is None else lg[:, list(logit_ids)]).cpu().numpy().copy()
         finally:
             self._remove(handles)
             if edit is not None:
@@ -320,6 +327,102 @@ class Engine51:
             comp.setdefault(key, {})[p] = v
         return {"resid": resid, "comp": comp, "logits": lg, "wall_s": time.perf_counter() - t0, "n_tokens": len(ids)}
 
+
+    def generate_batched(self, batch: list[list[int]], arm: Arm | None = None, mode: str = "total",
+                         max_new: int | list[int] | None = None, edit: tuple | None = None,
+                         text_before: list[str] | None = None) -> list[GenResult]:
+        """The batched route: one fixed batch (the caller fixes the layout: rows sorted by case id, consecutive
+        chunks), left padding with an attention mask and explicit position ids, greedy, with the same per-sequence
+        semantics as `generate`: B1's bias and B4's add switch on per sequence at its own first-marker forward
+        (total) or from step 0 (prefix / resume), stop rules per sequence, finished sequences masked. Component
+        hooks (M2) are not supported here (they stay at batch 1)."""
+        arm = arm or Arm()
+        if arm.comp or arm.hybrid:
+            raise ValueError("component hooks and the hybrid estimand run at batch 1")
+        torch = self.torch
+        B = len(batch)
+        cap = max_new if isinstance(max_new, list) else [max_new or (MAX_NEW_TOTAL if mode == "total"
+                                                                     else MAX_NEW_RELEASE)] * B
+        tb = text_before or [""] * B
+        pad = self.tok.pad_token_id if self.tok.pad_token_id is not None else self.tok.eos_token_id
+        L = max(len(x) for x in batch)
+        padn = [L - len(x) for x in batch]
+        t0 = time.perf_counter()
+        if edit is not None:
+            self.edits.apply(*edit)
+        on = torch.zeros(B, dtype=torch.bool)
+        handles = []
+        if arm.steer is not None:
+            vec = torch.tensor(np.asarray(arm.steer["vector"], np.float32))
+            whole = arm.steer.get("mode") == "whole"
+
+            def steer_fn(module, inputs, output):
+                h = output[0] if isinstance(output, tuple) else output
+                if h.shape[1] != 1:
+                    return None                                   # never during the prefill
+                m = torch.ones(B, dtype=torch.bool) if whole else on
+                if not bool(m.any()):
+                    return None
+                h = h.clone()
+                h[m, -1] += vec
+                return (h,) + tuple(output[1:]) if isinstance(output, tuple) else h
+            handles.append(self.layers[int(arm.steer.get("layer", STEER_LAYER))].register_forward_hook(steer_fn))
+        try:
+            ids = torch.tensor([[pad] * p + x for p, x in zip(padn, batch)])
+            att = torch.tensor([[0] * p + [1] * len(x) for p, x in zip(padn, batch)])
+            pos = (att.cumsum(1) - 1).clamp(min=0)
+            with torch.no_grad():
+                out = self.net(input_ids=ids[:, :-1], attention_mask=att[:, :-1], position_ids=pos[:, :-1],
+                               use_cache=True, logits_to_keep=1)
+            cache = out.past_key_values
+            cur, cur_pos = ids[:, -1:], pos[:, -1:]
+            gens = [[] for _ in range(B)]
+            trig = [0 if mode in ("prefix", "resume") else None for _ in range(B)]
+            done, stops = [False] * B, ["max_new"] * B
+            bias = arm.bias
+            bias_ids = torch.tensor(sorted(bias["ids"]), dtype=torch.long) if bias else None
+            while not all(done):
+                for b in range(B):
+                    on[b] = trig[b] is not None and len(gens[b]) >= trig[b] and not done[b]
+                with torch.no_grad():
+                    o = self.net(input_ids=cur, attention_mask=att, position_ids=cur_pos, past_key_values=cache,
+                                 use_cache=True, logits_to_keep=1)
+                logits = o.logits[:, -1].clone()
+                if bias is not None:
+                    m = torch.ones(B, dtype=torch.bool) if bias["mode"] == "whole" else on
+                    if bool(m.any()):
+                        logits[m.nonzero().flatten()[:, None], bias_ids[None, :]] += float(bias["value"])
+                nxt = logits.argmax(-1).tolist()
+                for b in range(B):
+                    if done[b]:
+                        continue
+                    t = nxt[b]
+                    if t in self.stop_ids:
+                        done[b], stops[b] = True, "eos"
+                        continue
+                    gens[b].append(t)
+                    text = self.decode(gens[b])
+                    if trig[b] is None and MARKER in text:
+                        trig[b] = len(gens[b])
+                    if mode == "total" and _answer_line_done(text):
+                        done[b], stops[b] = True, "answer_line"
+                    elif mode == "resume" and _answer_line_done(tb[b] + text):
+                        done[b], stops[b] = True, "answer_line"
+                    elif mode == "prefix" and "\n" in text and text.strip():
+                        done[b], stops[b] = True, "newline"
+                    elif len(gens[b]) >= cap[b]:
+                        done[b] = True
+                feed = [nxt[b] if not done[b] else pad for b in range(B)]
+                cur = torch.tensor(feed)[:, None]
+                att = torch.cat([att, torch.tensor([[0 if done[b] else 1] for b in range(B)])], 1)
+                cur_pos = cur_pos + 1
+            wall = time.perf_counter() - t0
+        finally:
+            self._remove(handles)
+            if edit is not None:
+                self.edits.revert()
+        return [GenResult(g, self.decode(g), trig[b] if mode == "total" else 0, len(batch[b]), wall / B, stops[b])
+                for b, g in enumerate(gens)]
 
     def generate_batch(self, batch: list[list[int]], max_new: int = MAX_NEW_TOTAL) -> list[list[int]]:
         """(d) measurement only: left-padded greedy batch generation (HF generate), every sequence run to EOS or
@@ -379,7 +482,8 @@ def make_dummy(out: Path = DUMMY_DIR, snapshot: Path = SNAPSHOT, layers: int = 4
     return out
 
 
-def load(backend: str = "hf", threads: int = 16, edit_dir: Path | None = None) -> Engine51:
+def load(backend: str = "hf", threads: int = 16, edit_dir: Path | None = None, device: str = "cpu",
+         snapshot: Path | None = None) -> Engine51:
     if backend == "dummy":
-        return Engine51(make_dummy(), threads=threads, edit_dir=edit_dir)
-    return Engine51(SNAPSHOT, threads=threads, edit_dir=edit_dir)
+        return Engine51(make_dummy(), threads=threads, edit_dir=edit_dir, device=device)
+    return Engine51(Path(snapshot or SNAPSHOT), threads=threads, edit_dir=edit_dir, device=device)

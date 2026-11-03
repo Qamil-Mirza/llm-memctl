@@ -337,16 +337,16 @@ class EditLayer:
         if name not in self.orig:
             p = self.params[name].detach()
             d = self._disk(name)
-            if d is not None and not self.torch.equal(d.to(self.torch.float32), p):
+            if d is not None and not self.torch.equal(d.to(p.device, self.torch.float32), p):
                 raise RuntimeError(f"{name}: the loaded parameter differs from the safetensors value on disk")
             self.orig[name] = p.clone()
         return self.orig[name]
 
     def original_np(self, name: str) -> np.ndarray:
-        return self.original(name).numpy()
+        return self.original(name).cpu().numpy()
 
     def tensor_sha(self, name: str) -> str:
-        return sha_array(self.params[name].detach().numpy())
+        return sha_array(self.params[name].detach().cpu().numpy())
 
     def apply(self, edit_id: str, dose: float = 1.0, only: set | None = None) -> dict:
         """Apply (replacing any edit on the same tensors) and return {param name: sha256 of the result}. `only`:
@@ -359,7 +359,7 @@ class EditLayer:
                     continue
                 name = m["name"]
                 orig = self.original(name)
-                d32 = self.torch.from_numpy(delta64(c, tuple(m["shape"]), dose).astype(np.float32))
+                d32 = self.torch.from_numpy(delta64(c, tuple(m["shape"]), dose).astype(np.float32)).to(orig.device)
                 self.params[name].copy_(orig + d32)
                 sha = self.tensor_sha(name)
                 rec = man.get("result_sha256", {}).get(f"{name}@{dose:g}")

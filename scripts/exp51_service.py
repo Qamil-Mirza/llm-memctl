@@ -292,12 +292,12 @@ class Service:
         for n in names:
             if n not in allowed:
                 raise Refused(f"{n} is not readable (editable tensors and model.norm.weight only)")
-            arrays[n.replace(".", "__")] = self.e.edits.params[n].detach().float().numpy()
+            arrays[n.replace(".", "__")] = self.e.edits.params[n].detach().float().cpu().numpy()
         ids = [int(i) for i in req.get("unembed_ids", [])]
         if len(ids) > 4096:
             raise Refused("at most 4096 unembedding rows")
         if ids:
-            arrays["unembed_rows"] = self.e.net.lm_head.weight[ids].detach().float().numpy()
+            arrays["unembed_rows"] = self.e.net.lm_head.weight[ids].detach().float().cpu().numpy()
             arrays["unembed_ids"] = np.asarray(ids)
         path = self.ws / "captures" / f"{rid}.npz"
         np.savez(path, **arrays)

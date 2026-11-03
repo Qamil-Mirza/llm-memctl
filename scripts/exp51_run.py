@@ -218,11 +218,8 @@ def shortcut_row(e, row: dict, rec: dict, arm: "EN.Arm", tc) -> dict:
     return {"gen_ids": gen, "text": e.decode(gen), "gen_s": round(g.wall_s, 3)}
 
 
-def parity(e, rws: list[dict], run: Path, tc, n: int = 24) -> dict:
-    """Build review 8c: B1 −4 and B4 α 2, full online vs the shortcut, on n mixed E rows; any token mismatch blocks."""
-    b1_ids = CM.b1_token_set(e.tok)
-    arms = {"B1_-4": EN.Arm(bias={"ids": b1_ids, "value": -4.0, "mode": "online"}),
-            "B4_2": EN.Arm(steer={"layer": EN.STEER_LAYER, "vector": CM.b4_vector(2.0), "mode": "online"})}
+def mixed_pick(rws: list[dict], run: Path, n: int) -> list[dict]:
+    """n rows with B0 records, round-robin over (task, ANS / CF / UNA) cells, then sorted by case id (fixed order)."""
     have = [r for r in rws if CM.b0("E", r["case_id"], run) is not None]
     groups = {}
     for r in have:
@@ -231,7 +228,15 @@ def parity(e, rws: list[dict], run: Path, tc, n: int = 24) -> dict:
     while len(pick) < n and any(len(v) > i for v in groups.values()):
         pick += [v[i] for _, v in sorted(groups.items()) if len(v) > i]
         i += 1
-    pick = pick[:n]
+    return sorted(pick[:n], key=lambda r: r["case_id"])
+
+
+def parity(e, rws: list[dict], run: Path, tc, n: int = 24) -> dict:
+    """Build review 8c: B1 −4 and B4 α 2, full online vs the shortcut, on n mixed E rows; any token mismatch blocks."""
+    b1_ids = CM.b1_token_set(e.tok)
+    arms = {"B1_-4": EN.Arm(bias={"ids": b1_ids, "value": -4.0, "mode": "online"}),
+            "B4_2": EN.Arm(steer={"layer": EN.STEER_LAYER, "vector": CM.b4_vector(2.0), "mode": "online"})}
+    pick = mixed_pick(rws, run, n)
     out = {"rows": [], "mismatch": []}
     for r in pick:
         rec = CM.b0("E", r["case_id"], run)
@@ -257,10 +262,11 @@ def parity(e, rws: list[dict], run: Path, tc, n: int = 24) -> dict:
     return out
 
 
-def batching(e, rws: list[dict], run: Path, tc, sizes=(8, 16), n: int = 32) -> dict:
-    """Build review 8d, measurement only: B0 at batch 8 and 16 vs the batch-1 B0 records (token and class agreement,
-    rows per hour)."""
-    have = [r for r in rws if CM.b0("E", r["case_id"], run) is not None][:n]
+def batching(e, rws: list[dict], run: Path, tc, sizes=(8, 16), n: int = 24) -> dict:
+    """Build review 8d / the batched route, measurement only: B0 at fixed batch layouts (rows sorted by case id, cut
+    into consecutive batches, left padding with an attention mask) vs the batch-1 B0 records: token and graded-class
+    agreement, rows per hour."""
+    have = mixed_pick(rws, run, n)
     recs = [CM.b0("E", r["case_id"], run) for r in have]
     b1_s = sum(x["gen_s"] for x in recs)
     out = {"n_rows": len(have), "batch1_rows_per_h": round(3600 * len(have) / b1_s, 1), "by_size": {}}
@@ -268,12 +274,16 @@ def batching(e, rws: list[dict], run: Path, tc, sizes=(8, 16), n: int = 32) -> d
         t0 = time.perf_counter()
         gens = []
         for i in range(0, len(have), bs):
-            gens += e.generate_batch([list(x["prompt_ids"]) for x in recs[i:i + bs]])
+            gens += [g.gen_ids for g in e.generate_batched([list(x["prompt_ids"]) for x in recs[i:i + bs]])]
         wall = time.perf_counter() - t0
         tok_eq = sum(g == x["gen_ids"] for g, x in zip(gens, recs))
         cls_eq = sum(CM.grade(r, e.decode(g), tc)["cls"] == x["cls"] for r, g, x in zip(have, gens, recs))
+        diffs = [{"case_id": r["case_id"], "first_diff": next((j for j, (a, b) in enumerate(zip(g, x["gen_ids"]))
+                                                                if a != b), min(len(g), len(x["gen_ids"]))),
+                  "cls_b1": x["cls"], "cls_batched": CM.grade(r, e.decode(g), tc)["cls"]}
+                 for r, g, x in zip(have, gens, recs) if g != x["gen_ids"]]
         out["by_size"][str(bs)] = {"rows_per_h": round(3600 * len(have) / wall, 1), "wall_s": round(wall, 1),
-                                   "token_equal": tok_eq, "class_equal": cls_eq,
+                                   "token_equal": tok_eq, "class_equal": cls_eq, "diffs": diffs,
                                    "peak_rss_gb": round(EN.peak_rss_gb(), 2)}
     return out
 
@@ -452,9 +462,7 @@ def main(argv=None) -> int:
     if a.stage == "noop":
         have = [r for r in rws if CM.b0(r["split"], r["case_id"], run) is not None]
         by_task = {t: [r for r in have if r["task"] == t] for t in ("DE", "RC", "TU")}
-        sel = [x for grp in zip(*by_task.values()) for x in grp]               # interleaved across tasks, then
-        sel += [r for r in have if r not in sel]                                # the rest in order
-        sel = sel[:a.n]
+        sel = mixed_pick(rws, run, a.n)                                         # mixed tasks and sets
         res = noop_gate(e, sel, run, tc)
         CM.write_json(run / "noop_gate.json", res)
         print(json.dumps({k: v for k, v in res.items() if k != "rows"}))
