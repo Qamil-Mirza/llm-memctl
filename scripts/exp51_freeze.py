@@ -102,6 +102,21 @@ def f0() -> dict:
                             "optimisers or iterative loss-based fitting (sandbox: numpy and tokenizers only)",
         "sources_sha256": {s: hashlib.sha256((ROOT / s).read_bytes()).hexdigest() for s in SOURCES},
         "backend_basis": _backend_basis(),
+        "compute_plan": {
+            "decision": "D-73 (the user's 'Do A'): cap $30 -> $36; batched A40 secure route; Advisor stage-4 pod "
+                        "structure ruling (2026-11-03): two pods, each quoted and approved on its own",
+            "E": "laptop CPU fp32, batch 1 (B0, editor service, the §8.4.2 submission replay on all of E)",
+            "pod_S": {"work": "§10 CPU<->pod replay check (200 E rows x B0 + one edit, batch 1 and batch 64) before "
+                              "any H work; B0 and every frozen arm on S; reads; in-pod summary and rule-driven "
+                              "selection -> f2_candidate.json + sha", "quote_usd": 5.81, "stop_usd": 6.68,
+                      "bundle": "no H or T-city rows"},
+            "F2": "the Advisor's S review and git commit on the laptop between the pods",
+            "pod_HT": {"work": "require_f2 (git-verified) before any sealed read; H once, then T-city",
+                       "quote_usd": 3.92, "stop_usd": 4.51},
+            "backend_rule": "S and H (and T-city) each run on the A40 at batch layout 64, rows sorted by case id, "
+                            "strict fp32 (TF32 off); batch 1 only for M2 hooks, the hybrid estimand and reads",
+            "creation": "live price re-read at create; above $0.59/h stop and ask; retries only for the approved card "
+                        "and price; a create refuses if any pod exists"},
         "amendments_pre_F0": [
             {"id": "A1", "what": "T-format dropped; E 48 / S 32 / H 48 / T-city 24 bases per task",
              "why": "the rev 1a sizes did not fit the DE / TU key pool (152 bases > 144 keys; uniform r would be "
