@@ -43,6 +43,23 @@ def sha_text(t: str) -> str:
     return hashlib.sha256(t.encode()).hexdigest()
 
 
+MEASURE = ROOT / "runs/exp51/gpu_measure/pod_copy/measure/measure.json"
+
+
+def _backend_basis() -> dict:
+    """The measured basis for the backend choice (timing pod 1t1acrr39w08aw, 2026-11-03): unit rates and the route
+    gate fixed before the measurement."""
+    if not MEASURE.exists():
+        return {"status": "no measurement"}
+    m = json.loads(MEASURE.read_text())
+    return {"pod": "1t1acrr39w08aw (A40 secure, EU-SE-1, 2026-11-03 16:03:58-16:08:22 UTC, 264 s)",
+            "measure_sha256": hashlib.sha256(MEASURE.read_bytes()).hexdigest(), "engine": m["engine"]["engine"],
+            "gpu": m.get("gpu"), "unit_s_per_row": {k: v.get("s_per_row") for k, v in m["steps"].items()},
+            "route_gate": m.get("route_gate"),
+            "laptop_cpu_reference": "runs/exp51/run/timing.json + batching.json (batch 8 / 16 = 24/24 vs batch 1)",
+            "rule": "one backend and one fixed batch layout per split for every confirmatory arm, B0 included"}
+
+
 def f0() -> dict:
     from transformers import AutoTokenizer
     tok = AutoTokenizer.from_pretrained(str(EN.SNAPSHOT))
@@ -84,6 +101,7 @@ def f0() -> dict:
         "allowed_analysis": "means, covariances, projections, PCA/SVD, closed-form solves computed once; no autograd, "
                             "optimisers or iterative loss-based fitting (sandbox: numpy and tokenizers only)",
         "sources_sha256": {s: hashlib.sha256((ROOT / s).read_bytes()).hexdigest() for s in SOURCES},
+        "backend_basis": _backend_basis(),
         "amendments_pre_F0": [
             {"id": "A1", "what": "T-format dropped; E 48 / S 32 / H 48 / T-city 24 bases per task",
              "why": "the rev 1a sizes did not fit the DE / TU key pool (152 bases > 144 keys; uniform r would be "
