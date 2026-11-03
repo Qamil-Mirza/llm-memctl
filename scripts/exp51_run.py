@@ -428,6 +428,8 @@ def main(argv=None) -> int:
                                                       "batching"))
     p.add_argument("--split", default="E")
     p.add_argument("--sets", default=None, help="comma list of sets (default all)")
+    p.add_argument("--task", default=None, help="restrict to one task (DE / RC / TU)")
+    p.add_argument("--tag", default="", help="suffix for the noop output file")
     p.add_argument("--n", type=int, default=24)
     p.add_argument("--backend", default="hf", choices=("hf", "dummy"))
     p.add_argument("--threads", type=int, default=8)
@@ -450,6 +452,8 @@ def main(argv=None) -> int:
     if a.sets:
         keep = set(a.sets.split(","))
         rws = [r for r in rws if r["set"] in keep]
+    if a.task:
+        rws = [r for r in rws if r["task"] == a.task]
     deadline = time.time() + a.hours * 3600 if a.hours else None
     e = EN.load(a.backend, a.threads, edit_dir=run / "edits")
     if a.stage == "timing":
@@ -464,7 +468,7 @@ def main(argv=None) -> int:
         by_task = {t: [r for r in have if r["task"] == t] for t in ("DE", "RC", "TU")}
         sel = mixed_pick(rws, run, a.n)                                         # mixed tasks and sets
         res = noop_gate(e, sel, run, tc)
-        CM.write_json(run / "noop_gate.json", res)
+        CM.write_json(run / f"noop_gate{a.tag}.json", res)
         print(json.dumps({k: v for k, v in res.items() if k != "rows"}))
         return 0 if res["pass"] else 3
     if a.stage == "parity":
