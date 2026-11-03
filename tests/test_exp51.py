@@ -711,6 +711,26 @@ def test_stage4_end_to_end_dummy(engine, small_cases, tmp_path, monkeypatch):
     mf = S4.m_followups(e, root, rows_S, subs, sel, T_CITIES, B=200)
     assert mf["primary_component"]["i"] == 0 and len(mf["b6_edit_ids"]) == 5 and len(mf["activity"]) == 2
     assert mf["f_int_doses"] and "unestimable" in mf["predictor"]["coef"]     # scripted B0: FA only
+    assert mf["pair"] == ["FA", "UNA"]
+    # §13.4(b) with a non-FA endpoint: the pair is (C, UNA) and both grids run on C ∪ UNA rows
+    assert S4.interaction_pair({"population": "C"}) == ["C", "UNA"]
+    assert S4.interaction_pair({"population": "UNA"}) == ["UNA", "FA"]
+    subs_c = [dict(x) for x in subs]
+    subs_c[0]["signed_endpoint"] = {"population": "C", "direction": "decrease", "outcome": "gold"}
+    for r in rows_S:                                     # make some ANS rows C (gold) so C is populated
+        if r["set"] == "ANS" and r["hardness"] == "H0":
+            rec = CM.read_json(S4.b0_path(root, "S", r["case_id"]))
+            gen = e.encode(f"{r['A']} is in {r['base_gold']}.\nAnswer: {r['base_gold']}\n")
+            d = CM.designated(e.decode, gen)
+            rec.update({"gen_ids": gen, "text": e.decode(gen), "j": d["j"], "p_ans": len(rec["prompt_ids"]) + d["j"] - 1,
+                        **CM.grade(r, e.decode(gen), T_CITIES)})
+            rec["populations"] = CM.population(r, rec, T_CITIES)
+            CM.write_json(S4.b0_path(root, "S", r["case_id"]), rec)
+    mfc = S4.m_followups(e, tmp_path / "gpu_c" if False else root, rows_S, subs_c, sel, T_CITIES, B=200)
+    assert mfc["pair"] == ["C", "UNA"]
+    c_rows = [r["case_id"] for r in rows_S if "C" in CM.read_json(S4.b0_path(root, "S", r["case_id"]))["populations"]]
+    fint = {"arm": "FINT", "dose": float(mfc["f_int_doses"][0]), "tag": "sub1"}
+    assert c_rows and all(S4.out_path(root, "S", fint, "prefix", c).exists() for c in c_rows)
     sel["M_followups"] = mf
     sel["R"]["candidate"] = {"index": 2, "edit_id": subs[1]["edit_id"], "dose": 1.0}
     # pod H+T: the guard refuses without a committed F2

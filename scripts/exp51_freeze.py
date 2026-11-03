@@ -75,7 +75,9 @@ def f0() -> dict:
                    "harness_stop_usd": H.STOP_USD, "console_workspace_cap_usd": 50,
                    "system_sha256": sha_text(H.SYSTEM), "instruction_sha256": sha_text(H.INSTRUCTION),
                    "instruction": H.INSTRUCTION, "system": H.SYSTEM, "nudge": H.NUDGE,
-                   "sandbox_packages": list(H.SANDBOX_PKGS)},
+                   "sandbox_packages": list(H.SANDBOX_PKGS),
+                   "tools_verbatim": H.TOOLS,
+                   "tools_sha256": sha_text(json.dumps(H.TOOLS, sort_keys=True, separators=(",", ":")))},
         "prompts": {"f2_instruction": G.C.F23_INSTRUCTION, "reasoning_instructions": G.REASONING_INSTRUCTIONS,
                     "t_format_instruction": G.T_FORMAT_INSTRUCTION, "b2_total_suffix": G.B2_SUFFIX,
                     "b2_prefix_tail": CM.B2_TAIL, "b3_removed": [G.G.R4_SENTENCE, G.G.R4_SENTENCE_NOTE]},
@@ -115,6 +117,9 @@ def f0() -> dict:
                        "quote_usd": 3.92, "stop_usd": 4.51},
             "backend_rule": "S and H (and T-city) each run on the A40 at batch layout 64, rows sorted by case id, "
                             "strict fp32 (TF32 off); batch 1 only for M2 hooks, the hybrid estimand and reads",
+            "replay_gate": ">= 194 / 200 graded-class agreement in each of B0 batched, B0 batch 1, submission 1 "
+                           "batched, submission 1 batch 1 vs the laptop; every mismatch listed for the Advisor's "
+                           "investigation before S results are used, even on a pass (stage-4 build review (c))",
             "creation": "live price re-read at create; above $0.59/h stop and ask; retries only for the approved card "
                         "and price; a create refuses if any pod exists"},
         "amendments_pre_F0": [

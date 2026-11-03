@@ -25,10 +25,17 @@ Fixed choices of this build (each in f2_candidate.json "rules"):
   effect on S at the M dose (ties: the editor's most important component, then component index).
 - Manipulations for the activity tests (per base, mean over the hardness levels present in both rows):
   evidence_removed = UNA-rel − ANS rep a; city_changed = CF − ANS rep a; distractors_added = ANS rep a H2 − H1;
-  unrelated_vs_absent = UNA-swap − UNA-rel (H1). f is read at each row's own B0 P_ans.
+  unrelated_vs_absent = UNA-swap − UNA-rel (H1). f is read at each row's own B0 P_ans. distractors_added: same base,
+  rep and evidence text (every H1 line is kept in H2, the core facts are identical); the 7 added lines are distractors,
+  and because F2 dates lines by position the dates move with them (on E: the question date in 144 / 144 pairs, the
+  evidence line's date in 129 / 144).
+- §13.4(b) population pair: (the declared endpoint population, UNA); if the declared population is UNA, (UNA, FA).
+  The f-intervention grid and the B1 signed grid run on the union of the pair; the pair is written to F2
+  (M_followups.pair) and h_report reads it from there.
 - Pod-side replay check (§10, 200 E rows sorted by case id: B0 and submission 1 at dose 1): batched layout and batch 1
-  vs the laptop's batch-1 records; the S arms run only if graded-class agreement >= 0.969 in both (the 62/64 rule
-  scaled), else the chain stops (exit 8) and reports every mismatch class.
+  vs the laptop's batch-1 records; the S arms run only if graded-class agreement >= 194 / 200 in all four comparisons
+  (the 62 / 64 rule scaled; Advisor ruling (c)), else the chain stops (exit 8); every mismatch is listed either way,
+  for the Advisor's investigation before S results are used.
 """
 
 from __future__ import annotations
@@ -260,6 +267,11 @@ def endpoint_values(graded, labels, meta, ep) -> dict:
     return MK.per_base(graded, labels, meta, ep["population"], ep["outcome"])
 
 
+def interaction_pair(ep) -> list[str]:
+    """§13.4(b): the declared population and UNA (UNA declared -> FA)."""
+    return [ep["population"], "FA" if ep["population"] == "UNA" else "UNA"]
+
+
 def sign_of(ep) -> int:
     return 1 if ep["direction"] == "increase" else -1
 
@@ -442,7 +454,8 @@ def m_followups(e, root, rows_S, subs, sel, tc, B=S.B_DEFAULT, deadline=None) ->
     ans_f = [v for c, v in fvals.items() if v is not None and meta[c]["set"] == "ANS"]
     sd_f = float(np.std(ans_f, ddof=1))
     fint_doses = [s["f_int_sign"] * k * sd_f for k in F_INT_MULT]
-    fa_una = [r for r in au if any(p in labels[r["case_id"]] for p in ("FA", "UNA"))]
+    pair = interaction_pair(ep)
+    fa_una = [r for r in rows_S if any(p in labels[r["case_id"]] for p in pair)]
     b1_ids = CM.b1_token_set(e.tok)
     fint_eff, fint_deg = {}, {}
     b0_pre = load_graded(root, "S", {"arm": "B0"}, "prefix", rows_S)
@@ -504,7 +517,7 @@ def m_followups(e, root, rows_S, subs, sel, tc, B=S.B_DEFAULT, deadline=None) ->
             "b6_edit_ids": b6, "f": {"site": site, "direction_sha256": ED.sha_array(np.asarray(vec, np.float32)),
                                      "sd_ans_S": sd_f}, "activity": acts, "f_int_doses": fint_doses,
             "f_int_effects": fint_eff, "f_int_dose": fint_dose, "b1_signed_effects": b1_eff, "b1_matched": matched,
-            "hook_positions": "P_ans only (§13.3)", "predictor": {"encoding": enc, "coef": coef, "n_train": len(preds)},
+            "hook_positions": "P_ans only (§13.3)", "pair": pair, "predictor": {"encoding": enc, "coef": coef, "n_train": len(preds)},
             "audit_seed": 5101}
 
 
@@ -591,9 +604,20 @@ def h_run(e, root, subs, tc, deadline=None) -> None:
             if deadline and time.time() > deadline:
                 raise Deadline()
             CM.write_json(p, fn() if rec.get("p_ans_ok") else {"case_id": r["case_id"], "skipped": "NM"})
+    labels_H, _ = labels_meta(root, "H", rows_H)
+    pair_rows = [r for r in rows_H if any(p in labels_H[r["case_id"]] for p in mf["pair"])]
+    for r in sorted(pair_rows, key=lambda r: r["case_id"]):
+        if r in au:
+            continue
+        rec = CM.read_json(b0_path(root, "H", r["case_id"]))
+        p = out_path(root, "H", {"arm": "FINT", "tag": f"sub{mf['submission']}"}, "prefix", r["case_id"])
+        if not p.exists():
+            CM.write_json(p, MC.f_intervention_arm(e, r, rec, (int(site["layer"]), site["tensor"]), vec,
+                                                   mf["f_int_dose"], tc) if rec.get("p_ans_ok") else
+                          {"case_id": r["case_id"], "skipped": "NM"})
     if mf.get("b1_matched") is not None:
-        run_arm(e, au, root, "H", {"arm": "B1", "dose": float(mf["b1_matched"]), "b1_ids": b1_ids, "tag": "matched"},
-                "prefix", tc, deadline)
+        run_arm(e, pair_rows, root, "H", {"arm": "B1", "dose": float(mf["b1_matched"]), "b1_ids": b1_ids,
+                                          "tag": "matched"}, "prefix", tc, deadline)
     fpath = Path(root) / "f" / "H.json"
     fvals = CM.read_json(fpath, {})
     for r in sorted(rows_H, key=lambda r: r["case_id"]):
@@ -674,8 +698,9 @@ def h_report(root, subs, rows_S, rows_H, rows_T, B=S.B_DEFAULT) -> dict:
             else:
                 acts.append({**a, **MK.activity_equivalence(bases, df, a["sd_S"], B)})
         # (b) the Commit interaction: (f-int − matched B1) on FA minus the same on UNA
-        commit_ep_fa = {"population": "FA", "outcome": "Commit"}
-        commit_ep_una = {"population": "UNA", "outcome": "Commit"}
+        pair = mf["pair"]
+        commit_ep_fa = {"population": pair[0], "outcome": "Commit"}
+        commit_ep_una = {"population": pair[1], "outcome": "Commit"}
         gf = load_graded(root, "H", {"arm": "FINT", "tag": tag}, "prefix", rows_H)
         gb = load_graded(root, "H", {"arm": "B1", "dose": float(mf["b1_matched"]), "tag": "matched"}, "prefix",
                          rows_H) if mf.get("b1_matched") is not None else {}
