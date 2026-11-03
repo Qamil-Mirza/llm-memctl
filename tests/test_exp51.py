@@ -1,0 +1,562 @@
+"""§51 build tests: generator and closure, grader fixtures, bootstrap rules, edit layer (family, manifest, bit-for-bit
+apply / revert), engine triggers, the metered service, the sandbox and harness (dummy client, no network), the
+mechanism kit, the no-op gate and the sealed-split guard. Model tests use the tiny random dummy Qwen2."""
+
+from __future__ import annotations
+
+import json
+import shutil
+import sys
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "scripts"))
+
+import exp51_cases as G  # noqa: E402
+import exp51_common as CM  # noqa: E402
+from memctl.analysis import edit51 as ED  # noqa: E402
+from memctl.analysis import grade51 as GR  # noqa: E402
+from memctl.analysis import mech51 as MK  # noqa: E402
+from memctl.analysis import stats51 as S  # noqa: E402
+
+T_CITIES = ["London", "Oxford", "Bristol", "Glasgow", "Sheffield", "Plymouth", "Swansea", "Aberdeen", "Bradford",
+            "Nottingham", "Southampton", "Portsmouth"]
+
+
+# ---------------------------------------------------------------------------------------------- generator
+
+@pytest.fixture(scope="module")
+def small_cases():
+    sizes = {"E": 4, "S": 3, "H": 4, "Tcity": 2, "Tformat": 2}
+    rows, info = G.build_cases(sizes, T_CITIES)
+    return rows, info, sizes
+
+
+def test_feasibility_reports_reduction():
+    f = G.feasibility()
+    assert f["fits_at_1"] is False and f["de_tu_bases_requested"] == 152 and 0 < f["r"] < 1
+    s = f["sizes"]
+    assert G.allocate({k: v for k, v in s.items() if k != "Tcity"}, list(G.C.NAMES), list(G.C.CITIES)) is not None
+    bigger = G.scaled(G.SIZES, f["r"] + 0.001)
+    assert G.allocate({k: v for k, v in bigger.items() if k != "Tcity"}, list(G.C.NAMES), list(G.C.CITIES)) is None
+
+
+def test_thirteen_rows_closure_and_keys(small_cases):
+    rows, info, sizes = small_cases
+    pr = G.check_cases(rows, T_CITIES)
+    assert not any(pr.values()), {k: v[:3] for k, v in pr.items() if v}
+    from collections import Counter
+    assert set(Counter(r["base_key"] for r in rows).values()) == {13}
+    sets = Counter((r["set"], r["hardness"]) for r in rows if r["base_key"] == rows[0]["base_key"])
+    assert sets[("ANS", "H0")] == 2 and sets[("CF", "H2")] == 1 and sets[("UNA-swap", "H1")] == 1
+    owner = {}
+    for r in rows:
+        if r["effective_key"]:
+            k = tuple(r["effective_key"])
+            assert owner.setdefault(k, r["split"]) == r["split"]
+
+
+def test_key_matches_exp50_lambda(small_cases):
+    rows, _, _ = small_cases
+    lam = lambda r: (r["task"], r["A"], r["B"] if r["task"] == "RC" else None, r["base_gold"], r["old_city"])
+    assert all(G.key(r) == lam(r) for r in rows)
+
+
+def test_cf_and_tcity(small_cases):
+    rows, _, _ = small_cases
+    for r in rows:
+        if r["set"] == "CF":
+            assert r["gold"] == r["cf_city"] != r["base_gold"]
+        if r["split"] == "Tcity":
+            assert not [c for c in G.C.CITIES if c in r["prompt"]]
+        if r["split"] == "Tformat":
+            assert G.T_FORMAT_INSTRUCTION in r["prompt"]
+
+
+def test_old_prompt_hash_excluded(small_cases):
+    rows, _, _ = small_cases
+    old, _, _ = G.old_hashes()
+    assert not old & {r["prompt_sha256"] for r in rows}
+
+
+# ---------------------------------------------------------------------------------------------- grader
+
+def test_grader_fixtures():
+    bad = [r for r in GR.run_fixtures() if not r["ok"]]
+    assert not bad, bad
+
+
+def test_utility_and_mixture():
+    assert GR.utility("gold", "ANS") == 1 and GR.utility("mixed", "ANS") == 0 and GR.utility("other", "ANS", 2) == -2
+    assert GR.utility("mixed", "UNA-rel") == -1 and GR.utility("abstention", "UNA-swap") == 0
+    rows = [{"base_key": "b", "set": "ANS", "cls": "gold"}] + [{"base_key": "b", "set": "ANS", "cls": "abstention"}] * 5
+    rows += [{"base_key": "b", "set": "UNA-rel", "cls": "wrong"}] + [{"base_key": "b", "set": "UNA-rel", "cls": "abstention"}] * 3
+    rows += [{"base_key": "b", "set": "CF", "cls": "wrong"}] * 3
+    assert GR.base_mixture(rows)["b"] == pytest.approx(0.5 / 6 - 0.5 / 4)      # 1/12 per ANS row, 1/8 per UNA row
+
+
+# ---------------------------------------------------------------------------------------------- stats
+
+def test_bootstrap_rules():
+    bases = S.Bases({f"b{i}": "DE" for i in range(30)})
+    a = {f"b{i}": 1.0 for i in range(30)}
+    z = {f"b{i}": 0.0 for i in range(30)}
+    res = S.bootstrap(S.diff_stat(bases, a, z), bases.n_by_task(), B=200)
+    assert S.p_greater(res) == pytest.approx(1 / 201)          # degenerate on the alternative's side
+    assert S.p_less(res) == 1.0
+    res2 = S.bootstrap(lambda idx: None, bases.n_by_task(), B=100)
+    assert res2["B_valid"] == 0 and S.p_greater(res2) is None
+    assert S.tost(res, 0.0) == 1.0                              # SD 0 -> unestimable
+    h = S.holm({"a": 0.001, "b": 0.02, "c": 0.04})
+    assert [h[k]["reject"] for k in "abc"] == [True, True, True]
+    h2 = S.holm({"a": 0.001, "b": 0.03, "c": 0.04})
+    assert [h2[k]["reject"] for k in "abc"] == [True, False, False]
+    assert S.iut([0.01, None]) is None and S.iut([0.01, 0.2]) == 0.2
+    assert S.auroc([3, 2, 1], [1, 0, 0]) == 1.0 and S.auroc([1, 1], [1, 1]) is None
+
+
+def test_failed_replicates_over_one_percent():
+    bases = S.Bases({f"b{i}": "DE" for i in range(5)})
+    vals = {f"b{i}": float(i) for i in range(5)}
+    stat = lambda idx: None if 0 not in idx["DE"] else S.bw_mean(vals, bases.resampled(idx))
+    res = S.bootstrap(stat, bases.n_by_task(), B=500)
+    assert res["n_fail"] > 5 and not res["fail_ok"] and S.p_greater(res) is None
+
+
+def test_m_order_and_doses():
+    c = [{"effect": 0.2, "se": 0.05, "sign": 1, "n_components": 2, "n_params": 10, "index": 1, "bound_ok": True, "support": 25},
+         {"effect": -0.3, "se": 0.05, "sign": -1, "n_components": 1, "n_params": 10, "index": 2, "bound_ok": True, "support": 25},
+         {"effect": 0.04, "se": 0.001, "sign": 1, "n_components": 1, "n_params": 1, "index": 3, "bound_ok": True, "support": 25}]
+    assert [x["index"] for x in S.m_order(c)] == [2, 1]
+    assert MK.pick_dose({-1: 0.3, -16: 0.3, float("-inf"): 0.1}, {-1: 1, -16: 16, float("-inf"): 1e9}) == -1
+    assert MK.closest_b1(0.2, {-1.0: 0.1, 1.0: 0.3, -2.0: 0.25}) == -2.0
+
+
+# ---------------------------------------------------------------------------------------------- model fixtures
+
+@pytest.fixture(scope="module")
+def engine(tmp_path_factory):
+    import exp51_engine as EN
+    d = tmp_path_factory.mktemp("edits")
+    return EN.load("dummy", threads=2, edit_dir=d)
+
+
+def _rand_comp(e, layer, tensor, kind, n=4, scale=1e-2, seed=0):
+    shapes = e.edits.shapes()
+    shape = shapes[ED.EDITABLE[tensor].format(l=layer)]
+    rng = np.random.default_rng(seed)
+    if kind == "dense":
+        return {"layer": layer, "tensor": tensor, "kind": "dense", "U": rng.standard_normal((shape[0], n)) * scale,
+                "V": rng.standard_normal((shape[1], n)) * scale}
+    if kind == "rows":
+        return {"layer": layer, "tensor": tensor, "kind": "rows", "idx": np.arange(n),
+                "D": rng.standard_normal((n, shape[1])) * scale}
+    if kind == "cols":
+        return {"layer": layer, "tensor": tensor, "kind": "cols", "idx": np.arange(n),
+                "D": rng.standard_normal((shape[0], n)) * scale}
+    return {"layer": layer, "tensor": tensor, "kind": "coords", "idx": np.arange(n), "D": rng.standard_normal(n) * scale}
+
+
+def test_edit_family_refusals(engine):
+    e = engine
+    sh = e.edits.shapes()
+    ok = [_rand_comp(e, 0, "o_proj", "dense")]
+    ED.validate(ok, sh, originals=e.edits.original_np)
+    with pytest.raises(ED.EditRefused):
+        ED.validate([{**ok[0], "tensor": "q_proj"}], sh)
+    with pytest.raises(ED.EditRefused):
+        ED.validate([_rand_comp(e, 0, "o_proj", "dense", n=5)], sh)
+    with pytest.raises(ED.EditRefused):
+        ED.validate([_rand_comp(e, l, "down_proj", "dense") for l in range(4)] + [_rand_comp(e, 0, "o_proj", "dense")], sh)
+    ED.validate([_rand_comp(e, l, "down_proj", "cols", n=128) for l in range(4)], sh)       # 512: allowed
+    old = ED.MAX_SPARSE
+    try:
+        ED.MAX_SPARSE = 100           # the dummy's tensors are too small to exceed 512 with 4 components
+        with pytest.raises(ED.EditRefused):
+            ED.validate([_rand_comp(e, 0, "down_proj", "cols", n=64), _rand_comp(e, 1, "input_layernorm", "coords",
+                                                                                 n=40)], sh)
+    finally:
+        ED.MAX_SPARSE = old
+    with pytest.raises(ED.EditRefused):
+        ED.validate([{"layer": 0, "tensor": "input_layernorm", "kind": "dense", "U": np.ones((64, 1)), "V": np.ones((1, 1))}], sh)
+    W = e.edits.original_np(ED.EDITABLE["o_proj"].format(l=0)).astype(np.float64)
+    u, s, vt = np.linalg.svd(W)
+    k = 4
+    with pytest.raises(ED.EditRefused):          # a near-scaling of a (here nearly low-rank) tensor is refused
+        Wl = (u[:, :k] * s[:k]) @ vt[:k]
+        ED.validate([{"layer": 0, "tensor": "o_proj", "kind": "dense", "U": 0.5 * u[:, :k] * s[:k], "V": vt[:k].T}],
+                    sh, originals=lambda n: Wl.astype(np.float32))
+    with pytest.raises(ED.EditRefused):
+        ED.validate([{"layer": 0, "tensor": "o_proj", "kind": "rows", "idx": np.array([1, 1]), "D": np.zeros((2, 64))}], sh)
+
+
+def test_apply_bit_for_bit_and_revert(engine, tmp_path):
+    e = engine
+    e.edits.edit_dir = tmp_path
+    sh = e.edits.shapes()
+    comps = [_rand_comp(e, 1, "down_proj", "dense"), _rand_comp(e, 2, "o_proj", "cols", n=8),
+             _rand_comp(e, 2, "post_attention_layernorm", "coords", n=8)]
+    names = [ED.comp_name(c) for c in comps]
+    before = {n: e.edits.tensor_sha(n) for n in names}
+    man = ED.save_edit(tmp_path, comps, sh, originals=e.edits.original_np)
+    assert ED.save_edit(tmp_path, comps, sh)["edit_id"] != "" and man["n_sparse"] == 16
+    res = e.edits.record_results(man["edit_id"], doses=(1.0, 2.0))
+    assert {n: e.edits.tensor_sha(n) for n in names} == before
+    a1 = e.edits.apply(man["edit_id"], 1.0)
+    assert all(a1[n] == res[f"{n}@1"] for n in names)
+    e.edits.revert_component(2, "o_proj")
+    assert e.edits.tensor_sha(names[1]) == before[names[1]] and e.edits.tensor_sha(names[0]) != before[names[0]]
+    e.edits.revert()
+    e.edits.assert_clean()
+    a2 = e.edits.apply(man["edit_id"], 2.0)
+    assert all(a2[n] == res[f"{n}@2"] for n in names)
+    e.edits.revert()
+    assert {n: e.edits.tensor_sha(n) for n in names} == before
+    (tmp_path / f"{man['edit_id']}.npz").write_bytes(b"x")
+    with pytest.raises(ED.EditRefused):
+        ED.load_edit(tmp_path, man["edit_id"])
+
+
+def test_b6_random_matched_norms(engine):
+    e = engine
+    sh = e.edits.shapes()
+    for kind in ("dense", "rows", "cols", "coords"):
+        t = "input_layernorm" if kind == "coords" else "down_proj"
+        c = _rand_comp(e, 0, t, kind, n=3)
+        shape = sh[ED.comp_name(c)]
+        spec = ED.random_spec(c, shape, seed=2)
+        d, rnd = ED.delta64(c, shape), ED.random_matched(spec, shape)
+        assert np.array_equal(rnd != 0, d != 0) or kind == "dense"
+        if kind == "coords":
+            assert np.linalg.norm(rnd) == pytest.approx(np.linalg.norm(d))
+        else:
+            assert np.allclose(np.linalg.norm(rnd, axis=0), np.linalg.norm(d, axis=0))
+        assert np.array_equal(rnd, ED.random_matched(spec, shape))
+        assert not np.array_equal(rnd, ED.random_matched({**spec, "seed": 3}, shape))
+
+
+def test_b5_orthogonalization_removes_direction(engine):
+    e = engine
+    name = ED.EDITABLE["o_proj"].format(l=0)
+    W = e.edits.original_np(name)
+    d = np.random.default_rng(1).standard_normal(W.shape[0])
+    c = ED.orthogonalize_spec(d, {name: W, ED.EDITABLE["down_proj"].format(l=0): e.edits.original_np(
+        ED.EDITABLE["down_proj"].format(l=0))}, [0], 1.0)[0]
+    W2 = W.astype(np.float64) + ED.delta64(c, W.shape)
+    assert np.abs((d / np.linalg.norm(d)) @ W2).max() < 1e-6
+
+
+# ---------------------------------------------------------------------------------------------- engine
+
+def _scripted(e, monkeypatch, pieces: list[str], alt: dict[int, str]):
+    """Patch _step to emit `pieces` (one token each); at step k in `alt`, the scripted token gets 10 and alt[k]'s
+    first token 9 (so a bias of -inf on the scripted token yields the alternative)."""
+    toks = [e.encode(p)[0] for p in pieces]
+    st = {"i": 0}
+    import torch
+
+    def step(token, cache, pos):
+        i = st["i"]
+        st["i"] += 1
+        z = torch.full((e.net.config.vocab_size,), -10.0)
+        if i < len(toks):
+            z[toks[i]] = 10.0
+            if i in alt:
+                z[e.encode(alt[i])[0]] = 9.0
+        else:
+            z[list(e.stop_ids)[0]] = 10.0
+        return z
+    monkeypatch.setattr(e, "_step", step)
+    monkeypatch.setattr(e, "_prefill", lambda ids: None)
+    return toks
+
+
+def test_b1_online_trigger(engine, monkeypatch):
+    e = engine
+    pieces = [" unknown", "\n", "Answer", ":", " unknown", "\n"]
+    _scripted(e, monkeypatch, pieces, {0: " York", 4: " York"})
+    import exp51_engine as EN
+    unk = [e.encode(" unknown")[0]]
+    g = e.generate([1, 2, 3], EN.Arm(bias={"ids": unk, "value": float("-inf"), "mode": "online"}), mode="total")
+    assert g.text == " unknown\nAnswer: York\n" and g.trigger_step == 4
+    _scripted(e, monkeypatch, pieces, {0: " York", 4: " York"})
+    g = e.generate([1, 2, 3], EN.Arm(bias={"ids": unk, "value": float("-inf"), "mode": "whole"}), mode="total")
+    assert g.text.startswith(" York")
+    _scripted(e, monkeypatch, [" unknown", "\n"], {0: " York"})
+    g = e.generate([1, 2, 3], EN.Arm(bias={"ids": unk, "value": float("-inf"), "mode": "prefix"}), mode="prefix")
+    assert g.text.startswith(" York")
+    _scripted(e, monkeypatch, [" unknown", "\n", "Note", "\n"], {0: " York"})
+    g = e.generate([1, 2, 3], EN.Arm(bias={"ids": unk, "value": float("-inf"), "mode": "online"}), mode="total",
+                   max_new=4)
+    assert g.trigger_step is None and g.text.startswith(" unknown")        # no marker, never on
+
+
+def test_steer_and_component_hooks(engine):
+    import exp51_engine as EN
+    e = engine
+    ids = e.chat_ids("Where does Alice live? Note:")
+    base = e.read(ids, [len(ids) - 1], layers=[1], comps=[(1, "o_proj")])
+    v = np.ones(e.hidden, np.float32)
+    arm = EN.Arm(comp=[{"layer": 1, "tensor": "o_proj", "op": "set", "values": {len(ids) - 1: v}}])
+    hit = e.read(ids, [len(ids) - 1], layers=[1], comps=[(1, "o_proj")], arm=arm)
+    assert np.allclose(hit["comp"][(1, "o_proj")][len(ids) - 1], v)
+    assert not np.allclose(hit["resid"][1], base["resid"][1])
+    early = EN.Arm(comp=[{"layer": 1, "tensor": "o_proj", "op": "set", "values": {len(ids) - 3: v}}])
+    b3 = e.read(ids, [len(ids) - 1], layers=[1, 3])["resid"]
+    x = e.read(ids, [len(ids) - 1], layers=[1, 3], arm=early)["resid"]
+    assert np.array_equal(x[1], b3[1]) and not np.allclose(x[3], b3[3])   # reaches the last position via attention
+    g0 = e.generate(ids, mode="prefix", max_new=4)
+    g1 = e.generate(ids, mode="prefix", max_new=4)
+    assert g0.gen_ids == g1.gen_ids                             # deterministic at batch 1
+
+
+# ---------------------------------------------------------------------------------------------- B0 / no-op / service
+
+def _fake_b0(e, row):
+    ids = e.chat_ids(row["prompt"])
+    gen = e.encode(f"{row['A']} is in {row['base_gold']}.\nAnswer: unknown\n")
+    rec = {"case_id": row["case_id"], "split": row["split"], "prompt_ids": ids, "gen_ids": gen,
+           "text": e.decode(gen), "n_prompt": len(ids)}
+    d = CM.designated(e.decode, gen)
+    rec.update({"j": d["j"], "p_ans_ok": d["ok"], "p_ans": len(ids) + d["j"] - 1 if d["ok"] else None,
+                **CM.grade(row, rec["text"], T_CITIES)})
+    rec["populations"] = CM.population(row, rec, T_CITIES)
+    return rec
+
+
+@pytest.fixture()
+def service(engine, tmp_path, small_cases):
+    import exp51_service as SV
+    rows = [r for r in small_cases[0] if r["split"] == "E"][:6]
+    ws = tmp_path / "workspace"
+    (ws / "data").mkdir(parents=True)
+    (ws / "edits_in").mkdir()
+    (ws / "data/E_rows.jsonl").write_text("".join(json.dumps({**r, "b0": _fake_b0(engine, r)}) + "\n" for r in rows))
+    CM.write_json(tmp_path / "bounds.json", {**SV.BOUNDS_F0, "passes": 3, "failed_requests": 3})
+    return SV.Service(tmp_path, engine, tc=T_CITIES), rows
+
+
+def test_designated_marker_and_population(engine, small_cases):
+    row = next(r for r in small_cases[0] if r["set"] == "ANS")
+    rec = _fake_b0(engine, row)
+    assert rec["p_ans_ok"] and engine.decode(CM.prefix_ids(rec)[rec["n_prompt"]:]).endswith("\nAnswer:")
+    assert rec["cls"] == "abstention" and "FA" in rec["populations"]
+    ids, left = CM.note_ids(engine, rec)
+    assert engine.decode(ids) + left + "\nAnswer:" == engine.decode(CM.prefix_ids(rec)[rec["n_prompt"]:])
+    b2 = CM.b2_prefix(engine, row, rec)
+    assert engine.decode(b2[rec["n_prompt"]:]).endswith("\nDo not reply unknown.\nAnswer:")
+
+
+def _req(svc, rid, body):
+    CM.write_json(svc.q_in / f"{rid}.json", body)
+    svc.serve(once=True)
+    return json.loads((svc.q_out / f"{rid}.json").read_text())
+
+
+def test_service_passes_bounds_and_ledger(service, engine):
+    svc, rows = service
+    ids = [r["case_id"] for r in rows]
+    r = _req(svc, "r1", {"type": "paired", "rows": ids[:2], "arms": [{"edit": None}, {"edit": None}]})
+    assert r["ok"] and r["items"][0]["a"]["cached"] and r["ledger"]["passes"] == 1
+    sh = engine.edits.shapes()
+    np.savez(svc.ws / "edits_in/e1.npz", c0_layer=1, c0_tensor=np.array("down_proj"), c0_kind=np.array("rows"),
+             c0_idx=np.arange(2), c0_D=np.ones((2, sh[ED.EDITABLE["down_proj"].format(l=1)][1])) * 1e-3)
+    s = _req(svc, "r2", {"type": "save_edit", "spec": "edits_in/e1.npz"})
+    assert s["ok"], s
+    eid = s["edit_id"]
+    p = _req(svc, "r3", {"type": "prefix", "rows": ids[:2], "arm": {"edit": eid}})
+    assert p["ok"] and len(p["items"]) == 2
+    rd = _req(svc, "r4", {"type": "read", "items": [{"row": ids[0]}, {"text": "hello", "continuation": " there"}],
+                          "positions": "last", "layers": [0, 3], "components": [[1, "o_proj"]], "logits": True,
+                          "logit_ids": [1, 2, 3], "arm": {"edit": eid}})
+    assert rd["ok"], rd
+    z = np.load(svc.ws / rd["npz"])
+    assert z["i0_resid_L0"].shape == (1, engine.hidden) and z["i1_logits"].shape == (1, 3)
+    assert _req(svc, "r5", {"type": "prefix", "rows": ids[:1], "arm": {"edit": eid}})["refused"]   # pass bound (3)
+    bad = _req(svc, "r6", {"type": "paired", "rows": ["S-DE00_ANSa_H0"], "arms": [{}, {}]})
+    assert not bad["ok"] and bad["ledger"]["failed_requests"] == 2
+    w = _req(svc, "r7", {"type": "weights", "tensors": ["model.layers.0.self_attn.q_proj.weight"]})
+    assert not w["ok"]
+    assert _req(svc, "r8", {"type": "weights", "tensors": ["model.norm.weight"]})["refused"]    # closed at 3 failures
+    t = svc.ledger.totals()
+    assert t["passes"] == 3 and t["failed_requests"] == 4 and t["saved_edits"] == 1 and t["input_tokens"] > 0
+    assert (svc.ws / "ledger_copy.jsonl").exists() and (svc.run / "ledger.jsonl").exists()
+    engine.edits.assert_clean()
+
+
+def test_service_refuses_scaling_and_family(service, engine):
+    svc, rows = service
+    sh = engine.edits.shapes()
+    n = sh[ED.EDITABLE["o_proj"].format(l=0)]
+    np.savez(svc.ws / "edits_in/bad.npz", c0_layer=0, c0_tensor=np.array("q_proj"), c0_kind=np.array("dense"),
+             c0_U=np.ones((n[0], 1)), c0_V=np.ones((n[1], 1)))
+    r = _req(svc, "b1", {"type": "save_edit", "spec": "edits_in/bad.npz"})
+    assert not r["ok"] and "not editable" in r["error"]
+    r = _req(svc, "b2", {"type": "save_edit", "spec": "../outside.npz"})
+    assert not r["ok"]
+
+
+def test_noop_gate_dummy(engine, tmp_path, small_cases, monkeypatch):
+    import exp51_run as RUN
+    monkeypatch.setattr(CM, "RUN", tmp_path)
+    e = engine
+    e.edits.edit_dir = tmp_path / "edits"
+    rows = [r for r in small_cases[0] if r["split"] == "E" and r["set"] == "ANS"][:2]
+    for r in rows:
+        rec = _fake_b0(e, r)
+        CM.write_json(CM.b0_path(r["split"], r["case_id"], tmp_path), rec)
+    # a real B0 generation path for one row (total effect equality needs B0 from the same engine)
+    rec = RUN.run_b0_row(e, rows[0], tmp_path, T_CITIES)
+    CM.write_json(CM.b0_path("E", rows[0]["case_id"], tmp_path), rec)
+    res = RUN.noop_gate(e, rows[:1], tmp_path, T_CITIES)
+    assert not res["total_mismatch"] and res["weights_restored"]
+
+
+def test_mechanism_hooks_and_positions(engine, small_cases, tmp_path):
+    import exp51_mech as MC
+    e = engine
+    e.edits.edit_dir = tmp_path
+    row = next(r for r in small_cases[0] if r["split"] == "E" and r["set"] == "ANS")
+    rec = _fake_b0(e, row)
+    sh = e.edits.shapes()
+    zero = ED.save_edit(tmp_path, [{"layer": 1, "tensor": "o_proj", "kind": "dense", "U": np.zeros((sh[ED.EDITABLE['o_proj'].format(l=1)][0], 1)),
+                                    "V": np.zeros((sh[ED.EDITABLE['o_proj'].format(l=1)][1], 1))}], sh)["edit_id"]
+    b0p = e.generate(CM.prefix_ids(rec), mode="prefix")
+    t = MC.transplant_arm(e, row, rec, zero, 1.0, 1, "o_proj", [rec["p_ans"]], T_CITIES)
+    c = MC.clamp_arm(e, row, rec, zero, 1.0, 1, "o_proj", [rec["p_ans"]], T_CITIES)
+    assert t["gen_ids"] == b0p.gen_ids == c["gen_ids"] and t["delta_norm"] == 0
+    with pytest.raises(ValueError):
+        MC.clamp_arm(e, row, rec, zero, 1.0, 1, "o_proj", [rec["p_ans"] + 1], T_CITIES)
+    f = MC.f_value(e, rec, (2, "resid"), np.ones(e.hidden))
+    assert np.isfinite(f)
+    e.edits.assert_clean()
+
+
+def test_mech_stats_synthetic():
+    bases = S.Bases({f"b{i}": ("DE" if i % 2 else "RC") for i in range(40)})
+    rng = np.random.default_rng(0)
+    star = {b: 0.8 for b in bases.resampled({t: np.arange(n) for t, n in bases.n_by_task().items()})}
+    rev = {b: 0.1 + 0.05 * rng.random() for b in star}
+    m = MK.m1(bases, star, rev, rev, +1, B=500)
+    assert m["p"] < 0.01
+    inter = MK.interaction(bases, star, rev, rev, rev, +1, B=500)
+    assert inter["p"] < 0.01
+    eq = MK.activity_equivalence(bases, {b: 0.0 for b in star}, 0.0, B=100)
+    assert eq["p"] == 1.0 and eq["unestimable"] and eq["all_within_1e-6"]
+    train = [{"task": "DE" if i % 2 else "RC", "hardness": "H1", "city": "York", "label": i % 2, "m_city": float(i % 2),
+              "unk_logodds": 0.0, "f": rng.standard_normal(), "base_key": f"b{i}"} for i in range(40)]
+    res = MK.m3c(train, train, bases, B=200)
+    assert res["auroc_baseline"] == 1.0 and res["p"] is not None
+
+
+# ---------------------------------------------------------------------------------------------- harness
+
+def _ws(tmp_path):
+    ws = tmp_path / "workspace"
+    for d in ("data/tokenizer", "notes", "scratch", "queue/requests", "queue/responses", "captures", "edits_in"):
+        (ws / d).mkdir(parents=True, exist_ok=True)
+    import exp51_engine as EN
+    shutil.copy(EN.SNAPSHOT / "tokenizer.json", ws / "data/tokenizer/tokenizer.json")
+    (ws / "data/E_rows.jsonl").write_text('{"x": 1}\n')
+    for p in (ws / "data").rglob("*"):
+        p.chmod(0o444 if p.is_file() else 0o555)
+    (ws / "data").chmod(0o555)
+    return ws
+
+
+@pytest.mark.skipif(shutil.which("bwrap") is None, reason="bubblewrap not installed")
+def test_sandbox_boundaries(tmp_path):
+    ws = _ws(tmp_path)
+    r = __import__("exp51_harness").boundary_check(ws)
+    assert r["pass"], {k: v for k, v in r["probes"].items() if not v["ok"]}
+
+
+def test_harness_dummy_loop_and_cost_stop(service, tmp_path, monkeypatch):
+    import exp51_harness as H
+    svc, rows = service
+    monkeypatch.setattr(H, "_api_key", lambda: (_ for _ in ()).throw(AssertionError("key read in a dry run")))
+    script = [[{"type": "text", "text": "Plan."},
+               {"type": "tool_use", "id": "a", "name": "forward",
+                "input": {"request": {"type": "paired", "rows": [rows[0]["case_id"]], "arms": [{}, {}]}}}],
+              [{"type": "text", "text": "No tool."}],
+              [{"type": "tool_use", "id": "b", "name": "submit", "input": {
+                  "edit_id": "nope", "kind": "repair", "component_and_computation": "x", "evidence": "x",
+                  "predictions_by_row_type": "x", "flips": "x", "activity_predictions": "x",
+                  "signed_endpoint": {"population": "FA", "direction": "increase", "outcome": "Rel"},
+                  "most_important_component": {"layer": 1, "tensor": "o_proj"}}}],
+              [{"type": "tool_use", "id": "c", "name": "finish", "input": {"summary": "done"}}]]
+    h = H.Harness(svc.run, H.DummyClient(script), service=svc)
+    out = h.loop()
+    assert out["reason"] == "finish" and out["ledger"]["turns"] == 4 and out["ledger"]["passes"] == 1
+    assert out["usd"] == pytest.approx(4 * H.cost_of(H.DummyClient([]).usage))
+    tr = (svc.run / "transcript.jsonl").read_text()
+    assert "sk-ant" not in tr and "x-api-key" not in tr
+    h2 = H.Harness(svc.run, H.DummyClient(script), service=svc, stop_usd=out["usd"] + 0.01)
+    assert h2.loop()["reason"].startswith("cost stop")
+
+
+def test_api_body_has_cache_and_effort():
+    import exp51_harness as H
+    b = H.ApiClient().body([{"role": "user", "content": "hi"}])
+    assert b["model"] == "claude-opus-5-5" and b["output_config"]["effort"] == "high"
+    assert b["system"][0]["cache_control"]["ttl"] == "1h" and b["messages"][-1]["content"][-1]["cache_control"]
+    assert "x-api-key" not in json.dumps(b)
+
+
+def test_cost_of_prices():
+    import exp51_harness as H
+    u = {"input_tokens": 1_000_000, "output_tokens": 1_000_000, "cache_read_input_tokens": 1_000_000,
+         "cache_creation": {"ephemeral_1h_input_tokens": 1_000_000, "ephemeral_5m_input_tokens": 0}}
+    assert H.cost_of(u) == pytest.approx(4 + 20 + 0.2 + 8)
+
+
+# ---------------------------------------------------------------------------------------------- guard
+
+def test_sealed_splits_refused():
+    with pytest.raises(PermissionError):
+        CM.rows("H")
+    import exp51_run as RUN
+    with pytest.raises(PermissionError):
+        RUN.require_f2(Path("/nonexistent"))
+
+
+def test_failed_request_ledgers_tokens(service, engine, monkeypatch):
+    svc, rows = service
+    real = engine.generate
+    calls = {"n": 0}
+
+    def flaky(*a, **k):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise RuntimeError("boom")
+        return real(*a, **k)
+    monkeypatch.setattr(engine, "generate", flaky)
+    r = _req(svc, "f1", {"type": "prefix", "rows": [rows[0]["case_id"], rows[1]["case_id"]], "arm": {"edit": None}})
+    assert not r["ok"]
+    last = svc.ledger.entries[-1]
+    assert last["ok"] is False and last["input_tokens"] > 0 and last["wall_s"] >= 0
+    assert svc.ledger.totals()["passes"] == 0 and svc.ledger.totals()["failed_requests"] == 1
+
+
+def test_make_b6(engine, tmp_path):
+    import exp51_run as RUN
+    e = engine
+    e.edits.edit_dir = tmp_path
+    sh = e.edits.shapes()
+    man = ED.save_edit(tmp_path, [_rand_comp(e, 1, "down_proj", "cols", n=5), _rand_comp(e, 2, "input_layernorm",
+                                                                                         "coords", n=7)], sh)
+    ids = RUN.make_b6(e, man["edit_id"], 2.0)
+    assert len(set(ids.values())) == 5
+    _, cand = ED.load_edit(tmp_path, man["edit_id"])
+    m6, r6 = ED.load_edit(tmp_path, ids[1])
+    d_c = ED.delta64(cand[0], sh[ED.comp_name(cand[0])], 2.0)
+    d_r = ED.delta64(r6[0], sh[ED.comp_name(r6[0])])
+    assert np.allclose(np.linalg.norm(d_r, axis=0), np.linalg.norm(d_c, axis=0))
+    assert np.array_equal(np.nonzero(d_r.any(0))[0], np.arange(5))
+    e.edits.apply(ids[3])
+    e.edits.revert()
+    e.edits.assert_clean()
