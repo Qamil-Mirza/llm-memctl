@@ -99,6 +99,8 @@ def f0() -> dict:
                       "chat_template": "tokenizer.apply_chat_template, one user message, generation prompt"},
         "editor": {**{k: v for k, v in H.API_CONFIG.items()}, "prices_usd_per_mtok": H.PRICES,
                    "harness_stop_usd": H.STOP_USD, "console_workspace_cap_usd": 50,
+                   "dry_run": {"stop_usd": H.DRY_STOP_USD, "max_turns": H.DRY_MAX_TURNS,
+                               "model": "the dummy tiny Qwen2", "rows": "DRY- synthetic rows (seed 99), no E content"},
                    "system_sha256": sha_text(H.SYSTEM), "instruction_sha256": sha_text(H.INSTRUCTION),
                    "instruction": H.INSTRUCTION, "system": H.SYSTEM, "nudge": H.NUDGE,
                    "sandbox_packages": list(H.SANDBOX_PKGS),
@@ -164,6 +166,8 @@ def f0() -> dict:
             "b1_subword_gap": "the B1 rule (decoded, lower-cased, stripped text begins 'unknown') gives 6 ids; "
                               "sub-word spellings such as 'unk' + 'nown' are outside it",
             "rates": "base-weighted: each base with >= 1 row in a population has weight 1, equal within it",
+            "cf_follow_b0_E": "B0 CF-follow on E = 282 / 432 = 0.65, so the §8.1 CF-follow >= 0.90 repair criterion "
+                              "is a high bar (pre-registered, unchanged)",
             "distractors_added": "more distractor lines, with the date shifts that follow from position (E: question "
                                  "date moves in 144 / 144 pairs, the evidence line's date in 129 / 144); kept as built, "
                                  "no generator change (Advisor ruling (b))",

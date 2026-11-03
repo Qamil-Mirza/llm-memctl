@@ -748,3 +748,13 @@ def test_stage4_end_to_end_dummy(engine, small_cases, tmp_path, monkeypatch):
     assert set(rep["R"]["holm"]) == {f"{k}:{o}" for k in ("B1", "B2", "B3", "B4", "B5") for o in ("O1", "O2")}
     assert set(rep["M"]["holm"]) == {"M1", "M2", "M3"} and rep["Tcity"]["descriptive"]
     e.edits.assert_clean()
+
+
+def test_dry_run_caps(service):
+    import exp51_harness as H
+    svc, rows = service
+    loop_forever = [[{"type": "text", "text": "thinking"}]]          # never finishes: the turn cap must end it
+    h = H.Harness(svc.run, H.DummyClient(loop_forever), service=svc, stop_usd=3.0, max_turns=3)
+    out = h.loop()
+    assert out["reason"] == "turn bound" and out["ledger"]["turns"] == 3
+    assert H.Harness(svc.run, H.DummyClient(loop_forever), service=svc, stop_usd=99).stop_usd == H.STOP_USD

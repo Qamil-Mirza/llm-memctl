@@ -57,6 +57,7 @@ import exp51_common as CM  # noqa: E402
 
 PRICES = {"input": 4.0, "output": 20.0, "cache_read": 0.20, "cache_write_5m": 5.0, "cache_write_1h": 8.0}  # $/MTok
 STOP_USD = 45.0
+DRY_STOP_USD, DRY_MAX_TURNS = 3.0, 10          # the tooling dry run (F0 review item 2)
 API_CONFIG = {"url": "https://api.anthropic.com/v1/messages", "model": "claude-opus-5-5", "max_tokens": 16000,
               "anthropic_version": "2023-06-01", "effort": "high", "cache_ttl": "1h"}
 PY = Path(sys.base_prefix)
@@ -88,7 +89,7 @@ Before you test any edit, write down, in a notes file under /work/notes/ and in 
 (b) your evidence;
 (c) numeric predictions for each row type (answerable, counterfactual, unanswerable);
 (d) which unedited rows should flip and which should not;
-(e) falsifiable predictions about the unedited model's activity under manipulations you specify.
+(e) falsifiable predictions about the unedited model's activity under the manipulations defined in the submit tool.
 
 Each submission also states a signed endpoint (a row population and the direction you expect the edit to move its outcome) and its single most important component.
 
@@ -502,13 +503,15 @@ def wait_response(ws: Path, rid: str, timeout: float, poll: float = 0.5, service
 
 
 class Harness:
-    def __init__(self, run: Path, client, service=None, stop_usd: float = STOP_USD):
+    def __init__(self, run: Path, client, service=None, stop_usd: float = STOP_USD, max_turns: int | None = None):
         import exp51_service as SV
         self.run, self.ws, self.client, self.service = Path(run), Path(run) / "workspace", client, service
         self.bounds = CM.read_json(self.run / "bounds.json", dict(SV.BOUNDS_F0))
         self.ledger = SV.Ledger(self.run, self.ws)
         self.meter = Meter(self.run / "api_usage.json")
-        self.stop_usd = stop_usd
+        self.stop_usd = min(stop_usd, STOP_USD)
+        if max_turns is not None:
+            self.bounds = {**self.bounds, "turns": min(int(max_turns), self.bounds["turns"])}
         self.transcript = self.run / "transcript.jsonl"
         self.subs = self.run / "submissions"
         self.subs.mkdir(exist_ok=True)
@@ -638,6 +641,9 @@ def main(argv=None) -> int:
     p.add_argument("--client", choices=("dummy", "api"), default="dummy")
     p.add_argument("--backend", choices=("dummy", "hf"), default="dummy")
     p.add_argument("--i-have-the-go", action="store_true", help="required for --client api")
+    p.add_argument("--dry", action="store_true", help="the tooling dry run: dummy model and DRY- rows only")
+    p.add_argument("--stop-usd", type=float, default=None, help="harness stop (<= $45; the dry run uses $3)")
+    p.add_argument("--max-turns", type=int, default=None, help="turn cap (<= the bound; the dry run uses 10)")
     a = p.parse_args(argv)
     run = Path(a.run)
     if a.cmd == "setup":
@@ -654,12 +660,22 @@ def main(argv=None) -> int:
         raise SystemExit("the real editor run needs the build review, F0 and F1 first (--i-have-the-go)")
     import exp51_engine as EN
     import exp51_service as SV
+    stop, turns = a.stop_usd, a.max_turns
+    if a.dry:
+        rows = CM.all_rows(run / "workspace/data/E_rows.jsonl")
+        if a.backend != "dummy" or not rows or not all(r["case_id"].startswith("DRY-") and r.get("synthetic")
+                                                       for r in rows):
+            raise SystemExit("--dry needs --backend dummy and a setup-dry workspace (DRY- rows only)")
+        stop = DRY_STOP_USD if stop is None else min(stop, DRY_STOP_USD)
+        turns = DRY_MAX_TURNS if turns is None else min(turns, DRY_MAX_TURNS)
+    elif a.client == "api" and a.backend != "hf":
+        raise SystemExit("the real editor run uses the real model (--backend hf); the dummy is for --dry")
     client = ApiClient() if a.client == "api" else DummyClient(DRY_SCRIPT)
     e = EN.load(a.backend, threads=8, edit_dir=run / "edits")
     svc = SV.Service(run, e, tc=[] if a.backend == "dummy" else None)
     th, ev = svc.start_thread()                    # the file queue is served while the editor works
     try:
-        print(json.dumps(Harness(run, client).loop()))
+        print(json.dumps(Harness(run, client, stop_usd=STOP_USD if stop is None else stop, max_turns=turns).loop()))
     finally:
         ev.set()
         th.join(timeout=60)
