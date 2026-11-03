@@ -36,7 +36,11 @@ OUT = ROOT / "runs/exp51/freeze"
 SOURCES = ("scripts/exp51_cases.py", "scripts/exp51_common.py", "scripts/exp51_engine.py", "scripts/exp51_run.py",
            "scripts/exp51_service.py", "scripts/exp51_harness.py", "scripts/exp51_mech.py",
            "scripts/exp51_inventory.py", "memctl/analysis/grade51.py", "memctl/analysis/stats51.py",
-           "memctl/analysis/edit51.py", "memctl/analysis/mech51.py")
+           "memctl/analysis/edit51.py", "memctl/analysis/mech51.py", "scripts/exp51_stage4.py",
+           "scripts/exp51_gpu_measure.py", "scripts/exp51_quote.py", "scripts/exp51_freeze.py",
+           "scripts/exp51_bundle.sh", "scripts/exp51_pod_measure.sh", "scripts/exp51_d30.sh",
+           "scripts/exp51_s_bundle.sh", "scripts/exp51_pod_s.sh", "scripts/exp51_ht_bundle.sh", "scripts/exp51_pod_ht.sh",
+           "tests/test_exp51.py")
 
 
 def sha_text(t: str) -> str:
