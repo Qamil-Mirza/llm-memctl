@@ -988,17 +988,72 @@ def test_context_bound_stops_cleanly(service):
     assert out["reason"].startswith("context bound") and out["ledger"]["turns"] == 1
 
 
-def test_refusal_ends_the_run_and_records_stop_details(service):
+def test_first_refusal_continues_once_second_ends_the_run(service):
     import exp51_harness as H
     svc, rows = service
     sd = {"type": "refusal", "category": "reasoning_extraction", "explanation": "x"}
-    out = H.Harness(svc.run, H.DummyClient([{"stop_reason": "refusal", "content": [], "stop_details": sd}]), service=svc).loop()
-    assert out["reason"] == "refusal (stop_reason)"
-    assert [e for e in svc.ledger.entries if e["kind"] == "refusal"][0]["stop_details"] == sd
-    last = json.loads((svc.run / "transcript.jsonl").read_text().splitlines()[-1])
-    assert last["stop_details"] == sd and last["stop_reason"] == "refusal"
+    ref = {"stop_reason": "refusal", "content": [], "stop_details": sd}
+    c = H.DummyClient([ref, ref])
+    out = H.Harness(svc.run, c, service=svc).loop()
+    assert out["reason"] == "refusal (stop_reason)" and out["ledger"]["turns"] == 2 and len(c.seen) == 2
+    assert c.seen[0] == [{"role": "user", "content": H.INSTRUCTION}]
+    assert c.seen[1] == [{"role": "user", "content": [{"type": "text", "text": H.INSTRUCTION},
+                                                       {"type": "text", "text": H.REFUSAL_CONTINUE}]}]
+    entries = [e for e in svc.ledger.entries if e["kind"] == "refusal"]
+    assert [e["n"] for e in entries] == [1, 2] and "stop_details" not in entries[0]     # the ledger is mirrored
+    recs = [json.loads(l) for l in (svc.run / "transcript.jsonl").read_text().splitlines()]
+    assert recs[0]["stop_details"] == sd and recs[-1]["stop_details"] == sd
     with pytest.raises(RuntimeError):
         H.Harness(svc.run, H.DummyClient([FINISH]), service=svc).loop(resume=True)
+
+
+def test_refusal_mid_run_continues_on_the_turn_that_drew_it_and_resumes(service):
+    import exp51_harness as H
+    svc, rows = service
+    (svc.ws / "scratch").mkdir(exist_ok=True)
+    ref = {"stop_reason": "refusal", "content": [{"type": "text", "text": "partial"}]}
+    c1 = H.DummyClient([_tool_use(1, "run_python", {"code": "print(1)"}), ref,
+                        lambda m: (_ for _ in ()).throw(_Crash())])
+    with pytest.raises(_Crash):
+        H.Harness(svc.run, c1, service=svc).loop()
+    sent = c1.seen[2]
+    assert len(sent) == 3 and sent[-1]["content"][-1] == {"type": "text", "text": H.REFUSAL_CONTINUE}
+    assert sent[-1]["content"][0]["type"] == "tool_result" and "partial" not in json.dumps(sent)
+    c2 = H.DummyClient([FINISH])
+    assert H.Harness(svc.run, c2, service=svc).loop(resume=True)["reason"] == "finish"
+    assert c2.seen[0] == sent                                     # rebuilt verbatim, continuation included
+
+
+def test_resume_after_crash_between_refusal_and_its_record(service):
+    import exp51_harness as H
+    svc, rows = service
+    H.Harness(svc.run, H.DummyClient([FINISH]), service=svc)
+    (svc.run / "transcript.jsonl").write_text(json.dumps({"role": "assistant", "content": [], "stop_reason": "refusal"}) + "\n")
+    c = H.DummyClient([FINISH])
+    assert H.Harness(svc.run, c, service=svc).loop(resume=True)["reason"] == "finish"
+    assert c.seen[0][-1]["content"][-1] == {"type": "text", "text": H.REFUSAL_CONTINUE}
+    assert '"user_amend"' in (svc.run / "transcript.jsonl").read_text()
+
+
+def test_budget_note_once_with_fraction_and_survives_resume(service):
+    import exp51_harness as H
+    svc, rows = service
+    (svc.ws / "scratch").mkdir(exist_ok=True)
+    usage = {"input_tokens": 0, "output_tokens": 500_000, "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0}
+    tool = lambda i: _tool_use(i, "run_python", {"code": "print(1)"})
+    c1 = H.DummyClient([tool(1), tool(2), tool(3), tool(4), lambda m: (_ for _ in ()).throw(_Crash())], usage=usage)   # $10 a call
+    with pytest.raises(_Crash):
+        H.Harness(svc.run, c1, service=svc, stop_usd=45).loop()
+    assert H.BUDGET_NOTE not in json.dumps(c1.seen[3])                                   # $30: not yet
+    assert c1.seen[4][-1]["content"][-1]["content"].endswith("\n\n" + H.BUDGET_NOTE)    # $40: passed $32
+    notes = [e for e in svc.ledger.entries if e["kind"] == "budget_note"]
+    assert len(notes) == 1 and notes[0]["budget_used_fraction"] == pytest.approx(40 / 45, abs=1e-3)
+    turns = [e for e in svc.ledger.entries if e["kind"] == "turn"]
+    assert [e["budget_used_fraction"] for e in turns] == pytest.approx([k * 10 / 45 for k in (1, 2, 3, 4)], abs=1e-3)
+    assert "budget_used_fraction" in (svc.ws / "ledger_copy.jsonl").read_text()
+    h2 = H.Harness(svc.run, H.DummyClient([FINISH]), service=svc)
+    h2.rebuild()
+    assert h2.noted and len([e for e in svc.ledger.entries if e["kind"] == "budget_note"]) == 1
 
 
 def test_cost_model_backtest_and_stop():

@@ -335,14 +335,19 @@ def f1() -> dict:
                                   "dummy36 backend; refusal wording names valid layers; save_edit accepts /work/ "
                                   "spec paths (containment check kept)", "DRY_MAX_TURNS 10 -> 15",
                                   "$0 scripted end-to-end and resume tests",
-                                  "stop_details logged on a refusal (transcript and ledger kind refusal)",
+                                  "stop_details logged on a refusal (transcript only)",
+                                  "refusal handling: one fixed continuation, second refusal ends (rules.refusal)",
+                                  "one budget note at $32 and budget_used_fraction in the ledger (rules.budget_note)",
                                   "exp51_freeze.py: the F1 builder and cost model; refuses to rebuild F0"],
              "commits": ["475be08", "f0a97b9", "645c6ad", _head()],
              "authority": "Advisor (ACCEPT 475be08; required items of the dry-run reviews)",
              "sha256_old_new": {f: (o, _sha(ROOT / f)) for f, o in d3_old.items()},
              "frozen_content_changed": True,
              "frozen_content_changed_items": ["API request: thinking display summarized (what is returned changes; "
-                                              "what the editor is told does not)", "dry_run.max_turns 10 -> 15"],
+                                              "what the editor is told does not)", "dry_run.max_turns 10 -> 15",
+                                              "new fixed text the editor can receive: rules.budget_note.text, and "
+                                              "rules.refusal.text after a refusal; ledger_copy gains "
+                                              "budget_used_fraction"],
              "frozen_content_unchanged_check": {"tools_sha256": sha_text(json.dumps(H.TOOLS, sort_keys=True,
                                                                           separators=(",", ":"))),
                                       "instruction_sha256": sha_text(H.INSTRUCTION),
@@ -354,9 +359,18 @@ def f1() -> dict:
             "lost_call": "On resume, if the transcript ends on a user record, one call is booked at its worst case "
                          "(context at the 1h write price + max_tokens at the output price) as a meter placeholder and "
                          "ledger kind lost_call_placeholder; never trued down.",
-            "refusal": "PROPOSED, Advisor rules: a refusal ends the run (one run only; no same-request retry, no "
-                       "fallback model). stop_details goes into the transcript and ledger; submissions already made "
-                       "stand and go on to replay; the result is documented under D-45.",
+            "refusal": {"rule": "Counted over the whole run. First refusal: the refused response is logged and never "
+                                "joins the messages; the fixed text below is appended once as a text block to the user "
+                                "turn that drew it (transcript record user_amend) and the request is sent. Second "
+                                "refusal: the run ends, documented under D-45; submissions already made stand and go "
+                                "to replay. No fallback model. stop_details is in the transcript only (the ledger is "
+                                "mirrored into the editor's sandbox).",
+                        "text": H.REFUSAL_CONTINUE, "authority": "Advisor F1 ruling 3"},
+            "budget_note": {"rule": "Appended once to the user turn being sent when measured spend first passes usd "
+                                    "(tool_result content; the nudge text on a turn without tools); ledger kind "
+                                    "budget_note. Every turn's ledger entry carries budget_used_fraction = spend / the "
+                                    "harness stop, visible in ledger_copy.jsonl.",
+                            "usd": H.BUDGET_NOTE_USD, "text": H.BUDGET_NOTE, "authority": "Advisor F1 ruling 2"},
             "launch": ["cd ~/Code/llm-memctl; the Console workspace limit is $50 and the key is in .env",
                        ".venv/bin/python scripts/exp51_harness.py setup --run runs/exp51/editor_run",
                        ".venv/bin/python scripts/exp51_harness.py check --run runs/exp51/editor_run (must pass)",

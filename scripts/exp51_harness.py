@@ -43,10 +43,16 @@ Fixed choices of this build (to be checked at the dry run, which is the first re
   run is stopped only by `kill -9 -<pgid>` read from that file (refused unless pgid == pid, i.e. its own group).
 - A turn = one successful API call. An end_turn without a tool call gets the fixed reply NUDGE.
 - Build review ruling 9: on stop_reason "max_tokens" no tool_use in that response is run (each gets an error
-  tool_result; without one the reply is MAXTOK_NUDGE); on "refusal" the run stops with that reason; every tool input
+  tool_result; without one the reply is MAXTOK_NUDGE); every tool input
   is validated against its schema before it runs. Transient API errors (408, 429, 5xx, 529, timeouts, connection
   errors) are retried with backoff 2^k s (max 60), each attempt ledgered as kind "api_retry" (not an editor failed
   request); 5 consecutive errors stop the run.
+- F1 ruling 3, refusal (counted over the whole run): the first refused response is logged but never joins the messages;
+  REFUSAL_CONTINUE is appended as one text block to the user turn that drew it (transcript record role "user_amend")
+  and sent once. A second refusal ends the run. No fallback model. stop_details goes to the transcript only: the ledger
+  is mirrored into the editor's sandbox, so its kind "refusal" entry carries no details.
+- F1 ruling 2, budget note: BUDGET_NOTE is appended once to the user turn being sent when measured spend first passes
+  BUDGET_NOTE_USD (ledger kind "budget_note"). Each turn's ledger entry shows budget_used_fraction (spend / the stop).
 """
 
 from __future__ import annotations
@@ -72,6 +78,9 @@ import exp51_common as CM  # noqa: E402
 
 PRICES = {"input": 4.0, "output": 20.0, "cache_read": 0.20, "cache_write_5m": 5.0, "cache_write_1h": 8.0}  # $/MTok
 STOP_USD = 45.0
+BUDGET_NOTE_USD = 32.0           # F1 ruling 2: one fixed note when measured spend first passes this
+BUDGET_NOTE = "Resource note: most of this run's compute budget has been used. Make sure your submissions are in."
+REFUSAL_CONTINUE = "Please continue with the task."   # F1 ruling 3: appended once, after the first refusal
 CONTEXT_STOP_TOKENS = 900_000   # Opus 5.5 window 1M (standard price throughout); stop cleanly before a 400
 DRY_STOP_USD, DRY_MAX_TURNS = 3.0, 15          # the tooling dry runs (F0 review item 2; 15 turns from D3)
 API_CONFIG = {"url": "https://api.anthropic.com/v1/messages", "model": "claude-opus-5-5", "max_tokens": 16000,
@@ -555,6 +564,7 @@ class Harness:
         self.subs.mkdir(exist_ok=True)
         self.n_req = 0
         self.sleep = time.sleep
+        self.refusals, self.noted = 0, False
 
     def log(self, obj: dict) -> None:
         with open(self.transcript, "a") as f:
@@ -625,17 +635,49 @@ class Harness:
             results.append({"type": "tool_result", "tool_use_id": u["id"], "content": json.dumps(out)[:60000]})
         return results, done
 
+    def budget_note(self, msg: object, done: bool) -> object:
+        """The user turn about to be sent, with the one budget note if spend has just passed the threshold."""
+        if self.noted or done or self.meter.usd() <= BUDGET_NOTE_USD:
+            return msg
+        self.noted = True
+        self.ledger.add({"kind": "budget_note", "ok": True, "budget_used_fraction": self.budget_fraction()})
+        if isinstance(msg, str):
+            return f"{msg}\n\n{BUDGET_NOTE}"
+        msg[-1]["content"] += f"\n\n{BUDGET_NOTE}"
+        return msg
+
+    def budget_fraction(self) -> float:
+        return round(self.meter.usd() / self.stop_usd, 3)
+
+    def amend_after_refusal(self, messages: list) -> None:
+        """Append-only: the fixed text block goes after the content of the user turn that drew the refusal."""
+        last = messages[-1]
+        blocks = [{"type": "text", "text": last["content"]}] if isinstance(last["content"], str) else last["content"]
+        last["content"] = blocks + [{"type": "text", "text": REFUSAL_CONTINUE}]
+
     def rebuild(self) -> tuple[list, dict | None]:
-        """The messages, verbatim from transcript.jsonl, and the last assistant record if it was left unanswered."""
+        """The messages, verbatim from transcript.jsonl, and the last assistant record if it was left unanswered.
+        Refused responses never join the messages; a user_amend record re-applies the fixed continuation."""
         recs = [json.loads(l) for l in self.transcript.read_text().splitlines() if l.strip()]
         messages = [{"role": "user", "content": INSTRUCTION}]
         for r in recs:
+            if r["role"] == "assistant" and r.get("stop_reason") == "refusal":
+                self.refusals += 1
+                continue
+            if r["role"] == "user_amend":
+                self.amend_after_refusal(messages)
+                continue
             if r["role"] not in ("user", "assistant") or messages[-1]["role"] == r["role"]:
                 raise RuntimeError(f"transcript does not alternate at t={r.get('t')}; resume by hand")
             messages.append({"role": r["role"], "content": r["content"]})
+        self.noted = any(r["role"] == "user" and BUDGET_NOTE in json.dumps(r["content"]) for r in recs)
+        if self.refusals >= 2:
+            raise RuntimeError("the run ended on a second refusal; nothing to resume")
+        if recs and recs[-1].get("stop_reason") == "refusal":     # crashed before the continuation was recorded
+            self.log({"role": "user_amend", "text": REFUSAL_CONTINUE})
+            self.amend_after_refusal(messages)
+            return messages, None
         last = recs[-1] if recs and recs[-1]["role"] == "assistant" else None
-        if last is not None and last.get("stop_reason") == "refusal":
-            raise RuntimeError("the run ended on a refusal; nothing to resume")
         return messages, last
 
     def loop(self, resume: bool = False) -> dict:
@@ -654,6 +696,7 @@ class Harness:
                 self.ledger.add({"kind": "lost_call_placeholder", "ok": True, "usd": round(lost, 6)})
             if last is not None:
                 msg, done = self.answer(last["content"], last.get("stop_reason"), interrupted=True)
+                msg = self.budget_note(msg, done)
                 n_cut = sum(1 for c in (msg if isinstance(msg, list) else []) if INTERRUPTED in c["content"])
                 self.log({"role": "user", "content": msg})
                 messages.append({"role": "user", "content": msg})
@@ -696,18 +739,24 @@ class Harness:
             wall = time.perf_counter() - t0
             self.meter.add(resp.get("usage", {}), wall)
             self.ledger.add({"kind": "turn", "ok": True, "wall_s": round(wall, 2),
-                             "stop_reason": resp.get("stop_reason")})
+                             "stop_reason": resp.get("stop_reason"), "budget_used_fraction": self.budget_fraction()})
             stop_reason = resp.get("stop_reason")
             rec = {"role": "assistant", "content": resp["content"], "usage": resp.get("usage"), "stop_reason": stop_reason}
             if stop_reason == "refusal":
                 rec["stop_details"] = resp.get("stop_details")
             self.log(rec)
             if stop_reason == "refusal":
-                self.ledger.add({"kind": "refusal", "ok": True, "stop_details": resp.get("stop_details")})
-                reason = "refusal (stop_reason)"
-                break
+                self.refusals += 1
+                self.ledger.add({"kind": "refusal", "ok": True, "n": self.refusals})
+                if self.refusals >= 2:
+                    reason = "refusal (stop_reason)"
+                    break
+                self.log({"role": "user_amend", "text": REFUSAL_CONTINUE})
+                self.amend_after_refusal(messages)
+                continue
             messages.append({"role": "assistant", "content": resp["content"]})
             msg, done = self.answer(resp["content"], stop_reason)
+            msg = self.budget_note(msg, done)
             self.log({"role": "user", "content": msg})
             messages.append({"role": "user", "content": msg})
             if done:
