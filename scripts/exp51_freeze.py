@@ -137,6 +137,9 @@ def f0() -> dict:
             "b1_subword_gap": "the B1 rule (decoded, lower-cased, stripped text begins 'unknown') gives 6 ids; "
                               "sub-word spellings such as 'unk' + 'nown' are outside it",
             "rates": "base-weighted: each base with >= 1 row in a population has weight 1, equal within it",
+            "distractors_added": "more distractor lines, with the date shifts that follow from position (E: question "
+                                 "date moves in 144 / 144 pairs, the evidence line's date in 129 / 144); kept as built, "
+                                 "no generator change (Advisor ruling (b))",
             "strict_marker_nm_exp50_dev": "runs/exp51/build_notes/exp50_dev_nm_rows.json (14 rows)",
             "e_fa_support_bases": "E bases with >= 1 FA row (B0, of 48): DE 44, RC 35, TU 15; TU is below the 20-base "
                                   "minimum on E, as §3 anticipated (declared, not a deviation)",

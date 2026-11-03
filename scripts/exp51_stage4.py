@@ -25,7 +25,8 @@ Fixed choices of this build (each in f2_candidate.json "rules"):
   effect on S at the M dose (ties: the editor's most important component, then component index).
 - Manipulations for the activity tests (per base, mean over the hardness levels present in both rows):
   evidence_removed = UNA-rel − ANS rep a; city_changed = CF − ANS rep a; distractors_added = ANS rep a H2 − H1;
-  unrelated_vs_absent = UNA-swap − UNA-rel (H1). f is read at each row's own B0 P_ans. distractors_added: same base,
+  unrelated_vs_absent = UNA-swap − UNA-rel (H1). f is read at each row's own B0 P_ans. distractors_added is named
+  "more distractor lines, with the date shifts that follow from position" (ruling (b)): same base,
   rep and evidence text (every H1 line is kept in H2, the core facts are identical); the 7 added lines are distractors,
   and because F2 dates lines by position the dates move with them (on E: the question date in 144 / 144 pairs, the
   evidence line's date in 129 / 144).

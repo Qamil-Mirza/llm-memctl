@@ -303,6 +303,14 @@ def boundary_check(ws: Path) -> dict:
 
 # ---------------------------------------------------------------------------------------------- tools and loop
 
+MANIP_DOC = ("How each manipulation is computed: the change in f (manipulated row minus reference row, each read at that "
+             "row's own final answer line ':' token), per base, averaged over the hardness levels present in both rows. "
+             "evidence_removed: the same base's UNA-rel row (the line(s) stating the asked relation replaced by lines "
+             "about another person) minus its ANSa row. city_changed: the CF row (the evidence states another city) "
+             "minus the ANSa row. distractors_added: the ANSa row at H2 (7 more distractor lines; the dates shift with "
+             "line position) minus the same row at H1. unrelated_vs_absent: the UNA-swap row (the question asks about "
+             "a person the memory mentions only in a 'works as' line) minus the UNA-rel row, at H1.")
+
 TOOLS = [
     {"name": "run_python", "description": "Run a Python script (numpy, tokenizers) in the sandbox at /work. Returns "
      "stdout / stderr (truncated). Counts against the Python-run bound.",
@@ -343,7 +351,8 @@ TOOLS = [
          "activity": {"type": "array", "maxItems": 4, "description": "your predictions (e) in structured form",
                       "items": {"type": "object", "properties": {
                           "manipulation": {"type": "string", "enum": ["evidence_removed", "city_changed",
-                                                                      "distractors_added", "unrelated_vs_absent"]},
+                                                                      "distractors_added", "unrelated_vs_absent"],
+                                           "description": MANIP_DOC},
                           "type": {"type": "string", "enum": ["directional", "equivalence"]},
                           "sign": {"type": "integer", "enum": [1, -1, 0]}},
                           "required": ["manipulation", "type", "sign"]}}},
