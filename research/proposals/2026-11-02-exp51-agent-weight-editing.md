@@ -688,7 +688,9 @@ These amendments are binding. Where they differ from §1–§10, §13 wins.
 **(a) Equivalence tolerance.**
 - **Scaling statistic:** the SD across S bases of the per-base mean paired Δf for that manipulation.
 - **Tolerance:** 2 × that SD, frozen at F2.
-- **If the SD is 0:** the test becomes exact equality, with every |Δf| ≤ 1e-6 on H.
+- **If the SD is 0:** that elementary equivalence test is *unestimable*. It takes p = 1 inside the M3 composite, so M3
+  cannot pass through it. A check that every |Δf| ≤ 1e-6 on H is reported as descriptive. M1 and M2 are reported
+  normally. (Codex rev 1a check, `/tmp/exp51-rev1a-codex-review.md`.)
 - **Wording:** "equivalent within the frozen tolerance". It is not evidence of near-invariance by itself. Each account
   justifies its tolerance when it is declared.
 
@@ -738,6 +740,20 @@ With 4 groups × changed/unchanged × ANS/UNA = 16 strata, two per non-empty str
 
 **Sources.** Codex verified the Liu (2608.15772v2) and Ling (2507.16199v10) identifiers against their primary records.
 They support motivation, not a mechanism in our model.
+
+### 13.6 Editor payment and cap (the user's decision, Advisor pane, 2026-11-02)
+
+The user's words: "Opus 5.5 with a $50 cap is fine."
+- **Model:** `claude-opus-5-5` through the Anthropic API ($4 / $20 per MTok; cache reads $0.20), at high effort.
+- **Key:** a dedicated key in a separate Console workspace with a **$50 spend limit**, which is the hard stop for all
+  §51 editor usage, dry run included.
+  - The harness stops itself at $45 of measured usage.
+  - The key sits in `.env` as `ANTHROPIC_API_KEY`. It is available only to the harness, never inside the editor's
+    sandbox, and never printed or committed.
+- **Estimate** (not a measurement): about $12–30 for about 120 turns with a 1-hour cache, and up to about $55 if the
+  cache keeps expiring. The dry run measures the cost per turn, and the search bounds are scaled at F1 to fit under $45.
+- **Still needed:** §12 decision 1 (opening §51, D-72) remains the user's. Decision 3 (GPU) applies only if the laptop
+  timing falls short.
 
 ## Appendix A. Resolutions
 
