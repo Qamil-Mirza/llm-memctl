@@ -34,7 +34,13 @@ Fixed choices of this build (to be checked at the dry run, which is the first re
   rebuilt verbatim from transcript.jsonl (append-only; INSTRUCTION + every logged turn in order); the ledger and
   api_usage.json carry the bounds and the meter. A tool call cut off by the crash gets the fixed tool_result
   INTERRUPTED (finish and invalid inputs are answered as usual); the resume is ledgered as kind "resume". A fresh
-  `loop` refuses a run that already has a transcript.
+  `loop` refuses a run that already has a transcript. Before rebuilding, the transcript is copied to
+  transcript.pre_resume.<n>.jsonl. If it ends on a user record, the call that may have been in flight (billed, never
+  answered; seen in dry run 2) is booked at its worst case (worst_case_usd: the context at the 1h write price +
+  max_tokens at the output price) as a meter placeholder and ledger kind "lost_call_placeholder"; never trued down.
+- Launch (the real run, F1 launch procedure): `setsid .venv/bin/python scripts/exp51_harness.py loop ... &`. setsid
+  may fork, so $! is not trusted: the harness writes <run>/harness_pid.json ({pid, pgid, sid}) at start, and the
+  run is stopped only by `kill -9 -<pgid>` read from that file (refused unless pgid == pid, i.e. its own group).
 - A turn = one successful API call. An end_turn without a tool call gets the fixed reply NUDGE.
 - Build review ruling 9: on stop_reason "max_tokens" no tool_use in that response is run (each gets an error
   tool_result; without one the reply is MAXTOK_NUDGE); on "refusal" the run stops with that reason; every tool input
@@ -422,7 +428,13 @@ class Meter:
         self.calls = CM.read_json(self.path, [])
 
     def usd(self) -> float:
-        return sum(cost_of(c["usage"]) for c in self.calls)
+        return sum(c["usd"] if c.get("placeholder") else cost_of(c["usage"]) for c in self.calls)
+
+    def add_placeholder(self, usd: float) -> None:
+        """A call that may have been billed but never answered (in flight at a crash): booked at its worst case and
+        never trued up downward."""
+        self.calls.append({"placeholder": True, "usage": {}, "usd": usd, "t": time.time()})
+        CM.write_json(self.path, self.calls)
 
     def add(self, usage: dict, wall_s: float) -> None:
         self.calls.append({"usage": usage, "usd": cost_of(usage), "wall_s": wall_s, "t": time.time()})
@@ -621,8 +633,14 @@ class Harness:
         if resume:
             if (self.run / "loop_summary.json").exists():
                 raise RuntimeError("the run already ended (loop_summary.json); nothing to resume")
+            k = len(list(self.run.glob("transcript.pre_resume.*.jsonl"))) + 1
+            shutil.copy(self.transcript, self.run / f"transcript.pre_resume.{k}.jsonl")
             messages, last = self.rebuild()
             n_cut = 0
+            if last is None:                       # ends on a user record: an API call may have been in flight
+                lost = worst_case_usd(messages, API_CONFIG["max_tokens"])
+                self.meter.add_placeholder(lost)
+                self.ledger.add({"kind": "lost_call_placeholder", "ok": True, "usd": round(lost, 6)})
             if last is not None:
                 msg, done = self.answer(last["content"], last.get("stop_reason"), interrupted=True)
                 n_cut = sum(1 for c in (msg if isinstance(msg, list) else []) if INTERRUPTED in c["content"])
@@ -683,6 +701,14 @@ class Harness:
         return summary
 
 
+def record_pid(run: Path) -> dict:
+    """<run>/harness_pid.json: what scripts/exp51_stop.sh kills (the harness's own process group, never $!)."""
+    d = {"pid": os.getpid(), "pgid": os.getpgid(0), "sid": os.getsid(0), "own_group": os.getpgid(0) == os.getpid(),
+         "t": time.time()}
+    CM.write_json(Path(run) / "harness_pid.json", d)
+    return d
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("cmd", choices=("setup", "setup-dry", "check", "loop"))
@@ -727,6 +753,7 @@ def main(argv=None) -> int:
     client = ApiClient() if a.client == "api" else DummyClient(DRY_SCRIPT)
     e = EN.load(a.backend, threads=8, edit_dir=run / "edits")
     svc = SV.Service(run, e, tc=[] if a.backend.startswith("dummy") else None)
+    record_pid(run)
     th, ev = svc.start_thread()                    # the file queue is served while the editor works
     try:
         print(json.dumps(Harness(run, client, stop_usd=STOP_USD if stop is None else stop,

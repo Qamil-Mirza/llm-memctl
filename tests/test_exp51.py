@@ -839,6 +839,8 @@ def test_resume_after_crash_in_tool_and_in_api_call(service):
     assert H.INTERRUPTED in sent[-1]["content"][0]["content"] and len(sent) == len(c1.seen[-1]) + 2
     res = [e for e in svc.ledger.entries if e["kind"] == "resume"]
     assert len(res) == 1 and res[0]["interrupted_calls"] == 1
+    assert not [e for e in svc.ledger.entries if e["kind"] == "lost_call_placeholder"]   # ended on an assistant record
+    assert (svc.run / "transcript.pre_resume.1.jsonl").exists()
     assert len(json.loads((svc.run / "api_usage.json").read_text())) == 3
     with pytest.raises(RuntimeError):
         H.Harness(svc.run, H.DummyClient([FINISH]), service=svc).loop(resume=True)    # already ended
@@ -856,6 +858,14 @@ def test_resume_after_crash_in_api_call(service):
     assert out["reason"] == "finish" and out["ledger"]["turns"] == 2
     assert c2.seen[0] == c1.seen[1]                               # nothing was cut off: the same request again
     assert [e for e in svc.ledger.entries if e["kind"] == "resume"][0]["interrupted_calls"] == 0
+    lost = [e for e in svc.ledger.entries if e["kind"] == "lost_call_placeholder"]
+    assert len(lost) == 1 and lost[0]["usd"] == pytest.approx(H.worst_case_usd(c1.seen[1], H.API_CONFIG["max_tokens"]),
+                                                               abs=1e-6)
+    calls = json.loads((svc.run / "api_usage.json").read_text())
+    assert [c.get("placeholder", False) for c in calls] == [False, True, False]
+    assert out["usd"] == pytest.approx(2 * H.cost_of(H.DummyClient([]).usage) + lost[0]["usd"], abs=1e-5)
+    pre = (svc.run / "transcript.pre_resume.1.jsonl").read_text()
+    assert len(pre.splitlines()) == 2 and (svc.run / "transcript.jsonl").read_text().startswith(pre)
 
 
 DRIVER = """
@@ -866,6 +876,7 @@ script = [[{{"type": "tool_use", "id": "a", "name": "run_python", "input": {{"co
           [{{"type": "text", "text": "a long run"}},
            {{"type": "tool_use", "id": "b", "name": "run_python", "input": {{"code": "import time\\ntime.sleep(120)"}}}}],
           [{{"type": "tool_use", "id": "c", "name": "finish", "input": {{"summary": "x"}}}}]]
+H.record_pid({run!r})
 H.Harness({run!r}, H.DummyClient(script)).loop()
 """
 
@@ -880,15 +891,20 @@ def test_resume_after_sigkill_mid_run(tmp_path):
     _ws(tmp_path)
     drv = tmp_path / "driver.py"
     drv.write_text(DRIVER.format(scripts=str(ROOT / "scripts"), run=str(tmp_path)))
-    p = subprocess.Popen([sys.executable, str(drv)], cwd=ROOT, start_new_session=True)
+    p = subprocess.Popen(["setsid", sys.executable, str(drv)], cwd=ROOT)          # the F1 launch form
     tr = tmp_path / "transcript.jsonl"
     t0 = time.time()
     while not (tr.exists() and len(tr.read_text().splitlines()) >= 3):
         assert p.poll() is None and time.time() - t0 < 120
         time.sleep(0.2)
     time.sleep(1.0)
-    os.killpg(p.pid, signal.SIGKILL)
-    p.wait()
+    rec = json.loads((tmp_path / "harness_pid.json").read_text())
+    assert rec["own_group"]
+    stop = subprocess.run([str(ROOT / "scripts/exp51_stop.sh"), str(tmp_path)], capture_output=True, text=True)
+    assert stop.returncode == 0 and "stopped process group" in stop.stdout, stop.stderr
+    p.wait(timeout=10)
+    with pytest.raises(ProcessLookupError):
+        os.kill(rec["pid"], 0)
     with pytest.raises(SystemExit, match="already has a transcript"):
         H.main(["loop", "--run", str(tmp_path)])                 # a fresh loop on a crashed run is refused
     c2 = H.DummyClient([FINISH])
