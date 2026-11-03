@@ -181,7 +181,7 @@ def setup_workspace(run: Path, b0_run: Path = CM.RUN, snapshot: Path | None = No
     for f in ("tokenizer.json", "tokenizer_config.json", "vocab.json", "merges.txt"):
         if (snap / f).exists():
             shutil.copy(snap / f, ws / "data/tokenizer" / f)
-    bounds = CM.read_json(run / "bounds.json", dict(SV.BOUNDS_F0))
+    bounds = CM.read_json(run / "bounds.json", dict(SV.BOUNDS_F1))
     CM.write_json(run / "bounds.json", bounds)
     (ws / "TOOLS.md").write_text(tools_md(bounds))
     (ws / "INSTRUCTION.md").write_text(INSTRUCTION)
@@ -821,6 +821,8 @@ def main(argv=None) -> int:
         turns = DRY_MAX_TURNS if turns is None else min(turns, DRY_MAX_TURNS)
     elif a.client == "api" and a.backend != "hf":
         raise SystemExit("the real editor run uses the real model (--backend hf); the dummy is for --dry")
+    elif a.client == "api" and CM.read_json(run / "bounds.json", None) != SV.BOUNDS_F1:
+        raise SystemExit("the real editor run needs bounds.json equal to the F1 bounds")
     if (run / "transcript.jsonl").exists() and not a.resume:
         raise SystemExit(f"{run} already has a transcript; a run is one-only (use --resume after a crash)")
     if a.resume and not (run / "transcript.jsonl").exists():

@@ -204,7 +204,7 @@ def _projection() -> dict:
     t = json.loads((CM.RUN / "timing.json").read_text())
     dec = [(u["b0_total_s"] - u["read_s"]) / u["n_gen"] for u in t["units"]]
     s_row_160 = max(u["read_s"] for u in t["units"]) + max(dec) * EN.MAX_NEW_TOTAL
-    paired_160_h = 30 * SV.BOUNDS_F0["paired_pairs"] * s_row_160 / 3600
+    paired_160_h = 30 * SV.BOUNDS_F1["paired_pairs"] * s_row_160 / 3600
     proj = max(worst.values())
     return {"inventory_sha256": _sha(CM.RUN / "inventory.json"), "timing_sha256": _sha(CM.RUN / "timing.json"),
             "worst_case_30_passes_h": worst, "projected_h": proj, "r": min(1.0, 48.0 / proj),
@@ -279,14 +279,22 @@ def cost_estimate(turns: int) -> dict:
                      "3.7x (7,500 per call reaches the 900k context stop at turn 120). Forward results stay small in "
                      "the real run (dry: about 400 chars; arrays go to npz files), so growth comes from run_python "
                      "stdout (<= 20k chars), the editor's code and its thinking. Expiries are the largest uncertainty: "
-                     "the 1h cache lapses when a tool call plus generation passes 1 h start to start. At B0 mean "
-                     "length a largest paired pass (both arms edited) takes about 52 min and a largest read pass about "
-                     "54 min, so only near-largest passes or lengthened outputs lapse; a crash resume can add one."}
+                     "the 1h cache lapses when a tool call plus generation passes 1 h start to start. Measured on the "
+                     "real-model smoke run (n = 1-2 rows, so a sanity check): paired 28.7 s/row, so a largest 48-pair "
+                     "pass with both arms edited takes about 46 min; prefix 8.5 s/row, about 36 min at 256 rows; read "
+                     "4.5 s/text, about 38 min at 512 texts (the inventory's 6.27 s/text, from more rows, gives about "
+                     "54 min). A paired pass whose outputs lengthen to 160 tokens (117.8 s/row) still takes about 3.1 "
+                     "h, and a crash resume can add one, so the scenarios keep 3 and 10 expiries: the 48-pair bound "
+                     "removes the forced expiry of a largest pass, and the model has no term for pass size."}
 
 
 def f1() -> dict:
     proj = _projection()
     bounds = {k: (v if k in ("submissions",) else type(v)(v * proj["r"])) for k, v in SV.BOUNDS_F0.items()}
+    bounds["paired_pairs"] = min(bounds["paired_pairs"], SV.BOUNDS_F1["paired_pairs"])   # §13.6: fit the cost cap
+    run_bounds = json.loads((ROOT / "runs/exp51/editor_run/bounds.json").read_text())
+    if run_bounds != bounds or bounds != SV.BOUNDS_F1:
+        raise SystemExit(f"editor_run/bounds.json or BOUNDS_F1 differs from the F1 bounds: {run_bounds}")
     counts = json.loads((ROOT / "runs/exp51/cases51_counts.json").read_text())
     d2 = {"scripts/exp51_harness.py": ("c115a9fb78dbed95e62f39cb743ab09c0d17c9e3a9f5d27d65dac2d35ed54c69",
                                        "ef298273497e94e775659969b0bfa378b57353e3194dd94484b4acf90021f659"),
@@ -305,6 +313,14 @@ def f1() -> dict:
         "split_sizes_bases_per_task": counts["sizes"], "n_rows": counts["n_rows"],
         "cases51_sha256": counts["cases51_sha256"],
         "reduction": proj,
+        "bounds_scaling": {"paired_pairs": {"f0_max": 64, "final": 48, "authority": "§13.6 (scaled at F1 to fit under "
+                                            "$45), Advisor F1 review", "why": "at the measured 28.7 s/row a 64-pair pass "
+                                            "with both arms edited takes about 61 min, past the 1 h cache TTL; 48 pairs "
+                                            "takes about 46 min"}},
+        "editor_workspace": {"bounds_json_sha256": _sha(ROOT / "runs/exp51/editor_run/bounds.json"),
+                             "tools_md_sha256": _sha(ROOT / "runs/exp51/editor_run/workspace/TOOLS.md"),
+                             "instruction_md_sha256": _sha(ROOT / "runs/exp51/editor_run/workspace/INSTRUCTION.md"),
+                             "e_rows_sha256": _sha(ROOT / "runs/exp51/editor_run/workspace/data/E_rows.jsonl")},
         "bounds_final": bounds, "bounds_within_f0_maxima": all(bounds[k] <= v for k, v in SV.BOUNDS_F0.items()),
         "resource_caps": {"harness_stop_usd": H.STOP_USD, "console_workspace_cap_usd": 50,
                           "context_stop_tokens": H.CONTEXT_STOP_TOKENS, "context_window_tokens": 1_000_000,
@@ -348,6 +364,8 @@ def f1() -> dict:
              "frozen_content_changed": True,
              "frozen_content_changed_items": ["API request: thinking display summarized (what is returned changes; "
                                               "what the editor is told does not)", "dry_run.max_turns 10 -> 15",
+                                              "TOOLS.md request doc: paired <= 48 pairs (96 sequences), was 64 "
+                                              "(128); bounds.json paired_pairs 48",
                                               "new fixed text the editor can receive: rules.budget_note.text, and "
                                               "rules.refusal.text after a refusal; ledger_copy gains "
                                               "budget_used_fraction"],
@@ -390,8 +408,8 @@ def f1() -> dict:
             "The budget note can go unseen in one corner: at very large context the stop reserve is near $8.6, so one "
             "call jumping from below $32 past about $36 (for example a cache expiry near 900k context) sends the note "
             "and stops before another call."],
-        "hf_smoke": {"file": "runs/exp51/hf_smoke/smoke_result.json", "sha256": _sha(ROOT / "runs/exp51/hf_smoke/smoke_result.json"),
-                     **json.loads((ROOT / "runs/exp51/hf_smoke/smoke_result.json").read_text())},
+        "hf_smoke": {"file": "runs/exp51/hf_smoke2/smoke_result.json", "sha256": _sha(ROOT / "runs/exp51/hf_smoke2/smoke_result.json"),
+                     **json.loads((ROOT / "runs/exp51/hf_smoke2/smoke_result.json").read_text())},
         "sources_sha256": {s: _sha(ROOT / s) for s in SOURCES + F1_EXTRA_SOURCES},
     }
 

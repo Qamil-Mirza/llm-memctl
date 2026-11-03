@@ -1096,3 +1096,18 @@ def test_cost_model_backtest_and_stop():
         assert v["model_usd"] == pytest.approx(v["measured_usd"], rel=0.05)
     assert FZ.cost_model(120, 7500, 2000, 10)["harness_stop"]["turn"] < 120
     assert FZ.cost_model(120, 2400, 545)["harness_stop"] is None
+
+
+def test_f1_paired_bound_48_shown_and_enforced(service, tmp_path):
+    import exp51_harness as H
+    import exp51_service as SV
+    svc, rows = service
+    assert SV.BOUNDS_F1 == {**SV.BOUNDS_F0, "paired_pairs": 48} and SV.BOUNDS_F1["paired_pairs"] <= SV.BOUNDS_F0["paired_pairs"]
+    md = H.tools_md(SV.BOUNDS_F1)
+    assert "- paired_pairs: 48" in md and "<= 48 pairs (96 sequences)" in md and "<= 64 pairs" not in md
+    svc.bounds = dict(SV.BOUNDS_F1)
+    with pytest.raises(SV.Refused, match="1-48 rows"):
+        svc.paired({"rows": [rows[0]["case_id"]] * 49, "arms": [{"edit": None}, {"edit": None}]})
+    CM.write_json(tmp_path / "bounds.json", SV.BOUNDS_F0)              # a real run on the old bounds is refused
+    with pytest.raises(SystemExit, match="F1 bounds"):
+        H.main(["loop", "--run", str(tmp_path), "--client", "api", "--backend", "hf", "--i-have-the-go"])

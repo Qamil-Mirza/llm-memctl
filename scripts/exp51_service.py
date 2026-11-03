@@ -9,7 +9,7 @@ into it).
 
 Request types (schema in REQUEST_DOC):
 - paired:  {"rows": [E case ids], "arms": [arm, arm]}; total-effect generation (<= 160 tokens) of each row under both
-           arms; <= 64 pairs (128 sequences). An arm is {"edit": null | edit_id, "dose": 1.0}.
+           arms; <= 48 pairs (96 sequences). An arm is {"edit": null | edit_id, "dose": 1.0}.
 - prefix:  {"rows": [...], "arm": arm, "hybrid": false}; controlled prefix from B0's stored ids (<= 16 tokens);
            <= 256 rows.
 - read:    {"items": [{"row": id, "source": "prompt"|"b0_prefix"|"b0_full"} | {"text": user prompt,
@@ -55,6 +55,7 @@ from memctl.analysis import edit51 as ED  # noqa: E402
 BOUNDS_F0 = {"passes": 30, "paired_pairs": 64, "prefix_rows": 256, "read_texts": 512, "input_tokens": 2_000_000,
              "generated_tokens": 400_000, "capture_bytes": 20 * 10 ** 9, "python_runs": 100, "turns": 120,
              "wall_hours": 48.0, "saved_edits": 40, "failed_requests": 10, "submissions": 3}
+BOUNDS_F1 = {**BOUNDS_F0, "paired_pairs": 48}   # F1 (§13.6): a largest paired pass stays inside the 1 h cache TTL
 PASS_TYPES = ("paired", "prefix", "read")
 REQUEST_DOC = __doc__
 

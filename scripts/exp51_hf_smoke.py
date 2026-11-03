@@ -4,7 +4,7 @@ in its own run dir (never editor_run). It reaches one paired, one prefix and one
 finish through the same launch path as the real run (service thread + file queue), and reports time per pass and
 peak RSS.
 
-    HF_HUB_OFFLINE=1 .venv/bin/python scripts/exp51_hf_smoke.py --run runs/exp51/hf_smoke
+    HF_HUB_OFFLINE=1 .venv/bin/python scripts/exp51_hf_smoke.py --run runs/exp51/hf_smoke2
 """
 
 from __future__ import annotations
