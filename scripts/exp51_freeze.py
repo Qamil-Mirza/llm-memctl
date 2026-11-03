@@ -60,6 +60,28 @@ def _backend_basis() -> dict:
             "rule": "one backend and one fixed batch layout per split for every confirmatory arm, B0 included"}
 
 
+def _e_b0() -> dict:
+    """B0 on E (analyst work before F0, §13.5): counts by set x class, NM, the engine, and one hash over the records."""
+    from collections import Counter
+    rows = CM.rows("E")
+    h = hashlib.sha256()
+    cnt, eng, nm, mig = Counter(), set(), 0, 0
+    for r in sorted(rows, key=lambda r: r["case_id"]):
+        p = CM.b0_path("E", r["case_id"])
+        if not p.exists():
+            return {"status": f"incomplete ({r['case_id']} missing)"}
+        h.update(p.read_bytes())
+        rec = json.loads(p.read_text())
+        cnt[f"{r['set']}|{rec['cls']}"] += 1
+        eng.add(rec["engine"]["engine"])
+        nm += not rec["p_ans_ok"]
+        mig += "migrated_from" in rec
+    fit = CM.read_json(CM.RUN / "b5_fit.json", {})
+    return {"n_rows": len(rows), "by_set_class": dict(sorted(cnt.items())), "nm": nm, "engines": sorted(eng),
+            "migrated_by_prompt_sha": mig, "records_sha256": h.hexdigest(),
+            "b5": {k: fit.get(k) for k in ("layer", "direction_sha256", "edit_ids", "n_abst", "n_gold")}}
+
+
 def f0() -> dict:
     from transformers import AutoTokenizer
     tok = AutoTokenizer.from_pretrained(str(EN.SNAPSHOT))
@@ -104,6 +126,7 @@ def f0() -> dict:
                             "optimisers or iterative loss-based fitting (sandbox: numpy and tokenizers only)",
         "sources_sha256": {s: hashlib.sha256((ROOT / s).read_bytes()).hexdigest() for s in SOURCES},
         "backend_basis": _backend_basis(),
+        "e_b0": _e_b0(),
         "compute_plan": {
             "decision": "D-73 (the user's 'Do A'): cap $30 -> $36; batched A40 secure route; Advisor stage-4 pod "
                         "structure ruling (2026-11-03): two pods, each quoted and approved on its own",
