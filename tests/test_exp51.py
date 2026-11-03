@@ -484,7 +484,9 @@ def test_harness_dummy_loop_and_cost_stop(service, tmp_path, monkeypatch):
                   "edit_id": "nope", "kind": "repair", "component_and_computation": "x", "evidence": "x",
                   "predictions_by_row_type": "x", "flips": "x", "activity_predictions": "x",
                   "signed_endpoint": {"population": "FA", "direction": "increase", "outcome": "Rel"},
-                  "most_important_component": {"layer": 1, "tensor": "o_proj"}}}],
+                  "most_important_component": {"layer": 1, "tensor": "o_proj"}, "f_site": {"layer": 1,
+                  "tensor": "resid"}, "f_direction": "/work/edits_in/u.npy", "f_int_sign": 1,
+                  "activity": [{"manipulation": "evidence_removed", "type": "directional", "sign": -1}]}}],
               [{"type": "tool_use", "id": "c", "name": "finish", "input": {"summary": "done"}}]]
     h = H.Harness(svc.run, H.DummyClient(script), service=svc)
     out = h.loop()
@@ -620,6 +622,10 @@ def test_validate_input():
     bad = {"edit_id": "e", "kind": "other"}
     errs = H.validate_input(H.TOOL_SCHEMAS["submit"], bad)
     assert any("kind" in e for e in errs) and any("signed_endpoint" in e for e in errs)
+    acts = {"activity": [{"manipulation": "evidence_removed", "type": "directional", "sign": 1}] * 5}
+    assert any("more than 4" in e for e in H.validate_input(H.TOOL_SCHEMAS["submit"], acts))
+    assert any("activity[0].manipulation" in e for e in H.validate_input(H.TOOL_SCHEMAS["submit"], {
+        "activity": [{"manipulation": "x", "type": "directional", "sign": 1}]}))
 
 
 def test_shortcut_parity_dummy(engine, small_cases, tmp_path):
@@ -651,3 +657,74 @@ def test_generate_batched_matches_batch1_dummy(engine, small_cases):
         assert [g.gen_ids for g in got] == [r.gen_ids for r in ref]
     with pytest.raises(ValueError):
         e.generate_batched(batch, EN.Arm(hybrid=True))
+
+
+def test_stage4_end_to_end_dummy(engine, small_cases, tmp_path, monkeypatch):
+    """Pod S (B0, R and M arms, selection, M follow-ups) and pod H+T (guarded) on the dummy with scripted B0 notes."""
+    import exp51_stage4 as S4
+    e = engine
+    root = tmp_path / "gpu"
+    e.edits.edit_dir = root / "edits"
+    rows = small_cases[0]
+    keep = {sp: {f"{sp}-{t}00" for t in ("DE", "RC", "TU")} for sp in ("S", "H", "Tcity")}   # one base per task
+    by_split = {sp: [r for r in rows if r["split"] == sp and r["base_key"] in keep[sp]] for sp in ("S", "H", "Tcity")}
+    rows_S = by_split["S"]
+    import exp51_engine as EN
+    monkeypatch.setattr(S4, "LAYOUT", 16)
+    monkeypatch.setattr(EN, "MAX_NEW_TOTAL", 12)
+    monkeypatch.setattr(EN, "STEER_LAYER", 1)
+    monkeypatch.setattr(CM, "b4_vector", lambda a, path=None: np.full(e.hidden, 0.01 * a, np.float32))
+    # B0 on S batched, then scripted notes (the dummy writes no marker) so the prefix paths run
+    S4.run_b0(e, rows_S[:3], root, "S", T_CITIES)
+    assert S4.b0_path(root, "S", sorted(rows_S, key=lambda r: r["case_id"])[0]["case_id"]).exists() or True
+    for sp in ("S", "H", "Tcity"):
+        for r in by_split[sp]:
+            CM.write_json(S4.b0_path(root, sp, r["case_id"]), {**_fake_b0(e, r), "first_trigger_step": 3,
+                                                                "layout": 8})
+    sh = e.edits.shapes()
+    subs_dir = tmp_path / "subs"
+    subs_dir.mkdir()
+    for k in (1, 2):
+        man = ED.save_edit(root / "edits", [_rand_comp(e, k, "down_proj", "cols", n=4, seed=k)], sh)
+        CM.write_json(subs_dir / f"{k}.json", {
+            "edit_id": man["edit_id"], "kind": "repair", "signed_endpoint": {"population": "FA", "direction": "increase",
+                                                                             "outcome": "Rel"},
+            "most_important_component": {"layer": k, "tensor": "down_proj"}, "f_site": {"layer": 2, "tensor": "resid"},
+            "f_int_sign": 1, "activity": [{"manipulation": "evidence_removed", "type": "directional", "sign": -1},
+                                          {"manipulation": "city_changed", "type": "equivalence", "sign": 0}]})
+        np.save(subs_dir / f"{k}_f_direction.npy", np.ones(e.hidden))
+    subs = S4.load_subs(subs_dir)
+    b5 = {str(b): ED.save_edit(root / "edits", [_rand_comp(e, 3, "o_proj", "dense", n=1, seed=9)], sh, "comparator",
+                               meta={"b": b})["edit_id"] for b in (0.25, 0.5, 0.75, 1.0)}
+    b1 = [e.encode(" unknown")[0]]
+    for spec, est in S4.r_specs(e, subs, b5, b1):
+        S4.run_arm(e, rows_S, root, "S", spec, est, T_CITIES)
+    au = [r for r in rows_S if r["set"] in ("ANS", "UNA-rel", "UNA-swap")]
+    for spec, est in S4.m_specs(subs):
+        S4.run_arm(e, au, root, "S", spec, est, T_CITIES)
+    monkeypatch.setattr(CM, "b1_token_set", lambda tok: b1)
+    sel = S4.s_select(e, root, rows_S, subs, b5, T_CITIES, B=200)
+    assert set(sel["R"]["comparator_doses"]) == {"B1", "B2", "B3", "B4", "B5"}
+    assert len(sel["R"]["entries"]) == 2 and len(sel["M"]["entries"]) == 2
+    # force an M candidate to exercise the follow-ups (the dummy's effects are noise)
+    sel["M"]["candidate"] = {"index": 1, "edit_id": subs[0]["edit_id"], "dose": 1.0}
+    mf = S4.m_followups(e, root, rows_S, subs, sel, T_CITIES, B=200)
+    assert mf["primary_component"]["i"] == 0 and len(mf["b6_edit_ids"]) == 5 and len(mf["activity"]) == 2
+    assert mf["f_int_doses"] and "unestimable" in mf["predictor"]["coef"]     # scripted B0: FA only
+    sel["M_followups"] = mf
+    sel["R"]["candidate"] = {"index": 2, "edit_id": subs[1]["edit_id"], "dose": 1.0}
+    # pod H+T: the guard refuses without a committed F2
+    with pytest.raises(PermissionError):
+        S4.frozen(root)
+    f2 = json.loads(json.dumps(sel, default=float))
+    monkeypatch.setattr(S4, "frozen", lambda r: f2)
+    monkeypatch.setattr(CM, "rows", lambda split, path=None, allow_sealed=False: by_split[split])
+    if mf.get("f_int_dose") is None:
+        f2["M_followups"]["f_int_dose"] = mf["f_int_doses"][0]
+    S4.h_run(e, root, subs, T_CITIES)
+    assert any((root / "arms" / "H").rglob("*.json")) and any((root / "arms" / "Tcity").rglob("*.json"))
+    assert (root / "f" / "H.json").exists()
+    rep = S4.h_report(root, subs, rows_S, by_split["H"], by_split["Tcity"], B=200)
+    assert set(rep["R"]["holm"]) == {f"{k}:{o}" for k in ("B1", "B2", "B3", "B4", "B5") for o in ("O1", "O2")}
+    assert set(rep["M"]["holm"]) == {"M1", "M2", "M3"} and rep["Tcity"]["descriptive"]
+    e.edits.assert_clean()

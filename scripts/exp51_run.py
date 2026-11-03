@@ -288,6 +288,63 @@ def batching(e, rws: list[dict], run: Path, tc, sizes=(8, 16), n: int = 24) -> d
     return out
 
 
+# ---------------------------------------------------------------------------------------------- §8.4.2 replay on E
+
+def e_replay(e, run: Path, subs_dir: Path, tc, deadline=None) -> int:
+    """The harness replay of every submission on all of E at dose 1 (laptop CPU, batch 1: E's one backend): total
+    effect on every row, controlled prefix on ANS + UNA rows with a P_ans."""
+    rws = CM.rows("E")
+    au = [r for r in rws if r["set"] in ("ANS", "UNA-rel", "UNA-swap")]
+    for p in sorted(Path(subs_dir).glob("[0-9].json"), key=lambda p: int(p.stem)):
+        s = json.loads(p.read_text())
+        spec = {"arm": "EDIT", "edit_id": s["edit_id"], "dose": 1.0}
+        rc = run_arm(e, rws, run, spec, "total", deadline, tc)
+        if rc:
+            return rc
+        rc = run_arm(e, au, run, spec, "prefix", deadline, tc)
+        if rc:
+            return rc
+    return 0
+
+
+def e_entry(run: Path, subs_dir: Path, B: int = 10_000) -> dict:
+    """§8.4.2: R entry (total effect, U − B0 lower bound > 0, >= 20 FA bases in DE or RC) and M entry (the declared
+    signed endpoint, controlled prefix, |effect| >= 0.05 with its bound beyond 0, >= 20 bases) computed on E."""
+    from memctl.analysis import mech51 as MK
+    from memctl.analysis import stats51 as S
+    rws = CM.rows("E")
+    meta = {r["case_id"]: r for r in rws}
+    labels = {c: (CM.b0("E", c, run) or {}).get("populations", []) for c in meta}
+    bases = MK.bases_of(meta)
+    b0 = {c: CM.b0("E", c, run) for c in meta}
+    b0r = MK.rates(b0, labels, meta)
+    fab = {}
+    for c, l in labels.items():
+        if "FA" in l:
+            fab.setdefault(meta[c]["task"], set()).add(meta[c]["base_key"])
+    fab = {k: len(v) for k, v in fab.items()}
+    b0p = {c: CM.read_json(arm_dir(run, "E", "B0", "prefix") / f"{c}.json") for c in meta}
+    out = {"fa_bases_by_task": fab, "submissions": []}
+    for p in sorted(Path(subs_dir).glob("[0-9].json"), key=lambda p: int(p.stem)):
+        s = json.loads(p.read_text())
+        key = arm_key("EDIT", 1.0, None, None, s["edit_id"])
+        tot = {c: CM.read_json(arm_dir(run, "E", key, "total") / f"{c}.json") for c in meta}
+        pre = {c: CM.read_json(arm_dir(run, "E", key, "prefix") / f"{c}.json") for c in meta}
+        r_ent = MK.r_entry(MK.rates(tot, labels, meta), b0r, bases, fab)
+        ep = s["signed_endpoint"]
+        sg = 1 if ep["direction"] == "increase" else -1
+        a = MK.per_base(pre, labels, meta, ep["population"], ep["outcome"])
+        b = MK.per_base(b0p, labels, meta, ep["population"], ep["outcome"])
+        res = MK.paired(bases, a, b, B)
+        bd = S.bounds(res)
+        m_ok = (res["est"] is not None and sg * res["est"] >= 0.05 and len(b) >= 20 and
+                ((bd["lo"] > 0) if sg > 0 else (bd["hi"] < 0)))
+        out["submissions"].append({"index": int(p.stem), "edit_id": s["edit_id"], "R": r_ent,
+                                   "M": {"effect": res["est"], **bd, "support": len(b), "entry": bool(m_ok)}})
+    out["any_entry"] = any(x["R"]["entry"] or x["M"]["entry"] for x in out["submissions"])
+    return out
+
+
 # ---------------------------------------------------------------------------------------------- B6
 
 def make_b6(e, candidate_id: str, dose: float, seeds=CM.B6_SEEDS) -> dict[int, str]:
@@ -425,7 +482,8 @@ def require_f2(run: Path) -> dict:
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--stage", required=True, choices=("timing", "b0", "noop", "b5-fit", "inventory", "arm", "parity",
-                                                      "batching"))
+                                                      "batching", "e-replay", "e-entry"))
+    p.add_argument("--subs", default=None, help="submissions dir (e-replay / e-entry)")
     p.add_argument("--split", default="E")
     p.add_argument("--sets", default=None, help="comma list of sets (default all)")
     p.add_argument("--task", default=None, help="restrict to one task (DE / RC / TU)")
@@ -471,6 +529,14 @@ def main(argv=None) -> int:
         CM.write_json(run / f"noop_gate{a.tag}.json", res)
         print(json.dumps({k: v for k, v in res.items() if k != "rows"}))
         return 0 if res["pass"] else 3
+    if a.stage == "e-entry":
+        res = e_entry(run, Path(a.subs))
+        CM.write_json(run / "e_entry.json", res)
+        print(json.dumps({"any_entry": res["any_entry"], "fa_bases_by_task": res["fa_bases_by_task"]}))
+        return 0
+    if a.stage == "e-replay":
+        rc = run_arm(e, CM.rows("E"), run, {"arm": "B0"}, "prefix", deadline, tc)       # the B0 prefix reference
+        return rc or e_replay(e, run, Path(a.subs), tc, deadline)
     if a.stage == "parity":
         res = parity(e, rws, run, tc, a.n)
         CM.write_json(run / "parity_shortcut.json", res)

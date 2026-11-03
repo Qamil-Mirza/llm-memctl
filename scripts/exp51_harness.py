@@ -321,16 +321,35 @@ TOOLS = [
          "component_and_computation": {"type": "string"}, "evidence": {"type": "string"},
          "predictions_by_row_type": {"type": "string"}, "flips": {"type": "string"},
          "activity_predictions": {"type": "string"},
-         "signed_endpoint": {"type": "object", "properties": {"population": {"type": "string"},
-                                                              "direction": {"type": "string",
-                                                                            "enum": ["increase", "decrease"]},
-                                                              "outcome": {"type": "string"}},
-                             "required": ["population", "direction", "outcome"]},
+         "signed_endpoint": {"type": "object", "properties": {
+             "population": {"type": "string", "enum": ["FA", "FA-ab", "C", "W", "UNA", "CF"]},
+             "direction": {"type": "string", "enum": ["increase", "decrease"]},
+             "outcome": {"type": "string", "enum": ["Rel", "Uns", "Dam", "CF_follow", "Commit", "gold", "abstention",
+                                                    "mixed", "wrong", "conflicting", "other", "degenerate"]}},
+             "required": ["population", "direction", "outcome"]},
          "most_important_component": {"type": "object", "properties": {"layer": {"type": "integer"},
                                                                        "tensor": {"type": "string"}},
-                                      "required": ["layer", "tensor"]}},
+                                      "required": ["layer", "tensor"]},
+         "f_site": {"type": "object", "description": "where the computation you name is read: a layer and one of "
+                    "o_proj, down_proj, input_layernorm, post_attention_layernorm, resid (the decoder layer output)",
+                    "properties": {"layer": {"type": "integer"},
+                                   "tensor": {"type": "string", "enum": ["o_proj", "down_proj", "input_layernorm",
+                                                                         "post_attention_layernorm", "resid"]}},
+                    "required": ["layer", "tensor"]},
+         "f_direction": {"type": "string", "description": "a .npy vector under /work/edits_in/: f = the projection of "
+                         "the site's output at the final answer line's ':' token on this direction"},
+         "f_int_sign": {"type": "integer", "enum": [1, -1], "description": "the direction in which moving f should "
+                        "move your signed endpoint"},
+         "activity": {"type": "array", "maxItems": 4, "description": "your predictions (e) in structured form",
+                      "items": {"type": "object", "properties": {
+                          "manipulation": {"type": "string", "enum": ["evidence_removed", "city_changed",
+                                                                      "distractors_added", "unrelated_vs_absent"]},
+                          "type": {"type": "string", "enum": ["directional", "equivalence"]},
+                          "sign": {"type": "integer", "enum": [1, -1, 0]}},
+                          "required": ["manipulation", "type", "sign"]}}},
          "required": ["edit_id", "kind", "component_and_computation", "evidence", "predictions_by_row_type", "flips",
-                      "activity_predictions", "signed_endpoint", "most_important_component"]}},
+                      "activity_predictions", "signed_endpoint", "most_important_component", "f_site",
+                      "f_direction", "f_int_sign", "activity"]}},
     {"name": "finish", "description": "End the run.",
      "input_schema": {"type": "object", "properties": {"summary": {"type": "string"}}, "required": ["summary"]}},
 ]
@@ -347,6 +366,11 @@ def validate_input(schema: dict, value, path: str = "input") -> list[str]:
         errs.append(f"{path}: {value!r} not in {schema['enum']}")
     if "maximum" in schema and isinstance(value, (int, float)) and value > schema["maximum"]:
         errs.append(f"{path}: {value} > {schema['maximum']}")
+    if t == "array":
+        if "maxItems" in schema and len(value) > schema["maxItems"]:
+            errs.append(f"{path}: more than {schema['maxItems']} items")
+        for i, v in enumerate(value):
+            errs += validate_input(schema.get("items", {}), v, f"{path}[{i}]")
     if t == "object":
         for k in schema.get("required", []):
             if k not in value:
@@ -510,7 +534,18 @@ class Harness:
                 return {"error": "submission bound reached"}
             if not (self.run / "edits" / f"{inp['edit_id']}.json").exists():
                 return {"error": f"no saved edit {inp['edit_id']}"}
-            CM.write_json(self.subs / f"{n + 1}.json", {**inp, "t": time.time()})
+            src = (self.ws / inp["f_direction"].replace("/work/", "", 1)).resolve()
+            if self.ws.resolve() not in src.parents or not src.exists() or src.suffix != ".npy":
+                return {"error": "f_direction must be an existing .npy file inside /work"}
+            import numpy as np
+            v = np.load(src, allow_pickle=False)
+            if v.ndim != 1 or not np.all(np.isfinite(v)) or not np.any(v):
+                return {"error": "f_direction must be a finite, non-zero 1-D vector"}
+            dst = self.subs / f"{n + 1}_f_direction.npy"
+            shutil.copy(src, dst)                      # frozen copy outside the sandbox's reach
+            import hashlib
+            CM.write_json(self.subs / f"{n + 1}.json", {**inp, "t": time.time(),
+                                                        "f_direction_sha256": hashlib.sha256(dst.read_bytes()).hexdigest()})
             return {"ok": True, "submission": n + 1}
         return {"error": f"unknown tool {name}"}
 

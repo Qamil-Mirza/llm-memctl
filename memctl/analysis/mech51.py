@@ -241,6 +241,8 @@ def predictor_rows(recs: list[dict], enc: dict, with_f: bool) -> list[dict]:
 def m3c(train: list[dict], test: list[dict], bases_test: S.Bases, B=S.B_DEFAULT) -> dict:
     """Fit baseline and full on S (train), score H (test) without refitting; paired pooled AUROC difference, one-sided
     (full > baseline), bootstrap stratified by task. Both classes must be present overall."""
+    if len({r["label"] for r in train}) < 2 or len({r["label"] for r in test}) < 2:
+        return {"p": 1.0, "unestimable": "one class in the S or H prediction population (§13.4c)"}
     enc = cell_encoding(train)
     fitted = {}
     for name, wf in (("baseline", False), ("full", True)):
