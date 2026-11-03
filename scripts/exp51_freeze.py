@@ -41,7 +41,7 @@ SOURCES = ("scripts/exp51_cases.py", "scripts/exp51_common.py", "scripts/exp51_e
            "scripts/exp51_bundle.sh", "scripts/exp51_pod_measure.sh", "scripts/exp51_d30.sh",
            "scripts/exp51_s_bundle.sh", "scripts/exp51_pod_s.sh", "scripts/exp51_ht_bundle.sh", "scripts/exp51_pod_ht.sh",
            "tests/test_exp51.py")
-F1_EXTRA_SOURCES = ("scripts/exp51_stop.sh",)
+F1_EXTRA_SOURCES = ("scripts/exp51_stop.sh", "scripts/exp51_hf_smoke.py")
 F0_COMMIT, F0_SHA = "d29263a", "3ed50681f3001527d06cc2e1183187250991d3f39886975ef88946089ed3a9e7"
 DRY_RUNS = (ROOT / "runs/exp51/dryrun_api", ROOT / "runs/exp51/dryrun_api2")
 
@@ -297,7 +297,7 @@ def f1() -> dict:
               "scripts/exp51_service.py": "b0979e2d834b4807f9c81091cb22d59c55919a202af8fb980d35cfadd860c67e",
               "scripts/exp51_engine.py": "59d5ca562794a728761f139cbbef6d2df1a281fb12cdb8ba4599f0e47a91c5a1",
               "scripts/exp51_freeze.py": "e4891791541cdc6d5b2478745095ba3b6458601938b1ac998e0a5857c55e6baf",
-              "scripts/exp51_stop.sh": None}
+              "scripts/exp51_stop.sh": None, "scripts/exp51_hf_smoke.py": None}
     return {
         "point": "F1", "status": "DRAFT (not frozen until committed by the Advisor)",
         "f0": {"commit": F0_COMMIT, "manifest": "runs/exp51/freeze/F0_draft.json", "sha256": F0_SHA,
@@ -338,6 +338,9 @@ def f1() -> dict:
                                   "stop_details logged on a refusal (transcript only)",
                                   "refusal handling: one fixed continuation, second refusal ends (rules.refusal)",
                                   "one budget note at $32 and budget_used_fraction in the ledger (rules.budget_note)",
+                                  "ledger_copy omits the usd of a lost_call_placeholder (kept in the ledger)",
+                                  "exp51_hf_smoke.py: $0 scripted loop on the real model, DRY- rows (setup_dry takes "
+                                  "an engine)",
                                   "exp51_freeze.py: the F1 builder and cost model; refuses to rebuild F0"],
              "commits": ["475be08", "f0a97b9", "645c6ad", _head()],
              "authority": "Advisor (ACCEPT 475be08; required items of the dry-run reviews)",
@@ -359,11 +362,11 @@ def f1() -> dict:
             "lost_call": "On resume, if the transcript ends on a user record, one call is booked at its worst case "
                          "(context at the 1h write price + max_tokens at the output price) as a meter placeholder and "
                          "ledger kind lost_call_placeholder; never trued down.",
-            "refusal": {"rule": "Counted over the whole run. First refusal: the refused response is logged and never "
-                                "joins the messages; the fixed text below is appended once as a text block to the user "
-                                "turn that drew it (transcript record user_amend) and the request is sent. Second "
-                                "refusal: the run ends, documented under D-45; submissions already made stand and go "
-                                "to replay. No fallback model. stop_details is in the transcript only (the ledger is "
+            "refusal": {"rule": "An isolated refusal: the refused response is logged and never joins the messages; the "
+                                "fixed text below is appended once as a text block to the user turn that drew it "
+                                "(transcript record user_amend) and the request is sent. Two consecutive refusals (the "
+                                "continuation itself refused) or a third refusal overall: the run ends, documented "
+                                "under D-45; submissions already made stand and go to replay. No fallback model. stop_details is in the transcript only (the ledger is "
                                 "mirrored into the editor's sandbox).",
                         "text": H.REFUSAL_CONTINUE, "authority": "Advisor F1 ruling 3"},
             "budget_note": {"rule": "Appended once to the user turn being sent when measured spend first passes usd "
@@ -380,6 +383,15 @@ def f1() -> dict:
                        "stop only with scripts/exp51_stop.sh runs/exp51/editor_run (kills the recorded process "
                        "group; never $! or pgrep)",
                        "after a crash: the same command with --resume (no other change)"]},
+        "disclosures": [
+            "The continuation request shape (a text block after tool_results) has never been sent to the live API; a "
+            "refusal cannot be triggered on demand. If the API rejected it, that is a non-transient 400: the harness "
+            "raises and a --resume hits the same 400.",
+            "The budget note can go unseen in one corner: at very large context the stop reserve is near $8.6, so one "
+            "call jumping from below $32 past about $36 (for example a cache expiry near 900k context) sends the note "
+            "and stops before another call."],
+        "hf_smoke": {"file": "runs/exp51/hf_smoke/smoke_result.json", "sha256": _sha(ROOT / "runs/exp51/hf_smoke/smoke_result.json"),
+                     **json.loads((ROOT / "runs/exp51/hf_smoke/smoke_result.json").read_text())},
         "sources_sha256": {s: _sha(ROOT / s) for s in SOURCES + F1_EXTRA_SOURCES},
     }
 

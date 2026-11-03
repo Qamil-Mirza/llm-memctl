@@ -1056,6 +1056,40 @@ def test_budget_note_once_with_fraction_and_survives_resume(service):
     assert h2.noted and len([e for e in svc.ledger.entries if e["kind"] == "budget_note"]) == 1
 
 
+def test_isolated_refusals_continue_and_the_third_ends_the_run(service):
+    import exp51_harness as H
+    svc, rows = service
+    (svc.ws / "scratch").mkdir(exist_ok=True)
+    ref = {"stop_reason": "refusal", "content": []}
+    tool = lambda i: _tool_use(i, "run_python", {"code": "print(1)"})
+    c = H.DummyClient([ref, tool(1), ref, tool(2), ref, FINISH])
+    out = H.Harness(svc.run, c, service=svc).loop()
+    assert out["reason"] == "refusal (stop_reason)" and out["ledger"]["turns"] == 5
+    assert json.dumps(c.seen[3]).count(H.REFUSAL_CONTINUE) == 2       # one continuation per isolated refusal
+    h = H.Harness(svc.run, H.DummyClient([FINISH]), service=svc)
+    with pytest.raises(RuntimeError):
+        h.loop(resume=True)
+
+
+def test_ledger_copy_has_no_placeholder_usd(service):
+    import exp51_harness as H
+    svc, rows = service
+    c1 = H.DummyClient([lambda m: (_ for _ in ()).throw(_Crash())])
+    (svc.run / "transcript.jsonl").write_text("")
+    with pytest.raises(_Crash):
+        H.Harness(svc.run, c1, service=svc).loop(resume=True)
+    assert '"usd"' in (svc.run / "ledger.jsonl").read_text()
+    copy = (svc.ws / "ledger_copy.jsonl").read_text()
+    assert "lost_call_placeholder" in copy and '"usd"' not in copy
+
+
+def test_hf_smoke_script_on_the_dummy(tmp_path):
+    import exp51_hf_smoke as SM
+    r = SM.run(tmp_path / "smoke", backend="dummy", threads=2)
+    assert r["ok"], r
+    assert set(r["passes"]) == {"paired", "prefix", "read", "save_edit"} and r["submission_saved"]
+
+
 def test_cost_model_backtest_and_stop():
     import exp51_freeze as FZ
     for v in FZ._backtest().values():

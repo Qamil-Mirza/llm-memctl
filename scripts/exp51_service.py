@@ -98,13 +98,24 @@ class Ledger:
                 t["saved_edits"] += 1
         return t
 
+    def mirror_text(self) -> str:
+        """The editor's copy: the ledger, without the dollar figure of a lost-call placeholder (F1 ruling)."""
+        out = []
+        for line in self.path.read_text().splitlines(keepends=True):
+            if '"lost_call_placeholder"' in line:
+                e = json.loads(line)
+                e.pop("usd", None)
+                line = json.dumps(e) + "\n"
+            out.append(line)
+        return "".join(out)
+
     def add(self, entry: dict) -> None:
         entry = {"t": time.time(), **entry}
         with _LEDGER_LOCK:
             with open(self.path, "a") as f:
                 f.write(json.dumps(entry) + "\n")
             try:
-                self.mirror.write_text(self.path.read_text())
+                self.mirror.write_text(self.mirror_text())
             except OSError:
                 pass
 

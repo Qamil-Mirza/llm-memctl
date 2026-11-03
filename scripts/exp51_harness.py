@@ -47,9 +47,9 @@ Fixed choices of this build (to be checked at the dry run, which is the first re
   is validated against its schema before it runs. Transient API errors (408, 429, 5xx, 529, timeouts, connection
   errors) are retried with backoff 2^k s (max 60), each attempt ledgered as kind "api_retry" (not an editor failed
   request); 5 consecutive errors stop the run.
-- F1 ruling 3, refusal (counted over the whole run): the first refused response is logged but never joins the messages;
-  REFUSAL_CONTINUE is appended as one text block to the user turn that drew it (transcript record role "user_amend")
-  and sent once. A second refusal ends the run. No fallback model. stop_details goes to the transcript only: the ledger
+- F1 ruling 3, refusal: a refused response is logged but never joins the messages; REFUSAL_CONTINUE is appended as one
+  text block to the user turn that drew it (transcript record role "user_amend") and sent once. Two consecutive refusals
+  (the continuation itself refused) or a third refusal overall end the run. No fallback model. stop_details goes to the transcript only: the ledger
   is mirrored into the editor's sandbox, so its kind "refusal" entry carries no details.
 - F1 ruling 2, budget note: BUDGET_NOTE is appended once to the user turn being sent when measured spend first passes
   BUDGET_NOTE_USD (ledger kind "budget_note"). Each turn's ledger entry shows budget_used_fraction (spend / the stop).
@@ -225,8 +225,8 @@ def dry_rows(e, n_per_task: int = 2, seed: int = 99) -> list[dict]:
     return out
 
 
-def setup_dry(run: Path) -> dict:
-    """The dry-run workspace (dummy model, synthetic rows)."""
+def setup_dry(run: Path, engine=None) -> dict:
+    """The dry-run workspace (synthetic rows; dummy model unless `engine` is given: the hf smoke run, F1 ruling 6)."""
     import exp51_engine as EN
     import exp51_service as SV
     run, ws = Path(run), Path(run) / "workspace"
@@ -234,7 +234,7 @@ def setup_dry(run: Path) -> dict:
         raise FileExistsError(f"{ws} exists")
     for d in ("data/tokenizer", "queue/requests", "queue/responses", "captures", "edits_in", "notes", "scratch"):
         (ws / d).mkdir(parents=True, exist_ok=True)
-    e = EN.load("dummy", threads=2, edit_dir=run / "edits")
+    e = engine or EN.load("dummy", threads=2, edit_dir=run / "edits")
     rows = dry_rows(e)
     (ws / "data/E_rows.jsonl").write_text("".join(json.dumps(x, sort_keys=True) + "\n" for x in rows))
     for f in ("tokenizer.json", "tokenizer_config.json", "vocab.json", "merges.txt"):
@@ -564,7 +564,7 @@ class Harness:
         self.subs.mkdir(exist_ok=True)
         self.n_req = 0
         self.sleep = time.sleep
-        self.refusals, self.noted = 0, False
+        self.refusals, self.last_refused, self.noted = 0, False, False
 
     def log(self, obj: dict) -> None:
         with open(self.transcript, "a") as f:
@@ -649,6 +649,12 @@ class Harness:
     def budget_fraction(self) -> float:
         return round(self.meter.usd() / self.stop_usd, 3)
 
+    def count_refusal(self) -> bool:
+        """One more refusal; True if it ends the run (the continuation itself refused, or the third overall)."""
+        ends = self.last_refused or self.refusals + 1 >= 3
+        self.refusals, self.last_refused = self.refusals + 1, True
+        return ends
+
     def amend_after_refusal(self, messages: list) -> None:
         """Append-only: the fixed text block goes after the content of the user turn that drew the refusal."""
         last = messages[-1]
@@ -660,19 +666,21 @@ class Harness:
         Refused responses never join the messages; a user_amend record re-applies the fixed continuation."""
         recs = [json.loads(l) for l in self.transcript.read_text().splitlines() if l.strip()]
         messages = [{"role": "user", "content": INSTRUCTION}]
+        ended = False
         for r in recs:
             if r["role"] == "assistant" and r.get("stop_reason") == "refusal":
-                self.refusals += 1
+                ended = ended or self.count_refusal()
                 continue
             if r["role"] == "user_amend":
                 self.amend_after_refusal(messages)
                 continue
+            self.last_refused = False
             if r["role"] not in ("user", "assistant") or messages[-1]["role"] == r["role"]:
                 raise RuntimeError(f"transcript does not alternate at t={r.get('t')}; resume by hand")
             messages.append({"role": r["role"], "content": r["content"]})
         self.noted = any(r["role"] == "user" and BUDGET_NOTE in json.dumps(r["content"]) for r in recs)
-        if self.refusals >= 2:
-            raise RuntimeError("the run ended on a second refusal; nothing to resume")
+        if ended:
+            raise RuntimeError("the run ended on refusals; nothing to resume")
         if recs and recs[-1].get("stop_reason") == "refusal":     # crashed before the continuation was recorded
             self.log({"role": "user_amend", "text": REFUSAL_CONTINUE})
             self.amend_after_refusal(messages)
@@ -746,14 +754,15 @@ class Harness:
                 rec["stop_details"] = resp.get("stop_details")
             self.log(rec)
             if stop_reason == "refusal":
-                self.refusals += 1
+                ends = self.count_refusal()
                 self.ledger.add({"kind": "refusal", "ok": True, "n": self.refusals})
-                if self.refusals >= 2:
+                if ends:
                     reason = "refusal (stop_reason)"
                     break
                 self.log({"role": "user_amend", "text": REFUSAL_CONTINUE})
                 self.amend_after_refusal(messages)
                 continue
+            self.last_refused = False
             messages.append({"role": "assistant", "content": resp["content"]})
             msg, done = self.answer(resp["content"], stop_reason)
             msg = self.budget_note(msg, done)
