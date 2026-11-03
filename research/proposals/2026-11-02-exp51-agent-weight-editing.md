@@ -1,4 +1,4 @@
-# §51 proposal, rev 1: an agent proposes weight edits for note-then-unknown in Qwen2.5-3B. Is the repair selective, and does its account survive tests on unseen cases? (2026-11-02, pre-registration draft)
+# §51 proposal, rev 1a: an agent proposes weight edits for note-then-unknown in Qwen2.5-3B. Is the repair selective, and does its account survive tests on unseen cases? (2026-11-02, pre-registration draft)
 
 ## Origin, authority and revision history
 
@@ -18,7 +18,9 @@
 | Codex close-out of rev 1a | `/tmp/weight-space-programming-rev1a-codex-review.md` | 3 details; design accepted for formal drafting |
 | §51 rev 0 (this file) | — | Consolidated proposal |
 | Codex review of §51 rev 0 | `/tmp/exp51-rev0-codex-review.md` | 9 points: keep the design, fix the operational specification |
-| **§51 rev 1 (this file)** | — | Resolves the 9 points (Appendix A, last table) |
+| §51 rev 1 (d9e67b7) | — | Resolves the 9 points (Appendix A, last table) |
+| Codex review of §51 rev 1 | `/tmp/exp51-rev1-codex-review.md` | Design accepted; narrow build-contract fixes |
+| **§51 rev 1a (this file)** | — | §13 build contract; where §13 differs from §1–§10, §13 wins |
 
 This proposal consolidates that plan into one specification. Superseded text is dropped; the resolution tables are in
 Appendix A.
@@ -630,6 +632,113 @@ Nothing frozen at F0–F2 changes afterwards. Any deviation is recorded as a dev
 3. If the laptop cannot fit ≥ 10 passes in ≤ 48 h: accept a smaller search, or approve GPU exploration (and raise the
    cap only if the combined workload exceeds the envelope).
 
+## 13. Rev 1a: build contract (Codex review of rev 1)
+
+These amendments are binding. Where they differ from §1–§10, §13 wins.
+
+### 13.1 Bootstrap accounting
+
+- **Valid draws.** Failed replicates are dropped. Then:
+  - p = (1 + #{tail}) / (B_valid + 1);
+  - the 1% failure threshold is computed over the attempted B = 10,000;
+  - the paired contrast and its bounds use the same valid draws.
+- **These are approximate bootstrap tests** (percentile inversion), not exact Monte Carlo null tests. Holm controls
+  multiplicity given valid elementary p-values; it does not repair bootstrap miscalibration. The p-value and its
+  Holm-adjusted decision are authoritative; the bounds are reported beside them and agree only approximately at a
+  boundary.
+- **Degenerate distribution** (every valid draw equals θ̂):
+  - p = 1/(B_valid + 1) if θ̂ lies on the alternative's side of θ0;
+  - otherwise p = 1.
+- **M selection ranking.** Each candidate's effect is first *oriented* by its declared sign, so beneficial and harmful
+  effects both rank as positive. Candidates are then ranked by oriented effect divided by max(SE, 0.01).
+  - Eligibility still needs an oriented effect ≥ 0.05 (§8.2).
+  - Ties go to fewer components, then fewer changed parameters, then submission index.
+
+### 13.2 Closure across counterfactual collisions
+
+- **Effective key.** Every ANS and CF variant has one: (task, A, B for RC, the city stated in its evidence).
+  - Bases are linked when any of their variants share an effective key.
+  - Each connected group is a content group, and the whole group is assigned to one split.
+  - The generator may instead resample a colliding base, with at most 1,000 attempts per base; then it aborts and
+    reports.
+- **Build steps.**
+  - `key()` (currently a lambda inside `drop_overlap` in `exp50_cases.py`) is extracted into a reusable function.
+  - Before any model run, a finite-pool feasibility check confirms the closed groups can meet the F1 split sizes. If
+    not, sizes are reduced uniformly and disclosed; resampling never loops without bound.
+- **Partial name/city overlap** that is not a full effective-key collision is counted and disclosed, as before.
+
+### 13.3 M2 hooks stay on the shared prefix
+
+- **Confirmatory M2 hooks** apply only at stored shared-prefix positions ≤ P_ans. The transplant and clamp values are
+  computed on those same token ids and component outputs, and each arm then continues normally.
+- **Hooks at later generated positions** belong to the exploratory dynamic analysis. The §6.2 clause allowing
+  account-named later positions is withdrawn for M2.
+
+### 13.4 M3 definitions
+
+**(b) Interaction variable.**
+- **Commit** = 1 if the answer span's class is gold, wrong pool city, other content, mixed or conflicting; 0 for
+  abstention, degenerate or no-answer-line. It is defined on FA and on UNA.
+- **Interaction:** [(f-int − B1) in Commit rate on FA] − [(f-int − B1) in Commit rate on UNA], in the declared
+  direction.
+- Rel and Uns are reported separately beside it.
+- If the M candidate's declared population is not FA (for example C), the population pair for (b) is declared at F2,
+  with UNA as the default second population.
+
+**(a) Equivalence tolerance.**
+- **Scaling statistic:** the SD across S bases of the per-base mean paired Δf for that manipulation.
+- **Tolerance:** 2 × that SD, frozen at F2.
+- **If the SD is 0:** the test becomes exact equality, with every |Δf| ≤ 1e-6 on H.
+- **Wording:** "equivalent within the frozen tolerance". It is not evidence of near-invariance by itself. Each account
+  justifies its tolerance when it is declared.
+
+**(c) Prediction population.**
+- The test uses the **pooled AUROC** on the fixed population (FA vs ANS rows answered with gold, NM excluded), and both
+  classes must be present overall.
+- Per-task AUROCs are descriptive.
+- The §6.3(c) "one-class cell" exclusion is withdrawn. Cell pooling below remains an *encoding* rule only: baseline
+  city × task cells with fewer than 5 rows of a class are encoded at task × hardness, frozen at F2.
+
+### 13.5 Manifest and build fields
+
+**Freeze order.**
+- **F0, before the editor's access to E:** allowed maxima for every bound; a reduction rule (every bound × r, where
+  r = min(1, 48 h divided by the projected time for 30 passes)); and everything else listed at F0 in §9.
+- **Analyst work before F0 is allowed:** generating E/S data, B0 outputs on E and S, timing, and fitting B5 on E. No
+  H/T outcomes are touched.
+- **F1:** the final bound values (within F0's maxima) and the split sizes.
+
+**Dose and candidate ties.**
+- Dose ties go to the setting closest to no-op: smallest |bias| (so −1 before −∞), smallest α, smallest edit norm.
+- Then the lexicographic arm-dose id decides.
+- Remaining candidate ties go to submission index.
+
+**RMSNorm.** An RMSNorm component may change at most 512 coordinates. Every changed coordinate counts against the
+candidate's shared sparse budget of 512 rows, columns or coordinates in total.
+
+**Grader.**
+- **"Other place" recognizer is dropped.** Any non-pool, non-alias, non-abstention content is classed as "other
+  content", with the same utility. Only gold aliases, pool cities and T-cities are recognised.
+- **Quoted mention.** A quoted city counts as a quoted mention only if the quoted string is longer than the city name
+  and matches a substring of the memory or question. A bare quoted answer ("Answer: 'York'") is asserted.
+- **Repeats.** Repeated assertions of the same city count as one distinct city.
+- **Fixtures added:**
+  - `Answer: 'York'` → York;
+  - quoted evidence followed by an actual answer → that answer;
+  - "York. York." → York;
+  - "York … actually Leeds" → conflicting.
+
+**Audit arm groups (4).**
+- B0;
+- prompt baselines (B2, B3);
+- logit, steering, weight and random baselines (B1, B4, B5, B6);
+- candidates (R and M).
+
+With 4 groups × changed/unchanged × ANS/UNA = 16 strata, two per non-empty stratum needs at most 32 of the 40 rows.
+
+**Sources.** Codex verified the Liu (2608.15772v2) and Ling (2507.16199v10) identifiers against their primary records.
+They support motivation, not a mechanism in our model.
+
 ## Appendix A. Resolutions
 
 **Planning reviews.** Codex's review of plan rev 0 (12 points), its review of rev 1 (5 points) and its close-out of
@@ -649,3 +758,5 @@ consolidated in §2–§10 above.
 | 7 | CAC includes Qwen; Lavi wording; WSP scaling; exact references | CAC row corrected (Qwen 3.5 4B/9B/35B; boundary = exact setting and factual grading); Lavi row narrowed; WSP α 6 scaled update; titles and ids added (Liu arXiv:2608.15772, Ling arXiv:2507.16199, from search listings; to be re-read from primary pages at the build review) |
 | 8 | Component definition; B6 for RMSNorm and seeds; ledger; GPU wording | Component = (layer, tensor), at most 4, one edit type each; B6 per-column and per-vector matching, seed-mean contrast; failed requests in the ledger; generation lengths fixed; GPU exploration needs a quote and approvals, with a cap raise only if exceeded (§5.2, §5.4, §10) |
 | 9 | Scope | No design widening; secondary analyses inventoried last |
+
+**Codex review of §51 rev 1 (`/tmp/exp51-rev1-codex-review.md`).** Narrow build-contract fixes, all carried into §13: bootstrap B_valid and the approximate-test wording; degenerate distributions and oriented ranking; closure across counterfactual effective-key collisions; M2 hooks on the shared prefix only; M3 Commit variable, SD definition and pooled AUROC; freeze order, ties, RMSNorm budget, grader fixtures, audit groups.
