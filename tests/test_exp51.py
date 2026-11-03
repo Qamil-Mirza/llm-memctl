@@ -797,3 +797,167 @@ def test_api_client_call_path_mocked(monkeypatch):
     with pytest.raises(RuntimeError) as ex:
         H.ApiClient()([{"role": "user", "content": "x"}])
     assert "test-key-not-real" not in str(ex.value)
+
+
+# ---------------------------------------------------------------------------------------------- D3: thinking, resume, e2e
+
+def test_api_body_has_summarized_thinking():
+    import exp51_harness as H
+    b = H.ApiClient().body([{"role": "user", "content": "hi"}])
+    assert b["thinking"] == {"type": "adaptive", "display": "summarized"}
+
+
+class _Crash(BaseException):
+    """A simulated process death (escapes every `except Exception`)."""
+
+
+def _tool_use(i, name, inp):
+    return [{"type": "text", "text": f"step {i}"}, {"type": "tool_use", "id": f"t{i}", "name": name, "input": inp}]
+
+
+FINISH = [{"type": "tool_use", "id": "fin", "name": "finish", "input": {"summary": "done"}}]
+
+
+def test_resume_after_crash_in_tool_and_in_api_call(service):
+    import exp51_harness as H
+    svc, rows = service
+    for d in ("scratch", "notes", "queue/requests", "queue/responses", "captures"):
+        (svc.ws / d).mkdir(parents=True, exist_ok=True)
+    script = [_tool_use(1, "run_python", {"code": "print(1)"}),
+              _tool_use(2, "forward", {"request": {"type": "weights", "tensors": ["model.norm.weight"]}}), FINISH]
+    c1 = H.DummyClient(script)
+    h = H.Harness(svc.run, c1, service=svc)
+    real_tool = h.tool
+    h.tool = lambda n, i: (_ for _ in ()).throw(_Crash()) if n == "forward" else real_tool(n, i)
+    with pytest.raises(_Crash):
+        h.loop()
+    c2 = H.DummyClient([FINISH])
+    out = H.Harness(svc.run, c2, service=svc).loop(resume=True)
+    assert out["reason"] == "finish" and out["ledger"]["turns"] == 3 and out["ledger"]["python_runs"] == 1
+    sent = c2.seen[0]                                           # append-only: the crashed run's messages, verbatim
+    assert sent[:len(c1.seen[-1])] == c1.seen[-1] and sent[len(c1.seen[-1])]["content"] == script[1]
+    assert H.INTERRUPTED in sent[-1]["content"][0]["content"] and len(sent) == len(c1.seen[-1]) + 2
+    res = [e for e in svc.ledger.entries if e["kind"] == "resume"]
+    assert len(res) == 1 and res[0]["interrupted_calls"] == 1
+    assert len(json.loads((svc.run / "api_usage.json").read_text())) == 3
+    with pytest.raises(RuntimeError):
+        H.Harness(svc.run, H.DummyClient([FINISH]), service=svc).loop(resume=True)    # already ended
+
+
+def test_resume_after_crash_in_api_call(service):
+    import exp51_harness as H
+    svc, rows = service
+    (svc.ws / "scratch").mkdir(exist_ok=True)
+    c1 = H.DummyClient([_tool_use(1, "run_python", {"code": "print(1)"}), lambda m: (_ for _ in ()).throw(_Crash())])
+    with pytest.raises(_Crash):
+        H.Harness(svc.run, c1, service=svc).loop()
+    c2 = H.DummyClient([FINISH])
+    out = H.Harness(svc.run, c2, service=svc).loop(resume=True)
+    assert out["reason"] == "finish" and out["ledger"]["turns"] == 2
+    assert c2.seen[0] == c1.seen[1]                               # nothing was cut off: the same request again
+    assert [e for e in svc.ledger.entries if e["kind"] == "resume"][0]["interrupted_calls"] == 0
+
+
+DRIVER = """
+import sys
+sys.path.insert(0, {scripts!r})
+import exp51_harness as H
+script = [[{{"type": "tool_use", "id": "a", "name": "run_python", "input": {{"code": "print('a')"}}}}],
+          [{{"type": "text", "text": "a long run"}},
+           {{"type": "tool_use", "id": "b", "name": "run_python", "input": {{"code": "import time\\ntime.sleep(120)"}}}}],
+          [{{"type": "tool_use", "id": "c", "name": "finish", "input": {{"summary": "x"}}}}]]
+H.Harness({run!r}, H.DummyClient(script)).loop()
+"""
+
+
+def test_resume_after_sigkill_mid_run(tmp_path):
+    """A real kill -9 of the harness process while the editor's sandboxed Python runs, then resume."""
+    import os
+    import signal
+    import subprocess
+    import time
+    import exp51_harness as H
+    _ws(tmp_path)
+    drv = tmp_path / "driver.py"
+    drv.write_text(DRIVER.format(scripts=str(ROOT / "scripts"), run=str(tmp_path)))
+    p = subprocess.Popen([sys.executable, str(drv)], cwd=ROOT, start_new_session=True)
+    tr = tmp_path / "transcript.jsonl"
+    t0 = time.time()
+    while not (tr.exists() and len(tr.read_text().splitlines()) >= 3):
+        assert p.poll() is None and time.time() - t0 < 120
+        time.sleep(0.2)
+    time.sleep(1.0)
+    os.killpg(p.pid, signal.SIGKILL)
+    p.wait()
+    with pytest.raises(SystemExit, match="already has a transcript"):
+        H.main(["loop", "--run", str(tmp_path)])                 # a fresh loop on a crashed run is refused
+    c2 = H.DummyClient([FINISH])
+    out = H.Harness(tmp_path, c2).loop(resume=True)
+    assert out["reason"] == "finish" and out["ledger"]["python_runs"] == 1 and out["ledger"]["turns"] == 3
+    last = c2.seen[0][-1]["content"][0]
+    assert last["tool_use_id"] == "b" and H.INTERRUPTED in last["content"]
+    assert [m["role"] for m in c2.seen[0]] == ["user", "assistant", "user", "assistant", "user"]
+
+
+def test_scripted_end_to_end_every_tool_path(service, engine, monkeypatch):
+    """$0: the real loop and service with a scripted editor: sandbox Python writes an edit spec and a direction,
+    save_edit, forward paired / prefix / read (valid) / weights (missing tensor), submit (every structured field and
+    the frozen f_direction copy) and finish."""
+    import hashlib
+    import exp51_harness as H
+    svc, rows = service
+    monkeypatch.setattr(H, "_api_key", lambda: (_ for _ in ()).throw(AssertionError("key read in a dry run")))
+    for d in ("scratch", "notes", "queue/requests", "queue/responses", "captures"):
+        (svc.ws / d).mkdir(parents=True, exist_ok=True)
+    sh = engine.edits.shapes()[ED.EDITABLE["down_proj"].format(l=1)]
+    ids = [r["case_id"] for r in rows]
+    code = (f"import numpy as np\nnp.savez('/work/edits_in/e1.npz', c0_layer=1, c0_tensor=np.array('down_proj'), "
+            f"c0_kind=np.array('rows'), c0_idx=np.arange(2), c0_D=np.full((2, {sh[1]}), 1e-3))\n"
+            f"np.save('/work/edits_in/u.npy', np.linspace(-1, 1, {engine.hidden}))\nprint('ok')\n")
+    got = {}
+
+    def eid(msgs):
+        got.setdefault("eid", json.loads(msgs[-1]["content"][0]["content"])["edit_id"])
+        return got["eid"]
+    sub = {"kind": "repair", "component_and_computation": "c", "evidence": "e", "predictions_by_row_type": "p",
+           "flips": "f", "activity_predictions": "a",
+           "signed_endpoint": {"population": "FA", "direction": "increase", "outcome": "Rel"},
+           "most_important_component": {"layer": 1, "tensor": "down_proj"}, "f_site": {"layer": 1, "tensor": "resid"},
+           "f_direction": "/work/edits_in/u.npy", "f_int_sign": -1,
+           "activity": [{"manipulation": m, "type": t, "sign": s} for m, t, s in
+                        [("evidence_removed", "directional", -1), ("city_changed", "equivalence", 0),
+                         ("distractors_added", "directional", 1), ("unrelated_vs_absent", "equivalence", 0)]]}
+    script = [_tool_use(1, "run_python", {"code": code}),
+              _tool_use(2, "save_edit", {"spec": "/work/edits_in/e1.npz", "meta": {"note": "two rows"}}),
+              lambda m: _tool_use(3, "forward", {"request": {"type": "paired", "rows": ids[:2],
+                                                             "arms": [{"edit": None}, {"edit": eid(m), "dose": 1.0}]}}),
+              lambda m: _tool_use(4, "forward", {"request": {"type": "prefix", "rows": ids[:2],
+                                                             "arm": {"edit": got["eid"]}}}),
+              lambda m: _tool_use(5, "forward", {"request": {
+                  "type": "read", "items": [{"row": ids[0], "source": "b0_full"}], "positions": "p_ans",
+                  "layers": [0, engine.n_layers - 1], "components": [[1, "down_proj"]], "logits": False,
+                  "logit_ids": [1, 2], "arm": {"edit": got["eid"]}}}),
+              _tool_use(6, "forward", {"request": {"type": "weights",
+                                                   "tensors": ["model.layers.99.input_layernorm.weight"]}}),
+              lambda m: _tool_use(7, "submit", {"edit_id": got["eid"], **sub}),
+              FINISH]
+    c = H.DummyClient(script)
+    out = H.Harness(svc.run, c, service=svc).loop()
+    assert out["reason"] == "finish" and out["submissions"] == 1, out
+    res = [json.loads(m["content"][0]["content"]) for m in c.seen[-1] if m["role"] == "user" and
+           isinstance(m["content"], list)]
+    assert res[0]["returncode"] == 0 and res[1]["ok"], res[:2]
+    assert res[2]["ok"] and res[3]["ok"] and res[4]["ok"], res[2:5]
+    z = np.load(svc.ws / res[4]["npz"])
+    assert z["i0_down_proj_L1"].shape == (1, engine.hidden) and z[f"i0_resid_L{engine.n_layers - 1}"].shape[0] == 1
+    assert res[2]["items"][0]["a"]["cached"] and not res[2]["items"][0]["b"].get("cached")
+    assert not res[5]["ok"] and "no such tensor" in res[5]["error"]
+    assert res[6] == {"ok": True, "submission": 1}
+    rec = json.loads((svc.run / "submissions/1.json").read_text())
+    assert all(rec[k] == v for k, v in {"edit_id": got["eid"], **sub}.items())
+    frozen = svc.run / "submissions/1_f_direction.npy"
+    assert rec["f_direction_sha256"] == hashlib.sha256(frozen.read_bytes()).hexdigest() == \
+        hashlib.sha256((svc.ws / "edits_in/u.npy").read_bytes()).hexdigest()
+    t = out["ledger"]
+    assert t["passes"] == 3 and t["saved_edits"] == 1 and t["failed_requests"] == 1 and t["turns"] == 8
+    engine.edits.assert_clean()

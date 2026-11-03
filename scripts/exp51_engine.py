@@ -43,6 +43,7 @@ from memctl.analysis import edit51 as ED  # noqa: E402
 MODEL_ID = "Qwen/Qwen2.5-3B-Instruct"
 SNAPSHOT = Path.home() / ".cache/huggingface/hub/models--Qwen--Qwen2.5-3B-Instruct/snapshots/aa8e72537993ba99e69dfaafa59ed015b17504d1"
 DUMMY_DIR = ROOT / "runs/exp51/dummy_model"
+DUMMY36_DIR = ROOT / "runs/exp51/dummy_model_36"   # the real layer count at tiny width (second dry run)
 MAX_NEW_TOTAL, MAX_NEW_RELEASE = 160, 16
 MARKER = "\nAnswer:"
 STEER_LAYER = 29
@@ -486,4 +487,6 @@ def load(backend: str = "hf", threads: int = 16, edit_dir: Path | None = None, d
          snapshot: Path | None = None) -> Engine51:
     if backend == "dummy":
         return Engine51(make_dummy(), threads=threads, edit_dir=edit_dir, device=device)
+    if backend == "dummy36":
+        return Engine51(make_dummy(DUMMY36_DIR, layers=36), threads=threads, edit_dir=edit_dir, device=device)
     return Engine51(Path(snapshot or SNAPSHOT), threads=threads, edit_dir=edit_dir, device=device)

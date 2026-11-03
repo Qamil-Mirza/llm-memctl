@@ -28,6 +28,13 @@ Fixed choices of this build (to be checked at the dry run, which is the first re
   with a 1-hour TTL on the system prompt, the tool list and the latest user turn. The field names follow the
   current Messages API documentation as far as this build knows them; the dry run verifies them and the first
   response's usage block before any E access.
+- D3 (post-F0): thinking {type "adaptive", display "summarized"}, so the progress notes Opus 5.5 writes between tool
+  calls come back as text, not empty blocks. Thinking blocks are passed back unchanged and logged in transcript.jsonl.
+- Resume (`loop --resume`): after an infrastructure or harness crash the run continues as the same run. The messages are
+  rebuilt verbatim from transcript.jsonl (append-only; INSTRUCTION + every logged turn in order); the ledger and
+  api_usage.json carry the bounds and the meter. A tool call cut off by the crash gets the fixed tool_result
+  INTERRUPTED (finish and invalid inputs are answered as usual); the resume is ledgered as kind "resume". A fresh
+  `loop` refuses a run that already has a transcript.
 - A turn = one successful API call. An end_turn without a tool call gets the fixed reply NUDGE.
 - Build review ruling 9: on stop_reason "max_tokens" no tool_use in that response is run (each gets an error
   tool_result; without one the reply is MAXTOK_NUDGE); on "refusal" the run stops with that reason; every tool input
@@ -61,13 +68,16 @@ PRICES = {"input": 4.0, "output": 20.0, "cache_read": 0.20, "cache_write_5m": 5.
 STOP_USD = 45.0
 DRY_STOP_USD, DRY_MAX_TURNS = 3.0, 10          # the tooling dry run (F0 review item 2)
 API_CONFIG = {"url": "https://api.anthropic.com/v1/messages", "model": "claude-opus-5-5", "max_tokens": 16000,
-              "anthropic_version": "2023-06-01", "effort": "high", "cache_ttl": "1h"}
+              "anthropic_version": "2023-06-01", "effort": "high", "cache_ttl": "1h",
+              "thinking": {"type": "adaptive", "display": "summarized"}}   # D3: the between-tool prose is recorded
 PY = Path(sys.base_prefix)
 SITE = ROOT / ".venv/lib/python3.13/site-packages"
 SANDBOX_PKGS = ("numpy", "numpy.libs", "tokenizers")
 NUDGE = "Continue with your plan, or call `finish` if you are done."
 MAXTOK_NUDGE = "Your last message hit the max_tokens limit and was cut off. Continue, in shorter steps."
 RUN_TIMEOUT_S = 1800
+INTERRUPTED = ("The harness restarted while this tool call was in progress, and its result was lost. It may or may not "
+               "have run: check /work/ledger_copy.jsonl and /work/queue/responses/ before repeating it.")
 
 SYSTEM = ("You are working in a sandboxed research workspace. You can run Python (numpy only) in /work, send metered "
           "forward-pass requests to a service that runs Qwen2.5-3B-Instruct, save weight edits, and submit at most "
@@ -453,7 +463,8 @@ class ApiClient:
         last["content"][-1] = {**last["content"][-1], "cache_control": ttl}
         return {"model": self.cfg["model"], "max_tokens": self.cfg["max_tokens"],
                 "system": [{"type": "text", "text": SYSTEM, "cache_control": ttl}], "tools": tools,
-                "messages": msgs, "output_config": {"effort": self.cfg["effort"]}}
+                "messages": msgs, "output_config": {"effort": self.cfg["effort"]},
+                "thinking": dict(self.cfg["thinking"])}
 
     def __call__(self, messages: list) -> dict:
         req = urllib.request.Request(self.cfg["url"], data=json.dumps(self.body(messages)).encode(), method="POST",
@@ -471,16 +482,20 @@ class ApiClient:
 
 
 class DummyClient:
-    """Scripted synthetic responses for the dry-run harness tests (no network). `script` = list of content lists."""
+    """Scripted synthetic responses for the dry-run harness tests (no network). `script` = list of content lists (or
+    callables of the messages, for ids only known at run time); `seen` keeps a copy of the messages of each call."""
 
     def __init__(self, script: list[list[dict]], usage: dict | None = None):
-        self.script, self.i = script, 0
+        self.script, self.i, self.seen = script, 0, []
         self.usage = usage or {"input_tokens": 1000, "output_tokens": 500, "cache_read_input_tokens": 20000,
                                "cache_creation_input_tokens": 2000}
 
     def __call__(self, messages: list) -> dict:
         content = self.script[min(self.i, len(self.script) - 1)]
         self.i += 1
+        self.seen.append(json.loads(json.dumps(messages)))
+        if callable(content):
+            content = content(messages)
         if content == "TRANSIENT":
             raise TransientAPIError("scripted 529")
         if isinstance(content, dict):                      # {"stop_reason": ..., "content": [...]}
@@ -561,12 +576,68 @@ class Harness:
             return {"ok": True, "submission": n + 1}
         return {"error": f"unknown tool {name}"}
 
-    def loop(self) -> dict:
+    def answer(self, content: list, stop_reason: str | None, interrupted: bool = False) -> tuple[object, bool]:
+        """The user message that answers one assistant response: tool_results (or a nudge) and whether it finished.
+        interrupted: the response's tools were cut off by a crash (resume), so none is run again."""
+        uses = [c for c in content if c.get("type") == "tool_use"]
+        if not uses:
+            return (MAXTOK_NUDGE if stop_reason == "max_tokens" else NUDGE), False
+        results, done = [], False
+        for u in uses:
+            if stop_reason == "max_tokens":
+                out = {"error": "your message hit max_tokens, so this tool call may be truncated and was NOT run; "
+                                "send a shorter call"}
+            else:
+                errs = validate_input(TOOL_SCHEMAS[u["name"]], u.get("input")) if u["name"] in TOOL_SCHEMAS \
+                    else [f"unknown tool {u['name']!r}"]
+                if errs:
+                    out = {"error": "invalid tool input, not run: " + "; ".join(errs)}
+                elif u["name"] == "finish":
+                    done = True
+                    out = {"ok": True}
+                elif interrupted:
+                    out = {"error": INTERRUPTED}
+                else:
+                    out = self.tool(u["name"], u["input"])
+            results.append({"type": "tool_result", "tool_use_id": u["id"], "content": json.dumps(out)[:60000]})
+        return results, done
+
+    def rebuild(self) -> tuple[list, dict | None]:
+        """The messages, verbatim from transcript.jsonl, and the last assistant record if it was left unanswered."""
+        recs = [json.loads(l) for l in self.transcript.read_text().splitlines() if l.strip()]
         messages = [{"role": "user", "content": INSTRUCTION}]
-        t_start = time.time()
-        reason = None
+        for r in recs:
+            if r["role"] not in ("user", "assistant") or messages[-1]["role"] == r["role"]:
+                raise RuntimeError(f"transcript does not alternate at t={r.get('t')}; resume by hand")
+            messages.append({"role": r["role"], "content": r["content"]})
+        last = recs[-1] if recs and recs[-1]["role"] == "assistant" else None
+        if last is not None and last.get("stop_reason") == "refusal":
+            raise RuntimeError("the run ended on a refusal; nothing to resume")
+        return messages, last
+
+    def loop(self, resume: bool = False) -> dict:
+        start = self.run / "run_start.json"
+        reason, done = None, False
+        if resume:
+            if (self.run / "loop_summary.json").exists():
+                raise RuntimeError("the run already ended (loop_summary.json); nothing to resume")
+            messages, last = self.rebuild()
+            n_cut = 0
+            if last is not None:
+                msg, done = self.answer(last["content"], last.get("stop_reason"), interrupted=True)
+                n_cut = sum(1 for c in (msg if isinstance(msg, list) else []) if INTERRUPTED in c["content"])
+                self.log({"role": "user", "content": msg})
+                messages.append({"role": "user", "content": msg})
+            self.ledger.add({"kind": "resume", "ok": True, "messages": len(messages), "interrupted_calls": n_cut})
+            t_start = CM.read_json(start, {}).get("t") or time.time()
+            if done:
+                reason = "finish"
+        else:
+            messages = [{"role": "user", "content": INSTRUCTION}]
+            t_start = time.time()
+            CM.write_json(start, {"t": t_start})
         consecutive = 0
-        while True:
+        while not done:
             t = self.ledger.totals()
             if t["turns"] >= self.bounds["turns"]:
                 reason = "turn bound"
@@ -601,33 +672,11 @@ class Harness:
                 reason = "refusal (stop_reason)"
                 break
             messages.append({"role": "assistant", "content": resp["content"]})
-            uses = [c for c in resp["content"] if c.get("type") == "tool_use"]
-            if not uses:
-                msg = MAXTOK_NUDGE if stop_reason == "max_tokens" else NUDGE
-                messages.append({"role": "user", "content": msg})
-                self.log({"role": "user", "content": msg})
-                continue
-            results, done = [], False
-            for u in uses:
-                if stop_reason == "max_tokens":
-                    out = {"error": "your message hit max_tokens, so this tool call may be truncated and was NOT run; "
-                                    "send a shorter call"}
-                else:
-                    errs = validate_input(TOOL_SCHEMAS[u["name"]], u.get("input")) if u["name"] in TOOL_SCHEMAS \
-                        else [f"unknown tool {u['name']!r}"]
-                    if errs:
-                        out = {"error": "invalid tool input, not run: " + "; ".join(errs)}
-                    elif u["name"] == "finish":
-                        done = True
-                        out = {"ok": True}
-                    else:
-                        out = self.tool(u["name"], u["input"])
-                results.append({"type": "tool_result", "tool_use_id": u["id"], "content": json.dumps(out)[:60000]})
-            self.log({"role": "user", "content": results})
-            messages.append({"role": "user", "content": results})
+            msg, done = self.answer(resp["content"], stop_reason)
+            self.log({"role": "user", "content": msg})
+            messages.append({"role": "user", "content": msg})
             if done:
                 reason = "finish"
-                break
         summary = {"reason": reason, "usd": round(self.meter.usd(), 4), "ledger": self.ledger.totals(),
                    "submissions": len(list(self.subs.glob("*.json")))}
         CM.write_json(self.run / "loop_summary.json", summary)
@@ -639,7 +688,8 @@ def main(argv=None) -> int:
     p.add_argument("cmd", choices=("setup", "setup-dry", "check", "loop"))
     p.add_argument("--run", required=True)
     p.add_argument("--client", choices=("dummy", "api"), default="dummy")
-    p.add_argument("--backend", choices=("dummy", "hf"), default="dummy")
+    p.add_argument("--backend", choices=("dummy", "dummy36", "hf"), default="dummy")
+    p.add_argument("--resume", action="store_true", help="continue a crashed run (same run; see the module doc)")
     p.add_argument("--i-have-the-go", action="store_true", help="required for --client api")
     p.add_argument("--dry", action="store_true", help="the tooling dry run: dummy model and DRY- rows only")
     p.add_argument("--stop-usd", type=float, default=None, help="harness stop (<= $45; the dry run uses $3)")
@@ -663,19 +713,24 @@ def main(argv=None) -> int:
     stop, turns = a.stop_usd, a.max_turns
     if a.dry:
         rows = CM.all_rows(run / "workspace/data/E_rows.jsonl")
-        if a.backend != "dummy" or not rows or not all(r["case_id"].startswith("DRY-") and r.get("synthetic")
+        if a.backend not in ("dummy", "dummy36") or not rows or not all(r["case_id"].startswith("DRY-") and r.get("synthetic")
                                                        for r in rows):
-            raise SystemExit("--dry needs --backend dummy and a setup-dry workspace (DRY- rows only)")
+            raise SystemExit("--dry needs --backend dummy|dummy36 and a setup-dry workspace (DRY- rows only)")
         stop = DRY_STOP_USD if stop is None else min(stop, DRY_STOP_USD)
         turns = DRY_MAX_TURNS if turns is None else min(turns, DRY_MAX_TURNS)
     elif a.client == "api" and a.backend != "hf":
         raise SystemExit("the real editor run uses the real model (--backend hf); the dummy is for --dry")
+    if (run / "transcript.jsonl").exists() and not a.resume:
+        raise SystemExit(f"{run} already has a transcript; a run is one-only (use --resume after a crash)")
+    if a.resume and not (run / "transcript.jsonl").exists():
+        raise SystemExit("--resume needs an existing transcript.jsonl")
     client = ApiClient() if a.client == "api" else DummyClient(DRY_SCRIPT)
     e = EN.load(a.backend, threads=8, edit_dir=run / "edits")
-    svc = SV.Service(run, e, tc=[] if a.backend == "dummy" else None)
+    svc = SV.Service(run, e, tc=[] if a.backend.startswith("dummy") else None)
     th, ev = svc.start_thread()                    # the file queue is served while the editor works
     try:
-        print(json.dumps(Harness(run, client, stop_usd=STOP_USD if stop is None else stop, max_turns=turns).loop()))
+        print(json.dumps(Harness(run, client, stop_usd=STOP_USD if stop is None else stop,
+                                 max_turns=turns).loop(resume=a.resume)))
     finally:
         ev.set()
         th.join(timeout=60)

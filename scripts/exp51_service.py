@@ -243,9 +243,10 @@ class Service:
         comps = [(int(l), t) for l, t in req.get("components", [])]
         for l, t in comps:
             if t not in EN.COMPONENT_MODULE or not 0 <= l < self.e.n_layers:
-                raise Refused(f"bad component {(l, t)}")
+                raise Refused(f"bad component {(l, t)} (tensors {sorted(EN.COMPONENT_MODULE)}, layers 0-"
+                              f"{self.e.n_layers - 1})")
         if any(not 0 <= l < self.e.n_layers for l in layers):
-            raise Refused("bad layer")
+            raise Refused(f"bad layer (layers 0-{self.e.n_layers - 1})")
         prepared = [self._read_ids(it) for it in items]
         n_in = sum(len(i) for i, _ in prepared)
         per = len(layers) + len(comps)
@@ -291,6 +292,8 @@ class Service:
         arrays = {}
         for n in names:
             if n not in allowed:
+                if n not in dict(self.e.net.named_parameters()):
+                    raise Refused(f"{n}: no such tensor in this model (layers 0-{self.e.n_layers - 1})")
                 raise Refused(f"{n} is not readable (editable tensors and model.norm.weight only)")
             arrays[n.replace(".", "__")] = self.e.edits.params[n].detach().float().cpu().numpy()
         ids = [int(i) for i in req.get("unembed_ids", [])]
@@ -307,7 +310,7 @@ class Service:
         t = self.ledger.totals()
         if t["saved_edits"] >= self.bounds["saved_edits"]:
             raise Refused("saved-edit bound reached")
-        spec = (self.ws / req["spec"]).resolve()
+        spec = (self.ws / str(req["spec"]).removeprefix("/work/")).resolve()   # the sandbox's /work path too
         if self.ws.resolve() not in spec.parents:
             raise Refused("the spec must be inside the workspace")
         comps = spec_components(np.load(spec, allow_pickle=False))
