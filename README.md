@@ -1,40 +1,60 @@
 # memctl
 
-> **Start here (2026-10-10 reset):** [RESET_HANDOFF.md](RESET_HANDOFF.md) and [research/STATE.md](research/STATE.md).
+**Honors thesis: A Mechanistic Investigation of Evidence-Use Failures In Language Models.**
 
-Honors thesis: how well an agent performs on long-horizon tasks under three kinds of
-memory management —
+When a small language model has the evidence it needs in front of it, why does it still answer "unknown" or answer
+wrong? This repository holds the code, runs and research record for that question. Most of the work is on Qwen2.5-3B,
+with checks on Llama, Gemma and Phi.
 
-1. **no memory controller** (baseline),
-2. **JEV** deciding eviction, consolidation, and fetch / send to a persistent store,
-3. **an RL policy** deciding those same operations.
+> **Start here:** [research/STATE.md](research/STATE.md) (what is currently supported, with strength and caveats),
+> then [EXPERIMENTS.md](EXPERIMENTS.md) (the record; it wins any disagreement) and
+> [research/EXPERIMENT_INDEX.md](research/EXPERIMENT_INDEX.md) (where each experiment's configs, runs, commits and
+> costs live).
 
-> **Status: framework built and validated on synthetic tasks; every result reproduced
-> from clean commits on 2026-10-05.** A real LLM has been evaluated as the task model:
-> Experiment 8 (`qwen2.5:3b` via Ollama, local GPU) and Experiment 9 (Qwen2.5-7B-Instruct
-> via vLLM on a rented RunPod GPU). The JEV arm is still blocked (no key). LLM runs use the
-> `openai` backend against any OpenAI-compatible server, set by `model.base_url`.
-> Start with [README_RESEARCH.md](README_RESEARCH.md) (how to run things), then
-> [EXPERIMENTS.md](EXPERIMENTS.md) (results),
-> [INFRA_REPORT.md](INFRA_REPORT.md) (what is blocked here and by what) and
-> [SCIENTIFIC_VALIDITY_REPORT.md](docs/archive/SCIENTIFIC_VALIDITY_REPORT.md) (what the results do and do not show).
-> Research write-ups are in [docs/research/](docs/research/):
-> [one-page summary](docs/archive/ONE_PAGE_RESEARCH_SUMMARY.md),
-> [research note](docs/research/HINDSIGHT_MEMORY_RESEARCH_NOTE.md),
-> [related work](docs/research/RELATED_WORK_LITERATURE_REPORT.md) and
-> [next directions](docs/archive/next_directions.html).
+## How the project got here
 
-The three arms are three of the controllers behind one interface: `no_controller`,
-`jev` and `rl`, alongside heuristic baselines, a prompted-LLM controller and a hindsight
-oracle. [docs/archive/restart.md](docs/archive/restart.md) records what the earlier Phase 2 work measured and
-why it was redesigned.
+1. **Memory controllers (Experiments 1–32).** The project began by asking whether a learned memory controller helps
+   a model answer questions over long histories (LongMemEval, LoCoMo). The only clear win was query-aware selection at
+   question time, and a 31-parameter logistic regression did as well as the learned head (§32). RL never beat
+   imitation. The ceiling was the reader itself: with perfect evidence in view, a 3B reader still trailed a 7B one.
+2. **Why the reader fails (Experiments 34–50).** That ceiling became the thesis. The main findings so far:
+   - The answer is usually present inside the model when it fails. On most failures the gold answer's first token is
+     in the final layer's top 10, in all four families (§34, §43).
+   - Many failures are a refusal, not a gap in knowledge. One instruction line ("do not reply unknown") lifts 3B
+     accuracy by 0.176 (§35). A single content-free steering direction at layer 29 opens the refusal, and the evidence
+     then decides whether the answer is right (§38–§40).
+   - The fixes are not selective. Every push tried so far also makes the model answer questions it should refuse
+     (§41, §42, §49).
+   - On controlled tasks, most false "unknown"s are "note, then refuse": the model writes the right answer in its own
+     note and then says "unknown" (§49). Asking the model whether the evidence is sufficient was not a usable measure
+     (§50).
+3. **Proposed: agent-guided weight editing (Experiment 51).** A Claude editor proposes small weight edits to the 3B,
+   tested on a working split and confirmed on sealed splits under a frozen pre-registration. The design is in
+   [research/proposals/2026-11-02-exp51-agent-weight-editing.md](research/proposals/2026-11-02-exp51-agent-weight-editing.md).
+   No result is recorded yet.
 
-## The earlier work
+## Research questions
 
-Phase 2 (eviction policies on LoCoMo, GPU-ported, with a hindsight oracle, failure
-attribution, a paired significance test and cloud run scripts) is kept intact on branch
-`phase2-locomo-baseline`, with tag `phase2-complete` on its last code commit. To look at or
-reuse a file from it:
+- **RQ1 (behaviour):** can a push make the model answer, without making it guess, when the evidence is in view?
+- **RQ2 (inside the model):** is a failure one of not using the evidence, or of using it and still not producing
+  the answer?
+- **RQ3 (exploratory):** if the evidence is used, what makes the model refuse anyway, and where would a fix go?
+
+## Where things are
+
+| Path | What |
+|---|---|
+| [research/](research/) | State, decisions, open questions, proposals, reviews, audits and briefings |
+| [EXPERIMENTS.md](EXPERIMENTS.md) | Full record of every experiment, with numbers and caveats |
+| `memctl/` | Library: memory, controllers, retrieval and reranking, LLM readers and judge, splits, run logging |
+| `scripts/` | Experiment scripts (for example `exp51_*.py`) |
+| `configs/`, `runs/`, `cache/` | Configs, run outputs, and cached paid LLM outputs (never delete the caches) |
+| [docs/research/](docs/research/) | Per-experiment reports and the earlier research note |
+| [README_RESEARCH.md](README_RESEARCH.md), [INFRA_REPORT.md](INFRA_REPORT.md) | How to run things, and infrastructure notes |
+| [RESET_HANDOFF.md](RESET_HANDOFF.md) | Working roles and rules since the 2026-10-10 reset |
+
+The earlier Phase 2 work (eviction policies on LoCoMo) is kept on branch `phase2-locomo-baseline`, tag
+`phase2-complete`:
 
 ```bash
 git show phase2-locomo-baseline:memctl/memory.py
@@ -50,6 +70,9 @@ python3 -m venv .venv
 .venv/bin/python -m pytest -q
 .venv/bin/python -m memctl.run --config configs/stage1_smoke.yaml
 ```
+
+Secrets (`HF_TOKEN`, `RUNPOD_API_KEY`, `ANTHROPIC_API_KEY`) go in `.env`, copied from `.env.example`. GPU runs use
+rented RunPod pods. Each experiment's proposal records its cost and hard stop.
 
 The Docker setup is kept for running local Hugging Face models on a GPU:
 
