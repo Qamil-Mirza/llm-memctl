@@ -196,3 +196,16 @@ the user has made the decision.
   - The D-72 editor budget ($50 workspace limit) is separate and unchanged.
 - **Authority.** The user's "Do A" (Advisor pane, 2026-11-03), answering the option "raise the cap to $36 and run it all
   as one GPU job".
+
+## D-74 (2026-11-04) — §52 proposed: a screen of readers below 3B for in-view abstention, then a queue
+
+- **What.** Proposal `research/proposals/2026-11-04-exp52-small-readers.md` (rev 0). Stage 0 repeats §43 stage 0 on
+  Qwen2.5-0.5B and 1.5B, Llama-3.2-1B, gemma-3-1b (and optionally 270m) and SmolLM2-1.7B: the 126 dev rows, `fixed8`,
+  the frozen prompt, on the laptop at $0. A model is queued for steering, lens, patching and (after §51 confirms)
+  weight editing only if its marker rate is ≥ 0.70, its reading floor is ≥ 0.15, and its in-view abstention rate is
+  ≥ 0.15 on at least 10 rows.
+- **Unchanged.** Stage 0 starts only after the §51 §8.4.2 replay ends; §51 keeps pod priority. Each queued stage is its
+  own pre-registration and quote; nothing here approves a spend. Folds 2–4 stay sealed.
+- **Authority.** The user, Advisor pane, 2026-11-04: "Let's try even smaller models than 3B too ... study if they
+  abstain with evidence in view. And if they do queue them up for our activation steering, lens, activation patching
+  and weight space programming regiments."
