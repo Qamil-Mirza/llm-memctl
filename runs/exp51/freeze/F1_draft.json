@@ -1,0 +1,415 @@
+{
+ "bounds_final": {
+  "capture_bytes": 20000000000,
+  "failed_requests": 10,
+  "generated_tokens": 400000,
+  "input_tokens": 2000000,
+  "paired_pairs": 48,
+  "passes": 30,
+  "prefix_rows": 256,
+  "python_runs": 100,
+  "read_texts": 512,
+  "saved_edits": 40,
+  "submissions": 3,
+  "turns": 120,
+  "wall_hours": 48.0
+ },
+ "bounds_scaling": {
+  "paired_pairs": {
+   "authority": "\u00a713.6 (scaled at F1 to fit under $45), Advisor F1 review",
+   "f0_max": 64,
+   "final": 48,
+   "why": "at the measured 28.7 s/row a 64-pair pass with both arms edited takes about 61 min, past the 1 h cache TTL; 48 pairs takes about 46 min"
+  }
+ },
+ "bounds_within_f0_maxima": true,
+ "cases51_sha256": "5eeb7c402a5805ba9899bb22f229a6ed6d89938d4de0ef76176be66d146a8501",
+ "deviations": [
+  {
+   "authority": "Advisor (ACCEPT)",
+   "commit": "d2f1cee",
+   "frozen_content_changed": false,
+   "id": "D2",
+   "sha256_old_new": {
+    "scripts/exp51_harness.py": [
+     "c115a9fb78dbed95e62f39cb743ab09c0d17c9e3a9f5d27d65dac2d35ed54c69",
+     "ef298273497e94e775659969b0bfa378b57353e3194dd94484b4acf90021f659"
+    ],
+    "tests/test_exp51.py": [
+     "f10c82f1488fac0172b3077998101b17c8a7a59fdb7b4e66d86b1ac1d24c9b6d",
+     "37d923bd0724b258d62e2c79e9485c0dcf40e38cfbadc70f5f70bb2d77f92819"
+    ]
+   },
+   "what": "ApiClient imported urllib.error inside __call__ (UnboundLocalError before any request; dry run attempt 1 sent nothing, $0); module-level imports + a mocked-network test"
+  },
+  {
+   "authority": "Advisor (ACCEPT 475be08; required items of the dry-run reviews)",
+   "commits": [
+    "475be08",
+    "f0a97b9",
+    "645c6ad",
+    "c9ca458"
+   ],
+   "frozen_content_changed": true,
+   "frozen_content_changed_items": [
+    "API request: thinking display summarized (what is returned changes; what the editor is told does not)",
+    "dry_run.max_turns 10 -> 15",
+    "TOOLS.md request doc: paired <= 48 pairs (96 sequences), was 64 (128); bounds.json paired_pairs 48",
+    "new fixed text the editor can receive: rules.budget_note.text, and rules.refusal.text after a refusal; ledger_copy gains budget_used_fraction"
+   ],
+   "frozen_content_unchanged_check": {
+    "instruction_sha256": "843f3c82f7af0ee12f97260de43241f0a18467059d225ea8e801add4b96cf0b4",
+    "stop_usd": 45.0,
+    "system_sha256": "48a33ac8fdf5a440410751d1069f163181ece53ab688d407d8947c073cf74f4b",
+    "tools_sha256": "f5436c0c063e69013436b2a1ecf0fa44491b87ca9275d4bfb5d4108a26d972e7"
+   },
+   "id": "D3",
+   "sha256_old_new": {
+    "scripts/exp51_engine.py": [
+     "59d5ca562794a728761f139cbbef6d2df1a281fb12cdb8ba4599f0e47a91c5a1",
+     "b54c1e886024be82c05319402d40122bd5ffc333dad61791cd35604281b3c8ce"
+    ],
+    "scripts/exp51_freeze.py": [
+     "e4891791541cdc6d5b2478745095ba3b6458601938b1ac998e0a5857c55e6baf",
+     "ee95fedc52863bb88c57014beba484da5ca7d85fa0280e5b7eb89f573b9780ad"
+    ],
+    "scripts/exp51_harness.py": [
+     "ef298273497e94e775659969b0bfa378b57353e3194dd94484b4acf90021f659",
+     "0f1a03b862fb0dcd673477976f023293662a788197aba637df3536ff2a443c00"
+    ],
+    "scripts/exp51_hf_smoke.py": [
+     null,
+     "dc432e060e90140d821b04c0e12361d67c497e49f6bb594a8a82a75fc4f335e9"
+    ],
+    "scripts/exp51_service.py": [
+     "b0979e2d834b4807f9c81091cb22d59c55919a202af8fb980d35cfadd860c67e",
+     "0f43c332e2ac786c28ce7bef78b10b50d6a479ba45294e5ee57ba623a52eda71"
+    ],
+    "scripts/exp51_stop.sh": [
+     null,
+     "9633043498e3bb74eb3647f68f3f7fb0333cb8c471e304bb0eade8bd89c65a2f"
+    ],
+    "tests/test_exp51.py": [
+     "37d923bd0724b258d62e2c79e9485c0dcf40e38cfbadc70f5f70bb2d77f92819",
+     "c79696772e5edb24b9fcc36e338f1f94b58812c42792b3bcbe39ba56b21dc75b"
+    ]
+   },
+   "what": [
+    "thinking {type adaptive, display summarized} so the editor's between-tool notes are recorded by transcript logging",
+    "loop --resume (messages rebuilt verbatim from transcript.jsonl; cut-off tool calls answered INTERRUPTED; transcript.pre_resume.<n>.jsonl copy; ledger kind resume)",
+    "lost-call placeholder on resume (worst case, never trued down)",
+    "harness_pid.json + exp51_stop.sh (launch and stop by the harness's own process group)",
+    "context stop at 900k prompt tokens (clean stop before the 1M window's 400)",
+    "worst-case token estimate chars / 2.5 (was / 3; measured 2.9)",
+    "dummy36 backend; refusal wording names valid layers; save_edit accepts /work/ spec paths (containment check kept)",
+    "DRY_MAX_TURNS 10 -> 15",
+    "$0 scripted end-to-end and resume tests",
+    "stop_details logged on a refusal (transcript only)",
+    "refusal handling: one fixed continuation, second refusal ends (rules.refusal)",
+    "one budget note at $32 and budget_used_fraction in the ledger (rules.budget_note)",
+    "ledger_copy omits the usd of a lost_call_placeholder (kept in the ledger)",
+    "exp51_hf_smoke.py: $0 scripted loop on the real model, DRY- rows (setup_dry takes an engine)",
+    "exp51_freeze.py: the F1 builder and cost model; refuses to rebuild F0"
+   ]
+  }
+ ],
+ "disclosures": [
+  "The continuation request shape (a text block after tool_results) has never been sent to the live API; a refusal cannot be triggered on demand. If the API rejected it, that is a non-transient 400: the harness raises and a --resume hits the same 400.",
+  "The budget note can go unseen in one corner: at very large context the stop reserve is near $8.6, so one call jumping from below $32 past about $36 (for example a cache expiry near 900k context) sends the note and stops before another call."
+ ],
+ "editor_cost_estimate": {
+  "assumptions": {
+   "dry_like": {
+    "cache_expiries": 0,
+    "new_tokens_per_call": 2414,
+    "output_tokens_per_call": 545
+   },
+   "expected": {
+    "cache_expiries": 3,
+    "new_tokens_per_call": 4000,
+    "output_tokens_per_call": 1000
+   },
+   "high": {
+    "cache_expiries": 10,
+    "new_tokens_per_call": 7500,
+    "output_tokens_per_call": 2000
+   },
+   "high_no_expiries": {
+    "cache_expiries": 0,
+    "new_tokens_per_call": 7500,
+    "output_tokens_per_call": 2000
+   }
+  },
+  "backtest": {
+   "dryrun_api": {
+    "measured_usd": 0.3277,
+    "model_usd": 0.33
+   },
+   "dryrun_api2": {
+    "measured_usd": 0.3688,
+    "model_usd": 0.36
+   }
+  },
+  "basis": "Measured: the per-call means and the back-test (dry runs 1-2). Judgement, not measurement: the real-run scenarios. The dry runs used a dummy model, so real thinking and tool output are scaled up: 'expected' about 1.7x the dry write and 1.8x the dry output, 'high' about 3.1x and 3.7x (7,500 per call reaches the 900k context stop at turn 120). Forward results stay small in the real run (dry: about 400 chars; arrays go to npz files), so growth comes from run_python stdout (<= 20k chars), the editor's code and its thinking. Expiries are the largest uncertainty: the 1h cache lapses when a tool call plus generation passes 1 h start to start. Measured on the real-model smoke run (n = 1-2 rows, so a sanity check): paired 28.7 s/row, so a largest 48-pair pass with both arms edited takes about 46 min; prefix 8.5 s/row, about 36 min at 256 rows; read 4.5 s/text, about 38 min at 512 texts (the inventory's 6.27 s/text, from more rows, gives about 54 min). A paired pass whose outputs lengthen to 160 tokens (117.8 s/row) still takes about 3.1 h, and a crash resume can add one, so the scenarios keep 3 and 10 expiries: the 48-pair bound removes the forced expiry of a largest pass, and the model has no term for pass size.",
+  "console_cap_usd": 50,
+  "harness_stop_usd": 45.0,
+  "scenarios": {
+   "dry_like": {
+    "context_tokens_at_end": 292580,
+    "harness_stop": null,
+    "turn_at_context_stop": null,
+    "usd_if_never_stopped": 7.14
+   },
+   "expected": {
+    "context_tokens_at_end": 482900,
+    "harness_stop": null,
+    "turn_at_context_stop": null,
+    "usd_if_never_stopped": 19.48
+   },
+   "high": {
+    "context_tokens_at_end": 902900,
+    "harness_stop": {
+     "reserve_usd": 7.03,
+     "turn": 97,
+     "usd_measured": 41.48
+    },
+    "turn_at_context_stop": null,
+    "usd_if_never_stopped": 61.03
+   },
+   "high_no_expiries": {
+    "context_tokens_at_end": 902900,
+    "harness_stop": null,
+    "turn_at_context_stop": null,
+    "usd_if_never_stopped": 22.78
+   }
+  },
+  "turns": 120,
+  "usd_per_expiry": {
+   "100k_context": 0.78,
+   "300k_context": 2.34,
+   "500k_context": 3.9,
+   "900k_context": 7.02
+  }
+ },
+ "editor_workspace": {
+  "bounds_json_sha256": "133818507f7951ec0850c2bf229bb0386f0a7232c1a993e918933d05a193edc0",
+  "e_rows_sha256": "5a010c61715a0733b7d3d93402f85777fa01185db9ed89c479ccaffa9f4d5b8b",
+  "instruction_md_sha256": "843f3c82f7af0ee12f97260de43241f0a18467059d225ea8e801add4b96cf0b4",
+  "tools_md_sha256": "9569efa5fa3e9b1c9f01f487e84f89a4940d1311e264b0ebc58da15a54633194"
+ },
+ "f0": {
+  "commit": "d29263a",
+  "manifest": "runs/exp51/freeze/F0_draft.json",
+  "manifest_sha256_now": "3ed50681f3001527d06cc2e1183187250991d3f39886975ef88946089ed3a9e7",
+  "sha256": "3ed50681f3001527d06cc2e1183187250991d3f39886975ef88946089ed3a9e7"
+ },
+ "hf_smoke": {
+  "backend": "hf",
+  "commit": "c9ca458",
+  "file": "runs/exp51/hf_smoke2/smoke_result.json",
+  "load_s": 5.21,
+  "ok": true,
+  "passes": {
+   "paired": {
+    "cached_tokens": 18,
+    "capture_bytes": null,
+    "error": null,
+    "generated_tokens": 71,
+    "input_tokens": 612,
+    "ok": true,
+    "wall_s": 57.223
+   },
+   "prefix": {
+    "cached_tokens": null,
+    "capture_bytes": null,
+    "error": null,
+    "generated_tokens": 10,
+    "input_tokens": 626,
+    "ok": true,
+    "wall_s": 16.928
+   },
+   "read": {
+    "cached_tokens": null,
+    "capture_bytes": 25372,
+    "error": null,
+    "generated_tokens": null,
+    "input_tokens": 315,
+    "ok": true,
+    "wall_s": 4.51
+   },
+   "save_edit": {
+    "cached_tokens": null,
+    "capture_bytes": null,
+    "error": null,
+    "generated_tokens": null,
+    "input_tokens": null,
+    "ok": true,
+    "wall_s": 0.487
+   }
+  },
+  "peak_rss_gb": 18.6,
+  "rows": 78,
+  "sha256": "6329d672e2f306d864245e7add1ea7656554cea058bff865d700a09e67160965",
+  "submission_saved": true,
+  "summary": {
+   "ledger": {
+    "cached_tokens": 18,
+    "capture_bytes": 25372,
+    "failed_requests": 0,
+    "generated_tokens": 81,
+    "input_tokens": 1553,
+    "passes": 3,
+    "python_runs": 1,
+    "saved_edits": 1,
+    "turns": 7,
+    "wall_s": 79.528
+   },
+   "reason": "finish",
+   "submissions": 1,
+   "usd": 0.238
+  },
+  "threads": 8
+ },
+ "meter_validation": {
+  "console_usd": 0.71,
+  "dry_runs": {
+   "dryrun_api": {
+    "api_usage_sha256": "e590063f0f6c4ce55ce99d7a7a77bcfe1eb8c3cfef6f85fedbf305a599ee4f6d",
+    "calls": 10,
+    "new_tokens_per_call": 2414,
+    "output_tokens_per_call": 542,
+    "transcript_sha256": "caf7fef693c4a700476dad7028fd4ab40dd25b277d3770f7f29ba08e08cc1dde",
+    "usd": 0.3277,
+    "usd_per_call": [
+     0.026,
+     0.022,
+     0.0363,
+     0.0682,
+     0.0185,
+     0.0575,
+     0.0292,
+     0.0244,
+     0.031,
+     0.0146
+    ]
+   },
+   "dryrun_api2": {
+    "api_usage_sha256": "3151da6babb6ce134beca8b9efc150719816e525139f8abfe29a6655ef4e284a",
+    "calls": 12,
+    "new_tokens_per_call": 2077,
+    "output_tokens_per_call": 545,
+    "transcript_sha256": "2023715feae1a0ecb28dd82c6a8be34ac0b2ef23796e564e86ab7cab8ed166f7",
+    "usd": 0.3688,
+    "usd_per_call": [
+     0.004,
+     0.0215,
+     0.0317,
+     0.0097,
+     0.0571,
+     0.0921,
+     0.0443,
+     0.0168,
+     0.0191,
+     0.0154,
+     0.0326,
+     0.0245
+    ]
+   }
+  },
+  "gap": "about $0.01: the one call in flight at dry run 2's kill (billed, never answered)",
+  "meter_usd": 0.6965,
+  "verdict": "PASS (Advisor, 2026-11-03); prices equal the published Opus 5.5 table ($4 / $20, 1h write $8, 5m write $5, cache read $0.20; 1M window at standard price)"
+ },
+ "n_rows": 5928,
+ "point": "F1",
+ "reduction": {
+  "inventory_sha256": "08eba72bcd89df0fbe5e8292ba173af43d7d15345ccd1e0a7ff19a8c579dd3a9",
+  "projected_h": 26.75,
+  "r": 1.0,
+  "sensitivity": {
+   "decode_s_per_token_max": 0.681,
+   "note": "not the rule's basis (B0 mean length is the inventory unit); the 48 h wall bound stops the run in that case",
+   "paired_30_passes_all_160_tokens_h": 47.1,
+   "r_if_used": 1.0,
+   "s_per_row_at_160_tokens": 117.8
+  },
+  "timing_sha256": "6c72594e043446eaef41b7bdd6547e0892e04ae2aa18dae5eacf7501f7ebafbc",
+  "worst_case_30_passes_h": {
+   "editor: 30 paired passes, worst case (64 pairs, both arms edited)": 25.94,
+   "editor: 30 prefix passes, worst case (256 rows)": 17.41,
+   "editor: 30 read passes, worst case (512 texts)": 26.75
+  }
+ },
+ "resource_caps": {
+  "console_workspace_cap_usd": 50,
+  "context_stop_tokens": 900000,
+  "context_window_tokens": 1000000,
+  "harness_stop_usd": 45.0,
+  "laptop_peak_rss_gb": 17.75,
+  "python_run_timeout_s": 1800,
+  "sandbox_rlimit_as_gib": 6
+ },
+ "rules": {
+  "budget_note": {
+   "authority": "Advisor F1 ruling 2",
+   "rule": "Appended once to the user turn being sent when measured spend first passes usd (tool_result content; the nudge text on a turn without tools); ledger kind budget_note. Every turn's ledger entry carries budget_used_fraction = spend / the harness stop, visible in ledger_copy.jsonl.",
+   "text": "Resource note: most of this run's compute budget has been used. Make sure your submissions are in.",
+   "usd": 32.0
+  },
+  "launch": [
+   "cd ~/Code/llm-memctl; the Console workspace limit is $50 and the key is in .env",
+   ".venv/bin/python scripts/exp51_harness.py setup --run runs/exp51/editor_run",
+   ".venv/bin/python scripts/exp51_harness.py check --run runs/exp51/editor_run (must pass)",
+   "setsid .venv/bin/python scripts/exp51_harness.py loop --run runs/exp51/editor_run --client api --backend hf --i-have-the-go > runs/exp51/editor_run/loop.log 2>&1 &",
+   "the harness writes runs/exp51/editor_run/harness_pid.json; check own_group is true",
+   "stop only with scripts/exp51_stop.sh runs/exp51/editor_run (kills the recorded process group; never $! or pgrep)",
+   "after a crash: the same command with --resume (no other change)"
+  ],
+  "lost_call": "On resume, if the transcript ends on a user record, one call is booked at its worst case (context at the 1h write price + max_tokens at the output price) as a meter placeholder and ledger kind lost_call_placeholder; never trued down.",
+  "refusal": {
+   "authority": "Advisor F1 ruling 3",
+   "rule": "An isolated refusal: the refused response is logged and never joins the messages; the fixed text below is appended once as a text block to the user turn that drew it (transcript record user_amend) and the request is sent. Two consecutive refusals (the continuation itself refused) or a third refusal overall: the run ends, documented under D-45; submissions already made stand and go to replay. No fallback model. stop_details is in the transcript only (the ledger is mirrored into the editor's sandbox).",
+   "text": "Please continue with the task."
+  },
+  "resume": "A resume after an infrastructure or harness crash is the same run, not a second editor run (D-45 is not engaged). Messages are rebuilt verbatim from transcript.jsonl (append-only); the ledger and api_usage.json carry the bounds and the meter."
+ },
+ "sources_sha256": {
+  "memctl/analysis/edit51.py": "11922ebb67620676db4a2271a854e5667c21142a9e25347f4798c01941298f9d",
+  "memctl/analysis/grade51.py": "560846fc912776165d0289f39c35cd136435f722e3d4318504563dcf913c2ab9",
+  "memctl/analysis/mech51.py": "31832bced41e0aec3d042094f2639e32bdd0251c48e689b56740dcb51503e2c5",
+  "memctl/analysis/stats51.py": "3ecdb56ff990f9e41f4d775c0728edfdc6b3afb9bf1d5c2a25f5b59226d2e1b9",
+  "scripts/exp51_bundle.sh": "89a1bb5216f4fc8602709f779c10bc48daa03999fc5d009da7b7d656316ca8ec",
+  "scripts/exp51_cases.py": "48bfd86fed6edd287b691afaa877d0a11b3b32f1207e15999bde7c281441ed92",
+  "scripts/exp51_common.py": "9d3b436b8f83cf3211602d6537a7e94ff38874a2469c7ca1fc9e9ec5779d19fe",
+  "scripts/exp51_d30.sh": "272fd1b05019d47e83bd4faad6aeb29361b012327207c757515ed6eba34d033f",
+  "scripts/exp51_engine.py": "b54c1e886024be82c05319402d40122bd5ffc333dad61791cd35604281b3c8ce",
+  "scripts/exp51_freeze.py": "ee95fedc52863bb88c57014beba484da5ca7d85fa0280e5b7eb89f573b9780ad",
+  "scripts/exp51_gpu_measure.py": "b2acc5d37faff95d664a0346e9f4a7356747d33157170d0167bbb5115f341610",
+  "scripts/exp51_harness.py": "0f1a03b862fb0dcd673477976f023293662a788197aba637df3536ff2a443c00",
+  "scripts/exp51_hf_smoke.py": "dc432e060e90140d821b04c0e12361d67c497e49f6bb594a8a82a75fc4f335e9",
+  "scripts/exp51_ht_bundle.sh": "cb514fbf4da6cbacff3144f5fa7bf1cb7d0798d7be5b75ebb9f6cf958b91a84a",
+  "scripts/exp51_inventory.py": "3c6e760d6de7ff53ac4dd028fe4aa0461471e841a949b50b92a8a3a40e92fd8a",
+  "scripts/exp51_mech.py": "4e655fb12d2422585879f056113f7e0214e1b30b62f208be369aa4faa236451b",
+  "scripts/exp51_pod_ht.sh": "22d48ac25560609e5e742184f0f37fbace0cc19548dfc73bc0cecbd47a4e0506",
+  "scripts/exp51_pod_measure.sh": "48a00e3499c5de57f5469b24f14688c33913d3b4b80f54ab1c5ed84dfcc909af",
+  "scripts/exp51_pod_s.sh": "fe5b1df43b5f275666834cf6e49f3d5c3ec42777fb547c575086327384647922",
+  "scripts/exp51_quote.py": "719fa9d0437e4b97447a9b21cc4c88677637ac789bd04a8e9c82fd77b6a90303",
+  "scripts/exp51_run.py": "c55de9600167ca36eb3bd17f5e4ac30c90617a3fab14fff35a5e41c16a0feafe",
+  "scripts/exp51_s_bundle.sh": "f806fe023f2eec7c8a7989abb84f58c4fbe456606a17ba6c4b6f7cf11fcd8954",
+  "scripts/exp51_service.py": "0f43c332e2ac786c28ce7bef78b10b50d6a479ba45294e5ee57ba623a52eda71",
+  "scripts/exp51_stage4.py": "545de3738bf94ed3316c00d16dbdc9ee85aecdde3600dd5a7a1cf388c870e2f8",
+  "scripts/exp51_stop.sh": "9633043498e3bb74eb3647f68f3f7fb0333cb8c471e304bb0eade8bd89c65a2f",
+  "tests/test_exp51.py": "c79696772e5edb24b9fcc36e338f1f94b58812c42792b3bcbe39ba56b21dc75b"
+ },
+ "split_sizes_bases_per_task": {
+  "E": 48,
+  "H": 48,
+  "S": 32,
+  "Tcity": 24
+ },
+ "status": "DRAFT (not frozen until committed by the Advisor)",
+ "workload_inventory": {
+  "file": "runs/exp51/run/inventory.json",
+  "sha256": "08eba72bcd89df0fbe5e8292ba173af43d7d15345ccd1e0a7ff19a8c579dd3a9"
+ }
+}

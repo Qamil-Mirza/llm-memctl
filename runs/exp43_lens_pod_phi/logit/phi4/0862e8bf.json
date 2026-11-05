@@ -1,0 +1,234 @@
+{
+ "question_id": "0862e8bf",
+ "fold": 1,
+ "reader": "phi4",
+ "n_tokens": 861,
+ "n_leading_ws": 0,
+ "prompt_sha256": "28b3685ed28cd7b041c6406d6c36f8b3830cc1026cf33fb33458bca22b2ba406",
+ "intact_prompt_sha256": "28b3685ed28cd7b041c6406d6c36f8b3830cc1026cf33fb33458bca22b2ba406",
+ "n_evidence_lines_cut": 0,
+ "n_bos": 0,
+ "positions": {
+  "P1": [
+   860
+  ],
+  "P0": [
+   858
+  ],
+  "E": [
+   780
+  ],
+  "Q": [
+   852
+  ],
+  "P1_raw": [
+   860
+  ]
+ },
+ "tracked_names": [
+  "gold",
+  "unknown_sp",
+  "Unknown_sp",
+  "unknown"
+ ],
+ "tracked": {
+  "gold": 50905,
+  "unknown_sp": 9987,
+  "Unknown_sp": 22435,
+  "unknown": 16476
+ },
+ "gold_token_text": " Luna",
+ "position_mode": "forced",
+ "answer_marker": true,
+ "variants": [
+  "logit"
+ ],
+ "read_tag": "exp43_lens_pod_v1",
+ "measures": {
+  "logit": {
+   "k": 10,
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39
+   ],
+   "P1": {
+    "gold": {
+     "best_rank": 2,
+     "final_rank": 2,
+     "emergence_depth": 0.8,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 22,
+     "final_rank": 260,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 25,
+     "final_rank": 37,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 372,
+     "final_rank": 6229,
+     "first_top1_depth": null
+    }
+   },
+   "P0": {
+    "gold": {
+     "best_rank": 1830,
+     "final_rank": 50968,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 4212,
+     "final_rank": 28411,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 12640,
+     "final_rank": 50193,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 5352,
+     "final_rank": 6119,
+     "first_top1_depth": null
+    }
+   },
+   "E": [
+    {
+     "gold": {
+      "best_rank": 3625,
+      "final_rank": 12920,
+      "emergence_depth": null,
+      "outcome": "A"
+     },
+     "unknown_sp": {
+      "best_rank": 70,
+      "final_rank": 21918,
+      "first_top1_depth": null
+     },
+     "Unknown_sp": {
+      "best_rank": 113,
+      "final_rank": 18963,
+      "first_top1_depth": null
+     },
+     "unknown": {
+      "best_rank": 154,
+      "final_rank": 154,
+      "first_top1_depth": null
+     }
+    }
+   ],
+   "Q": {
+    "gold": {
+     "best_rank": 17243,
+     "final_rank": 63354,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 533,
+     "final_rank": 15939,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 353,
+     "final_rank": 16083,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 1642,
+     "final_rank": 1698,
+     "first_top1_depth": null
+    }
+   },
+   "P1_raw": {
+    "gold": {
+     "best_rank": 2,
+     "final_rank": 2,
+     "emergence_depth": 0.8,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 22,
+     "final_rank": 260,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 25,
+     "final_rank": 37,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 372,
+     "final_rank": 6229,
+     "first_top1_depth": null
+    }
+   }
+  }
+ },
+ "family": {
+  "key": "phi4",
+  "model_id": "microsoft/phi-4",
+  "template_kwargs": {},
+  "system_text": null,
+  "system_role": true,
+  "stop_tokens": [
+   "<|im_end|>",
+   "<|endoftext|>"
+  ],
+  "refusal_ids": [
+   9987,
+   22435
+  ]
+ },
+ "elapsed_s": 0.48812129197176546,
+ "model_id": "microsoft/phi-4",
+ "weights": null,
+ "size": "large",
+ "device": "cuda",
+ "dtype": "bfloat16",
+ "lens": "identity (logit lens)",
+ "lens_sha256": null
+}

@@ -1,0 +1,123 @@
+{
+ "experiment": "\u00a741 conditional steering (dev fit, frozen before \u00a740)",
+ "signal": "s_evid",
+ "sign": "+",
+ "tau": 2.2183780670166016,
+ "fires_when": "s_evid > tau",
+ "signal_definitions": {
+  "s_margin": "max logit over refusal_start_ids - max logit over all other ids, at ':' (step 0), unsteered",
+  "s_proj": "<h_29(':'), v_29/||v_29||>, decoder layer output pre final norm, unsteered",
+  "s_evid": "s_margin(intact prompt) - s_margin(cut prompt)"
+ },
+ "refusal_start_ids": [
+  9788
+ ],
+ "layer": 29,
+ "v_sha256": "a7f967ecdf2f59a9e1f64d99e366d33011f27daa8b09b18f5ff33d1e1ba20c6c",
+ "weights": {
+  "R": "1",
+  "C": "28/117",
+  "C_float": 0.23931623931623933,
+  "C_to_R_total": "1/3"
+ },
+ "lambda": 1,
+ "tie_break": "weighted U(lambda 1) desc; unweighted U(lambda 1) desc; signal order s_margin, s_proj, s_evid; sign + before -; lower median of the remaining tied taus",
+ "gate_rule": "weighted U(Cond) - weighted U(Steer) >= 3 at lambda 1; units are weighted (an R row = 1, a C row = w_C)",
+ "gate": {
+  "u_cond": {
+   "exact": "1153/117",
+   "value": 9.854700854700855
+  },
+  "u_steer": {
+   "exact": "-7/117",
+   "value": -0.05982905982905983
+  },
+  "diff": {
+   "exact": "1160/117",
+   "value": 9.914529914529915
+  },
+  "need": 3,
+  "pass": true,
+  "unweighted_diff": 16
+ },
+ "scored_on_40": true,
+ "dev_utility": {
+  "A": {
+   "weighted_l1": {
+    "exact": "1064/117",
+    "value": 9.094017094017094
+   },
+   "unweighted_l1": 38
+  },
+  "B": {
+   "weighted_l1": {
+    "exact": "1387/117",
+    "value": 11.854700854700855
+   },
+   "unweighted_l1": 40
+  },
+  "Steer": {
+   "weighted_l1": {
+    "exact": "-7/117",
+    "value": -0.05982905982905983
+   },
+   "unweighted_l1": 22
+  },
+  "Cond": {
+   "weighted_l1": {
+    "exact": "1153/117",
+    "value": 9.854700854700855
+   },
+   "unweighted_l1": 38
+  }
+ },
+ "label_option": "option (a): cached \u00a735 verdicts where the text is byte-equal to the cached A or B answer; D1 otherwise",
+ "label_sources": {
+  "A": {
+   "cache:A": 65,
+   "cache:B": 1,
+   "judge7b": 0,
+   "D1": 1
+  },
+  "B": {
+   "cache:A": 50,
+   "cache:B": 16,
+   "judge7b": 0,
+   "D1": 1
+  },
+  "Steer": {
+   "cache:A": 29,
+   "cache:B": 5,
+   "judge7b": 0,
+   "D1": 33
+  },
+  "Cond": {
+   "cache:A": 61,
+   "cache:B": 2,
+   "judge7b": 0,
+   "D1": 4
+  }
+ },
+ "engine": "hf-transformers-5.17.0-cpu-float32",
+ "folds": [
+  0,
+  1
+ ],
+ "n_R": 28,
+ "n_C": 39,
+ "input_sha256": {
+  "prefill.jsonl": "5e0f25665b7896b2e8746ed982d82dd7ab45a59fb421f3c363aefb3a2c552a95",
+  "steer.jsonl": "034fac2c31e6561c03d7861e9efff2498f51332d9c83bf23228f600c1157a9d1",
+  "steer_all.jsonl": "94b8a041943e92f824509e8762eaf6f03ea0dcefcc31152ba68288226ea27558",
+  "manifest.json": "3e18a7e3a48b1c87e7f0802ccfcf060537d3ffef7dc5f2eb8eb3bda1a580abdd",
+  "source repro.jsonl": "bd1ebdfff12136a82be56a3ecced556f7d60ae01bf51ab237b20ec44047ec990",
+  "source directions.npz": "be1e3a09bdb5157d24126ebe16b14c035d429ebd51409e9b615b347c5b29f921",
+  "exp35 A fold0": "699d068987da40d312b388037fa852ad5e40fdcf5046ad4deaf752066afb126a",
+  "exp35 B fold0": "109beed496c81bdc1a6c30f6fe78520cc435032750aee47960ec4438db44dafc",
+  "exp35 judge fold0": "627e2103ff1b5c4c800efa85e016a1bc4fc6d2cad4b29c2008d41c712005e095",
+  "exp35 A fold1": "b5511446b3ab0165c7a690c0cf0bf5513ce42a8ec06eaceba2934b86ee9936e8",
+  "exp35 B fold1": "714c871401392a6c41f3cac38de8551032cd663988a300bd08e089850464dbf8",
+  "exp35 judge fold1": "2ebe10be3499328a4b158b19b3f6aef140d85ff3958bffac2c28b546d375fdb1"
+ },
+ "note": "dev utility optimistic by construction (fitted on the rows it is scored on)"
+}

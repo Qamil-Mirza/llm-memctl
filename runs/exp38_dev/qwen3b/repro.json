@@ -1,0 +1,552 @@
+{
+ "R": {
+  "37f165cf": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "4388e9dd": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "4adc0475": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "4bc144e2": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "51b23612": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "60d45044": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "66f24dbb": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "6ade9755": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "75832dbd": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "7e00a6cb": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "89527b6b": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "89941a94": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "8ebdbe50": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "b320f3f8": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "b6025781": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "b86304ba": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "caf03d32": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "cc539528": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "d6062bb9": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "d905b33f": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "fca70973": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "gpt4_1d80365e": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "gpt4_213fd887": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "gpt4_4929293a": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "gpt4_4ef30696": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "gpt4_74aed68e": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  },
+  "gpt4_88806d6e": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": false
+   },
+   "ok": true
+  },
+  "gpt4_98f46fc6": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "B": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true
+   },
+   "ok": true
+  }
+ },
+ "damage": {
+  "00ca467f": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true,
+    "d1_new": true
+   },
+   "ok": true
+  },
+  "07741c44": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": false,
+    "same_answer": true,
+    "d1_new": false
+   },
+   "ok": false
+  },
+  "0862e8bf": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true,
+    "d1_new": true
+   },
+   "ok": true
+  },
+  "0bb5a684": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": false,
+    "same_answer": true,
+    "d1_new": false
+   },
+   "ok": false
+  },
+  "19b5f2b3": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": false,
+    "same_answer": true,
+    "d1_new": false
+   },
+   "ok": false
+  },
+  "1c549ce4": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true,
+    "d1_new": true
+   },
+   "ok": true
+  },
+  "2133c1b5": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": true,
+    "same_answer": true,
+    "d1_new": true
+   },
+   "ok": true
+  },
+  "22d2cb42": {
+   "A": {
+    "flag_match": true,
+    "verdict_match": true,
+    "ok": false,
+    "same_answer": true,
+    "d1_new": false
+   },
+   "ok": false
+  }
+ },
+ "R_ok": [
+  "37f165cf",
+  "4388e9dd",
+  "4adc0475",
+  "4bc144e2",
+  "51b23612",
+  "60d45044",
+  "66f24dbb",
+  "6ade9755",
+  "75832dbd",
+  "7e00a6cb",
+  "89527b6b",
+  "89941a94",
+  "8ebdbe50",
+  "b320f3f8",
+  "b6025781",
+  "b86304ba",
+  "caf03d32",
+  "cc539528",
+  "d6062bb9",
+  "d905b33f",
+  "fca70973",
+  "gpt4_1d80365e",
+  "gpt4_213fd887",
+  "gpt4_4929293a",
+  "gpt4_4ef30696",
+  "gpt4_74aed68e",
+  "gpt4_88806d6e",
+  "gpt4_98f46fc6"
+ ],
+ "damage_ok": [
+  "00ca467f",
+  "0862e8bf",
+  "1c549ce4",
+  "2133c1b5"
+ ],
+ "dropped": [
+  "07741c44",
+  "0bb5a684",
+  "19b5f2b3",
+  "22d2cb42"
+ ],
+ "rate": 0.8888888888888888,
+ "rate_R": 1.0,
+ "pass": true,
+ "R_verdict_match": 28
+}

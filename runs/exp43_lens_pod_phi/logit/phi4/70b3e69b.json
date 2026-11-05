@@ -1,0 +1,234 @@
+{
+ "question_id": "70b3e69b",
+ "fold": 2,
+ "reader": "phi4",
+ "n_tokens": 1486,
+ "n_leading_ws": 0,
+ "prompt_sha256": "5970091d31bd96deb6bcf36c4cf0624a690b46c7473a170c4ebb0404e8e134f6",
+ "intact_prompt_sha256": "5970091d31bd96deb6bcf36c4cf0624a690b46c7473a170c4ebb0404e8e134f6",
+ "n_evidence_lines_cut": 0,
+ "n_bos": 0,
+ "positions": {
+  "P1": [
+   1485
+  ],
+  "P0": [
+   1483
+  ],
+  "E": [
+   615
+  ],
+  "Q": [
+   1477
+  ],
+  "P1_raw": [
+   1485
+  ]
+ },
+ "tracked_names": [
+  "gold",
+  "unknown_sp",
+  "Unknown_sp",
+  "unknown"
+ ],
+ "tracked": {
+  "gold": 2418,
+  "unknown_sp": 9987,
+  "Unknown_sp": 22435,
+  "unknown": 16476
+ },
+ "gold_token_text": " Man",
+ "position_mode": "forced",
+ "answer_marker": true,
+ "variants": [
+  "logit"
+ ],
+ "read_tag": "exp43_lens_pod_v1",
+ "measures": {
+  "logit": {
+   "k": 10,
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39
+   ],
+   "P1": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 2,
+     "emergence_depth": 0.7,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 894,
+     "final_rank": 6965,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 296,
+     "final_rank": 296,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 10945,
+     "final_rank": 25527,
+     "first_top1_depth": null
+    }
+   },
+   "P0": {
+    "gold": {
+     "best_rank": 273,
+     "final_rank": 11588,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 6460,
+     "final_rank": 41280,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 9789,
+     "final_rank": 66482,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 8029,
+     "final_rank": 8304,
+     "first_top1_depth": null
+    }
+   },
+   "E": [
+    {
+     "gold": {
+      "best_rank": 797,
+      "final_rank": 64127,
+      "emergence_depth": null,
+      "outcome": "A"
+     },
+     "unknown_sp": {
+      "best_rank": 104,
+      "final_rank": 10895,
+      "first_top1_depth": null
+     },
+     "Unknown_sp": {
+      "best_rank": 64,
+      "final_rank": 10603,
+      "first_top1_depth": null
+     },
+     "unknown": {
+      "best_rank": 25,
+      "final_rank": 25,
+      "first_top1_depth": null
+     }
+    }
+   ],
+   "Q": {
+    "gold": {
+     "best_rank": 7443,
+     "final_rank": 46768,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 258,
+     "final_rank": 6570,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 671,
+     "final_rank": 12285,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 531,
+     "final_rank": 531,
+     "first_top1_depth": null
+    }
+   },
+   "P1_raw": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 2,
+     "emergence_depth": 0.7,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 894,
+     "final_rank": 6965,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 296,
+     "final_rank": 296,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 10945,
+     "final_rank": 25527,
+     "first_top1_depth": null
+    }
+   }
+  }
+ },
+ "family": {
+  "key": "phi4",
+  "model_id": "microsoft/phi-4",
+  "template_kwargs": {},
+  "system_text": null,
+  "system_role": true,
+  "stop_tokens": [
+   "<|im_end|>",
+   "<|endoftext|>"
+  ],
+  "refusal_ids": [
+   9987,
+   22435
+  ]
+ },
+ "elapsed_s": 0.6759143030503765,
+ "model_id": "microsoft/phi-4",
+ "weights": null,
+ "size": "large",
+ "device": "cuda",
+ "dtype": "bfloat16",
+ "lens": "identity (logit lens)",
+ "lens_sha256": null
+}

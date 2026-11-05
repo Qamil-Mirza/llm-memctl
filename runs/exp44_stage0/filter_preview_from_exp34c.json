@@ -1,0 +1,22 @@
+{
+ "qwen3b": {
+  "n": 126,
+  "cut_prompt_sha_match": 126,
+  "n_dev": 126,
+  "n_strict": 31,
+  "n_relaxed": 58,
+  "relaxed": true,
+  "k_corrupt": 3,
+  "clean_rank_le10": 86
+ },
+ "qwen7b": {
+  "n": 126,
+  "cut_prompt_sha_match": 126,
+  "n_dev": 126,
+  "n_strict": 39,
+  "n_relaxed": 65,
+  "relaxed": true,
+  "k_corrupt": 3,
+  "clean_rank_le10": 109
+ }
+}

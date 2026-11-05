@@ -1,0 +1,13 @@
+loaded qwen7b (hf-transformers-5.17.0-cuda-bfloat16) in 6s, peak RSS 5066 MB, 3 rows
+[1/3] 0100672e f2 1.8s tok=1566/1353 rank clean=1 corrupt=1 lp -0.10/-0.02 R(0)=0.009676236220599039 R(L-1)=1.0 d_c=0.7142857142857143 R(L-1) PASS (not asserted)
+[2/3] 07741c45 f2 1.4s tok=1134/964 rank clean=20 corrupt=11 lp -13.56/-11.38 R(0)=0.0574447322133443 R(L-1)=1.0 d_c=0.4642857142857143 R(L-1) PASS (not asserted)
+[3/3] 08e075c7 f2 1.4s tok=1149/942 rank clean=1 corrupt=12 lp -0.00/-7.19 eligible R(0)=-0.004042665777904668 R(L-1)=1.0 d_c=0.5714285714285714 R(L-1) PASS
+{"model": "qwen7b", "model_id": "Qwen/Qwen2.5-7B-Instruct", "engine": "hf-transformers-5.17.0-cuda-bfloat16", "threads": 8, "folds": [2, 3, 4], "rows": 3, "patch_all": true, "seconds_per_row": 1.5311151089845225, "load_s": 5.94105008803308, "wall_s": 4.626950980047695, "peak_rss_mb_after_load": 5066.08984375, "peak_rss_mb": 5066.08984375, "projected_h_330_rows_all_patched": 0.14035221832358122, "r0_flagged": [], "method_sha256": "456cc2025583718a62e64e323d3f8115714ba20f5fc0efa216d6fdd0290714d7", "filter_version": 2}
+loaded qwen3b (hf-transformers-5.17.0-cuda-float32) in 9s; 3 swap rows, folds [0, 1, 2, 3, 4]
+[1/3] 15745da0 f0 success  D clean=+1.48 swap=-6.07 cut=+3.88 F=+7.56 follows=True cls=answer_production 1s
+[2/3] 1b9b7252 f0 success  D clean=+19.00 swap=-1.83 cut=+6.15 F=+20.83 follows=True cls=answer_production 2s
+  patched 1b9b7252: d_T fwd=0.8888888888888888 rev=0.8888888888888888 T_fwd(0)=-0.0003 T_fwd(L-1)=1.0000 T_rev(0)=0.0000 self=ok donor=15745da0 6s
+[3/3] 59524333 f0 wrong    D clean=+23.37 swap=-16.41 cut=+5.83 F=+39.78 follows=True cls=answer_production 1s
+  patched 59524333: d_T fwd=0.75 rev=0.6666666666666666 T_fwd(0)=-0.0000 T_fwd(L-1)=1.0000 T_rev(0)=0.0000 self=ok donor=1b9b7252 5s
+  patched 15745da0: d_T fwd=0.9166666666666666 rev=0.9166666666666666 T_fwd(0)=0.0001 T_fwd(L-1)=1.0000 T_rev(0)=0.0003 self=ok donor=59524333 5s
+{"model": "qwen3b", "engine": "hf-transformers-5.17.0-cuda-float32", "threads": 8, "folds": [0, 1, 2, 3, 4], "n_swap_rows": 3, "load_s": 9.41733317496255, "method_sha256": "5d434ae29eae796e2d5f6ea623b72559d89fa3307d9c4461169fea307e609a52", "gate_rev": 8, "weights": null, "wall_s": 21.808723274967633, "peak_rss_mb": 18446.30078125}

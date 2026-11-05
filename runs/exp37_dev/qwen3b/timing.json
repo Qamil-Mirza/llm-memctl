@@ -1,0 +1,70 @@
+{
+ "engine": "hf-transformers-5.17.0-cpu-float32",
+ "threads": 8,
+ "e3_fallback": true,
+ "timing": {
+  "rows": 5,
+  "prefill_s_per_token": 0.015743248112411345,
+  "decode_s_per_token": 0.9461388121475466,
+  "per_turn": {
+   "E1": {
+    "mean_s": 18.57533496780088,
+    "mean_input_tokens": 927.4,
+    "mean_new_tokens": 6
+   },
+   "E2": {
+    "mean_s": 5.973291606782004,
+    "mean_input_tokens": 284.2,
+    "mean_new_tokens": 2.2
+   },
+   "E3": {
+    "mean_s": 2.4108387704123744,
+    "mean_input_tokens": 127.6,
+    "mean_new_tokens": 1
+   },
+   "E2d": {
+    "mean_s": 17.045110563805792,
+    "mean_input_tokens": 970.4,
+    "mean_new_tokens": 2.8
+   },
+   "Vnum": {
+    "mean_s": 15.580226351786404,
+    "mean_input_tokens": 994.4,
+    "mean_new_tokens": 1
+   }
+  }
+ },
+ "projection": {
+  "V": {
+   "rows": 84,
+   "hours": 0.6896197160299582
+  },
+  "CutB": {
+   "rows": 84,
+   "hours": 0.6230651346347392
+  },
+  "Pnum": {
+   "rows": 14,
+   "hours": 0.11253796056342148
+  },
+  "Pname": {
+   "rows": 13,
+   "hours": 0.10836974996985917
+  },
+  "Vdlg": {
+   "rows": 84,
+   "hours": 0.45397215113175726
+  },
+  "Vnum": {
+   "rows": 84,
+   "hours": 0.38614251807716926
+  },
+  "CutF": {
+   "rows": 60,
+   "hours": 0.4557256947086852
+  },
+  "total_laptop_hours": 2.3737072304069047,
+  "with_CutF_hours": 2.82943292511559,
+  "over_8h": false
+ }
+}

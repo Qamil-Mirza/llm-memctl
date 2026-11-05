@@ -1,0 +1,71 @@
+{
+ "stages": [
+  {
+   "stage": "install",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 25,
+   "t_offset_s": 0,
+   "note": ""
+  },
+  {
+   "stage": "population",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 0,
+   "t_offset_s": 25,
+   "note": ""
+  },
+  {
+   "stage": "stub_check",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 50,
+   "t_offset_s": 25,
+   "note": ""
+  },
+  {
+   "stage": "download",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 6,
+   "t_offset_s": 75,
+   "note": ""
+  },
+  {
+   "stage": "smoke",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 188,
+   "t_offset_s": 81,
+   "note": ""
+  },
+  {
+   "stage": "projection",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 0,
+   "t_offset_s": 269,
+   "note": ""
+  },
+  {
+   "stage": "rows",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 1653,
+   "t_offset_s": 269,
+   "note": ""
+  },
+  {
+   "stage": "report",
+   "status": "ok",
+   "rc": 0,
+   "elapsed_s": 0,
+   "t_offset_s": 1922,
+   "note": ""
+  }
+ ],
+ "hard_stop_s": 5400,
+ "self_stop_s": 6000,
+ "engine": "hf"
+}

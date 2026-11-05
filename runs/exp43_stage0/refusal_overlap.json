@@ -1,0 +1,21 @@
+{
+ "qwen_dev_refusals": 30,
+ "llama3b": {
+  "refusals_on_common": 9,
+  "both_refuse": 5,
+  "qwen_refusals_family_correct": 16,
+  "qwen_refusals_family_wrong_answer": 9
+ },
+ "gemma4b": {
+  "refusals_on_common": 2,
+  "both_refuse": 1,
+  "qwen_refusals_family_correct": 19,
+  "qwen_refusals_family_wrong_answer": 10
+ },
+ "phi4mini": {
+  "refusals_on_common": 3,
+  "both_refuse": 3,
+  "qwen_refusals_family_correct": 11,
+  "qwen_refusals_family_wrong_answer": 16
+ }
+}

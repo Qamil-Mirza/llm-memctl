@@ -1,0 +1,492 @@
+{
+ "llama3b": {
+  "model": "meta-llama/Llama-3.2-3B-Instruct",
+  "bos": "<|begin_of_text|>",
+  "eos": "<|eot_id|>",
+  "add_bos_default": true,
+  "chat_user_only": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nCutting Knowledge Date: December 2023\nToday Date: 26 Oct 2026\n\n<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n<<PROMPT>><|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+  "chat_system_user": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nCutting Knowledge Date: December 2023\nToday Date: 26 Oct 2026\n\n<<SYS>><|eot_id|><|start_header_id|>user<|end_header_id|>\n\n<<PROMPT>><|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+  "tail_after_prompt": "<|eot_id|><|start_header_id|>assistant<|end_header_id|>\n\n",
+  "head_before_prompt": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\nCutting Knowledge Date: December 2023\nToday Date: 26 Oct 2026\n\n<|eot_id|><|start_header_id|>user<|end_header_id|>\n\n",
+  "n_bos_in_chat_ids": 1,
+  "unknown_ids": {
+   " unknown": {
+    "ids": [
+     9987
+    ],
+    "pieces": [
+     "Ġunknown"
+    ],
+    "first": 9987
+   },
+   " Unknown": {
+    "ids": [
+     22435
+    ],
+    "pieces": [
+     "ĠUnknown"
+    ],
+    "first": 22435
+   },
+   "unknown": {
+    "ids": [
+     16476
+    ],
+    "pieces": [
+     "unknown"
+    ],
+    "first": 16476
+   },
+   "Unknown": {
+    "ids": [
+     14109
+    ],
+    "pieces": [
+     "Unknown"
+    ],
+    "first": 14109
+   },
+   " UNKNOWN": {
+    "ids": [
+     62495
+    ],
+    "pieces": [
+     "ĠUNKNOWN"
+    ],
+    "first": 62495
+   },
+   "\nunknown": {
+    "ids": [
+     16476
+    ],
+    "pieces": [
+     "unknown"
+    ],
+    "first": null
+   },
+   " unknown.": {
+    "ids": [
+     9987,
+     13
+    ],
+    "pieces": [
+     "Ġunknown",
+     "."
+    ],
+    "first": 9987
+   }
+  },
+  "plain_ids_' unknown'": [
+   9987
+  ],
+  "marker_ids": {
+   "Answer:": [
+    "Answer",
+    ":"
+   ],
+   "note\\nAnswer:": [
+    "note",
+    ".Ċ",
+    "Answer",
+    ":"
+   ],
+   "note Answer:": [
+    "note",
+    ".",
+    "ĠAnswer",
+    ":"
+   ]
+  },
+  "population_marked": 125,
+  "last_token_is_colon": {
+   "k": 125,
+   "n": 125
+  },
+  "last_token_pieces": {
+   ":": 125
+  },
+  "cached_refusal_first_ids": {
+   "9987 'Ġunknown'": 13
+  },
+  "cached_answer_first_ids_top": {
+   "220 'Ġ'": 49,
+   "578 'ĠThe'": 7,
+   "400 'Ġ$'": 5,
+   "23693 'Ġcharity'": 2,
+   "10884 'ĠTotal'": 2,
+   "7566 'ĠYes'": 2,
+   "13625 'ĠFour'": 1,
+   "46594 'ĠCompleted'": 1
+  },
+  "a_arm_prompt_tokens": {
+   "min": 751,
+   "median": 1055,
+   "max": 2662
+  },
+  "cached_refusal_first_ids_all_rows": {
+   "9987 'Ġunknown'": 51
+  }
+ },
+ "gemma4b": {
+  "model": "google/gemma-3-4b-it",
+  "bos": "<bos>",
+  "eos": "<eos>",
+  "add_bos_default": true,
+  "chat_user_only": "<bos><start_of_turn>user\n<<PROMPT>><end_of_turn>\n<start_of_turn>model\n",
+  "chat_system_user": "<bos><start_of_turn>user\n<<SYS>>\n\n<<PROMPT>><end_of_turn>\n<start_of_turn>model\n",
+  "tail_after_prompt": "<end_of_turn>\n<start_of_turn>model\n",
+  "head_before_prompt": "<bos><start_of_turn>user\n",
+  "n_bos_in_chat_ids": 1,
+  "unknown_ids": {
+   " unknown": {
+    "ids": [
+     11908
+    ],
+    "pieces": [
+     "▁unknown"
+    ],
+    "first": 11908
+   },
+   " Unknown": {
+    "ids": [
+     60355
+    ],
+    "pieces": [
+     "▁Unknown"
+    ],
+    "first": 60355
+   },
+   "unknown": {
+    "ids": [
+     20774
+    ],
+    "pieces": [
+     "unknown"
+    ],
+    "first": 20774
+   },
+   "Unknown": {
+    "ids": [
+     41387
+    ],
+    "pieces": [
+     "Unknown"
+    ],
+    "first": 41387
+   },
+   " UNKNOWN": {
+    "ids": [
+     7866,
+     109770
+    ],
+    "pieces": [
+     "▁UN",
+     "KNOWN"
+    ],
+    "first": 7866
+   },
+   "\nunknown": {
+    "ids": [
+     107,
+     20774
+    ],
+    "pieces": [
+     "\n",
+     "unknown"
+    ],
+    "first": 107
+   },
+   " unknown.": {
+    "ids": [
+     11908,
+     236761
+    ],
+    "pieces": [
+     "▁unknown",
+     "."
+    ],
+    "first": 11908
+   }
+  },
+  "plain_ids_' unknown'": [
+   11908
+  ],
+  "marker_ids": {
+   "Answer:": [
+    "Answer",
+    ":"
+   ],
+   "note\\nAnswer:": [
+    "note",
+    ".",
+    "\n",
+    "Answer",
+    ":"
+   ],
+   "note Answer:": [
+    "note",
+    ".",
+    "▁Answer",
+    ":"
+   ]
+  },
+  "population_marked": 121,
+  "last_token_is_colon": {
+   "k": 121,
+   "n": 121
+  },
+  "last_token_pieces": {
+   ":": 121
+  },
+  "cached_refusal_first_ids": {
+   "11908 '▁unknown'": 2
+  },
+  "cached_answer_first_ids_top": {
+   "236743 '▁'": 47,
+   "609 '▁$'": 8,
+   "14019 '▁Three'": 5,
+   "8512 '▁Two'": 5,
+   "8438 '▁Yes'": 3,
+   "13038 '▁Four'": 2,
+   "9595 '▁Blue'": 2,
+   "77912 '▁Approximately'": 2
+  },
+  "a_arm_prompt_tokens": {
+   "min": 817,
+   "median": 1116,
+   "max": 3448
+  },
+  "cached_refusal_first_ids_all_rows": {
+   "11908 '▁unknown'": 17,
+   "60355 '▁Unknown'": 1
+  }
+ },
+ "phi4mini": {
+  "model": "microsoft/Phi-4-mini-instruct",
+  "bos": "<|endoftext|>",
+  "eos": "<|endoftext|>",
+  "add_bos_default": false,
+  "chat_user_only": "<|user|><<PROMPT>><|end|><|assistant|>",
+  "chat_system_user": "<|system|><<SYS>><|end|><|user|><<PROMPT>><|end|><|assistant|>",
+  "tail_after_prompt": "<|end|><|assistant|>",
+  "head_before_prompt": "<|user|>",
+  "n_bos_in_chat_ids": 0,
+  "unknown_ids": {
+   " unknown": {
+    "ids": [
+     17927
+    ],
+    "pieces": [
+     "Ġunknown"
+    ],
+    "first": 17927
+   },
+   " Unknown": {
+    "ids": [
+     41855
+    ],
+    "pieces": [
+     "ĠUnknown"
+    ],
+    "first": 41855
+   },
+   "unknown": {
+    "ids": [
+     33936
+    ],
+    "pieces": [
+     "unknown"
+    ],
+    "first": 33936
+   },
+   "Unknown": {
+    "ids": [
+     24560
+    ],
+    "pieces": [
+     "Unknown"
+    ],
+    "first": 24560
+   },
+   " UNKNOWN": {
+    "ids": [
+     144384
+    ],
+    "pieces": [
+     "ĠUNKNOWN"
+    ],
+    "first": 144384
+   },
+   "\nunknown": {
+    "ids": [
+     33936
+    ],
+    "pieces": [
+     "unknown"
+    ],
+    "first": null
+   },
+   " unknown.": {
+    "ids": [
+     17927,
+     13
+    ],
+    "pieces": [
+     "Ġunknown",
+     "."
+    ],
+    "first": 17927
+   }
+  },
+  "plain_ids_' unknown'": [
+   17927
+  ],
+  "marker_ids": {
+   "Answer:": [
+    "Answer",
+    ":"
+   ],
+   "note\\nAnswer:": [
+    "note",
+    ".Ċ",
+    "Answer",
+    ":"
+   ],
+   "note Answer:": [
+    "note",
+    ".",
+    "ĠAnswer",
+    ":"
+   ]
+  },
+  "population_marked": 89,
+  "last_token_is_colon": {
+   "k": 89,
+   "n": 89
+  },
+  "last_token_pieces": {
+   ":": 89
+  },
+  "cached_refusal_first_ids": {
+   "17927 'Ġunknown'": 3
+  },
+  "cached_answer_first_ids_top": {
+   "220 'Ġ'": 34,
+   "623 'ĠThe'": 9,
+   "548 'Ġ$'": 6,
+   "40747 'ĠHawaii'": 2,
+   "11377 'ĠYes'": 2,
+   "27985 'ĠMind'": 1,
+   "29354 'ĠIrish'": 1,
+   "66110 'ĠMayo'": 1
+  },
+  "a_arm_prompt_tokens": {
+   "min": 702,
+   "median": 1000,
+   "max": 2622
+  },
+  "cached_refusal_first_ids_all_rows": {
+   "17927 'Ġunknown'": 15,
+   "41855 'ĠUnknown'": 3
+  }
+ },
+ "qwen3b": {
+  "model": "Qwen/Qwen2.5-3B-Instruct",
+  "bos": null,
+  "eos": "<|im_end|>",
+  "add_bos_default": false,
+  "chat_user_only": "<|im_start|>system\nYou are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>\n<|im_start|>user\n<<PROMPT>><|im_end|>\n<|im_start|>assistant\n",
+  "chat_system_user": "<|im_start|>system\n<<SYS>><|im_end|>\n<|im_start|>user\n<<PROMPT>><|im_end|>\n<|im_start|>assistant\n",
+  "tail_after_prompt": "<|im_end|>\n<|im_start|>assistant\n",
+  "head_before_prompt": "<|im_start|>system\nYou are Qwen, created by Alibaba Cloud. You are a helpful assistant.<|im_end|>\n<|im_start|>user\n",
+  "n_bos_in_chat_ids": null,
+  "unknown_ids": {
+   " unknown": {
+    "ids": [
+     9788
+    ],
+    "pieces": [
+     "Ġunknown"
+    ],
+    "first": 9788
+   },
+   " Unknown": {
+    "ids": [
+     21693
+    ],
+    "pieces": [
+     "ĠUnknown"
+    ],
+    "first": 21693
+   },
+   "unknown": {
+    "ids": [
+     16088
+    ],
+    "pieces": [
+     "unknown"
+    ],
+    "first": 16088
+   },
+   "Unknown": {
+    "ids": [
+     13790
+    ],
+    "pieces": [
+     "Unknown"
+    ],
+    "first": 13790
+   },
+   " UNKNOWN": {
+    "ids": [
+     61395
+    ],
+    "pieces": [
+     "ĠUNKNOWN"
+    ],
+    "first": 61395
+   },
+   "\nunknown": {
+    "ids": [
+     16088
+    ],
+    "pieces": [
+     "unknown"
+    ],
+    "first": null
+   },
+   " unknown.": {
+    "ids": [
+     9788,
+     13
+    ],
+    "pieces": [
+     "Ġunknown",
+     "."
+    ],
+    "first": 9788
+   }
+  },
+  "plain_ids_' unknown'": [
+   9788
+  ],
+  "marker_ids": {
+   "Answer:": [
+    "Answer",
+    ":"
+   ],
+   "note\\nAnswer:": [
+    "note",
+    ".Ċ",
+    "Answer",
+    ":"
+   ],
+   "note Answer:": [
+    "note",
+    ".",
+    "ĠAnswer",
+    ":"
+   ]
+  }
+ }
+}

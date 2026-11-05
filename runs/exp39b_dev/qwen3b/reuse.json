@@ -1,0 +1,14 @@
+{
+ "source": "runs/exp39_dev/qwen3b/arms.jsonl",
+ "source_sha256": "03d5ac981812cb240d7c5439a3c1b49ec1d816dea9c41c332ef605581b48d212",
+ "key": "steer:L29:a2:vnorm:s0",
+ "n": 56,
+ "kinds": [
+  "A",
+  "cut"
+ ],
+ "vector_sha256": "e0000366813f3c94cf4875c5ba948fc7f4bac220099cc8848edb79196045d71c",
+ "engine": "hf-transformers-5.17.0-cpu-float32",
+ "wording_sha256": "8ef1224f8bba23157e66b63ac9122f3a708d68d769480404b0fccfa39f0530db",
+ "max_new_tokens": 16
+}

@@ -1,0 +1,94 @@
+{
+ "arms": {
+  "R:A:steer_all+random+steer0": {
+   "rows": 120,
+   "of": 120,
+   "seconds": 72.88507878704695,
+   "settings": [
+    "steer_all",
+    "random",
+    "steer0"
+   ]
+  },
+  "R:Ncut notes": {
+   "rows": 120,
+   "of": 120,
+   "marked": 104,
+   "seconds": 25.19550979504129,
+   "new": 120
+  },
+  "R:cut:none+steer_all": {
+   "rows": 120,
+   "of": 120,
+   "seconds": 44.23548141005449,
+   "settings": [
+    "none",
+    "steer_all"
+   ]
+  },
+  "C:A:steer_all": {
+   "rows": 40,
+   "of": 40,
+   "seconds": 12.815557940979488,
+   "settings": [
+    "steer_all"
+   ]
+  },
+  "R:B:none": {
+   "rows": 120,
+   "of": 120,
+   "seconds": 23.801212107005995,
+   "settings": [
+    "none"
+   ]
+  },
+  "adv:B:none": {
+   "rows": 37,
+   "of": 37,
+   "seconds": 9.168490091979038,
+   "settings": [
+    "none"
+   ]
+  },
+  "adv:A:steer_all": {
+   "rows": 37,
+   "of": 37,
+   "seconds": 14.22721232904587,
+   "settings": [
+    "steer_all"
+   ]
+  },
+  "C:Ncut notes": {
+   "rows": 40,
+   "of": 40,
+   "marked": 37,
+   "seconds": 7.699043906992301,
+   "new": 40
+  },
+  "C:cut:none": {
+   "rows": 40,
+   "of": 40,
+   "seconds": 7.447450690960977,
+   "settings": [
+    "none"
+   ]
+  },
+  "adv:Ncut notes": {
+   "rows": 37,
+   "of": 37,
+   "marked": 31,
+   "seconds": 13.198281722026877,
+   "new": 37
+  },
+  "adv:cut:none": {
+   "rows": 37,
+   "of": 37,
+   "seconds": 4.933179938991088,
+   "settings": [
+    "none"
+   ]
+  }
+ },
+ "cut": [],
+ "skipped": []
+}

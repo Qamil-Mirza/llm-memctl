@@ -1,0 +1,59 @@
+{
+ "pairs": [
+  "4adc0475",
+  "4bc144e2",
+  "66f24dbb",
+  "6ade9755",
+  "7e00a6cb",
+  "8ebdbe50",
+  "b320f3f8",
+  "d6062bb9",
+  "gpt4_1d80365e",
+  "gpt4_213fd887",
+  "gpt4_4ef30696",
+  "gpt4_74aed68e",
+  "gpt4_88806d6e"
+ ],
+ "layers": {
+  "18": {
+   "layer": 18,
+   "n_pairs": 13,
+   "v_norm": 17.437637484749672,
+   "mean_resid_A_norm": 55.447248670238835,
+   "v_over_resid": 0.3144905816419576,
+   "vector_sha256": "315ccc3434370d27c8f9b5913d7fe201058b4997f1c02dd663d20333fd69702c"
+  },
+  "22": {
+   "layer": 22,
+   "n_pairs": 13,
+   "v_norm": 17.544915917201568,
+   "mean_resid_A_norm": 68.1632406503098,
+   "v_over_resid": 0.2573955661411445,
+   "vector_sha256": "3298f422a59464562f856951da6e88ced84634d1769be20f4c3050d3b74cb252"
+  },
+  "25": {
+   "layer": 25,
+   "n_pairs": 13,
+   "v_norm": 21.043347247834685,
+   "mean_resid_A_norm": 68.22561686121259,
+   "v_over_resid": 0.30843762527852175,
+   "vector_sha256": "655cef9addc254ae8584c650699f7d94acaa8301bc95d0c06d30bccad9ea9e5e"
+  },
+  "29": {
+   "layer": 29,
+   "n_pairs": 13,
+   "v_norm": 32.23422740066282,
+   "mean_resid_A_norm": 109.16249913316526,
+   "v_over_resid": 0.29528663832934876,
+   "vector_sha256": "a7f967ecdf2f59a9e1f64d99e366d33011f27daa8b09b18f5ff33d1e1ba20c6c"
+  },
+  "32": {
+   "layer": 32,
+   "n_pairs": 13,
+   "v_norm": 54.23941636385814,
+   "mean_resid_A_norm": 221.2986727696675,
+   "v_over_resid": 0.24509598582324854,
+   "vector_sha256": "79eb2b9d4643e7209b0f29890574bf912af26bda4fe23336af4840e1d531c6e2"
+  }
+ }
+}

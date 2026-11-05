@@ -1,0 +1,15 @@
+loaded qwen7b (hf-transformers-5.17.0-cuda-bfloat16) in 4s, peak RSS 951 MB, 3 rows
+[1/3] 0100672e f2 0.4s tok=1566/1353 rank clean=78728 corrupt=84380 lp -11.95/-11.96 R(0)=0.2595609751342142 R(L-1)=1.0 d_c=0.6666666666666666 R(L-1) PASS (not asserted)
+[2/3] 07741c45 f2 0.0s tok=1134/964 rank clean=17085 corrupt=16586 lp -11.75/-11.75 R(0)=0.3316952432359917 R(L-1)=1.0 d_c=0.3333333333333333 R(L-1) PASS (not asserted)
+[3/3] 08e075c7 f2 0.0s tok=1149/942 rank clean=143331 corrupt=143699 lp -12.20/-12.20 R(0)=0.0008122016539785162 R(L-1)=1.0 d_c=0.3333333333333333 R(L-1) PASS (not asserted)
+{"model": "qwen7b", "model_id": "Qwen/Qwen2.5-7B-Instruct", "engine": "hf-transformers-5.17.0-cuda-bfloat16", "threads": 8, "folds": [2, 3, 4], "rows": 3, "patch_all": true, "seconds_per_row": 0.16038940097981444, "load_s": 4.480913270963356, "wall_s": 0.5175334779778495, "peak_rss_mb_after_load": 950.59375, "peak_rss_mb": 1495.37109375, "projected_h_330_rows_all_patched": 0.01470236175648299, "r0_flagged": [], "method_sha256": "456cc2025583718a62e64e323d3f8115714ba20f5fc0efa216d6fdd0290714d7", "filter_version": 2}
+loaded qwen3b (hf-transformers-5.17.0-cuda-float32) in 4s; 3 swap rows, folds [0, 1, 2, 3, 4]
+[1/3] 15745da0 f0 success  D clean=-0.07 swap=-0.07 cut=-0.07 F=+0.00 follows=True cls=evidence_use 0s
+[2/3] 1b9b7252 f0 success  D clean=+0.05 swap=+0.04 cut=+0.05 F=+0.00 follows=True cls=evidence_use 0s
+  patched 1b9b7252: d_T fwd=0.0 rev=0.0 T_fwd(0)=0.9401 T_fwd(L-1)=1.0000 T_rev(0)=0.9396 self=ok donor=15745da0 0s
+[3/3] 59524333 f0 wrong    D clean=+0.40 swap=+0.40 cut=+0.40 F=-0.00 follows=True cls=evidence_use 0s
+  patched 59524333: d_T fwd=0.75 rev=0.75 T_fwd(0)=0.0092 T_fwd(L-1)=1.0000 T_rev(0)=0.0090 self=ok donor=1b9b7252 0s
+  patched 15745da0: d_T fwd=0.0 rev=0.0 T_fwd(0)=0.5577 T_fwd(L-1)=1.0000 T_rev(0)=0.5577 self=ok donor=59524333 0s
+{"model": "qwen3b", "engine": "hf-transformers-5.17.0-cuda-float32", "threads": 8, "folds": [0, 1, 2, 3, 4], "n_swap_rows": 3, "load_s": 4.472594560938887, "method_sha256": "5d434ae29eae796e2d5f6ea623b72559d89fa3307d9c4461169fea307e609a52", "gate_rev": 8, "weights": "runs/exp44_pod/stub_models/qwen3b", "wall_s": 0.7362632040167227, "peak_rss_mb": 1394.26171875}
+loaded qwen7b (hf-transformers-5.17.0-cuda-bfloat16) in 5s, peak RSS 943 MB, 3 rows
+{"model": "qwen7b", "model_id": "Qwen/Qwen2.5-7B-Instruct", "engine": "hf-transformers-5.17.0-cuda-bfloat16", "threads": 8, "folds": [2, 3, 4], "rows": 0, "patch_all": true, "seconds_per_row": null, "load_s": 4.514418337959796, "wall_s": 0.02984425099566579, "peak_rss_mb_after_load": 943.30859375, "peak_rss_mb": 944.85546875, "projected_h_330_rows_all_patched": null, "r0_flagged": [], "method_sha256": "456cc2025583718a62e64e323d3f8115714ba20f5fc0efa216d6fdd0290714d7", "filter_version": 2}

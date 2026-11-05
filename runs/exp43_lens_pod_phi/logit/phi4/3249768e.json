@@ -1,0 +1,234 @@
+{
+ "question_id": "3249768e",
+ "fold": 4,
+ "reader": "phi4",
+ "n_tokens": 1306,
+ "n_leading_ws": 0,
+ "prompt_sha256": "220265d9293d5ab27497235367916ee389aee0a944b727eb5677d2658cbd40f7",
+ "intact_prompt_sha256": "220265d9293d5ab27497235367916ee389aee0a944b727eb5677d2658cbd40f7",
+ "n_evidence_lines_cut": 0,
+ "n_bos": 0,
+ "positions": {
+  "P1": [
+   1305
+  ],
+  "P0": [
+   1303
+  ],
+  "E": [
+   841
+  ],
+  "Q": [
+   1297
+  ],
+  "P1_raw": [
+   1305
+  ]
+ },
+ "tracked_names": [
+  "gold",
+  "unknown_sp",
+  "Unknown_sp",
+  "unknown"
+ ],
+ "tracked": {
+  "gold": 22855,
+  "unknown_sp": 9987,
+  "Unknown_sp": 22435,
+  "unknown": 16476
+ },
+ "gold_token_text": " Abs",
+ "position_mode": "forced",
+ "answer_marker": true,
+ "variants": [
+  "logit"
+ ],
+ "read_tag": "exp43_lens_pod_v1",
+ "measures": {
+  "logit": {
+   "k": 10,
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39
+   ],
+   "P1": {
+    "gold": {
+     "best_rank": 3,
+     "final_rank": 3,
+     "emergence_depth": 0.8,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 199,
+     "final_rank": 3210,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 159,
+     "final_rank": 159,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 7857,
+     "final_rank": 15941,
+     "first_top1_depth": null
+    }
+   },
+   "P0": {
+    "gold": {
+     "best_rank": 338,
+     "final_rank": 65563,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 4948,
+     "final_rank": 33845,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 16129,
+     "final_rank": 65563,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 7299,
+     "final_rank": 7645,
+     "first_top1_depth": null
+    }
+   },
+   "E": [
+    {
+     "gold": {
+      "best_rank": 3903,
+      "final_rank": 43565,
+      "emergence_depth": null,
+      "outcome": "A"
+     },
+     "unknown_sp": {
+      "best_rank": 107,
+      "final_rank": 5730,
+      "first_top1_depth": null
+     },
+     "Unknown_sp": {
+      "best_rank": 36,
+      "final_rank": 4039,
+      "first_top1_depth": null
+     },
+     "unknown": {
+      "best_rank": 19,
+      "final_rank": 19,
+      "first_top1_depth": null
+     }
+    }
+   ],
+   "Q": {
+    "gold": {
+     "best_rank": 2588,
+     "final_rank": 34867,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 128,
+     "final_rank": 4387,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 118,
+     "final_rank": 5452,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 269,
+     "final_rank": 269,
+     "first_top1_depth": null
+    }
+   },
+   "P1_raw": {
+    "gold": {
+     "best_rank": 3,
+     "final_rank": 3,
+     "emergence_depth": 0.8,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 199,
+     "final_rank": 3210,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 159,
+     "final_rank": 159,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 7857,
+     "final_rank": 15941,
+     "first_top1_depth": null
+    }
+   }
+  }
+ },
+ "family": {
+  "key": "phi4",
+  "model_id": "microsoft/phi-4",
+  "template_kwargs": {},
+  "system_text": null,
+  "system_role": true,
+  "stop_tokens": [
+   "<|im_end|>",
+   "<|endoftext|>"
+  ],
+  "refusal_ids": [
+   9987,
+   22435
+  ]
+ },
+ "elapsed_s": 0.6278950170380995,
+ "model_id": "microsoft/phi-4",
+ "weights": null,
+ "size": "large",
+ "device": "cuda",
+ "dtype": "bfloat16",
+ "lens": "identity (logit lens)",
+ "lens_sha256": null
+}

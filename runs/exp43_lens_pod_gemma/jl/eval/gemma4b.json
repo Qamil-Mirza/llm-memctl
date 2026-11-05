@@ -1,0 +1,97 @@
+{
+ "reader": "gemma4b",
+ "lens": "runs/exp43_lens_pod_gemma/jl/lenses/gemma4b.pt",
+ "lens_sha256": "f70161a3afc727ea1c1deb9a5172e50704b87f1a30753639087db5702c65f223",
+ "k": 10,
+ "band": [
+  11,
+  22
+ ],
+ "sets": {
+  "association": {
+   "n_items": 102,
+   "n_skipped": 0,
+   "pass_at_k": {
+    "jlens": 0.029411764705882353,
+    "logit": 0.0392156862745098
+   },
+   "pass_at_k_all": {
+    "jlens": 0.08823529411764706,
+    "logit": 0.058823529411764705
+   }
+  },
+  "multihop": {
+   "n_items": 93,
+   "n_skipped": 0,
+   "pass_at_k": {
+    "jlens": 0.13978494623655913,
+    "logit": 0.20250896057347673
+   },
+   "pass_at_k_all": {
+    "jlens": 0.5376344086021505,
+    "logit": 0.568100358422939
+   }
+  },
+  "multilingual": {
+   "n_items": 107,
+   "n_skipped": 0,
+   "pass_at_k": {
+    "jlens": 0.08878504672897196,
+    "logit": 0.34579439252336447
+   },
+   "pass_at_k_all": {
+    "jlens": 0.338785046728972,
+    "logit": 0.4696261682242991
+   }
+  },
+  "order-ops": {
+   "n_items": 55,
+   "n_skipped": 0,
+   "pass_at_k": {
+    "jlens": 0.00909090909090909,
+    "logit": 0.0
+   },
+   "pass_at_k_all": {
+    "jlens": 0.09090909090909091,
+    "logit": 0.12727272727272726
+   }
+  },
+  "poetry": {
+   "n_items": 98,
+   "n_skipped": 0,
+   "pass_at_k": {
+    "jlens": 0.0,
+    "logit": 0.02040816326530612
+   },
+   "pass_at_k_all": {
+    "jlens": 0.04081632653061224,
+    "logit": 0.05102040816326531
+   }
+  },
+  "typo": {
+   "n_items": 96,
+   "n_skipped": 0,
+   "pass_at_k": {
+    "jlens": 0.4895833333333333,
+    "logit": 0.4166666666666667
+   },
+   "pass_at_k_all": {
+    "jlens": 0.625,
+    "logit": 0.6354166666666666
+   }
+  }
+ },
+ "mean_pass_at_k": {
+  "jlens": 0.126109333349276,
+  "logit": 0.17076564488388732
+ },
+ "mean_pass_at_k_all": {
+  "jlens": 0.28689669448141214,
+  "logit": 0.3183766430269437
+ },
+ "model_id": "google/gemma-3-4b-it",
+ "device": "cuda",
+ "dtype": "bfloat16",
+ "limit": null,
+ "wall_s": 138.95997500501107
+}

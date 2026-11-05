@@ -1,0 +1,244 @@
+gemma4b: 126 dev rows, 126 to read
+Loading weights:   0%|          | 0/883 [00:00<?, ?it/s]Loading weights:  55%|█████▍    | 483/883 [00:00<00:00, 4803.28it/s]Loading weights: 100%|██████████| 883/883 [00:00<00:00, 5248.55it/s]
+[1/126] 00ca467f 34.9s n_tokens=894 P1 gold logit=C final_rank=4
+[2/126] 06db6396 24.2s n_tokens=916 P1 gold logit=C final_rank=1
+[3/126] 0bb5a684 29.8s n_tokens=1136 P1 gold logit=C final_rank=5
+[4/126] 0db4c65d 26.9s n_tokens=1000 P1 gold logit=C final_rank=8
+[5/126] 15745da0 25.0s n_tokens=839 P1 gold logit=C final_rank=2
+[6/126] 1b9b7252 40.6s n_tokens=1554 P1 gold logit=C final_rank=1
+[7/126] 21d02d0d 30.4s n_tokens=1097 P1 gold logit=C final_rank=1
+[8/126] 22d2cb42 43.9s n_tokens=1324 P1 gold logit=B final_rank=12
+[9/126] 2698e78f 27.5s n_tokens=936 P1 gold logit=C final_rank=3
+[10/126] 28dc39ac 34.8s n_tokens=1067 P1 gold logit=C final_rank=1
+[11/126] 37f165cf 27.1s n_tokens=911 P1 gold logit=C final_rank=8
+[12/126] 3fe836c9 26.9s n_tokens=898 P1 gold logit=C final_rank=3
+[13/126] 4100d0a0 26.9s n_tokens=898 P1 gold logit=B final_rank=12
+[14/126] 41275add 31.8s n_tokens=1118 P1 gold logit=B final_rank=13
+[15/126] 4adc0475 25.2s n_tokens=803 P1 gold logit=C final_rank=1
+[16/126] 4d6b87c8 32.7s n_tokens=1163 P1 gold logit=C final_rank=1
+[17/126] 4f54b7c9 29.3s n_tokens=1005 P1 gold logit=C final_rank=2
+[18/126] 58470ed2 55.3s n_tokens=2141 P1 gold logit=A final_rank=266
+[19/126] 59524333 29.4s n_tokens=1015 P1 gold logit=C final_rank=1
+[20/126] 5d3d2817 27.5s n_tokens=902 P1 gold logit=C final_rank=1
+[21/126] 60bf93ed 29.4s n_tokens=1006 P1 gold logit=C final_rank=1
+[22/126] 60d45044 84.5s n_tokens=3372 P1 gold logit=C final_rank=3
+[23/126] 69fee5aa 27.3s n_tokens=904 P1 gold logit=C final_rank=1
+[24/126] 6a27ffc2 27.7s n_tokens=917 P1 gold logit=C final_rank=1
+[25/126] 71017276 27.7s n_tokens=926 P1 gold logit=C final_rank=5
+[26/126] 71a3fd6b 26.0s n_tokens=837 P1 gold logit=C final_rank=1
+[27/126] 75832dbd 26.6s n_tokens=860 P1 gold logit=B final_rank=20
+[28/126] 76d63226 31.4s n_tokens=1068 P1 gold logit=C final_rank=1
+[29/126] 7e00a6cb 30.9s n_tokens=1060 P1 gold logit=C final_rank=1
+[30/126] 94f70d80 36.4s n_tokens=1315 P1 gold logit=C final_rank=1
+[31/126] 95bcc1c8 29.8s n_tokens=1009 P1 gold logit=C final_rank=1
+[32/126] 982b5123 39.7s n_tokens=1456 P1 gold logit=C final_rank=8
+[33/126] 9ea5eabc 28.0s n_tokens=925 P1 gold logit=A final_rank=242
+[34/126] 9ee3ecd6 38.7s n_tokens=1403 P1 gold logit=C final_rank=3
+[35/126] a4996e51 49.4s n_tokens=1866 P1 gold logit=C final_rank=1
+[36/126] ac031881 27.9s n_tokens=919 P1 gold logit=B final_rank=13
+[37/126] b320f3f8 26.7s n_tokens=872 P1 gold logit=B final_rank=14
+[38/126] b86304ba 29.4s n_tokens=990 P1 gold logit=A final_rank=25
+[39/126] ba61f0b9 43.9s n_tokens=1643 P1 gold logit=C final_rank=1
+[40/126] bbf86515 33.2s n_tokens=1164 P1 gold logit=C final_rank=1
+[41/126] c14c00dd 28.9s n_tokens=976 P1 gold logit=C final_rank=3
+[42/126] c5e8278d 27.7s n_tokens=908 P1 gold logit=C final_rank=1
+[43/126] c7cf7dfd 34.3s n_tokens=1208 P1 gold logit=C final_rank=1
+[44/126] c8c3f81d 39.3s n_tokens=1436 P1 gold logit=C final_rank=1
+[45/126] d6062bb9 28.6s n_tokens=927 P1 gold logit=C final_rank=2
+[46/126] e493bb7c 33.1s n_tokens=1115 P1 gold logit=C final_rank=10
+[47/126] e4e14d04 31.0s n_tokens=1045 P1 gold logit=B final_rank=12
+[48/126] e66b632c 33.8s n_tokens=1170 P1 gold logit=C final_rank=1
+[49/126] fca70973 27.2s n_tokens=878 P1 gold logit=B final_rank=49
+[50/126] fca762bc 33.7s n_tokens=1166 P1 gold logit=C final_rank=1
+[51/126] fea54f57 31.9s n_tokens=1107 P1 gold logit=C final_rank=3
+[52/126] gpt4_18c2b244 38.7s n_tokens=1197 P1 gold logit=A final_rank=50
+[53/126] gpt4_213fd887 32.4s n_tokens=1105 P1 gold logit=A final_rank=190
+[54/126] gpt4_4929293a 27.9s n_tokens=910 P1 gold logit=C final_rank=1
+[55/126] gpt4_4ef30696 26.0s n_tokens=816 P1 gold logit=C final_rank=1
+[56/126] gpt4_70e84552 39.4s n_tokens=1416 P1 gold logit=C final_rank=1
+[57/126] gpt4_7bc6cf22 29.6s n_tokens=993 P1 gold logit=C final_rank=1
+[58/126] gpt4_85da3956 32.2s n_tokens=1076 P1 gold logit=C final_rank=1
+[59/126] gpt4_88806d6e 28.3s n_tokens=926 P1 gold logit=C final_rank=1
+[60/126] gpt4_8e165409 34.3s n_tokens=1188 P1 gold logit=C final_rank=1
+[61/126] gpt4_98f46fc6 53.9s n_tokens=2038 P1 gold logit=A final_rank=61
+[62/126] 07741c44 33.5s n_tokens=1156 P1 gold logit=C final_rank=1
+[63/126] 0862e8bf 29.1s n_tokens=960 P1 gold logit=C final_rank=1
+[64/126] 08f4fc43 31.3s n_tokens=1052 P1 gold logit=C final_rank=3
+[65/126] 0ddfec37 30.1s n_tokens=1008 P1 gold logit=C final_rank=2
+[66/126] 0e4e4c46 43.9s n_tokens=1620 P1 gold logit=C final_rank=1
+[67/126] 0f05491a 27.8s n_tokens=911 P1 gold logit=C final_rank=2
+[68/126] 118b2229 25.6s n_tokens=788 P1 gold logit=C final_rank=2
+[69/126] 19b5f2b3 29.0s n_tokens=955 P1 gold logit=C final_rank=2
+[70/126] 1c549ce4 37.3s n_tokens=1311 P1 gold logit=C final_rank=1
+[71/126] 2133c1b5 31.1s n_tokens=1047 P1 gold logit=C final_rank=1
+[72/126] 28bcfaac 32.7s n_tokens=1121 P1 gold logit=C final_rank=1
+[73/126] 29f2956b 29.2s n_tokens=959 P1 gold logit=C final_rank=1
+[74/126] 2bf43736 54.7s n_tokens=2067 P1 gold logit=C final_rank=1
+[75/126] 2ebe6c90 30.9s n_tokens=1033 P1 gold logit=C final_rank=1
+[76/126] 36580ce8 25.9s n_tokens=802 P1 gold logit=C final_rank=2
+[77/126] 3ba21379 46.3s n_tokens=1703 P1 gold logit=C final_rank=1
+[78/126] 3f1e9474 36.2s n_tokens=1278 P1 gold logit=C final_rank=1
+[79/126] 3fdac837 34.1s n_tokens=1182 P1 gold logit=C final_rank=4
+[80/126] 42ec0761 37.7s n_tokens=1356 P1 gold logit=C final_rank=2
+[81/126] 4388e9dd 37.7s n_tokens=1364 P1 gold logit=A final_rank=1827
+[82/126] 4bc144e2 35.2s n_tokens=1247 P1 gold logit=C final_rank=1
+[83/126] 51b23612 32.8s n_tokens=1129 P1 gold logit=C final_rank=2
+[84/126] 5831f84d 30.6s n_tokens=1035 P1 gold logit=C final_rank=1
+[85/126] 618f13b2 35.3s n_tokens=1230 P1 gold logit=C final_rank=8
+[86/126] 66f24dbb 32.1s n_tokens=1102 P1 gold logit=C final_rank=6
+[87/126] 6a1eabeb 56.9s n_tokens=2170 P1 gold logit=C final_rank=1
+[88/126] 6ade9755 41.3s n_tokens=1518 P1 gold logit=C final_rank=1
+[89/126] 7401057b 45.8s n_tokens=1714 P1 gold logit=C final_rank=1
+[90/126] 7527f7e2 29.0s n_tokens=964 P1 gold logit=C final_rank=1
+[91/126] 7a8d0b71 42.3s n_tokens=1553 P1 gold logit=C final_rank=1
+[92/126] 85fa3a3f 35.5s n_tokens=1055 P1 gold logit=C final_rank=1
+[93/126] 86f00804 28.4s n_tokens=921 P1 gold logit=C final_rank=1
+[94/126] 89527b6b 61.6s n_tokens=2375 P1 gold logit=C final_rank=3
+[95/126] 8979f9ec 39.4s n_tokens=1433 P1 gold logit=C final_rank=5
+[96/126] 89941a94 40.1s n_tokens=1454 P1 gold logit=C final_rank=2
+[97/126] 8cf51dda 38.6s n_tokens=1354 P1 gold logit=B final_rank=13
+[98/126] 8ebdbe50 28.5s n_tokens=930 P1 gold logit=C final_rank=1
+[99/126] 993da5e2 34.7s n_tokens=1203 P1 gold logit=C final_rank=1
+[100/126] b3c15d39 34.9s n_tokens=1246 P1 gold logit=C final_rank=7
+[101/126] b6019101 27.4s n_tokens=893 P1 gold logit=C final_rank=1
+[102/126] b6025781 26.2s n_tokens=838 P1 gold logit=A final_rank=139
+[103/126] b9cfe692 32.6s n_tokens=922 P1 gold logit=C final_rank=1
+[104/126] bb7c3b45 35.8s n_tokens=1267 P1 gold logit=C final_rank=1
+[105/126] c2ac3c61 38.9s n_tokens=1397 P1 gold logit=C final_rank=1
+[106/126] c9f37c46 30.9s n_tokens=1047 P1 gold logit=C final_rank=2
+[107/126] caf03d32 26.0s n_tokens=810 P1 gold logit=B final_rank=184
+[108/126] cc539528 35.3s n_tokens=1230 P1 gold logit=A final_rank=90
+[109/126] cc6d1ec1 29.5s n_tokens=976 P1 gold logit=B final_rank=16
+[110/126] d52b4f67 35.4s n_tokens=1231 P1 gold logit=C final_rank=2
+[111/126] d7c942c3 28.7s n_tokens=943 P1 gold logit=C final_rank=1
+[112/126] d905b33f 30.9s n_tokens=1039 P1 gold logit=C final_rank=2
+[113/126] e01b8e2f 46.9s n_tokens=1749 P1 gold logit=C final_rank=1
+[114/126] e48988bc 38.6s n_tokens=1387 P1 gold logit=C final_rank=1
+[115/126] f0e564bc 29.4s n_tokens=968 P1 gold logit=C final_rank=1
+[116/126] gpt4_1d80365e 28.2s n_tokens=908 P1 gold logit=C final_rank=2
+[117/126] gpt4_1e4a8aeb 28.7s n_tokens=929 P1 gold logit=C final_rank=2
+[118/126] gpt4_468eb064 39.2s n_tokens=1410 P1 gold logit=C final_rank=1
+[119/126] gpt4_4cd9eba1 32.1s n_tokens=1078 P1 gold logit=B final_rank=172
+[120/126] gpt4_5438fa52 48.5s n_tokens=1815 P1 gold logit=C final_rank=3
+[121/126] gpt4_74aed68e 28.2s n_tokens=930 P1 gold logit=C final_rank=8
+[122/126] gpt4_78cf46a3 38.2s n_tokens=1360 P1 gold logit=A final_rank=14
+[123/126] gpt4_a1b77f9c 38.3s n_tokens=983 P1 gold logit=C final_rank=5
+[124/126] gpt4_af6db32f 28.9s n_tokens=948 P1 gold logit=C final_rank=1
+[125/126] gpt4_b0863698 46.4s n_tokens=1740 P1 gold logit=C final_rank=6
+[126/126] gpt4_b5700ca9 37.0s n_tokens=1313 P1 gold logit=C final_rank=1
+{"model_id": "google/gemma-3-4b-it", "weights": "cache/exp43_fp32/gemma-3-4b-it", "lens": "identity (logit lens; no J-lens fitted)", "read_tag": "exp43_lens_dev_v1", "device": "cpu", "dtype": "float32", "threads": 8, "load_s": 4.826214798958972, "questions": 126, "seconds_per_question": 34.208090961875676, "wall_s": 4311.076816780958, "peak_rss_mb": 17412.99609375}
+gemma exit 0
+# §43 logit-lens profile at P1: gemma4b vs Qwen 2.5 3B, dev folds 0-1 only
+
+Descriptive; no claims. 126 dev population rows (§35 rule: answerable, all evidence in view, judge label), the same question ids for both readers. Forced mode (an appended `Answer:`), position P1, k = 10, logit lens only (identity lens; no J-lens fitted). Qwen rows: the logit variant of `runs/exp34_jlens/qwen3b`.
+Depth = layer / n_layers (§34's convention); the final layer is (n-1)/n. The 2026-10-26 briefing appendix labels depth layer / (n-1), so its depth column runs to 1.00; compare by layer index or by this column.
+Classes (§34 `classes_of`, judge labels): success / refusal (judge `unknown`) / answered wrong. Refusal ids: gemma4b [11908, 60355], qwen3b [9788, 21693] (" unknown", " Unknown").
+
+## gemma4b
+
+| depth | gemma4b layer (of 34) | logit: gold in top-10 | logit: gold top-1 | logit: median gold rank, successes (n=83) | any unknown id top-1 on refusals (n=2) |
+|---|---|---|---|---|---|
+| 0.000 | 0 | 0.00 | 0.00 | 59,979 | 0.00 |
+| 0.029 | 1 | 0.00 | 0.00 | 62,980 | 0.00 |
+| 0.059 | 2 | 0.00 | 0.00 | 69,921 | 0.00 |
+| 0.088 | 3 | 0.00 | 0.00 | 50,609 | 0.00 |
+| 0.118 | 4 | 0.00 | 0.00 | 101,304 | 0.00 |
+| 0.147 | 5 | 0.00 | 0.00 | 95,574 | 0.00 |
+| 0.176 | 6 | 0.00 | 0.00 | 104,563 | 0.00 |
+| 0.206 | 7 | 0.00 | 0.00 | 78,848 | 0.00 |
+| 0.235 | 8 | 0.00 | 0.00 | 47,705 | 0.00 |
+| 0.265 | 9 | 0.00 | 0.00 | 28,026 | 0.00 |
+| 0.294 | 10 | 0.02 | 0.00 | 4,024 | 0.00 |
+| 0.324 | 11 | 0.00 | 0.00 | 10,787 | 0.00 |
+| 0.353 | 12 | 0.00 | 0.00 | 2,564 | 0.00 |
+| 0.382 | 13 | 0.02 | 0.00 | 1,620 | 0.00 |
+| 0.412 | 14 | 0.07 | 0.00 | 3,691 | 0.00 |
+| 0.441 | 15 | 0.07 | 0.00 | 304 | 0.00 |
+| 0.471 | 16 | 0.04 | 0.00 | 374 | 0.00 |
+| 0.500 | 17 | 0.05 | 0.01 | 221 | 0.00 |
+| 0.529 | 18 | 0.10 | 0.02 | 105 | 0.00 |
+| 0.559 | 19 | 0.20 | 0.02 | 49 | 0.00 |
+| 0.588 | 20 | 0.23 | 0.02 | 34 | 0.00 |
+| 0.618 | 21 | 0.39 | 0.05 | 14 | 0.00 |
+| 0.647 | 22 | 0.43 | 0.16 | 13 | 0.00 |
+| 0.676 | 23 | 0.60 | 0.28 | 3 | 0.00 |
+| 0.706 | 24 | 0.65 | 0.34 | 2 | 0.00 |
+| 0.735 | 25 | 0.65 | 0.35 | 2 | 0.00 |
+| 0.765 | 26 | 0.67 | 0.37 | 2 | 0.50 |
+| 0.794 | 27 | 0.68 | 0.36 | 2 | 0.50 |
+| 0.824 | 28 | 0.73 | 0.40 | 1 | 0.50 |
+| 0.853 | 29 | 0.73 | 0.50 | 1 | 0.50 |
+| 0.882 | 30 | 0.74 | 0.52 | 1 | 0.50 |
+| 0.912 | 31 | 0.80 | 0.51 | 1 | 0.50 |
+| 0.941 | 32 | 0.85 | 0.52 | 1 | 0.50 |
+| 0.971 | 33 | 0.83 | 0.51 | 1 | 0.50 |
+
+## qwen3b
+
+| depth | qwen3b layer (of 36) | logit: gold in top-10 | logit: gold top-1 | logit: median gold rank, successes (n=54) | any unknown id top-1 on refusals (n=32) |
+|---|---|---|---|---|---|
+| 0.000 | 0 | 0.00 | 0.00 | 53,466 | 0.00 |
+| 0.028 | 1 | 0.00 | 0.00 | 99,995 | 0.00 |
+| 0.056 | 2 | 0.00 | 0.00 | 81,379 | 0.00 |
+| 0.083 | 3 | 0.00 | 0.00 | 69,430 | 0.00 |
+| 0.111 | 4 | 0.00 | 0.00 | 54,512 | 0.00 |
+| 0.139 | 5 | 0.00 | 0.00 | 58,813 | 0.00 |
+| 0.167 | 6 | 0.00 | 0.00 | 60,434 | 0.00 |
+| 0.194 | 7 | 0.00 | 0.00 | 59,190 | 0.00 |
+| 0.222 | 8 | 0.00 | 0.00 | 44,740 | 0.00 |
+| 0.250 | 9 | 0.00 | 0.00 | 21,605 | 0.00 |
+| 0.278 | 10 | 0.00 | 0.00 | 24,344 | 0.00 |
+| 0.306 | 11 | 0.00 | 0.00 | 20,456 | 0.00 |
+| 0.333 | 12 | 0.02 | 0.00 | 9,527 | 0.00 |
+| 0.361 | 13 | 0.02 | 0.00 | 41,846 | 0.00 |
+| 0.389 | 14 | 0.05 | 0.00 | 49,910 | 0.00 |
+| 0.417 | 15 | 0.00 | 0.00 | 84,770 | 0.00 |
+| 0.444 | 16 | 0.02 | 0.02 | 60,048 | 0.00 |
+| 0.472 | 17 | 0.02 | 0.00 | 57,645 | 0.00 |
+| 0.500 | 18 | 0.02 | 0.02 | 50,153 | 0.00 |
+| 0.528 | 19 | 0.02 | 0.02 | 27,434 | 0.00 |
+| 0.556 | 20 | 0.02 | 0.00 | 48,674 | 0.00 |
+| 0.583 | 21 | 0.02 | 0.00 | 41,861 | 0.00 |
+| 0.611 | 22 | 0.01 | 0.00 | 66,212 | 0.00 |
+| 0.639 | 23 | 0.00 | 0.00 | 83,718 | 0.00 |
+| 0.667 | 24 | 0.00 | 0.00 | 109,266 | 0.00 |
+| 0.694 | 25 | 0.00 | 0.00 | 101,955 | 0.00 |
+| 0.722 | 26 | 0.02 | 0.00 | 80,006 | 0.00 |
+| 0.750 | 27 | 0.02 | 0.00 | 57,362 | 0.00 |
+| 0.778 | 28 | 0.02 | 0.00 | 65,531 | 0.00 |
+| 0.806 | 29 | 0.03 | 0.01 | 34,152 | 0.00 |
+| 0.833 | 30 | 0.04 | 0.02 | 8,994 | 0.03 |
+| 0.861 | 31 | 0.10 | 0.02 | 2,074 | 0.38 |
+| 0.889 | 32 | 0.23 | 0.08 | 34 | 0.59 |
+| 0.917 | 33 | 0.39 | 0.13 | 8 | 0.72 |
+| 0.944 | 34 | 0.63 | 0.22 | 3 | 0.78 |
+| 0.972 | 35 | 0.68 | 0.31 | 2 | 0.72 |
+
+## A/B/C at P1 (logit lens; A never in top-10, B in top-10 at some layer but not the last, C in top-10 at the last layer)
+
+| reader | class | n | A | B | C |
+|---|---|---|---|---|---|
+| gemma4b | all | 126 | 0.079 | 0.095 | 0.825 |
+| gemma4b | success | 83 | 0.036 | 0.048 | 0.916 |
+| gemma4b | refusal | 2 | 0.000 | 0.500 | 0.500 |
+| gemma4b | answered wrong | 41 | 0.171 | 0.171 | 0.659 |
+| gemma4b | all failures | 43 | 0.163 | 0.186 | 0.651 |
+| qwen3b | all | 126 | 0.294 | 0.024 | 0.683 |
+| qwen3b | success | 54 | 0.259 | 0.000 | 0.741 |
+| qwen3b | refusal | 32 | 0.375 | 0.062 | 0.562 |
+| qwen3b | answered wrong | 40 | 0.275 | 0.025 | 0.700 |
+| qwen3b | all failures | 72 | 0.319 | 0.042 | 0.639 |
+
+## Logit-lens emergence depth of the gold at P1 (first layer with gold in top-10; questions where it emerges)
+
+| reader | n emerged | n read | q1 | median | q3 |
+|---|---|---|---|---|---|
+| gemma4b | 116 | 126 | 0.559 | 0.647 | 0.676 |
+| qwen3b | 89 | 126 | 0.889 | 0.917 | 0.944 |
+
+## Like-for-like checks
+
+- Prompt text identical (sha256) for 126 of 126 rows.
+- Gold first-token text identical (stripped) for 121 of 126 rows; final-layer gold in top-10 on that subset: gemma4b 0.83, qwen3b 0.69.
+- Digit tokenisation caveat: Llama 3.2 and Phi-4-mini put up to 3 digits in one token, Qwen 2.5 and Gemma 3 one digit per token. On the 53 rows whose gold starts with a digit the 'gold first token' is the whole number (up to 3 digits) for Llama/Phi and only its first digit for Qwen/Gemma, so a top-k hit is a harder target for Llama/Phi there. Final-layer gold in top-10 on numeric golds: gemma4b 1.00, qwen3b 0.98.
+

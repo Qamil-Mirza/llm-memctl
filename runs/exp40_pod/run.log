@@ -1,0 +1,63 @@
+LoCoMo set: 600 rows + 40 adversarial in 6 s; excluded {'none:cat3': 4, 'too_many:cat1': 5, 'too_many:cat3': 3, 'unresolved:cat1': 3, 'unresolved:cat2': 1, 'unresolved:cat4': 1}; eligible answerable 1523; by category {'1': 99, '2': 114, '3': 34, '4': 353}; zero-fill rows 2
+direction v_29 sha a7f967ec..., ||v_29|| 32.23; steer 2 v_29 sha e0000366...; random (rng [40, 29]) norm 64.47; bf16 cast cosine steer 0.999999, random 0.999999
+§41 rule: {"path": "runs/exp41_dev/qwen3b/rule.json", "present": true, "sha256": "af0cbe9866ebba9fb882db80710e99bfb1a16a56db59e2592c13e1b79ae10e9f", "signal": "s_evid", "sign": "+", "tau": 2.2183780670166016, "scored_on_40": true, "refusal_start_ids": [9788], "commit": "30f891a963354ac05436f4b138d16885a061a6cb", "scored": true}
+engines: hf-transformers-5.17.0-cuda-bfloat16 (3B, 11 s), judge hf-transformers-5.17.0-cuda-bfloat16 (11 s); layer 29; 2339 s left before the judge reserve
+== D-22 smoke
+smoke notes: same first token 5/5, marker agreement 5/5 (batched 3, single 3; absolute rate printed, not gated), identical text 4/5
+  smoke judge none: reply 'no' -> False
+  smoke judge none: reply 'yes' -> True
+  smoke judge none: reply 'yes' -> True
+  smoke judge steer:L29:a2:vnorm: reply 'yes' -> True
+smoke projection (conservative): notes 1.7 min, A pass 2.6 min, arms 5.6 min, judge 0.9 min, total 10.8 min
+smoke PASS
+== judge agreement (before any arm)
+judge agreement on 60 cached §35 rows: 60/60 = 1.000 (bar 0.9); replies that are not verdicts 0
+== N pass on 600 + 40 rows (batched 32)
+  notes notes.jsonl adv+all: 128/640 (35 s)
+  notes notes.jsonl adv+all: 256/640 (61 s)
+  notes notes.jsonl adv+all: 384/640 (111 s)
+  notes notes.jsonl adv+all: 512/640 (142 s)
+  notes notes.jsonl adv+all: 640/640 (176 s)
+  notes notes.jsonl adv+all: 640/640 rows, 479 with a marker, 176 s
+== A pass (unsteered, step-0 logits and layer-29 residual)
+  A pass all: 442 marked rows
+  A pass adv: 37 marked rows
+== judge on the A answers of the 600
+judge hf-transformers-5.17.0-cuda-bfloat16: 442 items, 438 distinct prompts, 438 not yet judged
+judge: 64/438 prompts (0.031 s/prompt)
+judge: 128/438 prompts (0.031 s/prompt)
+judge: 192/438 prompts (0.031 s/prompt)
+judge: 256/438 prompts (0.031 s/prompt)
+judge: 320/438 prompts (0.030 s/prompt)
+judge: 384/438 prompts (0.031 s/prompt)
+judge: 438/438 prompts (0.031 s/prompt)
+judge: 442/442 items judged in 13 s; replies that are not verdicts: 0
+marker rate (rev 2, a finding about the prompt family on LoCoMo): 442/600 answerable, 37/40 adversarial; R and C are marked rows only, as in §35/§38
+on the 600: marker rate 0.737 (442), refusal rate 0.207 (124), judged-correct rate 0.347 (208); no verdict 0
+selected R 120 (cap 120), C 40 (cap 40); adversarial marked 37
+== arms; 2006 s left before the judge reserve
+  arm R:A:steer_all+random+steer0: 120/120 rows in 73 s
+  notes notes_cut.jsonl R: 120/120 (25 s)
+  notes notes_cut.jsonl R: 120/120 rows, 104 with a marker, 25 s
+  arm R:cut:none+steer_all: 120/120 rows in 44 s
+  arm C:A:steer_all: 40/40 rows in 13 s
+  arm R:B:none: 120/120 rows in 24 s
+  arm adv:B:none: 37/37 rows in 9 s
+  arm adv:A:steer_all: 37/37 rows in 14 s
+  notes notes_cut.jsonl C: 40/40 (8 s)
+  notes notes_cut.jsonl C: 40/40 rows, 37 with a marker, 8 s
+  arm C:cut:none: 40/40 rows in 7 s
+  notes notes_cut.jsonl adv: 37/37 (13 s)
+  notes notes_cut.jsonl adv: 37/37 rows, 31 with a marker, 13 s
+  arm adv:cut:none: 37/37 rows in 5 s
+== judge on every R and C output
+judge hf-transformers-5.17.0-cuda-bfloat16: 1242 items, 829 distinct prompts, 391 not yet judged
+judge: 64/391 prompts (0.034 s/prompt)
+judge: 128/391 prompts (0.033 s/prompt)
+judge: 192/391 prompts (0.032 s/prompt)
+judge: 256/391 prompts (0.032 s/prompt)
+judge: 320/391 prompts (0.031 s/prompt)
+judge: 384/391 prompts (0.031 s/prompt)
+judge: 391/391 prompts (0.032 s/prompt)
+judge: 1242/1242 items judged in 12 s; replies that are not verdicts: 0
+run done in 611 s; cut []

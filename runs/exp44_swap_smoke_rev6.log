@@ -1,0 +1,10 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Loading weights:   0%|          | 0/434 [00:00<?, ?it/s]Loading weights:   0%|          | 1/434 [00:00<05:19,  1.35it/s]Loading weights:  26%|██▌       | 111/434 [00:00<00:01, 175.42it/s]Loading weights:  39%|███▊      | 168/434 [00:01<00:01, 182.44it/s]Loading weights:  48%|████▊     | 208/434 [00:01<00:01, 174.07it/s]Loading weights:  55%|█████▌    | 239/434 [00:01<00:01, 181.64it/s]Loading weights:  61%|██████▏   | 266/434 [00:01<00:00, 186.05it/s]Loading weights:  67%|██████▋   | 291/434 [00:01<00:00, 165.90it/s]Loading weights:  73%|███████▎  | 315/434 [00:02<00:00, 167.61it/s]Loading weights:  78%|███████▊  | 339/434 [00:02<00:00, 164.59it/s]Loading weights:  84%|████████▎ | 363/434 [00:02<00:00, 169.85it/s]Loading weights:  89%|████████▉ | 387/434 [00:02<00:00, 171.75it/s]Loading weights:  95%|█████████▍| 411/434 [00:02<00:00, 176.89it/s]Loading weights:  99%|█████████▉| 430/434 [00:02<00:00, 140.06it/s]Loading weights: 100%|██████████| 434/434 [00:02<00:00, 155.37it/s]
+loaded qwen3b (hf-transformers-5.17.0-cpu-float32) in 7s; 3 swap rows, folds [0, 1]
+[1/3] 15745da0 f0 success  D clean=+1.48 swap=-6.07 cut=+3.88 F=+7.56 follows=True cls=answer_production 38s
+[2/3] 1b9b7252 f0 success  D clean=+19.00 swap=-1.83 cut=+6.15 F=+20.83 follows=True cls=answer_production 70s
+  patched 1b9b7252: d_T fwd=0.8888888888888888 rev=0.8888888888888888 T_fwd(0)=-0.0003 T_fwd(L-1)=1.0000 T_rev(0)=0.0000 self=ok donor=15745da0 110s
+[3/3] 2698e78f f0 success  D clean=+12.83 swap=+11.72 cut=+6.38 F=+1.11 follows=False cls=indeterminate 44s
+  patched 15745da0: d_T fwd=0.9166666666666666 rev=0.9166666666666666 T_fwd(0)=0.0001 T_fwd(L-1)=1.0000 T_rev(0)=0.0003 self=ok donor=2698e78f 106s
+{"model": "qwen3b", "engine": "hf-transformers-5.17.0-cpu-float32", "threads": 8, "folds": [0, 1], "n_swap_rows": 3, "load_s": 7.343324910150841, "method_sha256": "18494fc55141aa4ea1386ee168e3696f7ae4a771773fb406758bf94dedd1d8c6", "wall_s": 394.5245756939985, "peak_rss_mb": 18174.9921875}
+exit 0

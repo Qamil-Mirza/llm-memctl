@@ -1,0 +1,234 @@
+{
+ "question_id": "6b168ec8",
+ "fold": 2,
+ "reader": "phi4",
+ "n_tokens": 951,
+ "n_leading_ws": 0,
+ "prompt_sha256": "6f00d604fed178d85798212e5957aed9d61e6bc319d8e0526e5466cd270836d2",
+ "intact_prompt_sha256": "6f00d604fed178d85798212e5957aed9d61e6bc319d8e0526e5466cd270836d2",
+ "n_evidence_lines_cut": 0,
+ "n_bos": 0,
+ "positions": {
+  "P1": [
+   950
+  ],
+  "P0": [
+   948
+  ],
+  "E": [
+   278
+  ],
+  "Q": [
+   942
+  ],
+  "P1_raw": [
+   950
+  ]
+ },
+ "tracked_names": [
+  "gold",
+  "unknown_sp",
+  "Unknown_sp",
+  "unknown"
+ ],
+ "tracked": {
+  "gold": 2380,
+  "unknown_sp": 9987,
+  "Unknown_sp": 22435,
+  "unknown": 16476
+ },
+ "gold_token_text": " three",
+ "position_mode": "forced",
+ "answer_marker": true,
+ "variants": [
+  "logit"
+ ],
+ "read_tag": "exp43_lens_pod_v1",
+ "measures": {
+  "logit": {
+   "k": 10,
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39
+   ],
+   "P1": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 10,
+     "emergence_depth": 0.525,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 319,
+     "final_rank": 616,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 85,
+     "final_rank": 85,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 3804,
+     "final_rank": 11838,
+     "first_top1_depth": null
+    }
+   },
+   "P0": {
+    "gold": {
+     "best_rank": 295,
+     "final_rank": 6146,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 4922,
+     "final_rank": 36773,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 13455,
+     "final_rank": 66800,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 8358,
+     "final_rank": 8448,
+     "first_top1_depth": null
+    }
+   },
+   "E": [
+    {
+     "gold": {
+      "best_rank": 777,
+      "final_rank": 50512,
+      "emergence_depth": null,
+      "outcome": "A"
+     },
+     "unknown_sp": {
+      "best_rank": 95,
+      "final_rank": 15592,
+      "first_top1_depth": null
+     },
+     "Unknown_sp": {
+      "best_rank": 101,
+      "final_rank": 18518,
+      "first_top1_depth": null
+     },
+     "unknown": {
+      "best_rank": 133,
+      "final_rank": 218,
+      "first_top1_depth": null
+     }
+    }
+   ],
+   "Q": {
+    "gold": {
+     "best_rank": 1247,
+     "final_rank": 22829,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 203,
+     "final_rank": 7236,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 588,
+     "final_rank": 10636,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 439,
+     "final_rank": 439,
+     "first_top1_depth": null
+    }
+   },
+   "P1_raw": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 10,
+     "emergence_depth": 0.525,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 319,
+     "final_rank": 616,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 85,
+     "final_rank": 85,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 3804,
+     "final_rank": 11838,
+     "first_top1_depth": null
+    }
+   }
+  }
+ },
+ "family": {
+  "key": "phi4",
+  "model_id": "microsoft/phi-4",
+  "template_kwargs": {},
+  "system_text": null,
+  "system_role": true,
+  "stop_tokens": [
+   "<|im_end|>",
+   "<|endoftext|>"
+  ],
+  "refusal_ids": [
+   9987,
+   22435
+  ]
+ },
+ "elapsed_s": 0.5148365229833871,
+ "model_id": "microsoft/phi-4",
+ "weights": null,
+ "size": "large",
+ "device": "cuda",
+ "dtype": "bfloat16",
+ "lens": "identity (logit lens)",
+ "lens_sha256": null
+}

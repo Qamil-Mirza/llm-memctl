@@ -1,0 +1,12 @@
+{
+ "reader": "gemma12b",
+ "rows": [
+  "00ca467f",
+  "06db6396",
+  "0bb5a684",
+  "0db4c65d",
+  "15745da0"
+ ],
+ "problems": [],
+ "pass": true
+}

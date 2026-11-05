@@ -1,0 +1,24 @@
+exp43 Part B pod chain; family phi (phi4mini + phi4); engine hf; RUNPOD_POD_ID setpb6zhpzw85xmet
+deadlines: HARD_STOP_S=8100 s (all model work ends), SELF_STOP_S=8700 s (the pod stops itself)
+watchdog pid 212: pod stops itself at +8700 s
+preflight ok: 48 files and 2 cache folders present; out runs/exp43_lens_pod_phi
+torch 2.8.0+cu128 transformers 5.17.0 numpy 2.1.2 scipy 1.18.1 pyarrow 26.0.0
+jlens commit 581d398 (expected 581d398)
+gpu NVIDIA A40 44.4 GiB
+overlay         100G  1.5G   99G   2% /
+stage install (ok, rc 0): elapsed 34 s (total 34 s of 8100)
+population phi: {'0': 61, '1': 65, '2': 66, '3': 68, '4': 70} (expected {0: 61, 1: 65, 2: 66, 3: 68, 4: 70}); fingerprint 32be5fe9a59f7017
+stage population (ok, rc 0): elapsed 21 s (total 55 s of 8100)
+download microsoft/Phi-4-mini-instruct: 11 s -> /root/.cache/huggingface/hub/models--microsoft--Phi-4-mini-instruct/snapshots/cfbefacb99257ffa30c83adab238a50856ac3083
+download microsoft/phi-4: 14 s -> /root/.cache/huggingface/hub/models--microsoft--phi-4/snapshots/2db69c1c3e91a05d2c64a3185acfbaf36f744e25
+stage download (ok, rc 0): elapsed 26 s (total 81 s of 8100)
+stage smoke_small (ok, rc 0): elapsed 21 s (total 102 s of 8100)
+stage smoke_large (ok, rc 0): elapsed 24 s (total 126 s of 8100)
+stage logit_small (ok, rc 0): elapsed 162 s (total 288 s of 8100)
+stage logit_large (ok, rc 0): elapsed 220 s (total 508 s of 8100)
+fit phi4mini: 56 prompts (min 32), time box 111 min
+stage fit (ok, rc 0): elapsed 3591 s (total 4099 s of 8100)
+stage jread (ok, rc 0): elapsed 258 s (total 4357 s of 8100)
+stage eval (ok, rc 0): elapsed 120 s (total 4477 s of 8100)
+status {"logit_small": 330, "logit_large": 330, "jlens_small": 330, "eval": true, "lens": 56}
+all stages done in 4478 s; copy runs/exp43_lens_pod_phi/ back (the lens .pt/.ckpt.pt are not needed by the report) before the self-stop at +8700 s

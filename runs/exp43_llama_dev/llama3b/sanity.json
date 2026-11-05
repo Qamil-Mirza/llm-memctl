@@ -1,0 +1,14 @@
+{
+ "final_overwrite_rate": 1.0,
+ "n_final": 8,
+ "zero_exact_all": true,
+ "n_zero": 32,
+ "self_exact_all": true,
+ "n_self": 8,
+ "shallow_overwrite_rate": null,
+ "n_shallow": 0,
+ "shallow_note": "descriptive only (amendment 1.6)",
+ "final_pass": true,
+ "pass": true,
+ "final_layer": 27
+}

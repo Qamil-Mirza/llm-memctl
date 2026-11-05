@@ -1,0 +1,9 @@
+llama3b logit smoke: 5 rows, 5 to read
+[transformers] Ignoring clean_up_tokenization_spaces=True for BPE tokenizer TokenizersBackend. The clean_up_tokenization post-processing step is designed for WordPiece tokenizers and is destructive for BPE (it strips spaces before punctuation). Set clean_up_tokenization_spaces=False to suppress this warning, or set clean_up_tokenization_spaces_for_bpe_even_though_it_will_corrupt_output=True to force cleanup anyway.
+[1/5] 00ca467f f0 0.57s n_tokens=853 P1 gold logit=C final_rank=5
+[2/5] 06db6396 f0 0.25s n_tokens=854 P1 gold logit=C final_rank=1
+[3/5] 0bb5a684 f0 0.28s n_tokens=1069 P1 gold logit=C final_rank=8
+[4/5] 0db4c65d f0 0.27s n_tokens=952 P1 gold logit=C final_rank=2
+[5/5] 15745da0 f0 0.23s n_tokens=778 P1 gold logit=C final_rank=1
+{"reader": "llama3b", "model_id": "meta-llama/Llama-3.2-3B-Instruct", "variant": "logit", "smoke": true, "device": "cuda", "dtype": "bfloat16", "load_s": 6.654414332937449, "questions": 5, "seconds_per_question": 0.3175314926309511, "wall_s": 1.5980935710249469, "deadline_cut": false, "peak_rss_mb": 5601.7890625, "peak_gpu_mb": 6375.0185546875, "n_layers": 28, "d_model": 3072}
+smoke ok: llama3b, 5 rows

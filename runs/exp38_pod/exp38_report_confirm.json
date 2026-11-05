@@ -1,0 +1,1425 @@
+{
+ "engines": [
+  "hf-transformers-5.17.0-cuda-bfloat16"
+ ],
+ "judge_engines": [
+  "hf-transformers-5.17.0-cuda-bfloat16"
+ ],
+ "folds": [
+  0,
+  1,
+  2,
+  3,
+  4
+ ],
+ "gold_source": "judge ['hf-transformers-5.17.0-cuda-bfloat16'] on this run's outputs",
+ "repro": {
+  "rate": 0.9731182795698925,
+  "rate_R": 0.9565217391304348,
+  "rate_confirm": 0.957983193277311,
+  "R_verdict_match": 91,
+  "pass": true,
+  "dropped": [
+   "1da05512",
+   "6f9b354f",
+   "ceb54acb",
+   "f685340e",
+   "184da446"
+  ],
+  "R_ok": [
+   "0100672e",
+   "01493427",
+   "0ea62687",
+   "10d9b85a",
+   "195a1a1b",
+   "1d4da289",
+   "1e043500",
+   "1f2b8d4f",
+   "1faac195",
+   "21436231",
+   "2318644b",
+   "27016adc",
+   "3b6f954b",
+   "50635ada",
+   "577d4d32",
+   "57f827a0",
+   "58ef2f1c",
+   "5a4f22c0",
+   "5c40ec5b",
+   "6456829e",
+   "6ae235be",
+   "6b7dfb22",
+   "7161e7e2",
+   "7405e8b1",
+   "8a2466db",
+   "91b15a6e",
+   "a82c026e",
+   "a96c20ee",
+   "aae3761f",
+   "ad7109d1",
+   "af8d2e46",
+   "b0479f84",
+   "c19f7a0b",
+   "c7dc5443",
+   "cc06de0d",
+   "dccbc061",
+   "dcfa8644",
+   "e25c3b8d",
+   "e9327a54",
+   "ed4ddc30",
+   "f8c5f88b",
+   "gpt4_2312f94c",
+   "gpt4_2487a7cb",
+   "gpt4_2d58bcd6",
+   "gpt4_385a5000",
+   "gpt4_483dd43c",
+   "gpt4_61e13b3c",
+   "gpt4_6ed717ea",
+   "gpt4_76048e76",
+   "gpt4_7a0daae1",
+   "gpt4_7ddcf75f",
+   "gpt4_93f6379c",
+   "gpt4_a2d1d1f6",
+   "gpt4_b4a80587",
+   "gpt4_b5700ca0",
+   "gpt4_c27434e8",
+   "gpt4_d31cdae3",
+   "gpt4_f49edff3",
+   "gpt4_fa19884d",
+   "gpt4_fe651585"
+  ],
+  "damage_ok": [
+   "031748ae",
+   "08e075c7",
+   "18bc8abd",
+   "1de5cff2",
+   "2311e44b",
+   "311778f1",
+   "352ab8bd",
+   "3e321797",
+   "45dc21b6",
+   "488d3006",
+   "4c36ccef",
+   "4fd1909e",
+   "545bd2b5",
+   "55241a1f",
+   "5809eb10",
+   "5e1b23de",
+   "60159905",
+   "60472f9c",
+   "6222b6eb",
+   "681a1674",
+   "6aeb4375",
+   "6b168ec8",
+   "6c49646a",
+   "720133ac",
+   "726462e0",
+   "853b0a1d",
+   "86b68151",
+   "87f22b4a",
+   "8aef76bc",
+   "8b9d4367",
+   "8c18457d",
+   "8e9d538c",
+   "8fb83627",
+   "9aaed6a3",
+   "a40e080f",
+   "af082822",
+   "affe2881",
+   "b29f3365",
+   "b5ef892d",
+   "c4ea545c",
+   "c8f1aeed",
+   "caf9ead2",
+   "ccb36322",
+   "ce6d2d27",
+   "e6041065",
+   "ef66a6e5",
+   "f0853d11",
+   "f523d9fe",
+   "faba32e5",
+   "gpt4_2f584639",
+   "gpt4_59149c77",
+   "gpt4_8279ba02",
+   "gpt4_e414231e",
+   "gpt4_fa19884c"
+  ]
+ },
+ "populations": {
+  "R": 92,
+  "pairs": 55,
+  "unseen": 37,
+  "C": 94,
+  "R_reproduced": 60,
+  "pairs_reproduced": 38,
+  "unseen_reproduced": 22,
+  "C_reproduced": 54
+ },
+ "c_rule": "A answers and the new judge calls it correct",
+ "directions": {
+  "25": {
+   "layer": 25,
+   "n_pairs": 13,
+   "v_norm": 21.078196125161966,
+   "mean_resid_A_norm": 68.21569613750148,
+   "v_over_resid": 0.30899334491397584,
+   "vector_sha256": "c86739c97fafd4e4cf0ea2b0cfc3dc41bb41acad57964b398daf07cab7def058",
+   "cosine_with_laptop": 0.9995119935724143
+  },
+  "29": {
+   "layer": 29,
+   "n_pairs": 13,
+   "v_norm": 32.27002485937499,
+   "mean_resid_A_norm": 109.05010975987716,
+   "v_over_resid": 0.29591923318951224,
+   "vector_sha256": "623f6f279e62ac4cb7eeda84b960d5eaf4a37242537fa5fd34593bbb29f9aa04",
+   "cosine_with_laptop": 0.999378620796543
+  }
+ },
+ "sanity": {
+  "final_overwrite_rate": 1.0,
+  "n_final": 13,
+  "zero_exact_all": true,
+  "n_zero": 26,
+  "self_exact_all": true,
+  "n_self": 26,
+  "shallow_overwrite_rate": 0.23076923076923078,
+  "n_shallow": 13,
+  "shallow_note": "descriptive only (amendment 1.6)",
+  "final_pass": true,
+  "pass": true,
+  "final_layer": 35,
+  "shallow_layer": 7
+ },
+ "settings": {
+  "random:L25:a4:vnorm": {
+   "mode": "random",
+   "layer": 25,
+   "alpha": 4.0,
+   "all": {
+    "n": 60,
+    "ans": 0.2833333333333333,
+    "degenerate": 0.0,
+    "refusal": 0.7166666666666667,
+    "gold_d1": 0.03333333333333333
+   },
+   "unseen": {
+    "n": 22,
+    "ans": 0.13636363636363635,
+    "degenerate": 0.0,
+    "refusal": 0.8636363636363636,
+    "gold_d1": 0.045454545454545456
+   }
+  },
+  "random:L29:a2:vnorm": {
+   "mode": "random",
+   "layer": 29,
+   "alpha": 2.0,
+   "all": {
+    "n": 60,
+    "ans": 0.03333333333333333,
+    "degenerate": 0.0,
+    "refusal": 0.9666666666666667,
+    "gold_d1": 0.0
+   },
+   "unseen": {
+    "n": 22,
+    "ans": 0.045454545454545456,
+    "degenerate": 0.0,
+    "refusal": 0.9545454545454546,
+    "gold_d1": 0.0
+   }
+  },
+  "reverse:L25:a4:vnorm": {
+   "mode": "reverse",
+   "layer": 25,
+   "alpha": 4.0,
+   "all": {
+    "n": 60,
+    "ans": 0.016666666666666666,
+    "degenerate": 0.016666666666666666,
+    "refusal": 0.9666666666666667,
+    "gold_d1": 0.0
+   },
+   "unseen": {
+    "n": 22,
+    "ans": 0.0,
+    "degenerate": 0.0,
+    "refusal": 1.0,
+    "gold_d1": 0.0
+   }
+  },
+  "reverse:L29:a2:vnorm": {
+   "mode": "reverse",
+   "layer": 29,
+   "alpha": 2.0,
+   "all": {
+    "n": 60,
+    "ans": 0.0,
+    "degenerate": 0.0,
+    "refusal": 1.0,
+    "gold_d1": 0.0
+   },
+   "unseen": {
+    "n": 22,
+    "ans": 0.0,
+    "degenerate": 0.0,
+    "refusal": 1.0,
+    "gold_d1": 0.0
+   }
+  },
+  "steer:L25:a4:vnorm": {
+   "mode": "steer",
+   "layer": 25,
+   "alpha": 4.0,
+   "all": {
+    "n": 60,
+    "ans": 0.95,
+    "degenerate": 0.0,
+    "refusal": 0.05,
+    "gold_d1": 0.15
+   },
+   "unseen": {
+    "n": 22,
+    "ans": 0.9090909090909091,
+    "degenerate": 0.0,
+    "refusal": 0.09090909090909091,
+    "gold_d1": 0.045454545454545456
+   }
+  },
+  "steer:L29:a2:vnorm": {
+   "mode": "steer",
+   "layer": 29,
+   "alpha": 2.0,
+   "all": {
+    "n": 60,
+    "ans": 0.9,
+    "degenerate": 0.0,
+    "refusal": 0.1,
+    "gold_d1": 0.5166666666666667
+   },
+   "unseen": {
+    "n": 22,
+    "ans": 0.7272727272727273,
+    "degenerate": 0.0,
+    "refusal": 0.2727272727272727,
+    "gold_d1": 0.22727272727272727
+   }
+  }
+ },
+ "gate": {
+  "fixed_from": "runs/exp38_dev/qwen3b/gate.json",
+  "chosen": "steer:L25:a4:vnorm",
+  "pass": true,
+  "secondary": "steer:L29:a2:vnorm"
+ },
+ "controls": {
+  "A": {
+   "n": 60,
+   "ans": 0.0,
+   "degenerate": 0.0,
+   "refusal": 1.0,
+   "gold_d1": 0.0,
+   "gold": {
+    "n": 60,
+    "p": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0
+   },
+   "gold_missing": 0,
+   "ans_ci": {
+    "n": 60,
+    "p": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0
+   }
+  },
+  "B": {
+   "n": 60,
+   "ans": 0.6333333333333333,
+   "degenerate": 0.0,
+   "refusal": 0.36666666666666664,
+   "gold_d1": 0.26666666666666666,
+   "gold": {
+    "n": 60,
+    "p": 0.43333333333333335,
+    "ci_low": 0.31666666666666665,
+    "ci_high": 0.5666666666666667
+   },
+   "gold_missing": 0,
+   "ans_ci": {
+    "n": 60,
+    "p": 0.6333333333333333,
+    "ci_low": 0.5166666666666667,
+    "ci_high": 0.75
+   }
+  },
+  "Steer": {
+   "n": 60,
+   "ans": 0.95,
+   "degenerate": 0.0,
+   "refusal": 0.05,
+   "gold_d1": 0.21666666666666667,
+   "gold": {
+    "n": 60,
+    "p": 0.15,
+    "ci_low": 0.06666666666666667,
+    "ci_high": 0.25
+   },
+   "gold_missing": 0,
+   "ans_ci": {
+    "n": 60,
+    "p": 0.95,
+    "ci_low": 0.8833333333333333,
+    "ci_high": 1.0
+   }
+  },
+  "Random": {
+   "n": 60,
+   "ans": 0.2833333333333333,
+   "degenerate": 0.0,
+   "refusal": 0.7166666666666667,
+   "gold_d1": 0.05,
+   "gold": {
+    "n": 60,
+    "p": 0.03333333333333333,
+    "ci_low": 0.0,
+    "ci_high": 0.08333333333333333
+   },
+   "gold_missing": 0,
+   "ans_ci": {
+    "n": 60,
+    "p": 0.2833333333333333,
+    "ci_low": 0.16666666666666666,
+    "ci_high": 0.4
+   }
+  },
+  "Reverse": {
+   "n": 60,
+   "ans": 0.016666666666666666,
+   "degenerate": 0.016666666666666666,
+   "refusal": 0.9666666666666667,
+   "gold_d1": 0.0,
+   "gold": {
+    "n": 60,
+    "p": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0
+   },
+   "gold_missing": 0,
+   "ans_ci": {
+    "n": 60,
+    "p": 0.016666666666666666,
+    "ci_low": 0.0,
+    "ci_high": 0.05
+   }
+  },
+  "A-cut": {
+   "n": 60,
+   "ans": 0.06666666666666667,
+   "degenerate": 0.0,
+   "refusal": 0.9333333333333333,
+   "gold_d1": 0.016666666666666666,
+   "gold": {
+    "n": 60,
+    "p": 0.016666666666666666,
+    "ci_low": 0.0,
+    "ci_high": 0.05
+   },
+   "gold_missing": 0,
+   "ans_ci": {
+    "n": 60,
+    "p": 0.06666666666666667,
+    "ci_low": 0.016666666666666666,
+    "ci_high": 0.13333333333333333
+   }
+  },
+  "Steer-cut": {
+   "n": 60,
+   "ans": 0.6833333333333333,
+   "degenerate": 0.016666666666666666,
+   "refusal": 0.3,
+   "gold_d1": 0.11666666666666667,
+   "gold": {
+    "n": 60,
+    "p": 0.1,
+    "ci_low": 0.03333333333333333,
+    "ci_high": 0.18333333333333332
+   },
+   "gold_missing": 0,
+   "ans_ci": {
+    "n": 60,
+    "p": 0.6833333333333333,
+    "ci_low": 0.5666666666666667,
+    "ci_high": 0.8
+   }
+  }
+ },
+ "controls_unseen": {
+  "A": {
+   "n": 22,
+   "ans": 0.0,
+   "degenerate": 0.0,
+   "refusal": 1.0,
+   "gold_d1": 0.0,
+   "gold": {
+    "n": 22,
+    "p": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0
+   },
+   "gold_missing": 0,
+   "ans_ci": {
+    "n": 22,
+    "p": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0
+   }
+  },
+  "B": {
+   "n": 22,
+   "ans": 0.0,
+   "degenerate": 0.0,
+   "refusal": 1.0,
+   "gold_d1": 0.0,
+   "gold": {
+    "n": 22,
+    "p": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0
+   },
+   "gold_missing": 0,
+   "ans_ci": {
+    "n": 22,
+    "p": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0
+   }
+  },
+  "Steer": {
+   "n": 22,
+   "ans": 0.9090909090909091,
+   "degenerate": 0.0,
+   "refusal": 0.09090909090909091,
+   "gold_d1": 0.045454545454545456,
+   "gold": {
+    "n": 22,
+    "p": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0
+   },
+   "gold_missing": 0,
+   "ans_ci": {
+    "n": 22,
+    "p": 0.9090909090909091,
+    "ci_low": 0.7727272727272727,
+    "ci_high": 1.0
+   }
+  },
+  "Random": {
+   "n": 22,
+   "ans": 0.13636363636363635,
+   "degenerate": 0.0,
+   "refusal": 0.8636363636363636,
+   "gold_d1": 0.045454545454545456,
+   "gold": {
+    "n": 22,
+    "p": 0.045454545454545456,
+    "ci_low": 0.0,
+    "ci_high": 0.13636363636363635
+   },
+   "gold_missing": 0,
+   "ans_ci": {
+    "n": 22,
+    "p": 0.13636363636363635,
+    "ci_low": 0.0,
+    "ci_high": 0.2727272727272727
+   }
+  },
+  "Reverse": {
+   "n": 22,
+   "ans": 0.0,
+   "degenerate": 0.0,
+   "refusal": 1.0,
+   "gold_d1": 0.0,
+   "gold": {
+    "n": 22,
+    "p": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0
+   },
+   "gold_missing": 0,
+   "ans_ci": {
+    "n": 22,
+    "p": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0
+   }
+  },
+  "A-cut": {
+   "n": 22,
+   "ans": 0.0,
+   "degenerate": 0.0,
+   "refusal": 1.0,
+   "gold_d1": 0.0,
+   "gold": {
+    "n": 22,
+    "p": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0
+   },
+   "gold_missing": 0,
+   "ans_ci": {
+    "n": 22,
+    "p": 0.0,
+    "ci_low": 0.0,
+    "ci_high": 0.0
+   }
+  },
+  "Steer-cut": {
+   "n": 22,
+   "ans": 0.5,
+   "degenerate": 0.045454545454545456,
+   "refusal": 0.45454545454545453,
+   "gold_d1": 0.09090909090909091,
+   "gold": {
+    "n": 22,
+    "p": 0.045454545454545456,
+    "ci_low": 0.0,
+    "ci_high": 0.13636363636363635
+   },
+   "gold_missing": 0,
+   "ans_ci": {
+    "n": 22,
+    "p": 0.5,
+    "ci_low": 0.3181818181818182,
+    "ci_high": 0.7272727272727273
+   }
+  }
+ },
+ "cut_no_marker": 9,
+ "damage": {
+  "A": {
+   "n": 54,
+   "ans": 1.0,
+   "degenerate": 0.0,
+   "refusal": 0.0,
+   "gold_d1": 0.6481481481481481,
+   "gold": {
+    "n": 54,
+    "p": 1.0,
+    "ci_low": 1.0,
+    "ci_high": 1.0
+   },
+   "gold_missing": 0,
+   "ans_ci": {
+    "n": 54,
+    "p": 1.0,
+    "ci_low": 1.0,
+    "ci_high": 1.0
+   }
+  },
+  "Steer": {
+   "n": 54,
+   "ans": 1.0,
+   "degenerate": 0.0,
+   "refusal": 0.0,
+   "gold_d1": 0.4444444444444444,
+   "gold": {
+    "n": 54,
+    "p": 0.48148148148148145,
+    "ci_low": 0.35185185185185186,
+    "ci_high": 0.6111111111111112
+   },
+   "gold_missing": 0,
+   "ans_ci": {
+    "n": 54,
+    "p": 1.0,
+    "ci_low": 1.0,
+    "ci_high": 1.0
+   }
+  },
+  "Random": {
+   "n": 0,
+   "ans": null,
+   "degenerate": null,
+   "refusal": null,
+   "gold_d1": null,
+   "gold": {
+    "n": 0,
+    "p": null,
+    "ci_low": null,
+    "ci_high": null
+   },
+   "gold_missing": 0,
+   "ans_ci": {
+    "n": 0,
+    "p": null,
+    "ci_low": null,
+    "ci_high": null
+   }
+  },
+  "Reverse": {
+   "n": 54,
+   "ans": 0.18518518518518517,
+   "degenerate": 0.018518518518518517,
+   "refusal": 0.7962962962962963,
+   "gold_d1": 0.05555555555555555,
+   "gold": {
+    "n": 54,
+    "p": 0.07407407407407407,
+    "ci_low": 0.018518518518518517,
+    "ci_high": 0.14814814814814814
+   },
+   "gold_missing": 0,
+   "ans_ci": {
+    "n": 54,
+    "p": 0.18518518518518517,
+    "ci_low": 0.09259259259259259,
+    "ci_high": 0.2962962962962963
+   }
+  }
+ },
+ "control_C": {
+  "n": 54,
+  "mean": -0.5185185185185185,
+  "ci_low": -0.6481481481481481,
+  "ci_high": -0.3888888888888889,
+  "p": 0.0,
+  "damages": true
+ },
+ "control_X": {
+  "random_ans": 0.2833333333333333,
+  "steer_ans": 0.95,
+  "bound": 0.19,
+  "pass": false,
+  "reverse_ans": 0.016666666666666666,
+  "A_ans": 0.0,
+  "reverse_descriptive": true
+ },
+ "claim1": {
+  "n": 60,
+  "mean": 0.05,
+  "ci_low": -0.06666666666666667,
+  "ci_high": 0.16666666666666666,
+  "p": 0.488,
+  "verdict": "NOT INTERPRETABLE (Control X failed)",
+  "p_steer": 0.15,
+  "p_steer_cut": 0.1,
+  "meaningful": false,
+  "underpowered": false
+ },
+ "claim1_prime": {
+  "n": 35,
+  "mean": 0.08571428571428572,
+  "ci_low": -0.02857142857142857,
+  "ci_high": 0.2,
+  "p": 0.2392,
+  "verdict": "NOT SHOWN"
+ },
+ "b_gold": {
+  "new_judge": {
+   "n": 60,
+   "p": 0.43333333333333335,
+   "ci_low": 0.31666666666666665,
+   "ci_high": 0.5666666666666667
+  },
+  "cached_35": {
+   "k": 27,
+   "n": 64
+  },
+  "cached_35_on_keys": {
+   "k": 26,
+   "n": 60
+  }
+ },
+ "control_T": {
+  "knowledge-update": {
+   "n": 6,
+   "steer": 0.5,
+   "steer_cut": 0.16666666666666666
+  },
+  "multi-session": {
+   "n": 13,
+   "steer": 0.07692307692307693,
+   "steer_cut": 0.0
+  },
+  "single-session-assistant": {
+   "n": 4,
+   "steer": 0.0,
+   "steer_cut": 0.25
+  },
+  "single-session-preference": {
+   "n": 5,
+   "steer": 0.0,
+   "steer_cut": 0.0
+  },
+  "single-session-user": {
+   "n": 12,
+   "steer": 0.25,
+   "steer_cut": 0.08333333333333333
+  },
+  "temporal-reasoning": {
+   "n": 20,
+   "steer": 0.1,
+   "steer_cut": 0.15
+  }
+ },
+ "secondary": {
+  "setting": "steer:L29:a2:vnorm",
+  "controls": {
+   "A": {
+    "n": 60,
+    "ans": 0.0,
+    "degenerate": 0.0,
+    "refusal": 1.0,
+    "gold_d1": 0.0,
+    "gold": {
+     "n": 60,
+     "p": 0.0,
+     "ci_low": 0.0,
+     "ci_high": 0.0
+    },
+    "gold_missing": 0,
+    "ans_ci": {
+     "n": 60,
+     "p": 0.0,
+     "ci_low": 0.0,
+     "ci_high": 0.0
+    }
+   },
+   "B": {
+    "n": 60,
+    "ans": 0.6333333333333333,
+    "degenerate": 0.0,
+    "refusal": 0.36666666666666664,
+    "gold_d1": 0.26666666666666666,
+    "gold": {
+     "n": 60,
+     "p": 0.43333333333333335,
+     "ci_low": 0.31666666666666665,
+     "ci_high": 0.5666666666666667
+    },
+    "gold_missing": 0,
+    "ans_ci": {
+     "n": 60,
+     "p": 0.6333333333333333,
+     "ci_low": 0.5166666666666667,
+     "ci_high": 0.75
+    }
+   },
+   "Steer": {
+    "n": 60,
+    "ans": 0.9,
+    "degenerate": 0.0,
+    "refusal": 0.1,
+    "gold_d1": 0.43333333333333335,
+    "gold": {
+     "n": 60,
+     "p": 0.5166666666666667,
+     "ci_low": 0.38333333333333336,
+     "ci_high": 0.65
+    },
+    "gold_missing": 0,
+    "ans_ci": {
+     "n": 60,
+     "p": 0.9,
+     "ci_low": 0.8166666666666667,
+     "ci_high": 0.9666666666666667
+    }
+   },
+   "Random": {
+    "n": 60,
+    "ans": 0.03333333333333333,
+    "degenerate": 0.0,
+    "refusal": 0.9666666666666667,
+    "gold_d1": 0.0,
+    "gold": {
+     "n": 60,
+     "p": 0.0,
+     "ci_low": 0.0,
+     "ci_high": 0.0
+    },
+    "gold_missing": 0,
+    "ans_ci": {
+     "n": 60,
+     "p": 0.03333333333333333,
+     "ci_low": 0.0,
+     "ci_high": 0.08333333333333333
+    }
+   },
+   "Reverse": {
+    "n": 60,
+    "ans": 0.0,
+    "degenerate": 0.0,
+    "refusal": 1.0,
+    "gold_d1": 0.0,
+    "gold": {
+     "n": 60,
+     "p": 0.0,
+     "ci_low": 0.0,
+     "ci_high": 0.0
+    },
+    "gold_missing": 0,
+    "ans_ci": {
+     "n": 60,
+     "p": 0.0,
+     "ci_low": 0.0,
+     "ci_high": 0.0
+    }
+   },
+   "A-cut": {
+    "n": 60,
+    "ans": 0.06666666666666667,
+    "degenerate": 0.0,
+    "refusal": 0.9333333333333333,
+    "gold_d1": 0.016666666666666666,
+    "gold": {
+     "n": 60,
+     "p": 0.016666666666666666,
+     "ci_low": 0.0,
+     "ci_high": 0.05
+    },
+    "gold_missing": 0,
+    "ans_ci": {
+     "n": 60,
+     "p": 0.06666666666666667,
+     "ci_low": 0.016666666666666666,
+     "ci_high": 0.13333333333333333
+    }
+   },
+   "Steer-cut": {
+    "n": 60,
+    "ans": 0.5166666666666667,
+    "degenerate": 0.016666666666666666,
+    "refusal": 0.4666666666666667,
+    "gold_d1": 0.13333333333333333,
+    "gold": {
+     "n": 60,
+     "p": 0.18333333333333332,
+     "ci_low": 0.08333333333333333,
+     "ci_high": 0.2833333333333333
+    },
+    "gold_missing": 0,
+    "ans_ci": {
+     "n": 60,
+     "p": 0.5166666666666667,
+     "ci_low": 0.38333333333333336,
+     "ci_high": 0.65
+    }
+   }
+  },
+  "controls_unseen": {
+   "A": {
+    "n": 22,
+    "ans": 0.0,
+    "degenerate": 0.0,
+    "refusal": 1.0,
+    "gold_d1": 0.0,
+    "gold": {
+     "n": 22,
+     "p": 0.0,
+     "ci_low": 0.0,
+     "ci_high": 0.0
+    },
+    "gold_missing": 0,
+    "ans_ci": {
+     "n": 22,
+     "p": 0.0,
+     "ci_low": 0.0,
+     "ci_high": 0.0
+    }
+   },
+   "B": {
+    "n": 22,
+    "ans": 0.0,
+    "degenerate": 0.0,
+    "refusal": 1.0,
+    "gold_d1": 0.0,
+    "gold": {
+     "n": 22,
+     "p": 0.0,
+     "ci_low": 0.0,
+     "ci_high": 0.0
+    },
+    "gold_missing": 0,
+    "ans_ci": {
+     "n": 22,
+     "p": 0.0,
+     "ci_low": 0.0,
+     "ci_high": 0.0
+    }
+   },
+   "Steer": {
+    "n": 22,
+    "ans": 0.7272727272727273,
+    "degenerate": 0.0,
+    "refusal": 0.2727272727272727,
+    "gold_d1": 0.22727272727272727,
+    "gold": {
+     "n": 22,
+     "p": 0.36363636363636365,
+     "ci_low": 0.18181818181818182,
+     "ci_high": 0.5909090909090909
+    },
+    "gold_missing": 0,
+    "ans_ci": {
+     "n": 22,
+     "p": 0.7272727272727273,
+     "ci_low": 0.5454545454545454,
+     "ci_high": 0.9090909090909091
+    }
+   },
+   "Random": {
+    "n": 22,
+    "ans": 0.045454545454545456,
+    "degenerate": 0.0,
+    "refusal": 0.9545454545454546,
+    "gold_d1": 0.0,
+    "gold": {
+     "n": 22,
+     "p": 0.0,
+     "ci_low": 0.0,
+     "ci_high": 0.0
+    },
+    "gold_missing": 0,
+    "ans_ci": {
+     "n": 22,
+     "p": 0.045454545454545456,
+     "ci_low": 0.0,
+     "ci_high": 0.13636363636363635
+    }
+   },
+   "Reverse": {
+    "n": 22,
+    "ans": 0.0,
+    "degenerate": 0.0,
+    "refusal": 1.0,
+    "gold_d1": 0.0,
+    "gold": {
+     "n": 22,
+     "p": 0.0,
+     "ci_low": 0.0,
+     "ci_high": 0.0
+    },
+    "gold_missing": 0,
+    "ans_ci": {
+     "n": 22,
+     "p": 0.0,
+     "ci_low": 0.0,
+     "ci_high": 0.0
+    }
+   },
+   "A-cut": {
+    "n": 22,
+    "ans": 0.0,
+    "degenerate": 0.0,
+    "refusal": 1.0,
+    "gold_d1": 0.0,
+    "gold": {
+     "n": 22,
+     "p": 0.0,
+     "ci_low": 0.0,
+     "ci_high": 0.0
+    },
+    "gold_missing": 0,
+    "ans_ci": {
+     "n": 22,
+     "p": 0.0,
+     "ci_low": 0.0,
+     "ci_high": 0.0
+    }
+   },
+   "Steer-cut": {
+    "n": 22,
+    "ans": 0.45454545454545453,
+    "degenerate": 0.045454545454545456,
+    "refusal": 0.5,
+    "gold_d1": 0.13636363636363635,
+    "gold": {
+     "n": 22,
+     "p": 0.18181818181818182,
+     "ci_low": 0.045454545454545456,
+     "ci_high": 0.36363636363636365
+    },
+    "gold_missing": 0,
+    "ans_ci": {
+     "n": 22,
+     "p": 0.45454545454545453,
+     "ci_low": 0.2727272727272727,
+     "ci_high": 0.6818181818181818
+    }
+   }
+  },
+  "cut_no_marker": 9,
+  "damage": {
+   "A": {
+    "n": 54,
+    "ans": 1.0,
+    "degenerate": 0.0,
+    "refusal": 0.0,
+    "gold_d1": 0.6481481481481481,
+    "gold": {
+     "n": 54,
+     "p": 1.0,
+     "ci_low": 1.0,
+     "ci_high": 1.0
+    },
+    "gold_missing": 0,
+    "ans_ci": {
+     "n": 54,
+     "p": 1.0,
+     "ci_low": 1.0,
+     "ci_high": 1.0
+    }
+   },
+   "Steer": {
+    "n": 54,
+    "ans": 1.0,
+    "degenerate": 0.0,
+    "refusal": 0.0,
+    "gold_d1": 0.5925925925925926,
+    "gold": {
+     "n": 54,
+     "p": 0.9444444444444444,
+     "ci_low": 0.8703703703703703,
+     "ci_high": 1.0
+    },
+    "gold_missing": 0,
+    "ans_ci": {
+     "n": 54,
+     "p": 1.0,
+     "ci_low": 1.0,
+     "ci_high": 1.0
+    }
+   },
+   "Random": {
+    "n": 0,
+    "ans": null,
+    "degenerate": null,
+    "refusal": null,
+    "gold_d1": null,
+    "gold": {
+     "n": 0,
+     "p": null,
+     "ci_low": null,
+     "ci_high": null
+    },
+    "gold_missing": 0,
+    "ans_ci": {
+     "n": 0,
+     "p": null,
+     "ci_low": null,
+     "ci_high": null
+    }
+   },
+   "Reverse": {
+    "n": 0,
+    "ans": null,
+    "degenerate": null,
+    "refusal": null,
+    "gold_d1": null,
+    "gold": {
+     "n": 0,
+     "p": null,
+     "ci_low": null,
+     "ci_high": null
+    },
+    "gold_missing": 0,
+    "ans_ci": {
+     "n": 0,
+     "p": null,
+     "ci_low": null,
+     "ci_high": null
+    }
+   }
+  },
+  "control_C": {
+   "n": 54,
+   "mean": -0.05555555555555555,
+   "ci_low": -0.12962962962962962,
+   "ci_high": 0.0,
+   "p": 0.0942,
+   "damages": false
+  },
+  "control_X": {
+   "random_ans": 0.03333333333333333,
+   "steer_ans": 0.9,
+   "bound": 0.18000000000000002,
+   "pass": true,
+   "reverse_ans": 0.0,
+   "A_ans": 0.0,
+   "reverse_descriptive": true
+  },
+  "claim1": {
+   "n": 60,
+   "mean": 0.3333333333333333,
+   "ci_low": 0.18333333333333332,
+   "ci_high": 0.48333333333333334,
+   "p": 0.0,
+   "verdict": "SHOWN",
+   "p_steer": 0.5166666666666667,
+   "p_steer_cut": 0.18333333333333332,
+   "meaningful": true,
+   "underpowered": false
+  },
+  "claim1_prime": {
+   "n": 35,
+   "mean": 0.42857142857142855,
+   "ci_low": 0.2571428571428571,
+   "ci_high": 0.6,
+   "p": 0.0,
+   "verdict": "SHOWN"
+  },
+  "b_gold": {
+   "new_judge": {
+    "n": 60,
+    "p": 0.43333333333333335,
+    "ci_low": 0.31666666666666665,
+    "ci_high": 0.5666666666666667
+   },
+   "cached_35": {
+    "k": 27,
+    "n": 64
+   },
+   "cached_35_on_keys": {
+    "k": 26,
+    "n": 60
+   }
+  },
+  "claim2": {
+   "ratio": {
+    "n": 60,
+    "ratio": 1.1923076923076923,
+    "ci_low": 0.8695652173913043,
+    "ci_high": 1.6818181818181819
+   },
+   "p_gold_steer_given_B_correct": {
+    "n": 26,
+    "p": 0.7692307692307693,
+    "ci_low": 0.6153846153846154,
+    "ci_high": 0.9230769230769231
+   },
+   "p_gold_steer_given_B_wrong": {
+    "n": 12,
+    "p": 0.25,
+    "ci_low": 0.0,
+    "ci_high": 0.5
+   },
+   "p_ans_steer_given_B_refuses": {
+    "n": 22,
+    "p": 0.7272727272727273,
+    "ci_low": 0.5454545454545454,
+    "ci_high": 0.9090909090909091
+   }
+  },
+  "control_T": {
+   "knowledge-update": {
+    "n": 6,
+    "steer": 0.5,
+    "steer_cut": 0.16666666666666666
+   },
+   "multi-session": {
+    "n": 13,
+    "steer": 0.5384615384615384,
+    "steer_cut": 0.07692307692307693
+   },
+   "single-session-assistant": {
+    "n": 4,
+    "steer": 0.75,
+    "steer_cut": 0.5
+   },
+   "single-session-preference": {
+    "n": 5,
+    "steer": 0.2,
+    "steer_cut": 0.0
+   },
+   "single-session-user": {
+    "n": 12,
+    "steer": 0.4166666666666667,
+    "steer_cut": 0.16666666666666666
+   },
+   "temporal-reasoning": {
+    "n": 20,
+    "steer": 0.6,
+    "steer_cut": 0.25
+   }
+  },
+  "label": "secondary (chosen after dev D1 gold; disclosed)"
+ },
+ "record": "shown at the secondary setting only; two settings were tested",
+ "judge_agreement": {
+  "reproduced_rows": {
+   "n": 175,
+   "p": 0.9714285714285714,
+   "ci_low": 0.9428571428571428,
+   "ci_high": 0.9942857142857143
+  },
+  "same_text_rows": 167,
+  "same_text_check": {
+   "n": 183,
+   "p": 1.0,
+   "ci_low": 1.0,
+   "ci_high": 1.0
+  },
+  "bar": 0.9,
+  "caveat": false
+ },
+ "judge_unparseable": 0,
+ "gold_missing": 0,
+ "plan": {
+  "primary": "steer:L25:a4:vnorm",
+  "secondary": "steer:L29:a2:vnorm",
+  "arms": {
+   "primary:R:A": {
+    "rows": 60,
+    "of": 60,
+    "seconds": 128.64780658198288,
+    "settings": [
+     "steer:L25:a4:vnorm",
+     "random:L25:a4:vnorm",
+     "reverse:L25:a4:vnorm"
+    ]
+   },
+   "primary:R:cut": {
+    "rows": 60,
+    "of": 60,
+    "seconds": 84.06043163500726,
+    "settings": [
+     "steer:L25:a4:vnorm",
+     "none"
+    ]
+   },
+   "primary:C:A": {
+    "rows": 55,
+    "of": 55,
+    "seconds": 87.23742217896506,
+    "settings": [
+     "steer:L25:a4:vnorm",
+     "reverse:L25:a4:vnorm"
+    ]
+   },
+   "secondary:R:A:steer": {
+    "rows": 60,
+    "of": 60,
+    "seconds": 25.105903981951997,
+    "settings": [
+     "steer:L29:a2:vnorm"
+    ]
+   },
+   "secondary:R:cut:steer": {
+    "rows": 60,
+    "of": 60,
+    "seconds": 22.823812063026708,
+    "settings": [
+     "steer:L29:a2:vnorm"
+    ]
+   },
+   "secondary:R:A:random": {
+    "rows": 60,
+    "of": 60,
+    "seconds": 9.831077242968604,
+    "settings": [
+     "random:L29:a2:vnorm"
+    ]
+   },
+   "secondary:C:A:steer": {
+    "rows": 55,
+    "of": 55,
+    "seconds": 17.150046263996046,
+    "settings": [
+     "steer:L29:a2:vnorm"
+    ]
+   },
+   "secondary:R:A:reverse": {
+    "rows": 60,
+    "of": 60,
+    "seconds": 9.328562366019469,
+    "settings": [
+     "reverse:L29:a2:vnorm"
+    ]
+   }
+  },
+  "skipped": [],
+  "cut": []
+ },
+ "run_settings": {
+  "design": "runs/exp38_dev/qwen3b/gate.json",
+  "design_chosen": "steer:L25:a4:vnorm",
+  "primary": "steer:L25:a4:vnorm",
+  "secondary": "steer:L29:a2:vnorm",
+  "secondary_label": "secondary (chosen after dev D1 gold; disclosed)",
+  "layer_map": {
+   "25": 25,
+   "29": 29
+  },
+  "n_layers": 36
+ },
+ "costs": {
+  "by_stage": {
+   "repro": {
+    "prefills": 278,
+    "generations": 278,
+    "tokens_generated": 832,
+    "seconds": 58.0
+   },
+   "sanity": {
+    "prefills": 13,
+    "generations": 78,
+    "tokens_generated": 134,
+    "seconds": 6.9
+   },
+   "arms": {
+    "prefills": 470,
+    "generations": 705,
+    "tokens_generated": 12049,
+    "seconds": 382.3
+   }
+  },
+  "prefills": 761,
+  "generations": 1061,
+  "tokens_generated": 13015,
+  "seconds": 447.2,
+  "judge": {
+   "judge_engine": "hf-transformers-5.17.0-cuda-bfloat16",
+   "judge_model": "Qwen/Qwen2.5-7B-Instruct",
+   "role": "judge",
+   "settings": {
+    "backend": "hf-transformers-5.17.0-cuda-bfloat16",
+    "name": "qwen2.5-7b-instruct",
+    "revision": null,
+    "load_in_4bit": false,
+    "temperature": 0.0,
+    "max_new_tokens": 4,
+    "chat": "wrap_chat",
+    "sampling": {
+     "temperature": 0.0,
+     "top_p": 1.0,
+     "seed": 0,
+     "greedy": true
+    }
+   },
+   "n_items": 1166,
+   "n_judged": 1166,
+   "n_prompts_called": 602,
+   "seconds": 24.718877301958855,
+   "unparseable": 0,
+   "cut": false,
+   "not_judged": "sanity rows (pop 'pairs'): plumbing, never a gold figure",
+   "load_s": 7.496034312003758
+  },
+  "wall_s": {
+   "load_3b": 5.935542729974259,
+   "repro": 58.99361699598376,
+   "directions": 0.011058063013479114,
+   "sanity": 6.953593861951958,
+   "arms": 384.1881533190026,
+   "total": 475.75708234997
+  },
+  "forward_passes": {
+   "prefills": 761,
+   "generations": 1061,
+   "tokens_generated": 13015
+  }
+ }
+}

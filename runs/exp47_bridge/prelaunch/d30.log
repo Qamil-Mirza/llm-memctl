@@ -1,0 +1,9 @@
+D-30 (exp47): temp dir /home/qamil-mirza/Code/llm-memctl/runs/_tmp/exp47_d30.VSljqX
+bundle: 123 entries -> /home/qamil-mirza/Code/llm-memctl/runs/_tmp/exp47_d30.VSljqX/tree.tar.gz (400K); sha256 e9cdfeabf12d9877; rows47 d7fa444d912b1c3e
+D-30 normal chain exit 0; exit=0 engine=stub at 2026-10-31T21:16:02Z total_s=219
+D-30 status {'rows': 2, 'report': True} stages [('install', 17), ('population', 0), ('stub_check', 30), ('smoke', 114), ('projection', 0), ('rows', 58), ('report', 0)]
+D-30 report (from the tree, stub rows) exit 0
+D-30 projection limit 0 exit 7 (want 7)
+D-30 deadline chain (HARD_STOP_S 189) exit 1; exit=1 engine=stub at 2026-10-31T21:21:34Z total_s=181
+D-30 deadline stages {'population': ('ok', 0), 'stub_check': ('ok', 0), 'smoke': ('ok', 0), 'projection': ('ok', 0), 'rows': ('partial', 9), 'report': ('partial', 124)}
+D-30 PASS (exp47; bundle 400K, sha256 e9cdfeabf12d9877, fresh venv Python 3.13.9, repo /home/qamil-mirza/Code/llm-memctl untouched)

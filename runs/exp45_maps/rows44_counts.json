@@ -1,0 +1,14 @@
+{
+ "n_rows": 140,
+ "n_questions": 70,
+ "by_kind": {
+  "clean": 70,
+  "swap": 70
+ },
+ "by_label23": {
+  "success": 38,
+  "wrong": 18,
+  "refusal": 14
+ },
+ "sha256": "b2517b540995eca37ebd2ad8274fc58f39da655a7ea75a7bae6dc8bfaaa8c89a"
+}

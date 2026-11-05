@@ -1,0 +1,28 @@
+§38 pod chain; engine hf; RUNPOD_POD_ID setebfakbdujp2z7w; hard stop +2700 s, self-stop +3300 s
+watchdog pid 211: pod stops itself at +3300 s
+preflight ok: 61 files and 3 folders present; out runs/exp38_pod
+WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+torch 2.8.0+cu128 cuda 12.8 gpu NVIDIA A40 transformers 5.17.0
+stage install: elapsed 26 s (total 26 s of 2700)
+Traceback (most recent call last):
+  File "/workspace/llm-memctl/scripts/exp38_pod_run.py", line 626, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "/workspace/llm-memctl/scripts/exp38_pod_run.py", line 618, in main
+    return {"smoke": cmd_smoke, "run": cmd_run, "judge": cmd_judge}[args.command](args)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/llm-memctl/scripts/exp38_pod_run.py", line 508, in cmd_smoke
+    d, pop, _ = load_all(Path(args.exp35), args.runs, Path(args.own_root), check=not args.no_count_check)
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/llm-memctl/scripts/exp38_pod_run.py", line 80, in load_all
+    d, pop = load_source(list(ALL_FOLDS), exp35, runs, own_root)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/llm-memctl/scripts/exp38_dev.py", line 50, in load_source
+    from scripts.exp35_report import load
+  File "/workspace/llm-memctl/scripts/exp35_report.py", line 41, in <module>
+    from memctl.analysis.jacobian_stats import bootstrap_mean_difference, bootstrap_proportion, paired_claim  # noqa: E402
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/workspace/llm-memctl/memctl/analysis/jacobian_stats.py", line 10, in <module>
+    from scipy.stats import ConstantInputWarning, spearmanr
+ModuleNotFoundError: No module named 'scipy'
+stage smoke failed: exit 1

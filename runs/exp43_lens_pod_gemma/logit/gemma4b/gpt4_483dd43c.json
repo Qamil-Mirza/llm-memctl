@@ -1,0 +1,252 @@
+{
+ "question_id": "gpt4_483dd43c",
+ "fold": 4,
+ "reader": "gemma4b",
+ "n_tokens": 1294,
+ "n_leading_ws": 0,
+ "prompt_sha256": "0d4ef104446a85102c77f3a7fc062e3f21f2f04c8f5ce24add1e78c026544958",
+ "intact_prompt_sha256": "0d4ef104446a85102c77f3a7fc062e3f21f2f04c8f5ce24add1e78c026544958",
+ "n_evidence_lines_cut": 0,
+ "n_bos": 1,
+ "positions": {
+  "P1": [
+   1293
+  ],
+  "P0": [
+   1291
+  ],
+  "E": [
+   325,
+   1086
+  ],
+  "Q": [
+   1283
+  ],
+  "P1_raw": [
+   1293
+  ]
+ },
+ "tracked_names": [
+  "gold",
+  "unknown_sp",
+  "Unknown_sp",
+  "unknown"
+ ],
+ "tracked": {
+  "gold": 756,
+  "unknown_sp": 11908,
+  "Unknown_sp": 60355,
+  "unknown": 20774
+ },
+ "gold_token_text": " '",
+ "position_mode": "forced",
+ "answer_marker": true,
+ "variants": [
+  "logit"
+ ],
+ "read_tag": "exp43_lens_pod_v1",
+ "measures": {
+  "logit": {
+   "k": 10,
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33
+   ],
+   "P1": {
+    "gold": {
+     "best_rank": 2,
+     "final_rank": 2,
+     "emergence_depth": 0.7058823529411765,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 7,
+     "final_rank": 17,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 14,
+     "final_rank": 14,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 145,
+     "final_rank": 2751,
+     "first_top1_depth": null
+    }
+   },
+   "P0": {
+    "gold": {
+     "best_rank": 18,
+     "final_rank": 431,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 579,
+     "final_rank": 51170,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 1973,
+     "final_rank": 36329,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 3588,
+     "final_rank": 4701,
+     "first_top1_depth": null
+    }
+   },
+   "E": [
+    {
+     "gold": {
+      "best_rank": 387,
+      "final_rank": 633,
+      "emergence_depth": null,
+      "outcome": "A"
+     },
+     "unknown_sp": {
+      "best_rank": 4533,
+      "final_rank": 25643,
+      "first_top1_depth": null
+     },
+     "Unknown_sp": {
+      "best_rank": 3360,
+      "final_rank": 3360,
+      "first_top1_depth": null
+     },
+     "unknown": {
+      "best_rank": 32487,
+      "final_rank": 98238,
+      "first_top1_depth": null
+     }
+    },
+    {
+     "gold": {
+      "best_rank": 115,
+      "final_rank": 116,
+      "emergence_depth": null,
+      "outcome": "A"
+     },
+     "unknown_sp": {
+      "best_rank": 8684,
+      "final_rank": 33245,
+      "first_top1_depth": null
+     },
+     "Unknown_sp": {
+      "best_rank": 4980,
+      "final_rank": 4980,
+      "first_top1_depth": null
+     },
+     "unknown": {
+      "best_rank": 23527,
+      "final_rank": 136184,
+      "first_top1_depth": null
+     }
+    }
+   ],
+   "Q": {
+    "gold": {
+     "best_rank": 50,
+     "final_rank": 50,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 559,
+     "final_rank": 1647,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 121,
+     "final_rank": 139,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 3175,
+     "final_rank": 3634,
+     "first_top1_depth": null
+    }
+   },
+   "P1_raw": {
+    "gold": {
+     "best_rank": 2,
+     "final_rank": 2,
+     "emergence_depth": 0.7058823529411765,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 7,
+     "final_rank": 17,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 14,
+     "final_rank": 14,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 145,
+     "final_rank": 2751,
+     "first_top1_depth": null
+    }
+   }
+  }
+ },
+ "family": {
+  "key": "gemma4b",
+  "model_id": "google/gemma-3-4b-it",
+  "template_kwargs": {},
+  "system_text": null,
+  "system_role": false,
+  "stop_tokens": [
+   "<end_of_turn>",
+   "<eos>"
+  ],
+  "refusal_ids": [
+   11908,
+   60355
+  ]
+ },
+ "elapsed_s": 0.5879726159619167,
+ "model_id": "google/gemma-3-4b-it",
+ "weights": null,
+ "size": "small",
+ "device": "cuda",
+ "dtype": "bfloat16",
+ "lens": "identity (logit lens)",
+ "lens_sha256": null
+}

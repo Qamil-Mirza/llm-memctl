@@ -1,0 +1,24 @@
+exp45 pod chain; engine hf; RUNPOD_POD_ID setrre3aw7agtsm42; maps -> runs/exp45_maps
+deadlines: HARD_STOP_S=14400 s (model work ends), SELF_STOP_S=15000 s (pod stops itself), refit box <= 75 min, maps reserve 5400 s
+watchdog pid 212: pod stops itself at +15000 s
+preflight ok: 22 files present; out runs/exp45_pod
+torch 2.8.0+cu128 transformers 5.17.0 numpy 2.1.2
+jlens commit 581d398
+gpu NVIDIA A40 44.4 GiB
+overlay         100G  1.1G   99G   2% /
+stage install (ok, rc 0): elapsed 27 s (total 27 s of 14400)
+population {"n_cases": 864, "cases_sha256": "e3f625a4ad61679a444a650958e393fbb2850414f065c914eeac6138d01edf3d", "n_rows44": 140, "n_rows44_questions": 70, "lens56_sha256": "ddbdb32de0eefd4ed0c2ca42d64620c322e931a24813df5fa25da95c482de21b", "problems": []}
+stage population (ok, rc 0): elapsed 0 s (total 27 s of 14400)
+stub qwen3b: 4 layers, width 64, vocab 151665 -> runs/exp45_pod/stub_models/qwen3b
+stub resume: prompts redone 0 (want 0)
+stage stub_check (ok, rc 0): elapsed 43 s (total 70 s of 14400)
+download Qwen/Qwen2.5-3B-Instruct: 6 s -> /root/.cache/huggingface/hub/models--Qwen--Qwen2.5-3B-Instruct/snapshots/aa8e72537993ba99e69dfaafa59ed015b17504d1
+stage download (ok, rc 0): elapsed 6 s (total 76 s of 14400)
+stage smoke (ok, rc 0): elapsed 13 s (total 89 s of 14400)
+refit qwen3b: 128 prompts (min 96), seed 1, box 75 min
+stage refit (ok, rc 0): elapsed 4111 s (total 4200 s of 14400)
+stage maps_stage1 (ok, rc 0): elapsed 2381 s (total 6581 s of 14400)
+stage maps_stage3 (ok, rc 0): elapsed 400 s (total 6981 s of 14400)
+stage eval (ok, rc 0): elapsed 88 s (total 7069 s of 14400)
+status {"j56-jrefit-logit/stage1": 864, "j56-jrefit-logit/stage3": 140, "refit": {"n_prompts": 128, "below_minimum": false, "wall_s_total": 4102.3647436919855}, "eval": true}
+all stages done in 7069 s (refit rc 0, stage 1 rc 0, stage 3 rc 0, eval rc 0); copy runs/exp45_pod and runs/exp45_maps back before the self-stop at +15000 s

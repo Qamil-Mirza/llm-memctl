@@ -1,0 +1,253 @@
+{
+ "question_id": "2a1811e2",
+ "fold": 4,
+ "reader": "llama8b",
+ "n_tokens": 843,
+ "n_leading_ws": 1,
+ "prompt_sha256": "081ddb884993f3c913f326d22ef26b8d4c3c7ae1ed508951feae8d78d221fd86",
+ "intact_prompt_sha256": "081ddb884993f3c913f326d22ef26b8d4c3c7ae1ed508951feae8d78d221fd86",
+ "n_evidence_lines_cut": 0,
+ "n_bos": 1,
+ "positions": {
+  "P1": [
+   842
+  ],
+  "P0": [
+   839
+  ],
+  "E": [
+   296,
+   671
+  ],
+  "Q": [
+   832
+  ],
+  "P1_raw": [
+   841
+  ]
+ },
+ "tracked_names": [
+  "gold",
+  "unknown_sp",
+  "Unknown_sp",
+  "unknown"
+ ],
+ "tracked": {
+  "gold": 1691,
+  "unknown_sp": 9987,
+  "Unknown_sp": 22435,
+  "unknown": 16476
+ },
+ "gold_token_text": "21",
+ "position_mode": "forced",
+ "answer_marker": true,
+ "variants": [
+  "logit"
+ ],
+ "read_tag": "exp43_lens_pod_v1",
+ "measures": {
+  "logit": {
+   "k": 10,
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31
+   ],
+   "P1": {
+    "gold": {
+     "best_rank": 269,
+     "final_rank": 269,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 181,
+     "final_rank": 181,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 1012,
+     "final_rank": 1012,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 4650,
+     "final_rank": 4650,
+     "first_top1_depth": null
+    }
+   },
+   "P0": {
+    "gold": {
+     "best_rank": 1724,
+     "final_rank": 1724,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 15379,
+     "final_rank": 19925,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 10487,
+     "final_rank": 10487,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 549,
+     "final_rank": 549,
+     "first_top1_depth": null
+    }
+   },
+   "E": [
+    {
+     "gold": {
+      "best_rank": 82,
+      "final_rank": 82,
+      "emergence_depth": null,
+      "outcome": "A"
+     },
+     "unknown_sp": {
+      "best_rank": 2188,
+      "final_rank": 6822,
+      "first_top1_depth": null
+     },
+     "Unknown_sp": {
+      "best_rank": 959,
+      "final_rank": 6386,
+      "first_top1_depth": null
+     },
+     "unknown": {
+      "best_rank": 82,
+      "final_rank": 208,
+      "first_top1_depth": null
+     }
+    },
+    {
+     "gold": {
+      "best_rank": 130,
+      "final_rank": 130,
+      "emergence_depth": null,
+      "outcome": "A"
+     },
+     "unknown_sp": {
+      "best_rank": 366,
+      "final_rank": 1317,
+      "first_top1_depth": null
+     },
+     "Unknown_sp": {
+      "best_rank": 3586,
+      "final_rank": 4888,
+      "first_top1_depth": null
+     },
+     "unknown": {
+      "best_rank": 34,
+      "final_rank": 34,
+      "first_top1_depth": null
+     }
+    }
+   ],
+   "Q": {
+    "gold": {
+     "best_rank": 500,
+     "final_rank": 500,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 8,
+     "final_rank": 236,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 60,
+     "final_rank": 673,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 17,
+     "final_rank": 86,
+     "first_top1_depth": null
+    }
+   },
+   "P1_raw": {
+    "gold": {
+     "best_rank": 10878,
+     "final_rank": 66249,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 9,
+     "final_rank": 9,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 29,
+     "final_rank": 29,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 40,
+     "final_rank": 209,
+     "first_top1_depth": null
+    }
+   }
+  }
+ },
+ "family": {
+  "key": "llama8b",
+  "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+  "template_kwargs": {
+   "date_string": "26 Jul 2024"
+  },
+  "system_text": null,
+  "system_role": true,
+  "stop_tokens": [
+   "<|eot_id|>",
+   "<|end_of_text|>",
+   "<|eom_id|>"
+  ],
+  "refusal_ids": [
+   9987,
+   22435
+  ]
+ },
+ "elapsed_s": 0.39831153594423085,
+ "model_id": "meta-llama/Llama-3.1-8B-Instruct",
+ "weights": null,
+ "size": "large",
+ "device": "cuda",
+ "dtype": "bfloat16",
+ "lens": "identity (logit lens)",
+ "lens_sha256": null
+}

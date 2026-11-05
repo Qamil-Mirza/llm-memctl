@@ -1,0 +1,309 @@
+{
+ "family": "gemma4b",
+ "model": "google/gemma-3-4b-it",
+ "transformers": "5.17.0",
+ "torch": "2.14.0+cpu",
+ "threads": 8,
+ "date_string": null,
+ "rows": [
+  {
+   "question_id": "08f4fc43",
+   "fold": 1,
+   "cached_refusal": false,
+   "a_tokens": 1102
+  },
+  {
+   "question_id": "28dc39ac",
+   "fold": 0,
+   "cached_refusal": true,
+   "a_tokens": 1142
+  },
+  {
+   "question_id": "5831f84d",
+   "fold": 1,
+   "cached_refusal": false,
+   "a_tokens": 1095
+  },
+  {
+   "question_id": "75832dbd",
+   "fold": 0,
+   "cached_refusal": true,
+   "a_tokens": 933
+  },
+  {
+   "question_id": "76d63226",
+   "fold": 0,
+   "cached_refusal": false,
+   "a_tokens": 1101
+  }
+ ],
+ "weights": "cache/exp43_fp32/gemma-3-4b-it",
+ "load_mode": "fp32 load",
+ "load_s": 0.4562990665435791,
+ "peak_rss_gb_after_load": 0.8525543212890625,
+ "vmpeak_gb_after_load": 19.574481964111328,
+ "env": {
+  "MALLOC_ARENA_MAX": "2",
+  "HF_ENABLE_PARALLEL_LOADING": "false",
+  "OMP_NUM_THREADS": null
+ },
+ "model_class": "Gemma3ForConditionalGeneration",
+ "layer_paths": [
+  "model.vision_tower.encoder.layers",
+  "model.language_model.layers"
+ ],
+ "layer_path": "model.language_model.layers",
+ "n_layers": 34,
+ "hidden": 2560,
+ "n_params_total": 4300079472,
+ "param_dtypes": [
+  "torch.float32"
+ ],
+ "stop_ids": [
+  1,
+  106
+ ],
+ "stop_pieces": [
+  "<eos>",
+  "<end_of_turn>"
+ ],
+ "decoder_layer_output": "Tensor",
+ "timing": {
+  "question_id": "76d63226",
+  "n_prompt_tokens": 1101,
+  "prefill_s": 17.38881688285619,
+  "prefill_ms_per_token": 15.793657477616884,
+  "decode_steps": 15,
+  "decode_s_per_token_mean": 0.9343838412469874,
+  "decode_s_per_token_max": 0.947744898032397
+ },
+ "peak_rss_gb_after_timing": 15.929065704345703,
+ "checks": [
+  {
+   "question_id": "08f4fc43",
+   "fold": 1,
+   "last_prompt_piece": ":",
+   "A": {
+    "generated": " 31 days",
+    "first_id": 236743,
+    "first_piece": [
+     "▁"
+    ],
+    "cached_first_id": 236743,
+    "cached_first_piece": [
+     "▁"
+    ],
+    "first_match": true,
+    "refusal": false,
+    "cached_refusal": false,
+    "refusal_match": true,
+    "phrase_match": true,
+    "cached_answer": "31 days"
+   },
+   "N": {
+    "generated": "Dates: Sunday mass (2 January 2023), Ash Wednesday (1 February 2023).\nDifference: 1 February 2023 - 2 January 2023 = 31 days.\n\nAnswer: 31 days",
+    "n_new": 57,
+    "first_id": 48995,
+    "cached_first_id": 48995,
+    "first_match": true,
+    "marker": true,
+    "cached_marker": true,
+    "marker_match": true,
+    "refusal": false,
+    "refusal_match": true,
+    "exact_match": true,
+    "answer": "31 days",
+    "cached_answer": "31 days",
+    "decode_s_per_token": 0.9391134363403054
+   }
+  },
+  {
+   "question_id": "28dc39ac",
+   "fold": 0,
+   "last_prompt_piece": ":",
+   "A": {
+    "generated": " unknown",
+    "first_id": 11908,
+    "first_piece": [
+     "▁unknown"
+    ],
+    "cached_first_id": 11908,
+    "cached_first_piece": [
+     "▁unknown"
+    ],
+    "first_match": true,
+    "refusal": true,
+    "cached_refusal": true,
+    "refusal_match": true,
+    "phrase_match": true,
+    "cached_answer": "unknown"
+   },
+   "N": {
+    "generated": "Hours spent: Assassin's Creed Odyssey (70), Hyper Light Drifter (5), The Last of Us Part II (30 + 30 + 25 = 85), Celeste (10), Uncharted 4 (unknown).\nTotal hours: 70 + 5 + 85 + 10 + unknown = unknown\n\nAnswer: unknown",
+    "n_new": 79,
+    "first_id": 35835,
+    "cached_first_id": 35835,
+    "first_match": true,
+    "marker": true,
+    "cached_marker": true,
+    "marker_match": true,
+    "refusal": true,
+    "refusal_match": true,
+    "exact_match": true,
+    "answer": "unknown",
+    "cached_answer": "unknown",
+    "decode_s_per_token": 0.9445421265827233
+   }
+  },
+  {
+   "question_id": "5831f84d",
+   "fold": 1,
+   "last_prompt_piece": ":",
+   "A": {
+    "generated": " 15",
+    "first_id": 236743,
+    "first_piece": [
+     "▁"
+    ],
+    "cached_first_id": 236743,
+    "cached_first_piece": [
+     "▁"
+    ],
+    "first_match": true,
+    "refusal": false,
+    "cached_refusal": false,
+    "refusal_match": true,
+    "phrase_match": true,
+    "cached_answer": "15"
+   },
+   "N": {
+    "generated": "Crash Course video counts, past few weeks, learning streak.\n10, 12, 15.\n\nAnswer: 15",
+    "n_new": 30,
+    "first_id": 140159,
+    "cached_first_id": 140159,
+    "first_match": true,
+    "marker": true,
+    "cached_marker": true,
+    "marker_match": true,
+    "refusal": false,
+    "refusal_match": true,
+    "exact_match": false,
+    "answer": "15",
+    "cached_answer": "15",
+    "decode_s_per_token": 0.9479214361868799
+   }
+  },
+  {
+   "question_id": "75832dbd",
+   "fold": 0,
+   "last_prompt_piece": ":",
+   "A": {
+    "generated": " unknown",
+    "first_id": 11908,
+    "first_piece": [
+     "▁unknown"
+    ],
+    "cached_first_id": 11908,
+    "cached_first_piece": [
+     "▁unknown"
+    ],
+    "first_match": true,
+    "refusal": true,
+    "cached_refusal": true,
+    "refusal_match": true,
+    "phrase_match": true,
+    "cached_answer": "unknown"
+   },
+   "N": {
+    "generated": "Dates: 2023/05/20, 2023/05/22, 2023/05/25, 2023/05/29\nTopics: Romance books, deep learning, medical image analysis, Tokyo travel, societal ideas, dinner party decorations.\n\nAnswer: unknown",
+    "n_new": 76,
+    "first_id": 48995,
+    "cached_first_id": 48995,
+    "first_match": true,
+    "marker": true,
+    "cached_marker": true,
+    "marker_match": true,
+    "refusal": true,
+    "refusal_match": true,
+    "exact_match": true,
+    "answer": "unknown",
+    "cached_answer": "unknown",
+    "decode_s_per_token": 0.8839093224654023
+   }
+  },
+  {
+   "question_id": "76d63226",
+   "fold": 0,
+   "last_prompt_piece": ":",
+   "A": {
+    "generated": " 55 inches",
+    "first_id": 236743,
+    "first_piece": [
+     "▁"
+    ],
+    "cached_first_id": 236743,
+    "cached_first_piece": [
+     "▁"
+    ],
+    "first_match": true,
+    "refusal": false,
+    "cached_refusal": false,
+    "refusal_match": true,
+    "phrase_match": true,
+    "cached_answer": "55 inches"
+   },
+   "N": {
+    "generated": "TV size, date of setup.\nTV size: 55 inches.\nDate of setup: 2023/05/21.\n\nAnswer: 55 inches",
+    "n_new": 40,
+    "first_id": 14182,
+    "cached_first_id": 14182,
+    "first_match": true,
+    "marker": true,
+    "cached_marker": true,
+    "marker_match": true,
+    "refusal": false,
+    "refusal_match": true,
+    "exact_match": true,
+    "answer": "55 inches",
+    "cached_answer": "55 inches",
+    "decode_s_per_token": 0.9486460570886266
+   }
+  }
+ ],
+ "summary": {
+  "A_first_match": {
+   "k": 5,
+   "n": 5
+  },
+  "A_refusal_match": {
+   "k": 5,
+   "n": 5
+  },
+  "A_phrase_match": {
+   "k": 5,
+   "n": 5
+  },
+  "last_token_colon": 5,
+  "N_first_match": {
+   "k": 5,
+   "n": 5
+  },
+  "N_marker_match": {
+   "k": 5,
+   "n": 5
+  },
+  "N_refusal_match": {
+   "k": 5,
+   "n": 5
+  },
+  "N_exact_match": {
+   "k": 4,
+   "n": 5
+  }
+ },
+ "d22_pass_A": true,
+ "d22_pass_N": true,
+ "peak_rss_gb": 15.929065704345703,
+ "vmpeak_gb": 19.574481964111328,
+ "wall_s": 511.91618728637695
+}

@@ -1,0 +1,1611 @@
+{
+ "spec": "research/proposals/2026-10-29-exp44-patching.md rev 1 §A (D-45) + rev 2 rulings 2-3 (5146f5b) + rev 3 shared-prefix rule (7acce03) + rev 8 repaired swap (83fe60a, D-47)",
+ "rev": 8,
+ "seed": 44,
+ "rules": {
+  "verbatim": "the gold's D1 tokens (answer_selection._tokens) as a contiguous whole-token run of the text's D1 tokens (ASCII case-insensitive regex, cross-checked against the normalised form); stricter than D1's substring branch, no all-tokens branch",
+  "placement": "segment_prompt line spans (separator excluded); question = 'Question:' to '\\n\\nNote:'; elsewhere = any whole-prompt match outside the one evidence line",
+  "swap": "every match of the gold inside that one evidence line (widened to the gold's own adjacent non-alphanumeric prefix/suffix, e.g. '$') replaced by the substitute's surface form (its raw gold, one trailing period dropped); all other bytes identical (asserted)",
+  "pool": "the family's 330 population rows sorted by (fold, question_id), shuffled once with random.Random(44); each row iterates the same order from the start, first candidate passing every rule",
+  "candidate_rules_in_order": [
+   "not self, different normalised gold",
+   "same surface type",
+   "|n_tokens(' '+S) - n_tokens(' '+G)| <= 2",
+   "S not verbatim anywhere in the clean prompt",
+   "G not verbatim anywhere in the swap prompt",
+   "same teacher-forced leading-whitespace tokens as G",
+   "different first content token"
+  ],
+  "first_token": "jlens_readout.tracked_token_ids: first non-whitespace token of ids(' ' + text) (the token P1 predicts in §34); continuation_first_id form ids('Answer:' + ' ' + text) - ids('Answer:') checked",
+  "alignment": "patching.check_alignment on readout_for(clean) vs readout_for(swap), gold forced as §34; the cut-is-shorter clause off (n_evidence_lines=0); tracked ids and forced whitespace must match",
+  "exclusion_order": [
+   "gold_zero_evidence",
+   "gold_several_evidence",
+   "gold_in_question",
+   "gold_elsewhere",
+   "no_substitute",
+   "first_token_equal",
+   "alignment_failure"
+  ],
+  "labels": "§23: success = correct; refusal = not correct and unknown; wrong = otherwise (Qwen exp23 fixed8, Llama exp24 fixed8)",
+  "surface_types": {
+   "order": [
+    "date",
+    "number",
+    "name",
+    "other"
+   ],
+   "date": "^(?:\\d{1,2}(?:st|nd|rd|th)?\\s+(?:of\\s+)?(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\b.*|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\.?\\s+\\d{1,2}(?:st|nd|rd|th)?\\b.*|(?:jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\\s+\\d{4}|(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday)\\b.*|\\d{4}[/-]\\d{1,2}[/-]\\d{1,2}|\\d{1,2}/\\d{1,2}(?:/\\d{2,4})?|\\d{1,2}(?::\\d{2})?\\s*(?:am|pm|a\\.m\\.|p\\.m\\.))\\.?$",
+   "number": "^(?:about\\s+|around\\s+|approximately\\s+)?(?:[$£€+-]\\s?)?(?:\\d[\\d,]*(?:\\.\\d+)?|\\.\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|a hundred|a thousand|thousand|half|once|twice|a couple)(?:\\s?%|\\s?[-:/x]\\s?\\d[\\d,]*(?:\\.\\d+)?)?(?:[\\s-][A-Za-z]+(?:\\s[A-Za-z]+)?)?\\.?$",
+   "name": "^(?:The\\s+|the\\s+)?[A-ZÀ-Þ][\\w'’.&-]*(?:\\s+(?:[A-ZÀ-Þ][\\w'’.&-]*|of|the|and|at|on|in|de|la|del|du|von|van|for|&)){0,5}\\.?$  (no digit; not yes/no/none/unknown)",
+   "other": "everything else"
+  },
+  "rev2": {
+   "pool": "rev 2: row i (index in the family's (fold, question_id) order) shuffles the other 329 rows with random.Random(44 + i) and walks that list; first candidate passing every rule and not at its cap",
+   "cap": "each D1-normalised substitute string used at most 3 times across the family's eligible rows; rows in (fold, id) order; a candidate at its cap is skipped; a use counts once the row is eligible; a row whose only passing candidates were capped is excluded as no_substitute (count in cap_stats)",
+   "surface_types": "rev 2: number split into currency / percent / duration / bare (number_subtype; the substitute must share the subtype); date, name as rev 1",
+   "other": "rev 2: 'other' substitutes from rows of the same LongMemEval question type, same first-character capitalisation of the surface form, |n_tokens diff| <= 1",
+   "number_subtypes": {
+    "order": [
+     "currency",
+     "percent",
+     "duration",
+     "bare"
+    ],
+    "currency": "leading [$£€] or a word in (dollars?|bucks|euros?|cents?|usd|eur|gbp|yen|rupees?)",
+    "percent": "'%' or the word percent",
+    "duration": "a word in (seconds?|secs?|minutes?|mins?|hours?|hrs?|days?|nights?|weeks?|months?|years?|yrs?|decades?|centur(?:y|ies))",
+    "bare": "every other number-type gold (incl. a number with a non-time, non-currency unit)"
+   }
+  },
+  "rev8": {
+   "other": "surface_type 'other' excluded as type_other_rev8 (after gold_elsewhere, before the substitute walk)",
+   "bare": "number:bare: same form (digit / word); digit-form same digit count of the leading number (range: every digit of the string); same unit presence (trailing word)",
+   "bare_regex": "^(?:about\\s+|around\\s+|approximately\\s+)?(?:[$£€+-]\\s?)?(?P<num>\\d[\\d,]*(?:\\.\\d+)?|\\.\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety|hundred|a hundred|a thousand|thousand|half|once|twice|a couple)(?P<range>\\s?[-:/x]\\s?\\d[\\d,]*(?:\\.\\d+)?)?(?P<unit>[\\s-][A-Za-z]+(?:\\s[A-Za-z]+)?)?\\.?$",
+   "determiner": "first word in ['the', 'a', 'an', 'my', 'our', 'his', 'her', 'their', 'its'] (membership case-insensitive, followed by another word): the same word as written in S ('The' != 'the', else the read is the determiner's case), or none in both; every kept type",
+   "read_punct": "rule 5 (review 91f37cb): a candidate whose divergent read token for G or S has no letter or digit is rejected (rev8_reject_read_punct), the walk goes on",
+   "walk": "unchanged (random.Random(44 + i), first passing candidate, cap 3); a rev 3 row whose substitute passes keeps it (record identity asserted)"
+  },
+  "rev3": {
+   "first_token": "different first token after the shared prefix (longest common content-token prefix of G and S after the leading whitespace); no divergent token -> first_token_equal",
+   "alignment": "memctl.analysis.swap.build_swap_inputs: clean / swap / cut with the prefix forced; it ends every sequence, identical"
+  }
+ },
+ "families": {
+  "qwen3b": {
+   "tables": {
+    "population": {
+     "dev": 126,
+     "confirmation": 204,
+     "all": 330
+    },
+    "eligible": {
+     "dev": 27,
+     "confirmation": 43,
+     "all": 70
+    },
+    "by_question_type": {
+     "dev": {
+      "knowledge-update": 8,
+      "multi-session": 0,
+      "single-session-assistant": 6,
+      "single-session-preference": 0,
+      "single-session-user": 12,
+      "temporal-reasoning": 1
+     },
+     "confirmation": {
+      "knowledge-update": 14,
+      "multi-session": 5,
+      "single-session-assistant": 13,
+      "single-session-preference": 0,
+      "single-session-user": 10,
+      "temporal-reasoning": 1
+     },
+     "all": {
+      "knowledge-update": 22,
+      "multi-session": 5,
+      "single-session-assistant": 19,
+      "single-session-preference": 0,
+      "single-session-user": 22,
+      "temporal-reasoning": 2
+     }
+    },
+    "by_label": {
+     "confirmation": {
+      "success": 22,
+      "refusal": 12,
+      "wrong": 9
+     },
+     "all": {
+      "success": 38,
+      "refusal": 14,
+      "wrong": 18
+     }
+    },
+    "by_surface_type": {
+     "dev": {
+      "number:duration": 3,
+      "name": 12,
+      "date": 1,
+      "number:bare": 9,
+      "number:currency": 2
+     },
+     "confirmation": {
+      "number:duration": 4,
+      "name": 15,
+      "number:bare": 18,
+      "number:percent": 1,
+      "date": 3,
+      "number:currency": 2
+     },
+     "all": {
+      "number:duration": 7,
+      "name": 27,
+      "date": 4,
+      "number:bare": 27,
+      "number:currency": 4,
+      "number:percent": 1
+     }
+    },
+    "population_surface_types": {
+     "number:bare": 73,
+     "other": 141,
+     "number:duration": 35,
+     "name": 48,
+     "number:currency": 20,
+     "date": 8,
+     "number:percent": 5
+    },
+    "by_surface_type_and_label_all": {
+     "date": {
+      "success": 0,
+      "refusal": 2,
+      "wrong": 2
+     },
+     "name": {
+      "success": 14,
+      "refusal": 6,
+      "wrong": 7
+     },
+     "number:bare": {
+      "success": 15,
+      "refusal": 4,
+      "wrong": 8
+     },
+     "number:currency": {
+      "success": 2,
+      "refusal": 1,
+      "wrong": 1
+     },
+     "number:duration": {
+      "success": 7,
+      "refusal": 0,
+      "wrong": 0
+     },
+     "number:percent": {
+      "success": 0,
+      "refusal": 1,
+      "wrong": 0
+     }
+    },
+    "exclusions_in_order": {
+     "gold_zero_evidence": 180,
+     "gold_several_evidence": 5,
+     "gold_in_question": 11,
+     "gold_elsewhere": 39,
+     "type_other_rev8": 24,
+     "no_substitute": 1,
+     "first_token_equal": 0,
+     "alignment_failure": 0
+    },
+    "exclusion_steps": [
+     {
+      "exclusion": "gold_zero_evidence",
+      "removed": 180,
+      "remaining": 150
+     },
+     {
+      "exclusion": "gold_several_evidence",
+      "removed": 5,
+      "remaining": 145
+     },
+     {
+      "exclusion": "gold_in_question",
+      "removed": 11,
+      "remaining": 134
+     },
+     {
+      "exclusion": "gold_elsewhere",
+      "removed": 39,
+      "remaining": 95
+     },
+     {
+      "exclusion": "type_other_rev8",
+      "removed": 24,
+      "remaining": 71
+     },
+     {
+      "exclusion": "no_substitute",
+      "removed": 1,
+      "remaining": 70
+     },
+     {
+      "exclusion": "first_token_equal",
+      "removed": 0,
+      "remaining": 70
+     },
+     {
+      "exclusion": "alignment_failure",
+      "removed": 0,
+      "remaining": 70
+     }
+    ],
+    "distinct_substitutes": 58,
+    "distinct_substitute_strings": 56,
+    "max_substitute_multiplicity": 3,
+    "top_substitutes": [
+     [
+      "emma",
+      3
+     ],
+     [
+      "harvard university",
+      2
+     ],
+     [
+      "10 pounds",
+      2
+     ],
+     [
+      "ikea",
+      2
+     ],
+     [
+      "jaipur rugs",
+      2
+     ],
+     [
+      "techcorp",
+      2
+     ],
+     [
+      "100",
+      2
+     ],
+     [
+      "five",
+      2
+     ]
+    ],
+    "cap_stats": {
+     "rev8_reject_bare_unit": 30,
+     "rev8_reject_bare_digits": 163,
+     "rev8_reject_bare_form": 164,
+     "rev8_reject_determiner": 95,
+     "rev8_reject_read_punct": 2
+    },
+    "shared_prefix": {
+     "n_nonempty": 11,
+     "prefixes": {
+      "6:": 2,
+      "1": 2,
+      " $": 4,
+      " The": 3
+     },
+     "rows": [
+      {
+       "question_id": "59524333",
+       "fold": 0,
+       "label": "wrong",
+       "gold": "6:00 pm",
+       "substitute": "6:45 AM",
+       "prefix": "6:",
+       "gold_read": "0",
+       "substitute_read": "4"
+      },
+      {
+       "question_id": "95bcc1c8",
+       "fold": 0,
+       "label": "success",
+       "gold": "10",
+       "substitute": "15",
+       "prefix": "1",
+       "gold_read": "0",
+       "substitute_read": "5"
+      },
+      {
+       "question_id": "0f05491a",
+       "fold": 1,
+       "label": "wrong",
+       "gold": "120",
+       "substitute": "100",
+       "prefix": "1",
+       "gold_read": "2",
+       "substitute_read": "0"
+      },
+      {
+       "question_id": "7527f7e2",
+       "fold": 1,
+       "label": "success",
+       "gold": "$800",
+       "substitute": "$0.75",
+       "prefix": " $",
+       "gold_read": "8",
+       "substitute_read": "0"
+      },
+      {
+       "question_id": "7a8d0b71",
+       "fold": 1,
+       "label": "success",
+       "gold": "$2,000",
+       "substitute": "$400,000",
+       "prefix": " $",
+       "gold_read": "2",
+       "substitute_read": "4"
+      },
+      {
+       "question_id": "86f00804",
+       "fold": 1,
+       "label": "success",
+       "gold": "The Seven Husbands of Evelyn Hugo",
+       "substitute": "The Sugar Factory at Icon Park.",
+       "prefix": " The",
+       "gold_read": " Seven",
+       "substitute_read": " Sugar"
+      },
+      {
+       "question_id": "d52b4f67",
+       "fold": 1,
+       "label": "wrong",
+       "gold": "The Grand Ballroom",
+       "substitute": "The Glass Menagerie",
+       "prefix": " The",
+       "gold_read": " Grand",
+       "substitute_read": " Glass"
+      },
+      {
+       "question_id": "58bf7951",
+       "fold": 3,
+       "label": "success",
+       "gold": "The Glass Menagerie",
+       "substitute": "The Grand Ballroom",
+       "prefix": " The",
+       "gold_read": " Glass",
+       "substitute_read": " Grand"
+      },
+      {
+       "question_id": "cc06de0d",
+       "fold": 3,
+       "label": "refusal",
+       "gold": "$6",
+       "substitute": "$50",
+       "prefix": " $",
+       "gold_read": "6",
+       "substitute_read": "5"
+      },
+      {
+       "question_id": "852ce960",
+       "fold": 4,
+       "label": "wrong",
+       "gold": "$400,000",
+       "substitute": "$25,000",
+       "prefix": " $",
+       "gold_read": "4",
+       "substitute_read": "2"
+      },
+      {
+       "question_id": "c19f7a0b",
+       "fold": 4,
+       "label": "refusal",
+       "gold": "6:30 pm",
+       "substitute": "6:00 pm",
+       "prefix": "6:",
+       "gold_read": "3",
+       "substitute_read": "0"
+      }
+     ]
+    },
+    "alignment_failures": [],
+    "substitute_exclusions": [
+     {
+      "question_id": "2698e78f",
+      "fold": 0,
+      "label": "success",
+      "question_type": "knowledge-update",
+      "gold": "every week",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "5d3d2817",
+      "fold": 0,
+      "label": "success",
+      "question_type": "single-session-user",
+      "gold": "Marketing specialist at a small startup",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "60d45044",
+      "fold": 0,
+      "label": "refusal",
+      "question_type": "single-session-user",
+      "gold": "Japanese short-grain rice",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "71a3fd6b",
+      "fold": 0,
+      "label": "wrong",
+      "question_type": "single-session-assistant",
+      "gold": "+49 (0) 62 32 / 14 23 - 0",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "e66b632c",
+      "fold": 0,
+      "label": "wrong",
+      "question_type": "knowledge-update",
+      "gold": "27 minutes and 45 seconds",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "07741c44",
+      "fold": 1,
+      "label": "success",
+      "question_type": "knowledge-update",
+      "gold": "under my bed",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "118b2229",
+      "fold": 1,
+      "label": "wrong",
+      "question_type": "single-session-user",
+      "gold": "45 minutes each way",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "2bf43736",
+      "fold": 1,
+      "label": "success",
+      "question_type": "single-session-assistant",
+      "gold": "Chapter 4 of Book 1, titled 'Vocal Prayer and Meditation'.",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "36580ce8",
+      "fold": 1,
+      "label": "success",
+      "question_type": "single-session-user",
+      "gold": "bronchitis",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "3ba21379",
+      "fold": 1,
+      "label": "refusal",
+      "question_type": "knowledge-update",
+      "gold": "Ford F-150 pickup truck",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "51b23612",
+      "fold": 1,
+      "label": "refusal",
+      "question_type": "single-session-assistant",
+      "gold": "Nu, pogodi!",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "66f24dbb",
+      "fold": 1,
+      "label": "refusal",
+      "question_type": "single-session-user",
+      "gold": "a yellow dress",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "3d86fd0a",
+      "fold": 2,
+      "label": "success",
+      "question_type": "single-session-user",
+      "gold": "a coffee shop in the city",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "bc8a6e93",
+      "fold": 2,
+      "label": "wrong",
+      "question_type": "single-session-user",
+      "gold": "a lemon blueberry cake",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "gpt4_fa19884d",
+      "fold": 2,
+      "label": "refusal",
+      "question_type": "temporal-reasoning",
+      "gold": "a bluegrass band that features a banjo player",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "a82c026e",
+      "fold": 3,
+      "label": "refusal",
+      "question_type": "single-session-user",
+      "gold": "Dark Souls 3 DLC",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "001be529",
+      "fold": 4,
+      "label": "wrong",
+      "question_type": "single-session-user",
+      "gold": "over a year",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "37d43f65",
+      "fold": 4,
+      "label": "success",
+      "question_type": "single-session-user",
+      "gold": "16GB",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "778164c6",
+      "fold": 4,
+      "label": "success",
+      "question_type": "single-session-assistant",
+      "gold": "Grilled Snapper with Mango Salsa",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "8aef76bc",
+      "fold": 4,
+      "label": "success",
+      "question_type": "single-session-assistant",
+      "gold": "Mod Podge or another sealant",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "b46e15ee",
+      "fold": 4,
+      "label": "wrong",
+      "question_type": "temporal-reasoning",
+      "gold": "the 'Walk for Hunger' charity event",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "b759caee",
+      "fold": 4,
+      "label": "success",
+      "question_type": "single-session-assistant",
+      "gold": "@jessica_poole_jewellery",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "dccbc061",
+      "fold": 4,
+      "label": "refusal",
+      "question_type": "single-session-user",
+      "gold": "A staunch atheist",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "f4f1d8a4",
+      "fold": 4,
+      "label": "wrong",
+      "question_type": "single-session-user",
+      "gold": "my sister",
+      "type": "other",
+      "exclusion": "type_other_rev8"
+     },
+     {
+      "question_id": "gpt4_b5700ca0",
+      "fold": 4,
+      "label": "refusal",
+      "question_type": "temporal-reasoning",
+      "gold": "the Episcopal Church",
+      "type": "name",
+      "exclusion": "no_substitute"
+     }
+    ],
+    "regex_vs_normalised": {
+     "checks": 879,
+     "disagreements": 0
+    },
+    "continuation_split_unstable": 0
+   },
+   "gate": {
+    "eligible_folds_2_4": 43,
+    "question_types_ge_15_folds_2_4": {},
+    "n_question_types_ge_15": 0,
+    "inview_failures_folds_2_4": 21,
+    "inview_failures_all_330": 32,
+    "verdict": "n/a under rev 8 (POOL fixed by rev 4; rev 1 arithmetic recorded beside)",
+    "verdict_rev1_arithmetic": "stop",
+    "rev2_check": {
+     "eligible_all": 70,
+     "failures_all": 32,
+     "need": {
+      "eligible_all": 85,
+      "failures_all": 40
+     },
+     "result": "recorded for rev 4 (rev 3: POOL regardless; the 85 / 40 bar was a re-read trigger)"
+    }
+   },
+   "rev8_changes": {
+    "rev3_eligible": 89,
+    "rev3_eligible_sha256": "ed0035d5aac103c324e9ac69541898481ee1267ecf276223f6eb73c8c114835b",
+    "excluded_other": 18,
+    "unchanged": 47,
+    "changed": 23,
+    "lost": 1,
+    "unchanged_identity_asserted": true,
+    "changed_rows": [
+     {
+      "question_id": "76d63226",
+      "fold": 0,
+      "surface_type": "number:bare",
+      "gold": "55-inch",
+      "rev3_substitute": "38",
+      "rev3_fails": "bare_unit",
+      "rev8_substitute": "10 pounds",
+      "rev8_read": [
+       "5",
+       "1"
+      ],
+      "shared_prefix": "",
+      "read_differs_by_case_only": false,
+      "label": "success"
+     },
+     {
+      "question_id": "95bcc1c8",
+      "fold": 0,
+      "surface_type": "number:bare",
+      "gold": "10",
+      "rev3_substitute": "3",
+      "rev3_fails": "bare_digits",
+      "rev8_substitute": "15",
+      "rev8_read": [
+       "0",
+       "5"
+      ],
+      "shared_prefix": "1",
+      "read_differs_by_case_only": false,
+      "label": "success"
+     },
+     {
+      "question_id": "ba61f0b9",
+      "fold": 0,
+      "surface_type": "number:bare",
+      "gold": "6",
+      "rev3_substitute": "100",
+      "rev3_fails": "bare_digits",
+      "rev8_substitute": "8",
+      "rev8_read": [
+       "6",
+       "8"
+      ],
+      "shared_prefix": "",
+      "read_differs_by_case_only": false,
+      "label": "wrong"
+     },
+     {
+      "question_id": "0e4e4c46",
+      "fold": 1,
+      "surface_type": "number:bare",
+      "gold": "132 points",
+      "rev3_substitute": "17",
+      "rev3_fails": "bare_digits",
+      "rev8_substitute": "500 Mbps",
+      "rev8_read": [
+       "1",
+       "5"
+      ],
+      "shared_prefix": "",
+      "read_differs_by_case_only": false,
+      "label": "wrong"
+     },
+     {
+      "question_id": "0f05491a",
+      "fold": 1,
+      "surface_type": "number:bare",
+      "gold": "120",
+      "rev3_substitute": "15",
+      "rev3_fails": "bare_digits",
+      "rev8_substitute": "100",
+      "rev8_read": [
+       "2",
+       "0"
+      ],
+      "shared_prefix": "1",
+      "read_differs_by_case_only": false,
+      "label": "wrong"
+     },
+     {
+      "question_id": "5831f84d",
+      "fold": 1,
+      "surface_type": "number:bare",
+      "gold": "15",
+      "rev3_substitute": "5",
+      "rev3_fails": "bare_digits",
+      "rev8_substitute": "5-2",
+      "rev8_read": [
+       "1",
+       "5"
+      ],
+      "shared_prefix": "",
+      "read_differs_by_case_only": false,
+      "label": "wrong"
+     },
+     {
+      "question_id": "b6019101",
+      "fold": 1,
+      "surface_type": "number:bare",
+      "gold": "5",
+      "rev3_substitute": "25",
+      "rev3_fails": "bare_digits",
+      "rev8_substitute": "2",
+      "rev8_read": [
+       "5",
+       "2"
+      ],
+      "shared_prefix": "",
+      "read_differs_by_case_only": false,
+      "label": "success"
+     },
+     {
+      "question_id": "d52b4f67",
+      "fold": 1,
+      "surface_type": "name",
+      "gold": "The Grand Ballroom",
+      "rev3_substitute": "Nostalgia",
+      "rev3_fails": "determiner",
+      "rev8_substitute": "The Glass Menagerie",
+      "rev8_read": [
+       " Grand",
+       " Glass"
+      ],
+      "shared_prefix": " The",
+      "read_differs_by_case_only": false,
+      "label": "wrong"
+     },
+     {
+      "question_id": "ad7109d1",
+      "fold": 2,
+      "surface_type": "number:bare",
+      "gold": "500 Mbps",
+      "rev3_substitute": "18",
+      "rev3_fails": "bare_digits",
+      "rev8_substitute": "132 points",
+      "rev8_read": [
+       "5",
+       "1"
+      ],
+      "shared_prefix": "",
+      "read_differs_by_case_only": false,
+      "label": "refusal"
+     },
+     {
+      "question_id": "cf22b7bf",
+      "fold": 2,
+      "surface_type": "number:bare",
+      "gold": "10 pounds",
+      "rev3_substitute": "2",
+      "rev3_fails": "bare_digits",
+      "rev8_substitute": "55-inch",
+      "rev8_read": [
+       "1",
+       "5"
+      ],
+      "shared_prefix": "",
+      "read_differs_by_case_only": false,
+      "label": "wrong"
+     },
+     {
+      "question_id": "ed4ddc30",
+      "fold": 2,
+      "surface_type": "number:bare",
+      "gold": "20",
+      "rev3_substitute": "856",
+      "rev3_fails": "bare_digits",
+      "rev8_substitute": "32",
+      "rev8_read": [
+       "2",
+       "3"
+      ],
+      "shared_prefix": "",
+      "read_differs_by_case_only": false,
+      "label": "refusal"
+     },
+     {
+      "question_id": "18dcd5a5",
+      "fold": 3,
+      "surface_type": "number:bare",
+      "gold": "4",
+      "rev3_substitute": "5-2",
+      "rev3_fails": "bare_digits",
+      "rev8_substitute": "3",
+      "rev8_read": [
+       "4",
+       "3"
+      ],
+      "shared_prefix": "",
+      "read_differs_by_case_only": false,
+      "label": "wrong"
+     },
+     {
+      "question_id": "58bf7951",
+      "fold": 3,
+      "surface_type": "name",
+      "gold": "The Glass Menagerie",
+      "rev3_substitute": "Mindful.org.",
+      "rev3_fails": "determiner",
+      "rev8_substitute": "The Grand Ballroom",
+      "rev8_read": [
+       " Glass",
+       " Grand"
+      ],
+      "shared_prefix": " The",
+      "read_differs_by_case_only": false,
+      "label": "success"
+     },
+     {
+      "question_id": "60472f9c",
+      "fold": 3,
+      "surface_type": "number:bare",
+      "gold": "2",
+      "rev3_substitute": "18",
+      "rev3_fails": "bare_digits",
+      "rev8_substitute": "6",
+      "rev8_read": [
+       "2",
+       "6"
+      ],
+      "shared_prefix": "",
+      "read_differs_by_case_only": false,
+      "label": "success"
+     },
+     {
+      "question_id": "affe2881",
+      "fold": 3,
+      "surface_type": "number:bare",
+      "gold": "32",
+      "rev3_substitute": "220",
+      "rev3_fails": "bare_digits",
+      "rev8_substitute": "25",
+      "rev8_read": [
+       "3",
+       "2"
+      ],
+      "shared_prefix": "",
+      "read_differs_by_case_only": false,
+      "label": "success"
+     },
+     {
+      "question_id": "e8a79c70",
+      "fold": 3,
+      "surface_type": "number:bare",
+      "gold": "2-3 eggs",
+      "rev3_substitute": "500",
+      "rev3_fails": "bare_digits",
+      "rev8_substitute": "10 pounds",
+      "rev8_read": [
+       "2",
+       "1"
+      ],
+      "shared_prefix": "",
+      "read_differs_by_case_only": false,
+      "label": "success"
+     },
+     {
+      "question_id": "01493427",
+      "fold": 4,
+      "surface_type": "number:bare",
+      "gold": "25",
+      "rev3_substitute": "132 points",
+      "rev3_fails": "bare_digits",
+      "rev8_substitute": "33",
+      "rev8_read": [
+       "2",
+       "3"
+      ],
+      "shared_prefix": "",
+      "read_differs_by_case_only": false,
+      "label": "refusal"
+     },
+     {
+      "question_id": "0e5e2d1a",
+      "fold": 4,
+      "surface_type": "number:bare",
+      "gold": "38 subjects",
+      "rev3_substitute": "856",
+      "rev3_fails": "bare_digits",
+      "rev8_substitute": "55-inch",
+      "rev8_read": [
+       "3",
+       "5"
+      ],
+      "shared_prefix": "",
+      "read_differs_by_case_only": false,
+      "label": "wrong"
+     },
+     {
+      "question_id": "3249768e",
+      "fold": 4,
+      "surface_type": "name",
+      "gold": "Absinthe",
+      "rev3_substitute": "The Glass Menagerie",
+      "rev3_fails": "determiner",
+      "rev8_substitute": "Tom",
+      "rev8_read": [
+       " Abs",
+       " Tom"
+      ],
+      "shared_prefix": "",
+      "read_differs_by_case_only": false,
+      "label": "wrong"
+     },
+     {
+      "question_id": "5809eb10",
+      "fold": 4,
+      "surface_type": "number:bare",
+      "gold": "2014.",
+      "rev3_substitute": "3,000 miles",
+      "rev3_fails": "bare_unit",
+      "rev8_substitute": "1300",
+      "rev8_read": [
+       "2",
+       "1"
+      ],
+      "shared_prefix": "",
+      "read_differs_by_case_only": false,
+      "label": "success"
+     },
+     {
+      "question_id": "5e1b23de",
+      "fold": 4,
+      "surface_type": "number:bare",
+      "gold": "3",
+      "rev3_substitute": "25",
+      "rev3_fails": "bare_digits",
+      "rev8_substitute": "5",
+      "rev8_read": [
+       "3",
+       "5"
+      ],
+      "shared_prefix": "",
+      "read_differs_by_case_only": false,
+      "label": "success"
+     },
+     {
+      "question_id": "c7dc5443",
+      "fold": 4,
+      "surface_type": "number:bare",
+      "gold": "5-2",
+      "rev3_substitute": "8 meals",
+      "rev3_fails": "bare_digits",
+      "rev8_substitute": "10",
+      "rev8_read": [
+       "5",
+       "1"
+      ],
+      "shared_prefix": "",
+      "read_differs_by_case_only": false,
+      "label": "refusal"
+     },
+     {
+      "question_id": "ec81a493",
+      "fold": 4,
+      "surface_type": "number:bare",
+      "gold": "500",
+      "rev3_substitute": "3",
+      "rev3_fails": "bare_digits",
+      "rev8_substitute": "100",
+      "rev8_read": [
+       "5",
+       "1"
+      ],
+      "shared_prefix": "",
+      "read_differs_by_case_only": false,
+      "label": "success"
+     }
+    ],
+    "lost_rows": [
+     {
+      "question_id": "gpt4_b5700ca0",
+      "fold": 4,
+      "surface_type": "name",
+      "gold": "the Episcopal Church",
+      "rev3_substitute": "Kansas City Masterpiece",
+      "rev3_fails": "determiner",
+      "exclusion": "no_substitute"
+     }
+    ],
+    "unchanged_question_ids": [
+     "15745da0",
+     "1b9b7252",
+     "59524333",
+     "7e00a6cb",
+     "c14c00dd",
+     "c5e8278d",
+     "c7cf7dfd",
+     "fca762bc",
+     "fea54f57",
+     "0862e8bf",
+     "19b5f2b3",
+     "29f2956b",
+     "618f13b2",
+     "7401057b",
+     "7527f7e2",
+     "7a8d0b71",
+     "86f00804",
+     "e01b8e2f",
+     "gpt4_468eb064",
+     "08e075c7",
+     "1de5cff2",
+     "1faac195",
+     "3e321797",
+     "45dc21b6",
+     "4b24c848",
+     "6aeb4375",
+     "70b3e69b",
+     "86b68151",
+     "099778bb",
+     "577d4d32",
+     "5a4f22c0",
+     "8464fc84",
+     "8b9d4367",
+     "a96c20ee",
+     "cc06de0d",
+     "ccb36322",
+     "e982271f",
+     "f523d9fe",
+     "f9e8c073",
+     "faba32e5",
+     "1e043500",
+     "26bdc477",
+     "7a87bd0c",
+     "852ce960",
+     "c19f7a0b",
+     "d596882b",
+     "dd2973ad"
+    ]
+   },
+   "rev8_vs_previous": {
+    "previous": "runs/exp44_swapgate/rev8_e60c8b5",
+    "n_previous": 70,
+    "n_now": 70,
+    "identical": 69,
+    "differing": [
+     {
+      "question_id": "c7dc5443",
+      "before": "50",
+      "after": "10",
+      "after_read": [
+       "5",
+       "1"
+      ]
+     }
+    ]
+   },
+   "eligible": [
+    {
+     "question_id": "15745da0",
+     "fold": 0,
+     "surface_type": "number:duration",
+     "gold": "three months",
+     "substitute": "Two weeks"
+    },
+    {
+     "question_id": "1b9b7252",
+     "fold": 0,
+     "surface_type": "name",
+     "gold": "Mindful.org.",
+     "substitute": "Harvard University"
+    },
+    {
+     "question_id": "59524333",
+     "fold": 0,
+     "surface_type": "date",
+     "gold": "6:00 pm",
+     "substitute": "6:45 AM"
+    },
+    {
+     "question_id": "76d63226",
+     "fold": 0,
+     "surface_type": "number:bare",
+     "gold": "55-inch",
+     "substitute": "10 pounds"
+    },
+    {
+     "question_id": "7e00a6cb",
+     "fold": 0,
+     "surface_type": "name",
+     "gold": "International Budget Hostel",
+     "substitute": "Harvard University"
+    },
+    {
+     "question_id": "95bcc1c8",
+     "fold": 0,
+     "surface_type": "number:bare",
+     "gold": "10",
+     "substitute": "15"
+    },
+    {
+     "question_id": "ba61f0b9",
+     "fold": 0,
+     "surface_type": "number:bare",
+     "gold": "6",
+     "substitute": "8"
+    },
+    {
+     "question_id": "c14c00dd",
+     "fold": 0,
+     "surface_type": "name",
+     "gold": "Trader Joe's",
+     "substitute": "Paris"
+    },
+    {
+     "question_id": "c5e8278d",
+     "fold": 0,
+     "surface_type": "name",
+     "gold": "Johnson",
+     "substitute": "IKEA"
+    },
+    {
+     "question_id": "c7cf7dfd",
+     "fold": 0,
+     "surface_type": "name",
+     "gold": "Nostalgia",
+     "substitute": "Jaipur Rugs"
+    },
+    {
+     "question_id": "fca762bc",
+     "fold": 0,
+     "surface_type": "name",
+     "gold": "Memrise",
+     "substitute": "Jaipur Rugs"
+    },
+    {
+     "question_id": "fea54f57",
+     "fold": 0,
+     "surface_type": "name",
+     "gold": "Evolution",
+     "substitute": "Johnson"
+    },
+    {
+     "question_id": "0862e8bf",
+     "fold": 1,
+     "surface_type": "name",
+     "gold": "Luna",
+     "substitute": "TechCorp"
+    },
+    {
+     "question_id": "0e4e4c46",
+     "fold": 1,
+     "surface_type": "number:bare",
+     "gold": "132 points",
+     "substitute": "500 Mbps"
+    },
+    {
+     "question_id": "0f05491a",
+     "fold": 1,
+     "surface_type": "number:bare",
+     "gold": "120",
+     "substitute": "100"
+    },
+    {
+     "question_id": "19b5f2b3",
+     "fold": 1,
+     "surface_type": "number:duration",
+     "gold": "two weeks",
+     "substitute": "three months"
+    },
+    {
+     "question_id": "29f2956b",
+     "fold": 1,
+     "surface_type": "number:duration",
+     "gold": "30 minutes",
+     "substitute": "4 days."
+    },
+    {
+     "question_id": "5831f84d",
+     "fold": 1,
+     "surface_type": "number:bare",
+     "gold": "15",
+     "substitute": "5-2"
+    },
+    {
+     "question_id": "618f13b2",
+     "fold": 1,
+     "surface_type": "number:bare",
+     "gold": "six",
+     "substitute": "Two"
+    },
+    {
+     "question_id": "7401057b",
+     "fold": 1,
+     "surface_type": "number:bare",
+     "gold": "Two",
+     "substitute": "five"
+    },
+    {
+     "question_id": "7527f7e2",
+     "fold": 1,
+     "surface_type": "number:currency",
+     "gold": "$800",
+     "substitute": "$0.75"
+    },
+    {
+     "question_id": "7a8d0b71",
+     "fold": 1,
+     "surface_type": "number:currency",
+     "gold": "$2,000",
+     "substitute": "$400,000"
+    },
+    {
+     "question_id": "86f00804",
+     "fold": 1,
+     "surface_type": "name",
+     "gold": "The Seven Husbands of Evelyn Hugo",
+     "substitute": "The Sugar Factory at Icon Park."
+    },
+    {
+     "question_id": "b6019101",
+     "fold": 1,
+     "surface_type": "number:bare",
+     "gold": "5",
+     "substitute": "2"
+    },
+    {
+     "question_id": "d52b4f67",
+     "fold": 1,
+     "surface_type": "name",
+     "gold": "The Grand Ballroom",
+     "substitute": "The Glass Menagerie"
+    },
+    {
+     "question_id": "e01b8e2f",
+     "fold": 1,
+     "surface_type": "name",
+     "gold": "Hawaii",
+     "substitute": "Memrise"
+    },
+    {
+     "question_id": "gpt4_468eb064",
+     "fold": 1,
+     "surface_type": "name",
+     "gold": "Emma",
+     "substitute": "Absinthe"
+    },
+    {
+     "question_id": "08e075c7",
+     "fold": 2,
+     "surface_type": "number:duration",
+     "gold": "9 months",
+     "substitute": "10 minutes"
+    },
+    {
+     "question_id": "1de5cff2",
+     "fold": 2,
+     "surface_type": "name",
+     "gold": "Veja",
+     "substitute": "Pennsylvania"
+    },
+    {
+     "question_id": "1faac195",
+     "fold": 2,
+     "surface_type": "name",
+     "gold": "Denver",
+     "substitute": "Emma"
+    },
+    {
+     "question_id": "3e321797",
+     "fold": 2,
+     "surface_type": "number:duration",
+     "gold": "10 minutes",
+     "substitute": "3 weeks ago"
+    },
+    {
+     "question_id": "45dc21b6",
+     "fold": 2,
+     "surface_type": "number:bare",
+     "gold": "3",
+     "substitute": "2"
+    },
+    {
+     "question_id": "4b24c848",
+     "fold": 2,
+     "surface_type": "number:bare",
+     "gold": "five",
+     "substitute": "six"
+    },
+    {
+     "question_id": "6aeb4375",
+     "fold": 2,
+     "surface_type": "number:bare",
+     "gold": "four",
+     "substitute": "five"
+    },
+    {
+     "question_id": "70b3e69b",
+     "fold": 2,
+     "surface_type": "name",
+     "gold": "Manolo García",
+     "substitute": "IKEA"
+    },
+    {
+     "question_id": "86b68151",
+     "fold": 2,
+     "surface_type": "name",
+     "gold": "IKEA",
+     "substitute": "Denver"
+    },
+    {
+     "question_id": "ad7109d1",
+     "fold": 2,
+     "surface_type": "number:bare",
+     "gold": "500 Mbps",
+     "substitute": "132 points"
+    },
+    {
+     "question_id": "cf22b7bf",
+     "fold": 2,
+     "surface_type": "number:bare",
+     "gold": "10 pounds",
+     "substitute": "55-inch"
+    },
+    {
+     "question_id": "ed4ddc30",
+     "fold": 2,
+     "surface_type": "number:bare",
+     "gold": "20",
+     "substitute": "32"
+    },
+    {
+     "question_id": "099778bb",
+     "fold": 3,
+     "surface_type": "number:percent",
+     "gold": "20%",
+     "substitute": "10%"
+    },
+    {
+     "question_id": "18dcd5a5",
+     "fold": 3,
+     "surface_type": "number:bare",
+     "gold": "4",
+     "substitute": "3"
+    },
+    {
+     "question_id": "577d4d32",
+     "fold": 3,
+     "surface_type": "date",
+     "gold": "7 pm",
+     "substitute": "2 AM"
+    },
+    {
+     "question_id": "58bf7951",
+     "fold": 3,
+     "surface_type": "name",
+     "gold": "The Glass Menagerie",
+     "substitute": "The Grand Ballroom"
+    },
+    {
+     "question_id": "5a4f22c0",
+     "fold": 3,
+     "surface_type": "name",
+     "gold": "TechCorp",
+     "substitute": "Target"
+    },
+    {
+     "question_id": "60472f9c",
+     "fold": 3,
+     "surface_type": "number:bare",
+     "gold": "2",
+     "substitute": "6"
+    },
+    {
+     "question_id": "8464fc84",
+     "fold": 3,
+     "surface_type": "name",
+     "gold": "Roscioli",
+     "substitute": "TechCorp"
+    },
+    {
+     "question_id": "8b9d4367",
+     "fold": 3,
+     "surface_type": "name",
+     "gold": "Jaipur Rugs",
+     "substitute": "Kansas City Masterpiece"
+    },
+    {
+     "question_id": "a96c20ee",
+     "fold": 3,
+     "surface_type": "name",
+     "gold": "Harvard University",
+     "substitute": "Summer Vibes"
+    },
+    {
+     "question_id": "affe2881",
+     "fold": 3,
+     "surface_type": "number:bare",
+     "gold": "32",
+     "substitute": "25"
+    },
+    {
+     "question_id": "cc06de0d",
+     "fold": 3,
+     "surface_type": "number:currency",
+     "gold": "$6",
+     "substitute": "$50"
+    },
+    {
+     "question_id": "ccb36322",
+     "fold": 3,
+     "surface_type": "name",
+     "gold": "Spotify",
+     "substitute": "Emma"
+    },
+    {
+     "question_id": "e8a79c70",
+     "fold": 3,
+     "surface_type": "number:bare",
+     "gold": "2-3 eggs",
+     "substitute": "10 pounds"
+    },
+    {
+     "question_id": "e982271f",
+     "fold": 3,
+     "surface_type": "name",
+     "gold": "Revolution Hall",
+     "substitute": "Emma"
+    },
+    {
+     "question_id": "f523d9fe",
+     "fold": 3,
+     "surface_type": "name",
+     "gold": "Doc Martin",
+     "substitute": "Trader Joe's"
+    },
+    {
+     "question_id": "f9e8c073",
+     "fold": 3,
+     "surface_type": "number:bare",
+     "gold": "five",
+     "substitute": "six"
+    },
+    {
+     "question_id": "faba32e5",
+     "fold": 3,
+     "surface_type": "number:duration",
+     "gold": "24 hours",
+     "substitute": "3 days."
+    },
+    {
+     "question_id": "01493427",
+     "fold": 4,
+     "surface_type": "number:bare",
+     "gold": "25",
+     "substitute": "33"
+    },
+    {
+     "question_id": "0e5e2d1a",
+     "fold": 4,
+     "surface_type": "number:bare",
+     "gold": "38 subjects",
+     "substitute": "55-inch"
+    },
+    {
+     "question_id": "1e043500",
+     "fold": 4,
+     "surface_type": "name",
+     "gold": "Summer Vibes",
+     "substitute": "Tom"
+    },
+    {
+     "question_id": "26bdc477",
+     "fold": 4,
+     "surface_type": "number:bare",
+     "gold": "five",
+     "substitute": "four"
+    },
+    {
+     "question_id": "3249768e",
+     "fold": 4,
+     "surface_type": "name",
+     "gold": "Absinthe",
+     "substitute": "Tom"
+    },
+    {
+     "question_id": "5809eb10",
+     "fold": 4,
+     "surface_type": "number:bare",
+     "gold": "2014.",
+     "substitute": "1300"
+    },
+    {
+     "question_id": "5e1b23de",
+     "fold": 4,
+     "surface_type": "number:bare",
+     "gold": "3",
+     "substitute": "5"
+    },
+    {
+     "question_id": "7a87bd0c",
+     "fold": 4,
+     "surface_type": "number:duration",
+     "gold": "4 weeks",
+     "substitute": "5.5 weeks"
+    },
+    {
+     "question_id": "852ce960",
+     "fold": 4,
+     "surface_type": "number:currency",
+     "gold": "$400,000",
+     "substitute": "$25,000"
+    },
+    {
+     "question_id": "c19f7a0b",
+     "fold": 4,
+     "surface_type": "date",
+     "gold": "6:30 pm",
+     "substitute": "6:00 pm"
+    },
+    {
+     "question_id": "c7dc5443",
+     "fold": 4,
+     "surface_type": "number:bare",
+     "gold": "5-2",
+     "substitute": "10"
+    },
+    {
+     "question_id": "d596882b",
+     "fold": 4,
+     "surface_type": "name",
+     "gold": "By Chloe",
+     "substitute": "Data Science"
+    },
+    {
+     "question_id": "dd2973ad",
+     "fold": 4,
+     "surface_type": "date",
+     "gold": "2 AM",
+     "substitute": "7 pm"
+    },
+    {
+     "question_id": "ec81a493",
+     "fold": 4,
+     "surface_type": "number:bare",
+     "gold": "500",
+     "substitute": "100"
+    }
+   ]
+  }
+ },
+ "note": "Qwen 2.5 7B shares the Qwen 3B rows and prompts (exp44_patch.population asserts it)."
+}

@@ -1,0 +1,234 @@
+{
+ "question_id": "5d3d2817",
+ "fold": 0,
+ "reader": "phi4",
+ "n_tokens": 812,
+ "n_leading_ws": 0,
+ "prompt_sha256": "b3eaf9e663bc7e8f18b2c7a83988c9e34c88fa68137eb7ab3d395a9f8445d80f",
+ "intact_prompt_sha256": "b3eaf9e663bc7e8f18b2c7a83988c9e34c88fa68137eb7ab3d395a9f8445d80f",
+ "n_evidence_lines_cut": 0,
+ "n_bos": 0,
+ "positions": {
+  "P1": [
+   811
+  ],
+  "P0": [
+   809
+  ],
+  "E": [
+   440
+  ],
+  "Q": [
+   803
+  ],
+  "P1_raw": [
+   811
+  ]
+ },
+ "tracked_names": [
+  "gold",
+  "unknown_sp",
+  "Unknown_sp",
+  "unknown"
+ ],
+ "tracked": {
+  "gold": 18729,
+  "unknown_sp": 9987,
+  "Unknown_sp": 22435,
+  "unknown": 16476
+ },
+ "gold_token_text": " Marketing",
+ "position_mode": "forced",
+ "answer_marker": true,
+ "variants": [
+  "logit"
+ ],
+ "read_tag": "exp43_lens_pod_v1",
+ "measures": {
+  "logit": {
+   "k": 10,
+   "layers": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39
+   ],
+   "P1": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 2,
+     "emergence_depth": 0.725,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 37,
+     "final_rank": 37,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 18,
+     "final_rank": 18,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 233,
+     "final_rank": 1602,
+     "first_top1_depth": null
+    }
+   },
+   "P0": {
+    "gold": {
+     "best_rank": 2428,
+     "final_rank": 73543,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 3694,
+     "final_rank": 25827,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 13811,
+     "final_rank": 45105,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 5810,
+     "final_rank": 6384,
+     "first_top1_depth": null
+    }
+   },
+   "E": [
+    {
+     "gold": {
+      "best_rank": 6518,
+      "final_rank": 26053,
+      "emergence_depth": null,
+      "outcome": "A"
+     },
+     "unknown_sp": {
+      "best_rank": 27,
+      "final_rank": 28869,
+      "first_top1_depth": null
+     },
+     "Unknown_sp": {
+      "best_rank": 47,
+      "final_rank": 35171,
+      "first_top1_depth": null
+     },
+     "unknown": {
+      "best_rank": 47,
+      "final_rank": 177,
+      "first_top1_depth": null
+     }
+    }
+   ],
+   "Q": {
+    "gold": {
+     "best_rank": 15382,
+     "final_rank": 85677,
+     "emergence_depth": null,
+     "outcome": "A"
+    },
+    "unknown_sp": {
+     "best_rank": 291,
+     "final_rank": 12305,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 238,
+     "final_rank": 13655,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 320,
+     "final_rank": 935,
+     "first_top1_depth": null
+    }
+   },
+   "P1_raw": {
+    "gold": {
+     "best_rank": 1,
+     "final_rank": 2,
+     "emergence_depth": 0.725,
+     "outcome": "C"
+    },
+    "unknown_sp": {
+     "best_rank": 37,
+     "final_rank": 37,
+     "first_top1_depth": null
+    },
+    "Unknown_sp": {
+     "best_rank": 18,
+     "final_rank": 18,
+     "first_top1_depth": null
+    },
+    "unknown": {
+     "best_rank": 233,
+     "final_rank": 1602,
+     "first_top1_depth": null
+    }
+   }
+  }
+ },
+ "family": {
+  "key": "phi4",
+  "model_id": "microsoft/phi-4",
+  "template_kwargs": {},
+  "system_text": null,
+  "system_role": true,
+  "stop_tokens": [
+   "<|im_end|>",
+   "<|endoftext|>"
+  ],
+  "refusal_ids": [
+   9987,
+   22435
+  ]
+ },
+ "elapsed_s": 0.47706692898645997,
+ "model_id": "microsoft/phi-4",
+ "weights": null,
+ "size": "large",
+ "device": "cuda",
+ "dtype": "bfloat16",
+ "lens": "identity (logit lens)",
+ "lens_sha256": null
+}

@@ -1,0 +1,9 @@
+phi4mini logit smoke: 5 rows, 5 to read
+[transformers] This model config has set a `rope_parameters['original_max_position_embeddings']` field, to be used together with `max_position_embeddings` to determine a scaling factor. Please set the `factor` field of `rope_parameters`with this ratio instead -- we recommend the use of this field over `original_max_position_embeddings`, as it is compatible with most model architectures.
+[1/5] 00ca467f f0 1.21s n_tokens=791 P1 gold logit=C final_rank=2
+[2/5] 06db6396 f0 0.57s n_tokens=800 P1 gold logit=C final_rank=1
+[3/5] 0bb5a684 f0 0.62s n_tokens=1015 P1 gold logit=A final_rank=19
+[4/5] 0db4c65d f0 0.61s n_tokens=901 P1 gold logit=C final_rank=1
+[5/5] 15745da0 f0 0.37s n_tokens=725 P1 gold logit=C final_rank=4
+{"reader": "phi4mini", "model_id": "microsoft/Phi-4-mini-instruct", "variant": "logit", "smoke": true, "device": "cuda", "dtype": "bfloat16", "load_s": 7.200803768937476, "questions": 5, "seconds_per_question": 0.6759298807941377, "wall_s": 3.3992737090447918, "deadline_cut": false, "peak_rss_mb": 5535.67578125, "peak_gpu_mb": 7591.06982421875, "n_layers": 32, "d_model": 3072}
+smoke ok: phi4mini, 5 rows

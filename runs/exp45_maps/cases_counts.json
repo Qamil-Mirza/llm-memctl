@@ -1,0 +1,213 @@
+{
+ "seed": 45,
+ "cases_sha256": "e3f625a4ad61679a444a650958e393fbb2850414f065c914eeac6138d01edf3d",
+ "pass": true,
+ "problems": {
+  "counts": [],
+  "duplicate_gold": [],
+  "competitor_is_gold": [],
+  "pinned": [],
+  "pool_tokens": [],
+  "distractor_overlap": [],
+  "parity": [],
+  "prompt_duplicate": []
+ },
+ "counts": {
+  "n_prompts": 864,
+  "by_task": {
+   "DE": 288,
+   "RC": 288,
+   "TU": 288
+  },
+  "by_split": {
+   "dev": 432,
+   "held": 432
+  },
+  "by_task_split": {
+   "DE|dev": 144,
+   "DE|held": 144,
+   "RC|dev": 144,
+   "RC|held": 144,
+   "TU|dev": 144,
+   "TU|held": 144
+  },
+  "by_task_variant_split": {
+   "DE|v0|dev": 36,
+   "DE|v0|held": 36,
+   "DE|v1|dev": 36,
+   "DE|v1|held": 36,
+   "DE|v2|dev": 36,
+   "DE|v2|held": 36,
+   "DE|v3|dev": 36,
+   "DE|v3|held": 36,
+   "RC|v0|dev": 36,
+   "RC|v0|held": 36,
+   "RC|v1|dev": 36,
+   "RC|v1|held": 36,
+   "RC|v2|dev": 36,
+   "RC|v2|held": 36,
+   "RC|v3|dev": 36,
+   "RC|v3|held": 36,
+   "TU|v0|dev": 36,
+   "TU|v0|held": 36,
+   "TU|v1|dev": 36,
+   "TU|v1|held": 36,
+   "TU|v2|dev": 36,
+   "TU|v2|held": 36,
+   "TU|v3|dev": 36,
+   "TU|v3|held": 36
+  },
+  "by_format_split": {
+   "F1|dev": 216,
+   "F1|held": 216,
+   "F2|dev": 216,
+   "F2|held": 216
+  },
+  "by_hardness_split": {
+   "H0|dev": 144,
+   "H0|held": 144,
+   "H1|dev": 144,
+   "H1|held": 144,
+   "H2|dev": 144,
+   "H2|held": 144
+  },
+  "gold_use_by_split": {
+   "dev": {
+    "Alice": 6,
+    "Ben": 6,
+    "Brighton": 42,
+    "Cambridge": 18,
+    "Cardiff": 36,
+    "Chester": 24,
+    "Derby": 24,
+    "Durham": 42,
+    "Edinburgh": 42,
+    "Emma": 12,
+    "Henry": 6,
+    "Kate": 6,
+    "Laura": 12,
+    "Leeds": 18,
+    "Liverpool": 18,
+    "Manchester": 36,
+    "Norwich": 24,
+    "Peter": 12,
+    "Rachel": 6,
+    "Sarah": 6,
+    "York": 36
+   },
+   "held": {
+    "Alice": 6,
+    "Ben": 6,
+    "Brighton": 18,
+    "Cambridge": 42,
+    "Cardiff": 24,
+    "Chester": 36,
+    "David": 12,
+    "Derby": 36,
+    "Durham": 18,
+    "Edinburgh": 18,
+    "Henry": 6,
+    "James": 12,
+    "Kate": 6,
+    "Leeds": 42,
+    "Liverpool": 42,
+    "Manchester": 24,
+    "Norwich": 36,
+    "Paul": 12,
+    "Rachel": 6,
+    "Sarah": 6,
+    "York": 24
+   }
+  },
+  "pinned_per_prompt": {
+   "6": 216,
+   "8": 576,
+   "10": 72
+  },
+  "prompt_chars_min_median_max": [
+   40,
+   932,
+   1568
+  ],
+  "de_v3_placement": {
+   "dev|False": 18,
+   "dev|True": 18,
+   "held|False": 18,
+   "held|True": 18
+  }
+ },
+ "design": {
+  "names": [
+   "Alice",
+   "Ben",
+   "David",
+   "Emma",
+   "Henry",
+   "James",
+   "Kate",
+   "Laura",
+   "Paul",
+   "Rachel",
+   "Sarah",
+   "Peter"
+  ],
+  "cities": [
+   "York",
+   "Manchester",
+   "Liverpool",
+   "Leeds",
+   "Cardiff",
+   "Cambridge",
+   "Edinburgh",
+   "Brighton",
+   "Norwich",
+   "Durham",
+   "Derby",
+   "Chester"
+  ],
+  "jobs": [
+   "teacher",
+   "doctor",
+   "chef",
+   "artist",
+   "writer",
+   "cook",
+   "driver",
+   "manager",
+   "actor",
+   "editor",
+   "scientist",
+   "designer"
+  ],
+  "months_unused": [
+   "January",
+   "February",
+   "March",
+   "April",
+   "May",
+   "June",
+   "July",
+   "August",
+   "September",
+   "October",
+   "November",
+   "December"
+  ],
+  "distractor_relations": [
+   "lives",
+   "lives",
+   "lives",
+   "lives",
+   "job",
+   "job",
+   "job",
+   "works_in",
+   "works_in",
+   "works_in"
+  ],
+  "f2_instruction": "Below is your memory of a long conversation, followed by a question about it. Answer with a short phrase that states the fact asked for. If the memory does not contain the answer, reply: unknown",
+  "tokenizer": "Qwen/Qwen2.5-3B-Instruct",
+  "dev": "even base index",
+  "held": "odd base index"
+ }
+}

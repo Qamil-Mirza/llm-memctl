@@ -1,0 +1,251 @@
+"""The Jacobian lens (§33): how much a reader's output depends on each region of its prompt.
+
+Pure functions over strings, token offsets and numpy arrays, plus one gradient pass that needs torch
+and transformers (imported inside the functions that use them). Regions: the chat template, the
+instruction, the evidence memory lines, the distractor memory lines and the question.
+"""
+
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+
+import numpy as np
+
+REGIONS = ("template", "instruction", "evidence", "distractor", "question")
+MEMORY_HEADER = "## Memory\n"
+INPUT_HEADER = "\n\n## Current input"
+TARGETS = ("gold", "margin", "own")
+ANSWER_PREFIX = "Answer:"
+
+
+def segment_prompt(prompt: str, memory_lines: tuple[str, ...], evidence_lines: tuple[str, ...]) -> list[tuple[str, int, int]]:
+    """Char spans (region, start, end) tiling the prompt. Memory lines are found by exact search in order,
+    so a line whose content contains a newline stays one line. Gaps (separators) join the span before them."""
+    header = prompt.index(MEMORY_HEADER) + len(MEMORY_HEADER)
+    spans: list[tuple[str, int, int]] = [("instruction", 0, header)]
+    cursor = header
+    evidence = set(evidence_lines)
+    for line in memory_lines:
+        start = prompt.find(line, cursor)
+        if start < 0:
+            raise ValueError(f"memory line not found in prompt: {line[:60]!r}")
+        if start > cursor:  # separator before this line belongs to the previous span
+            region, s, _ = spans[-1]
+            spans[-1] = (region, s, start)
+        end = start + len(line)
+        spans.append(("evidence" if line in evidence else "distractor", start, end))
+        cursor = end
+    question = prompt.index(INPUT_HEADER, cursor)
+    if question > cursor:
+        region, s, _ = spans[-1]
+        spans[-1] = (region, s, question)
+    spans.append(("question", question, len(prompt)))
+    return spans
+
+
+def token_regions(offsets: list[tuple[int, int]], prompt_start: int, prompt_len: int,
+                  segments: list[tuple[str, int, int]]) -> list[str]:
+    """A region per token. A token is placed by its start char; tokens starting outside the prompt are template."""
+    regions = []
+    for start, end in offsets:
+        if end <= prompt_start or start >= prompt_start + prompt_len:
+            regions.append("template")
+            continue
+        char = max(start, prompt_start) - prompt_start
+        region = next((name for name, s, e in segments if s <= char < e), None)
+        regions.append(region or "template")
+    return regions
+
+
+def wrap_chat(tokenizer, prompt: str) -> str:
+    """The chat text the vLLM server built: one user message, generation prompt, no thinking (as llm.py)."""
+    messages = [{"role": "user", "content": prompt}]
+    try:
+        return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True, enable_thinking=False)
+    except TypeError:
+        return tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+
+
+def _ids(tokenizer, text: str) -> list[int]:
+    return list(tokenizer(text, add_special_tokens=False).input_ids)
+
+
+def unknown_id(tokenizer) -> int:
+    """The first token of " unknown", the competitor in the margin target."""
+    return _ids(tokenizer, " unknown")[0]
+
+
+def _margin_length(tokenizer, answer: list[int]) -> int:
+    """How many gold tokens the margin scores: through the first content token, leading whitespace-only
+    tokens included (Qwen splits digits off, so " 4 hours" starts with a bare-space token)."""
+    for index, token in enumerate(answer):
+        if tokenizer.decode([token]).strip():
+            return index + 1
+    return len(answer)
+
+
+def continuation_ids(tokenizer, target: str, gold: str, output: str) -> tuple[list[int], int]:
+    """Ids appended after the chat text, and the index into them where scoring starts. The gold answer is
+    tokenised on its own (" " + gold) so the scored ids are exactly the gold's, whatever "Answer:" merges into.
+    The margin continuation is the gold one cut after its first content token (a prefix of it)."""
+    if target == "own":
+        return _ids(tokenizer, output), 0
+    prefix = _ids(tokenizer, ANSWER_PREFIX)
+    answer = _ids(tokenizer, " " + gold)
+    if target == "gold":
+        return prefix + answer, len(prefix)
+    if target == "margin":
+        return prefix + answer[: _margin_length(tokenizer, answer)], len(prefix)
+    raise ValueError(f"unknown target {target!r} (known: {TARGETS})")
+
+
+def margin_extra(tokenizer, gold: str) -> dict:
+    """What the margin scored, for the output json: the first gold token's text and the number of gold tokens."""
+    answer = _ids(tokenizer, " " + gold)
+    return {"first_gold_token": tokenizer.decode(answer[:1]), "margin_tokens_scored": _margin_length(tokenizer, answer)}
+
+
+@dataclass
+class JacobianResult:
+    regions: list[str]  # per prompt-side token (chat text only, continuation excluded)
+    g_l2: np.ndarray  # per-token L2 norm of d target / d embedding
+    g_gxi: np.ndarray  # per-token |gradient . embedding|
+    target_value: float
+    n_tokens: int
+    extra: dict = field(default_factory=dict)  # target-specific facts for the output json (margin: what it scored)
+
+
+def _kept(cont: list[int], start: int) -> int:
+    """Logit rows the forward keeps (`logits_to_keep`): the last len(cont) - start + 1 positions, so row 0
+    predicts cont[start] and row j - start predicts cont[j]. The last row predicts nothing scored."""
+    return len(cont) - start + 1
+
+
+def _scalar(logits, cont: list[int], start: int, target: str, unk: int):
+    """The target from the kept logit rows (row j - start predicts cont[j], see `_kept`). gold/own: summed
+    teacher-forced log-probs of cont[start:]. margin: the same sum over the margin continuation (gold through
+    its first content token) minus the log-prob of " unknown" at the first answer position; for a
+    content-first gold this is the logit margin (the logsumexp cancels)."""
+    import torch
+
+    logp = torch.log_softmax(logits[: len(cont) - start].float(), -1)
+    value = logp.gather(-1, torch.tensor(cont[start:], device=logp.device)[:, None]).sum()
+    if target == "margin":
+        return value - logp[0, unk]
+    return value
+
+
+def jacobian_pass(model, tokenizer, prompt: str, memory_lines, evidence_lines, gold: str, output: str,
+                  targets: tuple[str, ...] = ("gold", "margin")) -> dict[str, JacobianResult]:
+    """Gradients of each target with respect to the prompt-side input embeddings. gold and margin share one
+    forward (the margin continuation is a prefix of the gold one); own needs a second."""
+    import torch
+
+    unknown = set(targets) - set(TARGETS)
+    if unknown:
+        raise ValueError(f"unknown targets {sorted(unknown)} (known: {TARGETS})")
+    text = wrap_chat(tokenizer, prompt)
+    encoded = tokenizer(text, add_special_tokens=False, return_offsets_mapping=True)
+    prompt_ids = list(encoded["input_ids"])
+    n_prompt = len(prompt_ids)
+    regions = token_regions(encoded["offset_mapping"], text.index(prompt), len(prompt),
+                            segment_prompt(prompt, memory_lines, evidence_lines))
+    unk = unknown_id(tokenizer)
+    embedding = model.get_input_embeddings()
+    groups = [(forward, [t for t in group if t in targets])
+              for forward, group in (("gold", ("gold", "margin")), ("own", ("own",)))]
+    results: dict[str, JacobianResult] = {}
+    for forward, group in groups:
+        if not group:
+            continue
+        cont, start = continuation_ids(tokenizer, forward, gold, output)
+        full = torch.tensor([prompt_ids + cont], device=embedding.weight.device)
+        embeds = embedding(full).detach().requires_grad_(True)
+        logits = model(inputs_embeds=embeds, logits_to_keep=_kept(cont, start)).logits[0]
+        x = embeds[0, :n_prompt].detach().float()
+        for number, target in enumerate(group):
+            t_cont, t_start = continuation_ids(tokenizer, target, gold, output)
+            value = _scalar(logits, t_cont, t_start, target, unk)  # t_cont is a prefix of cont, t_start == start
+            (grad,) = torch.autograd.grad(value, embeds, retain_graph=number < len(group) - 1)
+            g = grad[0, :n_prompt].float()
+            extra = margin_extra(tokenizer, gold) if target == "margin" else {}
+            results[target] = JacobianResult(regions, g.norm(dim=-1).cpu().numpy(),
+                                             (g * x).sum(-1).abs().cpu().numpy(), float(value.detach()), n_prompt, extra)
+        del logits, embeds
+    return results
+
+
+def target_value(model, tokenizer, prompt: str, gold: str, output: str, target: str) -> float:
+    """The scalar target without gradients (the ablation check)."""
+    import torch
+
+    prompt_ids = _ids(tokenizer, wrap_chat(tokenizer, prompt))
+    cont, start = continuation_ids(tokenizer, target, gold, output)
+    device = model.get_input_embeddings().weight.device
+    with torch.no_grad():
+        logits = model(input_ids=torch.tensor([prompt_ids + cont], device=device), logits_to_keep=_kept(cont, start)).logits[0]
+        return float(_scalar(logits, cont, start, target, unknown_id(tokenizer)))
+
+
+CONTENT_REGIONS = tuple(r for r in REGIONS if r != "template")
+
+
+def region_counts(regions: list[str]) -> dict[str, int]:
+    return {name: sum(1 for r in regions if r == name) for name in REGIONS if name in regions}
+
+
+def region_shares(g: np.ndarray, regions: list[str]) -> dict[str, float]:
+    mask = np.array([r != "template" for r in regions])
+    total = float(g[mask].sum())
+    shares = {}
+    for name in CONTENT_REGIONS:
+        chosen = np.array([r == name for r in regions])
+        shares[name] = float(g[chosen].sum()) / total if total > 0 and chosen.any() else 0.0
+    return shares
+
+
+def evidence_lift(shares: dict[str, float], counts: dict[str, int]) -> float | None:
+    evidence = counts.get("evidence", 0)
+    content = sum(n for name, n in counts.items() if name != "template")
+    if evidence == 0 or content == 0:
+        return None
+    return shares.get("evidence", 0.0) / (evidence / content)
+
+
+def topk_fraction(g: np.ndarray, regions: list[str], k: int = 50) -> float:
+    content = [i for i, r in enumerate(regions) if r != "template"]
+    top = sorted(content, key=lambda i: -float(g[i]))[: min(k, len(content))]
+    return sum(1 for i in top if regions[i] == "evidence") / len(top) if top else 0.0
+
+
+def measures(result: JacobianResult, k: int = 50) -> dict:
+    counts = region_counts(result.regions)
+    out = {"counts": counts, "target_value": result.target_value, "n_tokens": result.n_tokens, "k": k}
+    for name, g in (("l2", result.g_l2), ("gxi", result.g_gxi)):
+        shares = region_shares(g, result.regions)
+        out[name] = {"shares": shares, "lift": evidence_lift(shares, counts), "topk": topk_fraction(g, result.regions, k)}
+    return out
+
+
+def ablate_evidence(prompt: str, memory_lines: tuple[str, ...], evidence_lines: tuple[str, ...]) -> str:
+    """The prompt with every evidence line removed by its exact span from `segment_prompt`, together with one
+    newline separating it from a neighbour: the one before it, or the one after it when the one before is the
+    memory header's or was already cut. Every other character is kept. A line is evidence by content, so an
+    identical copy elsewhere in memory goes too. Raises ValueError for an evidence line not in memory_lines."""
+    missing = [line for line in evidence_lines if line not in memory_lines]
+    if missing:
+        raise ValueError(f"evidence line not among memory lines: {missing[0][:60]!r}")
+    spans = segment_prompt(prompt, memory_lines, evidence_lines)
+    header = spans[0][2]
+    cut: set[int] = set()
+    for (region, start, _), line in zip(spans[1:-1], memory_lines):
+        if region != "evidence":
+            continue
+        end = start + len(line)  # the span itself runs on over the separator after the line
+        if start - 1 >= header and prompt[start - 1] == "\n" and start - 1 not in cut:
+            cut.update(range(start - 1, end))
+        elif end < len(prompt) and prompt[end] == "\n":
+            cut.update(range(start, end + 1))
+        else:
+            cut.update(range(start, end))
+    return "".join(ch for n, ch in enumerate(prompt) if n not in cut)
