@@ -209,3 +209,15 @@ the user has made the decision.
 - **Authority.** The user, Advisor pane, 2026-11-04: "Let's try even smaller models than 3B too ... study if they
   abstain with evidence in view. And if they do queue them up for our activation steering, lens, activation patching
   and weight space programming regiments."
+
+## D-75 (2026-11-05) — §53 proposed: specificity, reading and transfer controls for the §51 heads
+
+- **What.** Proposal `research/proposals/2026-11-05-exp53-head-controls.md` (rev 0), from the gap check
+  `research/audits/2026-11-05-research-gap-check.md`. Arms: random late-head pairs against the target pair, in both
+  directions (claims C1, C2); attention, logit attribution, option-removed prompt and head-output patching
+  (descriptive); transfer to the LongMemEval dev rows (descriptive). Data: a new controlled split (seed 54) and
+  LongMemEval folds 0–1.
+- **Opening rule.** Opens only if §51 confirms submission 1 on H; otherwise it closes unrun (D-45). It does not change
+  §51's freeze and does not read E, S, H or T.
+- **Unchanged.** Laptop at $0; any pod is its own quote with the user's line, inside $36, never during a §51 pod.
+- **Authority.** The user, Advisor pane, 2026-11-05: "save it and draft the follow-up proposal".
