@@ -43,15 +43,15 @@ fi
 log "ready at +$(( $(date +%s) - T0 )) s; snapshot $SNAP"
 $PY -c "import sys; sys.path.insert(0,'scripts'); import exp51_engine as E; from pathlib import Path; E.make_dummy(Path('$OUT/dummy'), Path('$SNAP'))" 2>&1 | { grep -v "Writing model shards" || true; }
 SM="$OUT/smoke"; mkdir -p "$SM"; cp -r "$OUT/edits" "$OUT/b5_fit.json" "$SM/" 2>/dev/null || true
-step() {   # step <name> <args...>
+step() {   # step <name> <args...>  (STEP_SCRIPT: the D-22 smoke runs scripts/exp51_smoke_s.py, dummy stand-ins)
   local name="$1"; shift; local rc=0
-  set +e; timeout "$(left)" $PY scripts/exp51_stage4.py "$@" 2>&1 | grep -v "Loading weights" | tee -a "$OUT/$name.log"; rc=${PIPESTATUS[0]}; set -e
+  set +e; timeout "$(left)" $PY "${STEP_SCRIPT:-scripts/exp51_stage4.py}" "$@" 2>&1 | grep -v "Loading weights" | tee -a "$OUT/$name.log"; rc=${PIPESTATUS[0]}; set -e
   log "stage $name rc $rc at +$(( $(date +%s) - T0 )) s"; return $rc
 }
 # D-22 smoke on the dummy (its own root; the replay check is skipped: the dummy cannot match the laptop)
-step smoke_arms --stage s-arms --root "$SM" --subs runs/exp51/gpu/subs --backend hf --snapshot "$OUT/dummy" \
+STEP_SCRIPT=scripts/exp51_smoke_s.py step smoke_arms --stage s-arms --root "$SM" --subs runs/exp51/gpu/subs --backend hf --snapshot "$OUT/dummy" \
   --device "$DEV" --limit-bases 1 || { log "SMOKE FAILED"; exit 5; }
-step smoke_select --stage s-select --root "$SM" --subs runs/exp51/gpu/subs --backend hf --snapshot "$OUT/dummy" \
+STEP_SCRIPT=scripts/exp51_smoke_s.py step smoke_select --stage s-select --root "$SM" --subs runs/exp51/gpu/subs --backend hf --snapshot "$OUT/dummy" \
   --device "$DEV" --limit-bases 1 --boot 200 || { log "SMOKE FAILED"; exit 5; }
 test -e "$SM/f2_candidate.json" || { log "SMOKE FAILED: no f2_candidate.json"; exit 5; }
 [ "$ENGINE" = stub ] && { log "stub: smoke only"; exit 0; }

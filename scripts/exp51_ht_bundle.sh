@@ -19,7 +19,8 @@ git -C "$STAGE/clone" cat-file -e "${COMMIT}^{commit}" || { echo "bundle: F2 com
   for f in pyproject.toml scripts/__init__.py scripts/exp45_cases.py scripts/exp49_cases.py scripts/exp50_cases.py \
            scripts/exp51_cases.py scripts/exp51_common.py scripts/exp51_engine.py scripts/exp51_run.py \
            scripts/exp51_mech.py scripts/exp51_stage4.py scripts/exp51_pod_ht.sh runs/exp51/cases51.jsonl \
-           runs/exp51/cases51_counts.json $G/design.json $G/design_committed.json $G/b5_fit.json; do echo "$f"; done
+           runs/exp51/cases51_counts.json $G/design.json $G/design_committed.json $G/b5_fit.json \
+           runs/exp38_dev/qwen3b/directions.npz; do echo "$f"; done
   find $G/subs $G/edits $G/b0/S $G/f -type f | grep -E '/(S|S_pred)\.json$|/subs/|/edits/|/b0/S/'
 } | sort -u > "$STAGE/list"
 while read -r f; do test -e "$f" || { echo "bundle: missing $f" >&2; exit 3; }; done < "$STAGE/list"

@@ -13,7 +13,9 @@ mkdir -p "$(dirname "$OUT")" "$STAGE/runs/exp51/run/b0/E" "$STAGE/runs/exp51/gpu
 git ls-files --cached --others --exclude-standard -- memctl | grep -v -E '(__pycache__|\.pyc$)' > "$STAGE/list"
 for f in pyproject.toml scripts/__init__.py scripts/exp45_cases.py scripts/exp49_cases.py scripts/exp50_cases.py \
          scripts/exp51_cases.py scripts/exp51_common.py scripts/exp51_engine.py scripts/exp51_run.py \
-         scripts/exp51_mech.py scripts/exp51_stage4.py scripts/exp51_pod_s.sh runs/exp51/cases51_counts.json; do
+         scripts/exp51_mech.py scripts/exp51_stage4.py scripts/exp51_pod_s.sh scripts/exp51_smoke_s.py \
+         runs/exp51/cases51_counts.json \
+         runs/exp38_dev/qwen3b/directions.npz; do
   echo "$f" >> "$STAGE/list"
 done
 while read -r f; do test -e "$f" || { echo "bundle: missing $f" >&2; exit 3; }; done < "$STAGE/list"
