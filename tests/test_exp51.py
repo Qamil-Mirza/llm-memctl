@@ -1111,3 +1111,31 @@ def test_f1_paired_bound_48_shown_and_enforced(service, tmp_path):
     CM.write_json(tmp_path / "bounds.json", SV.BOUNDS_F0)              # a real run on the old bounds is refused
     with pytest.raises(SystemExit, match="F1 bounds"):
         H.main(["loop", "--run", str(tmp_path), "--client", "api", "--backend", "hf", "--i-have-the-go"])
+
+
+def test_stage4_replay_check_with_laptop_arm_records(engine, small_cases, tmp_path, monkeypatch):
+    """§10 replay check: the laptop's submission-1 records are arm records (no prompt_ids, as run_arm_row writes
+    them); the prompt ids come from the B0 records. Pod S D4/D5: this crashed on the first pod (KeyError)."""
+    import exp51_stage4 as S4
+    import exp51_engine as EN
+    e = engine
+    root, lap = tmp_path / "gpu", tmp_path / "laptop"
+    e.edits.edit_dir = root / "edits"
+    monkeypatch.setattr(S4, "LAYOUT", 4)
+    monkeypatch.setattr(EN, "MAX_NEW_TOTAL", 12)
+    rows = sorted([r for r in small_cases[0] if r["split"] == "E"], key=lambda r: r["case_id"])[:6]
+    monkeypatch.setattr(CM, "rows", lambda split, path=None, allow_sealed=False: rows)
+    man = ED.save_edit(root / "edits", [_rand_comp(e, 1, "down_proj", "cols", n=4, seed=1)], e.edits.shapes())
+    for r in rows:
+        ids = e.chat_ids(r["prompt"])
+        g = e.generate(ids, mode="total")
+        CM.write_json(lap / "b0" / "E" / f"{r['case_id']}.json",
+                      {"case_id": r["case_id"], "prompt_ids": ids, "gen_ids": g.gen_ids,
+                       "cls": CM.grade(r, g.text, T_CITIES)["cls"]})
+        g1 = e.generate(ids, mode="total", edit=(man["edit_id"], 1.0))
+        CM.write_json(lap / "arms" / "E" / f"EDIT_{man['edit_id']}_d1" / "total" / f"{r['case_id']}.json",
+                      {"case_id": r["case_id"], "gen_ids": g1.gen_ids, "text": g1.text,
+                       "cls": CM.grade(r, g1.text, T_CITIES)["cls"]})
+    res = S4.replay(e, root, [{"edit_id": man["edit_id"], "index": 1}], lap, T_CITIES, n=len(rows))
+    assert set(res["classes"]) == {"B0_batched", "B0_batch1", "sub1_batched", "sub1_batch1"}
+    assert all(v["class_agree"] == len(rows) for v in res["classes"].values()) and res["pass"]

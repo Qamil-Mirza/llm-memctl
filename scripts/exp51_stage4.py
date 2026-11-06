@@ -529,6 +529,7 @@ def replay(e, root, subs, laptop_run: Path, tc, n=200) -> dict:
     rows = sorted(CM.rows("E"), key=lambda r: r["case_id"])[:n]
     s1 = subs[0]
     out = {"n": len(rows), "classes": {}}
+    b0_lap = [CM.b0("E", r["case_id"], laptop_run) for r in rows]   # prompt ids: arm records do not store them
     for label, edit in (("B0", None), ("sub1", (s1["edit_id"], 1.0))):
         lap = []
         for r in rows:
@@ -537,7 +538,7 @@ def replay(e, root, subs, laptop_run: Path, tc, n=200) -> dict:
             else:
                 lap.append(CM.read_json(Path(laptop_run) / "arms" / "E" / f"EDIT_{s1['edit_id']}_d1" / "total" /
                                         f"{r['case_id']}.json"))
-        ids = [list(x["prompt_ids"]) if x else e.chat_ids(r["prompt"]) for r, x in zip(rows, lap)]
+        ids = [list(b["prompt_ids"]) if b else e.chat_ids(r["prompt"]) for r, b in zip(rows, b0_lap)]
         gb = []
         for i in range(0, len(ids), LAYOUT):
             gb += e.generate_batched(ids[i:i + LAYOUT], mode="total", edit=edit)
