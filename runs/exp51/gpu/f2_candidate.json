@@ -1,0 +1,543 @@
+{
+ "M": {
+  "candidate": {
+   "bound_ok": true,
+   "dose": 1.5,
+   "edit_id": "c64ea090781450cf",
+   "effect": 0.9029100529100529,
+   "endpoint": {
+    "direction": "increase",
+    "outcome": "gold",
+    "population": "FA"
+   },
+   "index": 1,
+   "n_components": 2,
+   "n_params": 524288,
+   "se": 0.032650599118571724,
+   "sign": 1,
+   "support": 63
+  },
+  "entries": [
+   {
+    "bound_ok": true,
+    "dose": 1.5,
+    "edit_id": "c64ea090781450cf",
+    "effect": 0.9029100529100529,
+    "endpoint": {
+     "direction": "increase",
+     "outcome": "gold",
+     "population": "FA"
+    },
+    "index": 1,
+    "n_components": 2,
+    "n_params": 524288,
+    "se": 0.032650599118571724,
+    "sign": 1,
+    "support": 63
+   },
+   {
+    "bound_ok": true,
+    "dose": 2.0,
+    "edit_id": "8364bf135ac59a83",
+    "effect": 0.7925925925925926,
+    "endpoint": {
+     "direction": "increase",
+     "outcome": "gold",
+     "population": "FA"
+    },
+    "index": 2,
+    "n_components": 1,
+    "n_params": 4194304,
+    "se": 0.04204855137595569,
+    "sign": 1,
+    "support": 63
+   },
+   {
+    "bound_ok": true,
+    "dose": 2.0,
+    "edit_id": "87224655b7a5361e",
+    "effect": 0.49,
+    "endpoint": {
+     "direction": "increase",
+     "outcome": "abstention",
+     "population": "C"
+    },
+    "index": 3,
+    "n_components": 2,
+    "n_params": 524288,
+    "se": 0.035661779770741905,
+    "sign": 1,
+    "support": 90
+   }
+  ]
+ },
+ "M_followups": {
+  "activity": [
+   {
+    "manipulation": "evidence_removed",
+    "margin": 6.356088273598156,
+    "mean_S": -1.3645969398017879,
+    "n_bases_S": 96,
+    "sd_S": 3.178044136799078,
+    "sign": -1,
+    "type": "directional"
+   },
+   {
+    "manipulation": "city_changed",
+    "margin": 6.647391173385952,
+    "mean_S": -0.04153690216600089,
+    "n_bases_S": 96,
+    "sd_S": 3.323695586692976,
+    "sign": 0,
+    "type": "equivalence"
+   },
+   {
+    "manipulation": "distractors_added",
+    "margin": 5.184165693301601,
+    "mean_S": 1.1407831940831408,
+    "n_bases_S": 96,
+    "sd_S": 2.5920828466508006,
+    "sign": 0,
+    "type": "equivalence"
+   },
+   {
+    "manipulation": "unrelated_vs_absent",
+    "margin": 5.661394349188598,
+    "mean_S": 0.08336692098358837,
+    "n_bases_S": 96,
+    "sd_S": 2.830697174594299,
+    "sign": 0,
+    "type": "equivalence"
+   }
+  ],
+  "audit_seed": 5101,
+  "b1_matched": -1.0,
+  "b1_signed_effects": {
+   "-16.0": 0.897089947089947,
+   "-8.0": 0.844973544973545,
+   "-6.0": 0.775132275132275,
+   "-4.0": 0.6992063492063492,
+   "-3.0": 0.6087301587301587,
+   "-2.0": 0.476984126984127,
+   "-1.0": 0.27804232804232804,
+   "-0.5": 0.1433862433862434,
+   "0.5": 0.0,
+   "1.0": 0.0,
+   "2.0": 0.0,
+   "3.0": 0.0,
+   "4.0": 0.0,
+   "6.0": 0.0,
+   "8.0": 0.0,
+   "16.0": 0.0
+  },
+  "b6_edit_ids": {
+   "1": "91eeed0089b742ac",
+   "2": "ed404735d9e7441a",
+   "3": "e75d4381e651d57e",
+   "4": "2e4eef5289c75f7c",
+   "5": "65947ec3401847d3"
+  },
+  "dose": 1.5,
+  "edit_id": "c64ea090781450cf",
+  "endpoint": {
+   "direction": "increase",
+   "outcome": "gold",
+   "population": "FA"
+  },
+  "f": {
+   "direction_sha256": "3406f999437c230687f7cbe59f4ece0548de155a9b74d305f1b990d82d10e06e",
+   "sd_ans_S": 3.5573616193529,
+   "site": {
+    "layer": 33,
+    "tensor": "o_proj"
+   }
+  },
+  "f_int_dose": -14.2294464774116,
+  "f_int_doses": [
+   -1.77868080967645,
+   -3.5573616193529,
+   -7.1147232387058,
+   -14.2294464774116
+  ],
+  "f_int_effects": {
+   "-14.2294464774116": 0.21984126984126987,
+   "-7.1147232387058": 0.146031746031746,
+   "-3.5573616193529": 0.05873015873015872,
+   "-1.77868080967645": 0.0335978835978836
+  },
+  "hook_positions": "P_ans only (\u00a713.3)",
+  "pair": [
+   "FA",
+   "UNA"
+  ],
+  "predictor": {
+   "coef": {
+    "baseline": {
+     "coef": [
+      [
+       0.29830056220920015,
+       0.23218150599211257,
+       -0.4085367173998803,
+       -0.24717696128473318,
+       0.22459498805669303,
+       0.40252105577102604,
+       -0.27058428913065163,
+       -0.08439213211829806,
+       0.26592085932830517,
+       0.622957534868801,
+       0.589291405683165,
+       -0.02518776470725478,
+       -0.24901733330056636,
+       -0.3799400638175592,
+       -0.2454234901238108,
+       -0.3535528541698287,
+       0.12762050991384527,
+       0.5930124227807407,
+       -0.06892678033436386,
+       -0.5405764256427152,
+       -0.4881239377003377,
+       -0.29712512103302713,
+       0.03289043795217761,
+       0.2591967779547393,
+       0.41282887142377395,
+       -0.04087256556705342,
+       -0.37699421098283037,
+       -0.10358476818345655,
+       6.663405191919589
+      ]
+     ],
+     "cols": {
+      "cats": {
+       "city": [
+        "DE|Cardiff",
+        "DE|Chester",
+        "DE|Derby",
+        "DE|Durham",
+        "DE|Edinburgh",
+        "DE|H0",
+        "DE|H1",
+        "DE|H2",
+        "DE|York",
+        "RC|Derby",
+        "RC|Durham",
+        "RC|H0",
+        "RC|H1",
+        "RC|H2",
+        "RC|Liverpool",
+        "RC|Manchester",
+        "TU|Brighton",
+        "TU|Edinburgh",
+        "TU|H0",
+        "TU|H1",
+        "TU|H2"
+       ],
+       "hardness": [
+        "H0",
+        "H1",
+        "H2"
+       ],
+       "task": [
+        "DE",
+        "RC",
+        "TU"
+       ]
+      },
+      "mu": {
+       "m_city": 15.535194557310195,
+       "unk_logodds": -1.187469946695269
+      },
+      "nums": [
+       "m_city",
+       "unk_logodds"
+      ],
+      "sd": {
+       "m_city": 4.958153656897711,
+       "unk_logodds": 4.439356972699683
+      }
+     },
+     "intercept": [
+      -2.1342740717364506
+     ]
+    },
+    "full": {
+     "coef": [
+      [
+       0.28386506486601853,
+       0.22654719717301566,
+       -0.4053103336556481,
+       -0.24559147373678647,
+       0.20687089998123004,
+       0.40965222568753956,
+       -0.25710884513247534,
+       -0.07383979102305446,
+       0.2619337436245012,
+       0.6194580281885744,
+       0.5859128628257642,
+       -0.017047726862930546,
+       -0.25127401235776414,
+       -0.38628783192742067,
+       -0.2470825317224188,
+       -0.35250372685338993,
+       0.13649952438532878,
+       0.5836637710414481,
+       -0.052790575517610426,
+       -0.544722248304621,
+       -0.49730655437175714,
+       -0.30956135701387827,
+       0.03708776507471281,
+       0.25601125824671045,
+       0.4070186877843407,
+       -0.04882493870958515,
+       -0.3746560827672115,
+       0.0386383535427544,
+       -0.11084031641640418,
+       6.659706197408282
+      ]
+     ],
+     "cols": {
+      "cats": {
+       "city": [
+        "DE|Cardiff",
+        "DE|Chester",
+        "DE|Derby",
+        "DE|Durham",
+        "DE|Edinburgh",
+        "DE|H0",
+        "DE|H1",
+        "DE|H2",
+        "DE|York",
+        "RC|Derby",
+        "RC|Durham",
+        "RC|H0",
+        "RC|H1",
+        "RC|H2",
+        "RC|Liverpool",
+        "RC|Manchester",
+        "TU|Brighton",
+        "TU|Edinburgh",
+        "TU|H0",
+        "TU|H1",
+        "TU|H2"
+       ],
+       "hardness": [
+        "H0",
+        "H1",
+        "H2"
+       ],
+       "task": [
+        "DE",
+        "RC",
+        "TU"
+       ]
+      },
+      "mu": {
+       "f": 29.42123971198872,
+       "m_city": 15.535194557310195,
+       "unk_logodds": -1.187469946695269
+      },
+      "nums": [
+       "f",
+       "m_city",
+       "unk_logodds"
+      ],
+      "sd": {
+       "f": 3.5187270257700822,
+       "m_city": 4.958153656897711,
+       "unk_logodds": 4.439356972699683
+      }
+     },
+     "intercept": [
+      -2.1385688961126927
+     ]
+    }
+   },
+   "encoding": {
+    "DE|Brighton": "task_hardness",
+    "DE|Cambridge": "task_hardness",
+    "DE|Cardiff": "city",
+    "DE|Chester": "city",
+    "DE|Derby": "city",
+    "DE|Durham": "city",
+    "DE|Edinburgh": "city",
+    "DE|Leeds": "task_hardness",
+    "DE|Liverpool": "task_hardness",
+    "DE|Manchester": "task_hardness",
+    "DE|Norwich": "task_hardness",
+    "DE|York": "city",
+    "RC|Brighton": "task_hardness",
+    "RC|Cambridge": "task_hardness",
+    "RC|Cardiff": "task_hardness",
+    "RC|Chester": "task_hardness",
+    "RC|Derby": "city",
+    "RC|Durham": "city",
+    "RC|Edinburgh": "task_hardness",
+    "RC|Leeds": "task_hardness",
+    "RC|Liverpool": "city",
+    "RC|Manchester": "city",
+    "RC|Norwich": "task_hardness",
+    "RC|York": "task_hardness",
+    "TU|Brighton": "city",
+    "TU|Cambridge": "task_hardness",
+    "TU|Cardiff": "task_hardness",
+    "TU|Chester": "task_hardness",
+    "TU|Derby": "task_hardness",
+    "TU|Durham": "task_hardness",
+    "TU|Edinburgh": "city",
+    "TU|Leeds": "task_hardness",
+    "TU|Liverpool": "task_hardness",
+    "TU|Manchester": "task_hardness",
+    "TU|Norwich": "task_hardness",
+    "TU|York": "task_hardness"
+   },
+   "n_train": 571
+  },
+  "primary_component": {
+   "i": 1,
+   "layer": 33,
+   "tensor": "o_proj"
+  },
+  "revert_oriented_effect": {
+   "0": 0.07751322751322752,
+   "1": 0.264021164021164
+  },
+  "sign": 1,
+  "submission": 1
+ },
+ "R": {
+  "candidate": {
+   "U1": 0.42925347222222227,
+   "U_minus_B0": {
+    "B_valid": 10000,
+    "est": 0.12586805555555555,
+    "fail_ok": true,
+    "hi": 0.15494791666666666,
+    "lo": 0.09678819444444443,
+    "n_fail": 0
+   },
+   "dose": 2.0,
+   "edit_id": "8364bf135ac59a83",
+   "entry": true,
+   "index": 2,
+   "n_params": 4194304,
+   "support_ok": true
+  },
+  "comparator_doses": {
+   "B1": {
+    "U1_by_dose": {
+     "B1_d-16_vonline": 0.05078124999999999,
+     "B1_d-1_vonline": 0.3411458333333333,
+     "B1_d-2_vonline": 0.3680555555555555,
+     "B1_d-4_vonline": 0.40625,
+     "B1_d-8_vonline": 0.4110243055555556,
+     "B1_d-inf_vonline": -0.022135416666666668
+    },
+    "spec": {
+     "arm": "B1",
+     "dose": -8.0,
+     "variant": "online"
+    }
+   },
+   "B2": {
+    "U1_by_dose": {
+     "B2": 0.38888888888888884
+    },
+    "spec": {
+     "arm": "B2"
+    }
+   },
+   "B3": {
+    "U1_by_dose": {
+     "B3": 0.13585069444444445
+    },
+    "spec": {
+     "arm": "B3"
+    }
+   },
+   "B4": {
+    "U1_by_dose": {
+     "B4_d0.5": 0.4075520833333333,
+     "B4_d1": 0.4149305555555555,
+     "B4_d2": 0.3385416666666667,
+     "B4_d4": -0.21050347222222224
+    },
+    "spec": {
+     "arm": "B4",
+     "dose": 1.0
+    }
+   },
+   "B5": {
+    "U1_by_dose": {
+     "EDIT_e1f8b0017c59e78f7_d1_tB5b0.75": 0.3585069444444445,
+     "EDIT_e3e6e4070f234c836_d1_tB5b0.5": 0.3415798611111111,
+     "EDIT_e463af68e77c998f4_d1_tB5b0.25": 0.3103298611111111,
+     "EDIT_ed95a3d114326339e_d1_tB5b1": 0.3828125
+    },
+    "spec": {
+     "arm": "EDIT",
+     "dose": 1.0,
+     "edit_id": "d95a3d114326339e",
+     "tag": "B5b1"
+    }
+   }
+  },
+  "entries": [
+   {
+    "U1": 0.40190972222222215,
+    "U_minus_B0": {
+     "B_valid": 10000,
+     "est": 0.09852430555555554,
+     "fail_ok": true,
+     "hi": 0.125,
+     "lo": 0.07290581597222222,
+     "n_fail": 0
+    },
+    "dose": 1.0,
+    "edit_id": "c64ea090781450cf",
+    "entry": true,
+    "index": 1,
+    "n_params": 524288,
+    "support_ok": true
+   },
+   {
+    "U1": 0.42925347222222227,
+    "U_minus_B0": {
+     "B_valid": 10000,
+     "est": 0.12586805555555555,
+     "fail_ok": true,
+     "hi": 0.15494791666666666,
+     "lo": 0.09678819444444443,
+     "n_fail": 0
+    },
+    "dose": 2.0,
+    "edit_id": "8364bf135ac59a83",
+    "entry": true,
+    "index": 2,
+    "n_params": 4194304,
+    "support_ok": true
+   },
+   {
+    "U1": 0.24392361111111108,
+    "U_minus_B0": {
+     "B_valid": 10000,
+     "est": -0.05946180555555555,
+     "fail_ok": true,
+     "hi": -0.03819444444444444,
+     "lo": -0.08203125,
+     "n_fail": 0
+    },
+    "dose": 0.5,
+    "edit_id": "87224655b7a5361e",
+    "entry": false,
+    "index": 3,
+    "n_params": 524288,
+    "support_ok": true
+   }
+  ]
+ },
+ "fa_bases_by_task": {
+  "DE": 29,
+  "RC": 23,
+  "TU": 11
+ },
+ "rules": " (each in f2_candidate.json \"rules\"):\n- Every generation pass is batched at LAYOUT (64) except M2 (transplant / clamp: batch 1, hooks), the hybrid\n  estimand (batch 1) and teacher-forced reads (batch 1). B1 / B4 online total effect = B0 prefix through the first\n  marker + triggered continuation (approved shortcut (c); parity 48/48 on the laptop); a row with no marker equals B0.\n- R arms run under the total effect on every row of the split; M arms under the controlled prefix on ANS + UNA rows\n  with a P_ans.\n- M dose candidates: the submission's own delta x CAND_DOSES; f-intervention doses: f_int_sign x {0.5, 1, 2, 4} x SD\n  of f over the split's ANS rows with a P_ans (the SD is S's, frozen at F2).\n- Primary component: among the M candidate's components, the one whose revert removes most of the oriented endpoint\n  effect on S at the M dose (ties: the editor's most important component, then component index).\n- Manipulations for the activity tests (per base, mean over the hardness levels present in both rows):\n  evidence_removed = UNA-rel \u2212 ANS rep a; city_changed = CF \u2212 ANS rep a; distractors_added = ANS rep a H2 \u2212 H1;\n  unrelated_vs_absent = UNA-swap \u2212 UNA-rel (H1). f is read at each row's own B0 P_ans. distractors_added is named\n  \"more distractor lines, with the date shifts that follow from position\" (ruling (b)): same base,\n  rep and evidence text (every H1 line is kept in H2, the core facts are identical); the 7 added lines are distractors,\n  and because F2 dates lines by position the dates move with them (on E: the question date in 144 / 144 pairs, the\n  evidence line's date in 129 / 144).\n- \u00a713.4(b) population pair: (the declared endpoint population, UNA); if the declared population is UNA, (UNA, FA).\n  The f-intervention grid and the B1 signed grid run on the union of the pair; the pair is written to F2\n  (M_followups.pair) and h_report reads it from there.\n- Pod-side replay check (\u00a710, 200 E rows sorted by case id: B0 and submission 1 at dose 1): batched layout and batch 1\n  vs the laptop's batch-1 records; the S arms run only if graded-class agreement >= 194 / 200 in all four comparisons\n  (the 62 / 64 rule scaled; Advisor ruling (c)), else the chain stops (exit 8); every mismatch is listed either way,\n  for the Advisor's investigation before S results are used.\n"
+}
