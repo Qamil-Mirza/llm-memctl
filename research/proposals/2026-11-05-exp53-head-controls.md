@@ -1,6 +1,6 @@
 # §53 (rev 1): are the two §51 edits specific, and do they carry over to real questions?
 
-**Status: rev 1a (Advisor, 2026-11-07). Not reviewed, not built, not run, nothing spent.** Rev 0 (2026-11-05, D-75)
+**Status: rev 1b (Advisor, 2026-11-07). Not reviewed, not built, not run, nothing spent.** Rev 0 (2026-11-05, D-75)
 is in git history; the changes are listed under Revision. Decisions D-75, D-76.
 
 ## Opening (fixed now)
@@ -71,7 +71,7 @@ Total-effect generation with §51's grader.
 | Arm | Edit | Rows |
 |---|---|---|
 | D-target | submission 2, byte-identical (sha checked), dose 2 | FA, C, UNA |
-| D-randread | 20 rank-1 L35 `o_proj` edits with submission 2's write vector `dm` and a random unit read vector (seed 5303, in the manifest), each scaled so the RMS of its gate over N-dev FA rows equals the target's (rev 1a; a median can sit near zero for a random read) | FA, C, UNA |
+| D-randread | 20 rank-1 L35 `o_proj` edits with submission 2's write vector `dm` and a random unit read vector (seed 5303, in the manifest), each scaled so the RMS of its gate over N-dev FA rows equals the target's (rev 1a; a median can sit near zero for a random read), and sign-aligned so its median gate over N-dev FA rows is positive, as the target's is (rev 1b) | FA, C, UNA |
 | D-randwrite | 10 rank-1 edits with submission 2's read vector `w` and a random unit write vector of the same norm (seed 5304) (descriptive) | FA, UNA |
 | B1-ref | §51's B1 at −8 (descriptive reference only) | FA, C, UNA |
 
@@ -144,6 +144,13 @@ the four, which no rank test with 20 draws could pass: p_min 1/21 > 0.0125. Foun
 
 ## Revision
 
+- **rev 1b (2026-11-07, Advisor manifest review, before any N-held output):** D-randread read vectors are
+  sign-aligned on N-dev. In manifest ca4e40d8, 12 of 20 draws had a negative median gate on N-dev FA rows (the target's
+  is +0.96), so they pushed *toward* "unknown" (the smoke's D-randread00 turned both C rows into abstentions). Those
+  draws are not size-matched pushes along city − unknown, and beating them says nothing about the read side; C4 would
+  in effect be tested against about 8 draws. Rule: flip the sign of each random read vector whose median N-dev FA gate
+  is below zero. RMS scales are unchanged (RMS is sign-invariant). Everything else in the manifest stays as built.
+  Uses N-dev only.
 - **rev 1a (2026-11-07, before any N-held output):** Holm over four rank tests replaced by per-claim bars (rev 1
   could not reject); D-randread calibrated by RMS, not median; N key rule; sample-drawing rule frozen instead of ids;
   arm C B0 run fresh, §23 cache as the reproduction check, 12 abstention rows added. Executor's questions 1–4.
