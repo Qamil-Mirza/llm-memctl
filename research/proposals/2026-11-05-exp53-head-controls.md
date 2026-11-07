@@ -145,10 +145,10 @@ the four, which no rank test with 20 draws could pass: p_min 1/21 > 0.0125. Foun
 ## Revision
 
 - **rev 1b (2026-11-07, Advisor manifest review, before any N-held output):** D-randread read vectors are
-  sign-aligned on N-dev. In manifest ca4e40d8, 12 of 20 draws had a negative median gate on N-dev FA rows (the target's
+  sign-aligned on N-dev. In manifest ca4e40d8, 13 of 20 draws had a negative median gate on N-dev FA rows (the target's
   is +0.96), so they pushed *toward* "unknown" (the smoke's D-randread00 turned both C rows into abstentions). Those
   draws are not size-matched pushes along city − unknown, and beating them says nothing about the read side; C4 would
-  in effect be tested against about 8 draws. Rule: flip the sign of each random read vector whose median N-dev FA gate
+  in effect be tested against about 7 draws. Rule: flip the sign of each random read vector whose median N-dev FA gate
   is below zero. RMS scales are unchanged (RMS is sign-invariant). Everything else in the manifest stays as built.
   Uses N-dev only.
 - **rev 1a (2026-11-07, before any N-held output):** Holm over four rank tests replaced by per-claim bars (rev 1
