@@ -221,3 +221,18 @@ the user has made the decision.
   §51's freeze and does not read E, S, H or T.
 - **Unchanged.** Laptop at $0; any pod is its own quote with the user's line, inside $36, never during a §51 pod.
 - **Authority.** The user, Advisor pane, 2026-11-05: "save it and draft the follow-up proposal".
+
+## D-76 (2026-11-07) — §51 closed under D-45; STATE F18 added; §53 to be revised (rev 1)
+
+- **What.** §51 is complete. R: the selected rank-1 L35 edit (submission 2, dose 2) met the repair criterion on
+  sealed H; better trade-off than B2, B4 and B5; B1 inconclusive; B3 not established. M: the layer-33 pathway of the
+  two-head edit is located and sufficient, not necessary; the editor's account is not supported by the frozen tests.
+  T-city descriptive and consistent. Recorded as STATE F18. No rescue variant; H and T stay read once.
+- **Record.** EXPERIMENTS.md §51 at d7292f7; F2 02bb2f6; h_report at 321a4f1; Advisor reviews
+  `research/reviews/2026-11-06-exp51-s-review.md` and `research/reviews/2026-11-07-exp51-h-review.md` (ACCEPT,
+  recount 0 mismatches). Spend: RunPod about $31.16 of $36; editor API $3.58 of its $50.
+- **§53.** Its opening rule (submission 1 confirms on H) is read as not met as written, because the edit that met the
+  repair criterion is submission 2. The user chose to run §53 revised (rev 1) to cover both edits: specificity
+  controls for the L35 rank-1 edit and the two heads, and natural-data transfer. Rev 1 is its own pre-registration.
+- **Authority.** The user, Advisor pane, 2026-11-07: "let's run 53 as you recommended. Then you have the go on the
+  closing decision entry."
