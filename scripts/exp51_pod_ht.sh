@@ -23,7 +23,7 @@ if [ "$ENGINE" != stub ]; then
     > "$OUT/watchdog.log" 2>&1 < /dev/null &
   git config --global --add safe.directory '*'
 fi
-for f in "$OUT/design.json" "$OUT/design_committed.json" .git scripts/exp51_stage4.py; do test -e "$f" || { log "missing $f"; exit 3; }; done
+for f in "$OUT/design.json" "$OUT/design_committed.json" .git scripts/exp51_stage4.py scripts/exp51_smoke_s.py; do test -e "$f" || { log "missing $f"; exit 3; }; done
 install_line() {
   TORCH_VERSION=$($PY -c "import torch; print(torch.__version__)"); echo "torch==${TORCH_VERSION}" > "$OUT/constraints.txt"
   timeout 900 $PY -m pip install -q -c "$OUT/constraints.txt" -e . "transformers==5.17.0" accelerate huggingface_hub \
@@ -49,10 +49,12 @@ $PY -c "import sys; sys.path.insert(0,'scripts'); import exp51_engine as E; from
 SM="$OUT/smoke_ht"; mkdir -p "$SM"; cp -r "$OUT/edits" "$OUT/b5_fit.json" "$SM/"
 step() {
   local name="$1"; shift; local rc=0
-  set +e; timeout "$(left)" $PY scripts/exp51_stage4.py "$@" 2>&1 | grep -v "Loading weights" | tee -a "$OUT/$name.log"; rc=${PIPESTATUS[0]}; set -e
+  set +e; timeout "$(left)" $PY "${STEP_SCRIPT:-scripts/exp51_stage4.py}" "$@" 2>&1 | grep -v "Loading weights" | tee -a "$OUT/$name.log"; rc=${PIPESTATUS[0]}; set -e
   log "stage $name rc $rc at +$(( $(date +%s) - T0 )) s"; return $rc
 }
-step smoke --stage s-arms --root "$SM" --subs "$OUT/subs" --backend hf --snapshot "$OUT/dummy" --device "$DEV" \
+# D-22 smoke on dummy-shaped stand-ins of the submissions, B5 and B4 (scripts/exp51_smoke_s.py, as pod S, D4): the real
+# 2048-wide edits cannot apply to the 64-wide dummy. S rows only, its own root; nothing sealed is read.
+STEP_SCRIPT=scripts/exp51_smoke_s.py step smoke --stage s-arms --root "$SM" --subs "$OUT/subs" --backend hf --snapshot "$OUT/dummy" --device "$DEV" \
   --limit-bases 1 || { log "SMOKE FAILED"; exit 5; }
 [ "$ENGINE" = stub ] && { log "stub: guard + smoke only"; exit 0; }
 step h_run --stage h-run --root "$OUT" --subs "$OUT/subs" --snapshot "$SNAP" --device cuda --deadline-s "$(( $(left) - 300 ))" || exit $?
