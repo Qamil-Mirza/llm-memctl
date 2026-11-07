@@ -36,9 +36,10 @@ if [ "$ENGINE" != stub ]; then
 else
   export HF_HUB_OFFLINE=1 CUDA_VISIBLE_DEVICES=""; [ -n "$INSTALL" ] && install_line; DEV=cpu
 fi
+set +e   # errexit + pipefail would end the chain at this pipe with exit 1, before the logged exit 4
 $PY -c "import sys; sys.path.insert(0,'.'); from memctl.analysis import abst49 as A; from pathlib import Path; \
-A.require_design(Path('$OUT')); print('F2 guard ok')" 2>&1 | tee -a "$OUT/pod.log"
-[ "${PIPESTATUS[0]}" -eq 0 ] || { log "F2 GUARD FAILED: no sealed row read"; exit 4; }
+A.require_design(Path('$OUT')); print('F2 guard ok')" 2>&1 | tee -a "$OUT/pod.log"; GRC=${PIPESTATUS[0]}; set -e
+[ "$GRC" -eq 0 ] || { log "F2 GUARD FAILED: no sealed row read"; exit 4; }
 if [ "$ENGINE" != stub ]; then
   SNAP=$($PY -c "import huggingface_hub; print(huggingface_hub.snapshot_download('Qwen/Qwen2.5-3B-Instruct', \
 revision='aa8e72537993ba99e69dfaafa59ed015b17504d1', allow_patterns=['*.json','*.safetensors','*.txt','tokenizer*']))")
