@@ -8362,6 +8362,228 @@ M_city; pipeline intervals, 10k base resamples within task):
 - One held read; no rescue (D-45). A better sufficiency measure, or the margin read at the city-producing position,
   would be a new proposal under a separate decision.
 
+## 51. Can an agent's weight edit repair note-then-unknown selectively, and does its account survive sealed cases? Agent-proposed weight edits, Qwen 2.5 3B (2026-11-02, pre-registered rev 1a; editor run 2026-11-03; pods 2026-11-06/07)
+
+**Status: COMPLETE (H review ACCEPT). Branch R: Repair SHOWN on sealed H. Better trade-off than B2, B4 and B5;
+against B1 (logit bias) inconclusive; B3 not established. Branch M: pathway located and a causal path through the
+L33 output at P_ans (sufficient, not necessary). The editor's account is NOT supported. Closure decision (D-74)
+pending the user's "Go".**
+- **The repair holds on sealed cases.** Opus 5.5, acting as the weight editor, made a rank-1 edit to L35 `o_proj`
+  (submission 2, dose 2). On H it gave the right city on **212 of 261 false abstentions (0.816; B0 0)**:
+  - U(λ=1) − B0 was **+0.117 [0.096, 0.138]**, p 1e-4;
+  - unsupported answers went from 20/576 (0.035) to 24/576 (0.042);
+  - CF-follow was 0.917 (bar ≥ 0.90), and Deg 0.008.
+  - All four frozen repair bars are met.
+- **The edit has a visible cost.** It breaks **11 of 593 already-correct answers (Dam 0.030)**, within the frozen
+  bar of +0.05. B1 and B4 break none.
+- **Better than three of five comparators, not all** (Holm over 10 hypotheses, FWER 0.05):
+  - better than **B2** (prompt instruction; O2, p_holm 0.005), **B5** (directional ablation; O1, 0.007) and **B4**
+    (§38 steering; O2, 0.033).
+  - Against **B1** (logit bias against " unknown") the result is **inconclusive**: neither better (O2 raw p 0.015,
+    Holm 0.092) nor equivalent (TOST p 0.21 for Rel, 0.70 for Uns). The point estimates favour the edit on
+    unsupported answers (0.042 vs 0.095) at similar release (0.816 vs 0.793). That difference does not survive Holm.
+  - **B3** is not established: it releases more but adds about 64 points of unsupported answers.
+- **Branch M located a sufficient pathway, not the mechanism the editor claimed.** Submission 1 (two heads, L32h2
+  and L33h10, dose 1.5) was tested; its primary component is L33 `o_proj`.
+  - M1: reverting L33 removes 0.293 [0.225, 0.368] of the release, and the edit releases 0.717 more than the mean of
+    five random B6 edits (M1b). Pathway located.
+  - M2: transplanting the edit's change to L33's output at P_ans into the unedited model releases 0.808. Clamping it
+    away in the edited model removes only 0.193. A causal path; **sufficient, not necessary**. The L32 head appears
+    to carry the rest (observed redundancy; S reverts 0.264 vs 0.078), which is not proven.
+  - **M3, the editor's account: not supported.** Its variable f adds nothing to predicting false abstention: ΔAUROC
+    −4.5e-5 (p 0.82), against a baseline already at AUROC 0.998, a ceiling. The interaction was 0.0005
+    [−0.025, 0.027] (p 0.49). f behaves like a generic "stop saying unknown" push, not an answerability signal.
+  - **The M candidate is non-selective at its dose** (S, total effect: Uns 0.96). Branch M says where a release can be
+    produced. It says nothing about selectivity or about the R candidate's L35 edit, and the two are not merged.
+- **What the editor claimed is labelled as such.** Each submission's computation, evidence and predicted flips are
+  **editor-claimed**. Branch R tests the edit, not its verbal story; branch M tests one submission's account and it
+  failed.
+
+Headline (Advisor wording):
+
+> On sealed held-out cases, an agent-proposed rank-1 weight edit repaired false abstention: it gave the right city in
+> 82% of the cases where the model had wrongly said "unknown", with only a small rise in unsupported answers (3.5% to
+> 4.2%) and 3% damage to already-correct answers. It beat a prompt instruction, activation steering and directional
+> ablation on the pre-registered trade-off tests, but not a simple output bias against "unknown", where the comparison
+> was inconclusive. A separate two-head edit located a pathway at layer 33 that is sufficient to release answers. The
+> editor's own account of what that component computes was not supported.
+
+Pre-registration `research/proposals/2026-11-02-exp51-agent-weight-editing.md`:
+- rev 1 at d9e67b7;
+- rev 1a at 1be9281 and 15ec3ee (the §13 build contract from Codex's rev 1 review; zero-SD equivalence rule).
+
+Decisions:
+- D-72 (e1b292f): §51 opened; the editor budget is a $50 Console limit with a harness stop at $45.
+- D-73: RunPod cap raised to $36; two-pod stage-4 plan.
+- D-74 (closure): proposed by the Advisor; awaits the user's "Go".
+
+Reviews:
+- `research/reviews/2026-11-02-exp51-stage1-build-review.md` (build, delta, B5, stage-4 and F0 reviews);
+- `research/reviews/2026-11-06-exp51-s-review.md` (ACCEPT; independent S recount);
+- `research/reviews/2026-11-07-exp51-h-review.md` (ACCEPT; independent H and T-city recount; Holm reproduced).
+
+Freezes:
+- F0 at d29263a;
+- F1 at 1a37a72 (bounds, D2/D3, resume and lost-call rules, launch procedure, meter validation, cost estimate);
+- **F2 at 02bb2f6**: `runs/exp51/gpu/design.json`, a byte copy of pod S's `f2_candidate.json` (sha256 aa8e447f…,
+  design_sha d02d9f9c). It was committed after the S review and before any H or T-city row was read. The H+T pod
+  verified it against its own shallow clone.
+
+Code:
+- `memctl/analysis/edit51.py`;
+- `scripts/exp51_cases.py`, `exp51_common.py`, `exp51_engine.py`, `exp51_run.py`, `exp51_mech.py`,
+  `exp51_harness.py`, `exp51_freeze.py`, `exp51_stage4.py`, `exp51_smoke_s.py`;
+- the pod chains `exp51_pod_s.sh` and `exp51_pod_ht.sh`, with bundles `exp51_s_bundle.sh` and `exp51_ht_bundle.sh`;
+- `tests/test_exp51.py` (53 tests).
+
+Results:
+- E: `runs/exp51/run/e_entry.json`.
+- S: `runs/exp51/gpu/s_select.json` and `f2_candidate.json` (ba24885).
+- H and T-city: `runs/exp51/gpu_podHT/h_report.json` (sha 51bbbd2e…, 321a4f1).
+- Arm records stay local.
+
+**Design (fixed at F0–F2).**
+- **Cases.** `runs/exp51/cases51.jsonl` (sha 5eeb7c40…; 5,928 rows, 456 bases). Sizes in bases per task: E 48, S 32,
+  H 48, T-city 24 (r = 1.0, no scale-down).
+  - Populations: ANS (graded FA / C), CF, UNA-rel, UNA-swap, NM.
+  - T-format was dropped before F0 at the user's "yes drop T-format" (stage-1 build review, ruling 2). It is not a
+    deviation.
+- **The editor.** Opus 5.5 via the API, with tool access to the unedited model on E only: teacher-forced reads,
+  generation, `save_edit`, Python.
+  - It submits up to three edits, each with a component and computation claim, predictions by row type, flips, a
+    signed endpoint, a most important component and an f definition with activity predictions.
+  - One run only; a resume after an infrastructure crash counts as the same run.
+- **Entry on E (laptop CPU, fp32, batch 1).**
+  - R: U1 − B0 lower bound > 0, with ≥ 20 FA bases in DE or RC.
+  - M: the declared signed endpoint has |effect| ≥ 0.05, a bound beyond 0, and ≥ 20 bases.
+- **Selection on S (pod, A40, batch 64, sorted by case id, strict fp32).**
+  - R dose: max U1 over 0.5–2 (ties go lower). Candidate: the highest U1 among entrants, ties by (n_params, index).
+  - M: oriented effect / max(SE, 0.01). The primary component is the one whose revert removes the most effect.
+  - Comparator doses: max U1. B1 is matched to the f-intervention.
+- **Confirmation on H, read once; T-city is descriptive.**
+  - R repair bars: U − B0 lower bound > 0, Dam − B0 ≤ +0.05, Deg ≤ 0.02, CF-follow ≥ 0.90.
+  - "Better trade-off than k": O1 (more release, Uns not worse) or O2 (fewer Uns, release not worse), Holm over 10
+    hypotheses.
+  - M: M1 (revert), M2 (transplant / clamp), M3 (activity, predictor, interaction); Holm over 3.
+  - Intervals are 10k base resamples.
+
+**The editor run** (2026-11-03, 14:06–23:49 PST):
+- 73 turns, 16 passes, 63 Python runs and 6 saved edits; 3 submissions. The ledger records 2 failed requests. The
+  run ended on "finish".
+- **Cost $3.58** of the $45 harness stop (1.59 M input tokens, 12.5 k generated).
+- **Time:** about **34,950 s** from start to the last submission. The ledger's summed pass time (58,978 s) is larger
+  because passes overlapped the harness's polling. The ledger figure is not a wall-clock time.
+
+The three submissions (editor-claimed computations):
+
+| # | Kind | Component (editor-claimed) | Endpoint |
+|---|---|---|---|
+| 1 | repair | Heads L32h2 and L33h10 write a near-constant "unknown" vector at the answer ":"; the edit removes it (two `o_proj` column blocks) | FA → gold |
+| 2 | repair | L35 attention (heads 12, 13) carries an "answer available in the note" gate; a rank-1 `o_proj` edit makes it commit | FA → gold |
+| 3 | diagnostic | The converse of 1: doubling the two heads' write | C → abstention |
+
+**E (laptop, §8.4.2 replay at dose 1, base-weighted):**
+
+| Arm | Rel | Uns | Dam | CF-follow | U1 | R entry (U1 − B0) | M effect |
+|---|---|---|---|---|---|---|---|
+| B0 | 0 | 0.040 | 0 | 0.653 | 0.305 | — | — |
+| Sub 1 | 0.862 | 0.076 | 0.028 | 0.940 | 0.427 | +0.122 [0.102, 0.141] enters | FA gold +0.817 enters |
+| Sub 2 | 0.739 | 0.050 | 0.015 | 0.887 | 0.427 | +0.122 [0.104, 0.139] enters | FA gold +0.706 enters |
+| Sub 3 | 0.009 | 0.030 | 0.381 | 0.451 | 0.198 | −0.107 does not enter | C abstention +0.360 enters |
+
+- FA bases on E: DE 44, RC 35, TU 15.
+- Sub 1 raised UNA-swap invented answers from 17 to 29.
+
+**S (pod S, selection).** FA bases: DE 29, RC 23, TU 11. B0 U1 was 0.303.
+- R:
+  - Sub 2 at dose 2: U1 0.429, U − B0 +0.126 [0.097, 0.155]. **This is the candidate.** Its dose is at the top of the
+    grid, U1 was still rising, and no larger dose was searched.
+  - Sub 1 at dose 1: 0.402.
+  - Sub 3 did not enter (−0.059).
+- Comparators at max-U1 doses: B1 −8 0.411, B2 0.389, B3 0.136, B4 α 1 0.415, B5 β 1 0.383.
+- For the candidate on S: CF-follow 0.910 (borderline against the H bar), Rel 0.816, Uns 0.062, Dam 0.015.
+- M:
+  - Sub 1 at dose 1.5: FA gold +0.903 (SE 0.033). **This is the candidate.**
+  - Primary component L33 `o_proj`: its revert removes 0.264; L32's removes 0.078.
+  - B1 matched value −1 (effect 0.278) against the f-intervention's 0.220.
+  - The f-intervention releases at most 44/185 FA rows (0.22).
+
+**H (sealed, read once), R branch:**
+
+| Arm | Rel | Uns | Dam | CF-follow | U1 |
+|---|---|---|---|---|---|
+| B0 | 0/261 (0) | 20/576 (0.035) | 0 | 0.632 | 0.317 |
+| **Candidate (sub 2, dose 2)** | 212/261 (0.816) | 24/576 (0.042) | 11/593 (0.030) | 0.917 | **0.435** |
+| B1 logit bias −8 | 0.793 | 0.095 | 0 | 0.919 | 0.406 |
+| B2 "do not reply unknown" | 0.721 | 0.083 | 0.046 | 0.882 | 0.389 |
+| B3 no "unknown" option | 0.977 | 0.682 | 0.021 | 0.975 | 0.130 |
+| B4 §38 steering α 1 | 0.786 | 0.078 | 0 | 0.921 | 0.418 |
+| B5 directional ablation β 1 | 0.678 | 0.031 | 0.099 | 0.838 | 0.401 |
+
+| Comparator | dRel (candidate − k) | dUns | Holm result |
+|---|---|---|---|
+| B1 | +0.023 [−0.043, +0.088] | −0.054 [−0.069, −0.038] | not established (O2 p_holm 0.092); not equivalent |
+| B2 | +0.096 [+0.013, +0.175] | −0.042 [−0.061, −0.023] | **better** (O2, 0.005) |
+| B3 | −0.160 [−0.222, −0.103] | −0.641 [−0.681, −0.599] | not established |
+| B4 | +0.031 [−0.029, +0.092] | −0.036 [−0.052, −0.021] | **better** (O2, 0.033) |
+| B5 | +0.139 [+0.049, +0.225] | +0.010 [−0.007, +0.028] | **better** (O1, 0.007) |
+
+**H, M branch** (sub 1, dose 1.5; primary component L33 `o_proj`):
+
+| Test | Estimate | Holm (3) | Reading |
+|---|---|---|---|
+| M1 pathway | revert L33 0.293 [0.225, 0.368]; E* − mean of 5 random edits (B6) 0.717 [0.664, 0.770] | p 1e-4, reject | pathway located |
+| M2 causal path | transplant 0.808 [0.744, 0.870]; clamp 0.193 [0.138, 0.253] | p 1e-4, reject | sufficient, not necessary |
+| M3 account | predictor ΔAUROC −4.5e-5 [−1.8e-4, 5.2e-5]; interaction 0.0005 [−0.025, 0.027] | p 0.82, not rejected | not supported |
+
+M3 activity predictions (per base, S margins):
+- evidence_removed: directional, −1.08 [−1.54, −0.62]. As predicted.
+- city_changed: −0.16 [−0.67, 0.33]; inside the margin 6.6.
+- distractors_added: +1.03 [0.52, 1.55]; inside the margin 5.2.
+- unrelated_vs_absent: −0.04 [−0.45, 0.39]; inside the margin 5.7.
+- The account fails on the predictor and interaction tests (intersection-union).
+
+**T-city (descriptive; new cities, not a second confirmation):**
+- Candidate: U1 0.422 vs B0 0.303; Rel 0.817; Uns 0.062 (B0 0.059); CF-follow 0.912; Dam 0.031.
+- The ordering against B4 and B1 is the same as on H.
+- **The S-to-H consistency is descriptive, not extra evidence:** U1 0.429 → 0.435, CF-follow 0.910 → 0.917.
+
+**Deviations (tooling only; no scoring, selection or gate rule changed; each accepted by the Advisor):**
+- **D2, D3**: recorded at F1.
+- **D4** (b6e3d8e; found by D-30 before any pod):
+  - both bundles now ship the F0-frozen §38 B4 file (`runs/exp38_dev/qwen3b/directions.npz`, sha be1e3a09);
+  - pod S's D-22 smoke runs on dummy-shaped stand-ins (`exp51_smoke_s.py`), because the real 2048-wide edits cannot
+    apply to the 64-wide dummy.
+- **D5** (4bf49ad): pod S attempt 1 (gn952337raypzx) crashed in the §10 replay check (KeyError `prompt_ids`) and was
+  deleted at +9.5 min, about **$0.09**, counted in S.
+  - The fix takes prompt ids from the laptop B0 records, which are identical to `chat_ids(prompt)` on all 200 rows,
+    and adds a regression test.
+  - Attempt 2 passed the gate at 200/200 in all four comparisons.
+- **D6** (c880239): pod H+T's D-22 smoke had the same dummy-versus-real fault, and gets the same fix as D4.
+- **D6b** (bf22ac3; found by a negative D-30 check with a tampered `design.json`): under errexit and pipefail, a
+  failed F2 guard ended the chain with exit 1 at the `guard | tee` pipe, unlogged. It now logs "F2 GUARD FAILED" and
+  exits 4. The chain was fail-closed both before and after the fix.
+
+**Spend.**
+- Editor API: **$3.58** (Console limit $50, harness stop $45); dry runs about $0.71.
+- RunPod:
+  - pod S **≈ $4.38** (attempt 1 ≈ $0.09; attempt 2 billed 7.263 h × $0.59 = $4.29, 7.15 h of chain);
+  - pod H+T **$2.57** (4.361 h × $0.59; 4.31 h of chain).
+  - E, the replay, the builds, tests and D-30 ran on the laptop at $0.
+- RunPod programme total ≈ **$31.16 of $36** (D-73).
+
+**Limits.**
+- One model, one editor run, synthetic city templates, and the F2 note format only.
+- The R candidate's dose is at the top of its grid.
+- CF-follow was borderline on S (0.910) and passed on H (0.917).
+- The rank-1 form and the L35 site are the editor's choices. Branch R does not test the editor's "evidence gate"
+  story for that edit.
+- M2 shows sufficiency, not necessity. The L32 redundancy is observed, not tested.
+- M3's predictor test sat at an AUROC ceiling (0.998), so it had almost no room to show an increment.
+- The novelty claim is limited to selectivity under sealed, pre-registered confirmation: agent-proposed weight
+  edits themselves are not new (literature pass 2026-11-05).
+- One sealed read; no rescue (D-45).
+
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
 **Status: STOPPED at the regeneration sanity check; no gradient was computed.** Secondary to §34 (the J-lens
