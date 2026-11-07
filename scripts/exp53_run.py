@@ -216,6 +216,47 @@ def oproj_input(e, rec, layer: int) -> np.ndarray:
     return saved["x"]
 
 
+def randread_edit(i: int, sign: float, s: float, r: np.ndarray, U: np.ndarray) -> str:
+    return save([{"layer": 35, "tensor": "o_proj", "kind": "dense", "U": U, "V": (sign * s * r)[:, None]}],
+                {"arm": "D-randread", "draw": i, "seed": SEEDS["D_randread"], "scale": s, "sign": sign})
+
+
+def sign_align(scales: list[dict], rr: np.ndarray, U: np.ndarray) -> tuple[list[dict], list[str]]:
+    """Rev 1b: a draw whose median scaled gate on N-dev FA is below zero gets its read vector negated (sign -1), so
+    every D-randread pushes toward the city on a typical FA row as the target does. RMS (and so s) is sign-invariant.
+    Each entry keeps the pre-flip statistics under *_preflip; median/IQR become the post-flip values."""
+    out, edits = [], []
+    for x in scales:
+        x = {k: v for k, v in x.items() if not k.endswith("_preflip") and k not in ("sign", "flipped")} | {
+            k + "_preflip": x.get(k + "_preflip", x[k]) for k in ("median_unit_gate", "median_scaled_gate", "iqr_scaled_gate")}
+        sign = -1.0 if x["median_scaled_gate_preflip"] < 0 else 1.0
+        x["sign"], x["flipped"] = sign, sign < 0
+        x["median_unit_gate"] = sign * x["median_unit_gate_preflip"]
+        x["median_scaled_gate"] = sign * x["median_scaled_gate_preflip"]
+        q = [sign * v for v in x["iqr_scaled_gate_preflip"]]
+        x["iqr_scaled_gate"] = sorted(q)
+        out.append(x)
+        edits.append(randread_edit(x["draw"], sign, x["scale"], rr[x["draw"]], U))
+    return out, edits
+
+
+def stage_signfix() -> dict:
+    """Apply the rev 1b sign rule to an existing calibration.json (no engine needed: medians are stored) and drop the
+    superseded D-randread edit files."""
+    calib = CM.read_json(CALIB)
+    _, (c2,) = ED.load_edit(EDITS, SUB2)
+    U = np.asarray(c2["U"], np.float64)
+    rr = np.load(VECS)["randread_unit"]
+    old = list(calib["D_randread"]["edits"])
+    scales, edits = sign_align(calib["D_randread"]["scales"], rr, U)
+    calib["D_randread"] = {"edits": edits, "scales": scales, "sign_rule": "rev 1b: negate r when median N-dev FA gate < 0"}
+    CM.write_json(CALIB, calib)
+    for eid in set(old) - set(edits):
+        for ext in ("json", "npz"):
+            (EDITS / f"{eid}.{ext}").unlink(missing_ok=True)
+    return calib
+
+
 def stage_calibrate(e) -> dict:
     import exp51_mech as MC  # noqa: F401
     built = CM.read_json(OUT / "edits_built.json")
@@ -233,15 +274,14 @@ def stage_calibrate(e) -> dict:
     gate_t = X @ V
     rms = lambda g: float(np.sqrt(np.mean(np.square(g))))  # noqa: E731
     rms_t = rms(gate_t)
-    scales, edits = [], []
+    scales = []
     for i, r in enumerate(rr):
         g = X @ r
         s = rms_t / rms(g)
         scales.append({"draw": i, "rms_unit_gate": rms(g), "median_unit_gate": float(np.median(g)), "scale": s,
                        "median_scaled_gate": float(np.median(g * s)),
                        "iqr_scaled_gate": [float(np.percentile(g * s, 25)), float(np.percentile(g * s, 75))]})
-        edits.append(save([{"layer": 35, "tensor": "o_proj", "kind": "dense", "U": U, "V": (s * r)[:, None]}],
-                          {"arm": "D-randread", "draw": i, "seed": SEEDS["D_randread"], "scale": s}))
+    scales, edits = sign_align(scales, rr, U)
     # C5 margins on N-dev: Δf SD per manipulation (2 x SD of per-base means)
     sub2 = json.loads((SUBS51 / "2.json").read_text())
     fdir = np.load(SUBS51 / "2_f_direction.npy")
@@ -255,7 +295,7 @@ def stage_calibrate(e) -> dict:
     pops = Counter(p for v in recs.values() for p in v["populations"])
     out = {"n_dev_rows": len(rows), "dev_populations": dict(pops), "n_fa_calib": len(fa),
            "target_gate": {"rms": rms_t, "median": float(np.median(gate_t)), "iqr": [float(np.percentile(gate_t, 25)), float(np.percentile(gate_t, 75))]},
-           "D_randread": {"edits": edits, "scales": scales}, "C5": {"activity": acts, "f_site": sub2["f_site"],
+           "D_randread": {"edits": edits, "scales": scales, "sign_rule": "rev 1b: negate r when median N-dev FA gate < 0"}, "C5": {"activity": acts, "f_site": sub2["f_site"],
                                                                      "f_direction_sha256": sub2["f_direction_sha256"]},
            "engine": e.fingerprint()}
     CM.write_json(CALIB, out)
@@ -297,7 +337,7 @@ def stage_manifest() -> dict:
     built = CM.read_json(OUT / "edits_built.json")
     calib = CM.read_json(CALIB)
     edit_files = sorted(p.name for p in EDITS.iterdir())
-    m = {"experiment": "§53 rev 1", "proposal_sha256": sha_file(ROOT / "research/proposals/2026-11-05-exp53-head-controls.md"),
+    m = {"experiment": "§53 rev 1b", "proposal_sha256": sha_file(ROOT / "research/proposals/2026-11-05-exp53-head-controls.md"),
          "cases53_sha256": sha_file(CASES), "cases_counts_sha256": sha_file(OUT / "cases53_counts.json"),
          "seeds": SEEDS, "n_draws": N_DRAWS, "quota": QUOTA, "d_dose": D_DOSE, "b1_ref": B1_REF,
          "pairs": built["pairs"], "edits": built["edits"], "copied_51": built["copied_51"],
@@ -699,7 +739,7 @@ def _c_abst(rows, labels, meta):
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--stage", required=True, choices=("edits", "calibrate", "manifest", "pod", "report"))
+    p.add_argument("--stage", required=True, choices=("edits", "calibrate", "signfix", "manifest", "pod", "report"))
     p.add_argument("--root", default=str(OUT / "pod"))
     p.add_argument("--device", default="cpu")
     p.add_argument("--snapshot", default=None)
@@ -713,6 +753,10 @@ def main(argv=None) -> int:
     if a.stage == "edits":
         print(json.dumps({k: (v if k != "edits" else {kk: len(vv) for kk, vv in v.items()})
                           for k, v in stage_edits().items() if k != "pairs"}))
+        return 0
+    if a.stage == "signfix":
+        c = stage_signfix()["D_randread"]["scales"]
+        print(json.dumps([(x["draw"], x["sign"], round(x["median_scaled_gate"], 3)) for x in c]))
         return 0
     if a.stage == "manifest":
         m = stage_manifest()

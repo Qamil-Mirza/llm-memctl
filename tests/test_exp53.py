@@ -76,3 +76,15 @@ def test_cases53_disjoint_and_complete():
     c = json.loads((ROOT / "runs/exp53/cases53_counts.json").read_text())
     assert c["pass"] and c["n_rows"] == 1950 and c["excluded_key_splits"] == ["E", "S"]
     assert c["key_overlap"]["E"]["rows_with_key_in_split"] == 0 and c["key_overlap"]["S"]["rows_with_key_in_split"] == 0
+
+
+def test_randread_sign_rule_rev1b():
+    """Rev 1b: every D-randread draw has a non-negative median N-dev FA gate, and its edit's read vector is sign*s*r."""
+    from memctl.analysis import edit51 as ED
+    c = json.loads((ROOT / "runs/exp53/calibration.json").read_text())["D_randread"]
+    rr = np.load(R.VECS)["randread_unit"]
+    assert len(c["edits"]) == 20 and all(x["median_scaled_gate"] >= 0 for x in c["scales"])
+    for x, eid in zip(c["scales"], c["edits"]):
+        assert x["sign"] == (-1.0 if x["median_scaled_gate_preflip"] < 0 else 1.0)
+        _, (comp,) = ED.load_edit(R.EDITS, eid)
+        assert np.allclose(np.asarray(comp["V"])[:, 0], x["sign"] * x["scale"] * rr[x["draw"]])
