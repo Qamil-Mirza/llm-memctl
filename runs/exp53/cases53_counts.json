@@ -1,0 +1,95 @@
+{
+ "pass": true,
+ "cases53_sha256": "651c930ce0ee6973c0dd4ae1788134f72c33ce40d90180ecca917e76b2adf4d3",
+ "n_rows": 1950,
+ "n_bases": 150,
+ "n_per_task": 50,
+ "seed": 54,
+ "dev_rule": "base index % 5 == 0",
+ "excluded_key_splits": [
+  "E",
+  "S"
+ ],
+ "key_overlap": {
+  "E": {
+   "rows_with_key_in_split": 0,
+   "rows_with_key": 1350
+  },
+  "S": {
+   "rows_with_key_in_split": 0,
+   "rows_with_key": 1350
+  },
+  "H": {
+   "rows_with_key_in_split": 867,
+   "rows_with_key": 1350
+  },
+  "Tcity": {
+   "rows_with_key_in_split": 0,
+   "rows_with_key": 1350
+  }
+ },
+ "problems": {
+  "rows_per_base": [],
+  "closure": [],
+  "canonical_key": [],
+  "memory_text": [],
+  "duplicate": [],
+  "cf": [],
+  "swap": [],
+  "una_city": [],
+  "t_city": [],
+  "b2_b3": [],
+  "pool_tokens": [],
+  "e_key_overlap": [],
+  "s_key_overlap": [],
+  "old_prompt": []
+ },
+ "counts": {
+  "dev|DE|ANS": 60,
+  "dev|DE|CF": 30,
+  "dev|DE|UNA-rel": 30,
+  "dev|DE|UNA-swap": 10,
+  "dev|RC|ANS": 60,
+  "dev|RC|CF": 30,
+  "dev|RC|UNA-rel": 30,
+  "dev|RC|UNA-swap": 10,
+  "dev|TU|ANS": 60,
+  "dev|TU|CF": 30,
+  "dev|TU|UNA-rel": 30,
+  "dev|TU|UNA-swap": 10,
+  "held|DE|ANS": 240,
+  "held|DE|CF": 120,
+  "held|DE|UNA-rel": 120,
+  "held|DE|UNA-swap": 40,
+  "held|RC|ANS": 240,
+  "held|RC|CF": 120,
+  "held|RC|UNA-rel": 120,
+  "held|RC|UNA-swap": 40,
+  "held|TU|ANS": 240,
+  "held|TU|CF": 120,
+  "held|TU|UNA-rel": 120,
+  "held|TU|UNA-swap": 40
+ },
+ "attempts": {
+  "0": 62,
+  "1": 37,
+  "2": 25,
+  "3": 8,
+  "4": 10,
+  "5": 2,
+  "6": 2,
+  "8": 2,
+  "9": 1,
+  "13": 1
+ },
+ "redraw_reasons": {
+  "prompt_repeats": 62,
+  "no_swap_entity": 126,
+  "rc_key": 23
+ },
+ "old_cases": {
+  "runs/exp49/cases49.jsonl": "d11894ac2b868ef58204274cb44979953b3727adb74a9ad57e8924922ef0e82b",
+  "runs/exp50/cases50.jsonl": "c6eb5ed7772c49c25056a8666881cf571eb4e58ca755935613fb730421d89260"
+ },
+ "cases51_sha256": "5eeb7c402a5805ba9899bb22f229a6ed6d89938d4de0ef76176be66d146a8501"
+}
