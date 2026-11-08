@@ -287,3 +287,18 @@ the user has made the decision.
 - **Context.** The Qwen weight-editing line (§51/§53) is closed (D-76, D-77). The §53 LongMemEval release audit
   (`research/audits/2026-11-07-exp53-lme-release-audit.md`) left the arm C conclusion standing under its pre-set rule.
 - **Authority.** The user, Advisor pane, 2026-11-07: "approved, go ahead with stages 0–4".
+
+## D-79 (2026-11-08) — §54 closed at the stage-1 feasibility gate; STATE F20 added
+
+- **What.** §54 stage 1 found 21 primary twin pairs against the frozen bar of 40 (bases 20 and tasks 3 pass). Under
+  proposal §6 and D-45 it stops: no stage 2, no timing step, no enlargement of W, no use of the secondary pairs.
+  Seed 56 stays sealed and ungenerated.
+- **Record.** EXPERIMENTS §54 (a15418b); stage-1 results 71b9ce7 with the grading fix disclosed; gate review
+  `research/reviews/2026-11-08-exp54-stage1-gate-review.md` (3db285b); descriptive note audit
+  `research/audits/2026-11-08-exp54-note-audit.md` (6fb06f9). STATE F20.
+- **Reading.** 43 of 64 twin flips are note-driven; most of those notes still hold the evidence (29 of 43), and about
+  0.89 of all W false abstentions have the gold in the model's own note (automatic rule). Evidence lost at the note
+  step is a minority, concentrated in RC and TU. Q18 is unchanged: the contrast with an evidence-use failure stays NOT
+  ESTABLISHED.
+- **Spend.** $0. RunPod programme total unchanged at about $33.75 of $36.
+- **Authority.** The user, Advisor pane, 2026-11-08: "Go".
