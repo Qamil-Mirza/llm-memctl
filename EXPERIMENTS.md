@@ -8701,6 +8701,78 @@ Results:
   7b9e271. The 26,400 arm records and 1,560 B0 records stay local (`runs/exp53/gpu_pod/pod_out.tar.gz`).
 - Calibration: `runs/exp53/calibration.json`. Laptop smoke: `runs/exp53/smoke_laptop/report.json`.
 
+## 54. Is there a native switch behind false "unknown"? Twin-pair patching, Qwen 2.5 3B (2026-11-07, pre-registered rev 0a; laptop stage 1 2026-11-08)
+
+**Status: STOPPED at the stage-1 feasibility gate (§6 / D-45). 21 primary pairs against a bar of 40. No component was
+patched.**
+- **What was planned.** §54 compares twin questions whose memories differ only in their timestamps, where the model
+  answers one twin and says "unknown" on the other.
+  - Primary pairs give both twins the answering twin's own note, token for token. Copying component outputs at the
+    answer ':' between the twins was meant to find a set of at most 5 heads or MLPs (layers 20–35) that passes five
+    pre-set tests.
+  - Before any patching, stage 1 had to yield at least 40 primary pairs, from at least 20 bases, covering at least 2
+    of the 3 tasks.
+- **Data.** A new split W from the §51 F2 generator (via `exp53_cases.build`), seed 55: 150 bases, 1,950 rows.
+  - E and S keys are excluded, and no prompt repeats any §49–§53 row.
+  - W shares DE/TU keys with N (930 of 1,350 keyed rows) and with H (882), because those cells are allocated
+    deterministically. No output of H, T-city, N-held or §50 held was read.
+  - Seed 56 (stage 5) was not generated.
+- **B0** on the 900 ANS rows, own notes, §51 procedure: 18.1 s per row on the first 64 rows, 5.2 h in all, peak RSS
+  19.9 GB.
+- **Gate (FAIL):**
+
+  | Requirement | Bar | Result | |
+  |---|---|---|---|
+  | Primary pairs | ≥ 40 | **21** | fail |
+  | Bases with a primary pair | ≥ 20 | 20 | pass |
+  | Tasks covered | ≥ 2 | 3 | pass |
+
+- **Counts.**
+  - Of 450 twin pairs (rep a vs rep b, same base and hardness): 268 were both gold, 64 were gold/"unknown" flips,
+    and 118 were other combinations.
+  - The 64 flips contain 64 of the 288 false-abstention rows (**22%**).
+  - Flips by task: DE 23, TU 21, RC 20. By hardness: H2 32, H1 20, H0 12.
+  - Under the answering twin's note, **43 of the 64 flips (67%) are note-driven**: the abstaining twin then answers
+    with the gold. **21 remain "unknown" (primary)**, and every one of the 21 satisfies D_A < 0 < D_F (median
+    D_F − D_A = 2.2).
+  - Primary by task: DE 8, RC 8, TU 5. By hardness: H0 1, H1 9, H2 11. By half: dev-A 10 pairs from 10 bases, dev-B
+    11 pairs from 10 bases.
+  - Note-driven by task: TU 16, DE 15, RC 12. By hardness: H2 21, H0 11, H1 11.
+  - Median D (" unknown" minus A's first answer token) on the abstaining twin's own note: 4.9 for note-driven pairs,
+    1.0 for primary pairs.
+  - Stable pairs (both gold; the b twin still gold under rep a's note): 257 of 268 candidates, dev-A 126, dev-B 131.
+    The other 11 turn "unknown" under rep a's note.
+- **Reading (scoped).**
+  - Among twin flips, 43 of 64 disappear when both twins share one note. Near-threshold "unknown" is mostly set by
+    the note the model wrote, not by a late decision at the answer step.
+  - This covers only the 22% of false-abstention rows that form twin flips. It is not evidence that no native switch
+    exists.
+- **Grading bug, found at the first gate read and fixed.**
+  - The first count showed 0 primary pairs: every forced-note answer was graded "no_answer_line". The stage-1 code had
+    graded only the generated tail, while §51 grades the note and marker ("head") plus the tail.
+  - The code was fixed to head + tail, and the stored generations were regraded with the tokenizer only. No model was
+    rerun and no D value changed.
+  - The pre-regrade file is kept (`runs/exp54/pairs_pre_regrade.json`). The gate fails under either grading.
+- **Stop.** Under §6 (stage 1, fewer than 40 primary pairs) and D-45:
+  - no stage 2, no timing step and no enlargement of W;
+  - the secondary (own-note) pairs are not analysed.
+
+Pre-registration `research/proposals/2026-11-07-exp54-native-switch.md`: rev 0 (D-78, 7eb3c10); rev 0a at 20a46fe
+(freeze review: criterion 1 referenced to stable twin pairs; criterion 4 floor; full-grid rule).
+
+Freeze: `runs/exp54/freeze.json`, sha256 2ef769bc…54ce, committed at 4a3703f before any model call (amends 66fcafe).
+
+Spend: $0 (laptop). RunPod programme total unchanged at ≈ $33.75 of $36.
+
+Review: `research/reviews/2026-11-08-exp54-stage1-gate-review.md` (3db285b; gate FAIL and regrade accepted).
+
+Code: `scripts/exp54_cases.py`, `exp54_run.py`, `exp54_patch.py` (the patching core, checked on the dummy model only;
+never run on the real model). Build at 0aeef23.
+
+Results: `runs/exp54/cases54.jsonl` (sha256 1f0d4133…), `cases54_counts.json`, `pairs.json`,
+`pairs_pre_regrade.json` and the stage-1 logs, at 0aeef23 and 71b9ce7. The 900 B0 records stay local
+(`runs/exp54/run/b0/W/`).
+
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
 **Status: STOPPED at the regeneration sanity check; no gradient was computed.** Secondary to §34 (the J-lens
