@@ -236,3 +236,32 @@ the user has made the decision.
   controls for the L35 rank-1 edit and the two heads, and natural-data transfer. Rev 1 is its own pre-registration.
 - **Authority.** The user, Advisor pane, 2026-11-07: "let's run 53 as you recommended. Then you have the go on the
   closing decision entry."
+
+## D-77 (2026-11-07) — §53 complete; STATE F19 added; closed under D-45
+
+- **What.** §53 (rev 1b) ran once on N-held. Each of its four pre-registered claims passed its own test:
+  - **C1:** the two-head ablation releases more false abstentions than 20 random L32×L33 pairs (0.751 against a max
+    of 0.464).
+  - **C2:** doubling the pair creates more abstention on correct rows than doubling 20 random pairs (0.381 against
+    0.345; the narrowest pass).
+  - **C4:** the L35 edit's U1 beats 20 sign-aligned, RMS-matched random read vectors (0.403 against 0.300), with Uns
+    below their median.
+  - **C5:** submission 2's four activity predictions hold on the unedited model (IUT p ≈ 1e-4).
+  - No family-wise claim. Under exchangeability, P(at least one passes) ≤ about 0.19.
+- **Beside it (descriptive).** §51's frozen logit bias (B1 −8) matches both edits on U1 (0.406 against 0.403 and
+  0.414). The edits beat random edits of their own form, not the simplest baseline. This is consistent with §51's
+  "B1 inconclusive".
+  - LongMemEval: the edits release most in-view refusals (20 and 19 of 26), but only 8 and 7 of those contain the
+    gold.
+  - B-opt is not estimable.
+- **Record.**
+  - EXPERIMENTS.md §53 at 54a00e1; manifest b2b14bac at a177536 (before any N-held output).
+  - Pod outputs at 7b9e271 (report.json f1ba6dad).
+  - Advisor review `research/reviews/2026-11-07-exp53-results-review.md` (ACCEPT; independent recount of all 87 arms,
+    0 mismatches; corrected at e3e051e).
+- **Spend.** Pod A40 4.383 h ≈ $2.59 (quote $2.55, hard stop $3.10). RunPod total ≈ $33.75 of $36. The §51 editor
+  API is unchanged at $3.58 of its $50.
+- **Closure.** No rescue variant, no second N read, and no tuning of B1 or the edits on N. Open follow-ups go to
+  OPEN_QUESTIONS only, if the user wants them: a predictor/interaction test of submission 2's account, and a
+  head-to-head of the edits against B1 on fresh data with power for a difference.
+- **Authority.** The user, Advisor pane, 2026-11-07: "do draft the decision entry and the state update". "Go" (2026-11-07).
