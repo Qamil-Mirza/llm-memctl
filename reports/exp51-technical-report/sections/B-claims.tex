@@ -1,0 +1,44 @@
+\section{Claims and evidence}
+\label{app:claims}
+
+\begingroup\small
+\begin{longtable}{@{}L{0.36\linewidth}L{0.36\linewidth}L{0.21\linewidth}@{}}
+\caption{Every substantive claim in the report, the evidence for it and its status. ``Shown'' requires a passed
+pre-specified test on H; ``context'' marks results of earlier experiments.}\label{tab:claims}\\
+\toprule
+Claim & Evidence & Status \\
+\midrule
+\endfirsthead
+\toprule
+Claim & Evidence & Status \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+\multicolumn{3}{@{}l}{\emph{Earlier experiments}} \\*
+False abstentions in this model are mostly ``note, then refuse'' & 152 of 165 held-out false abstentions name the
+gold in the note (earlier experiment); 232 of 261 on H (this study) & Context; descriptive here \\
+Ungated pushes recover answers but increase unsupported answering & Earlier held-out results (0.188 and 0.451); a
+gating result was template-limited & Context \\
+\addlinespace
+\multicolumn{3}{@{}l}{\emph{This study: repair branch}} \\*
+At least one agent-proposed edit entered the evaluation & Entry on E (\cref{app:e}) & Exploratory \\
+The rank-1 layer-35 edit repairs false abstention & H, four-part repair criterion (\cref{sec:results}) & Shown \\
+Its trade-off is better than B2, B4 and B5 & H, Holm-corrected O1/O2 & Shown \\
+Its trade-off is better than B1 & H, O1/O2 not passed; TOST not passed & Inconclusive \\
+Its trade-off is better than B3 & H, O1/O2 not passed & Not established \\
+It carries over to unseen cities & T-city & Descriptive \\
+\addlinespace
+\multicolumn{3}{@{}l}{\emph{This study: pathway branch (two-head edit)}} \\*
+The release runs through the layer-33 component & H, M1 and M2 & Shown: sufficient under the tested intervention,
+not necessary \\
+The two heads are unusual among late-layer heads & No random-head control in confirmation & Not tested \\
+The agent's account of what the component computes & H, M3 & Not established (not refuted) \\
+\addlinespace
+\multicolumn{3}{@{}l}{\emph{Follow-up in progress (\cref{sec:followup}); no results}} \\*
+The layer-35 edit's read direction matters (C4) & N split & Pending \\
+The two heads are special among late-layer pairs (C1, C2) & N split & Pending \\
+The agent's description of the layer-35 signal (C5) & N split & Pending \\
+The edits carry over to natural questions & LongMemEval development questions & Pending (descriptive) \\
+\end{longtable}
+\endgroup

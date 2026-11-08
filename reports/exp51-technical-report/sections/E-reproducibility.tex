@@ -1,0 +1,82 @@
+\section{Artefacts and reproducibility}
+\label{app:artefacts}
+
+\subsection{Artefacts}
+
+Commit identifiers refer to the project's Git repository, which is not yet public.
+\todo{public repository URL; archive DOI if used.}
+\begin{itemize}[leftmargin=*]
+  \item \emph{Pre-registration and freezes.} Proposal revisions \texttt{d9e67b7}, \texttt{1be9281}, \texttt{15ec3ee};
+        F0 \texttt{d29263a}; F1 \texttt{1a37a72} (built at \texttt{c9ca458}); F2 \texttt{02bb2f6} (design hash
+        \texttt{d02d9f9c\ldots}).
+  \item \emph{Tooling fixes.} \texttt{b6e3d8e} (before any GPU run), \texttt{4bf49ad} (after the failed first
+        selection run), \texttt{c880239} and \texttt{bf22ac3} (before the confirmation run).
+  \item \emph{Confirmation report.} \texttt{h\_report.json}, sha256 \texttt{51bbbd2e\ldots}, committed at
+        \texttt{321a4f1}.
+  \item \emph{Cases.} 5,928 rows in 456 base cases, sha256 \texttt{5eeb7c40\ldots}.
+  \item \emph{Edit recipes.} Submission 1 \texttt{c64ea090781450cf}, submission 2 \texttt{8364bf135ac59a83},
+        submission 3 \texttt{87224655b7a5361e} (head columns and rank-1 factors). Edited weights will be released
+        only if the model licence allows.
+  \item \emph{Agent record.} The full transcript (paths and keys removed) and the three submission records.
+  \item \emph{Per-row outputs} for every arm and split, and the scripts for \cref{fig:tradeoff}
+        (\texttt{figures/tradeoff\_data.py}, \texttt{figures/tradeoff\_plot.py}).
+  \item \emph{Follow-up (\cref{sec:followup}).} Proposal revision 1b \texttt{ea88023}; build \texttt{9ff3d61}; sign
+        rule \texttt{1dce499}; manifest sha256 \texttt{b2b14bac\ldots}, committed at \texttt{a177536} before any
+        held-out output; N split of 1,950 rows, sha256 \texttt{651c930c\ldots}. \pending{follow-up output commit
+        and report hash.}
+\end{itemize}
+
+\subsection{Reproducibility checklist}
+
+\begin{table}[H]
+\centering\small
+\caption{Reproducibility checklist.}
+\label{tab:checklist}
+\begin{tabularx}{\linewidth}{@{}L{0.24\linewidth}YL{0.22\linewidth}@{}}
+\toprule
+Item & Where it is specified & Status \\
+\midrule
+Model and revision & Qwen2.5-3B-Instruct, Hugging Face revision \texttt{aa8e7253\ldots}, recorded at F0; fp32 & Specified \\
+Prompt and decoding & \Cref{app:prompt}; greedy; 160 new tokens (16 for answer-only) & Specified \\
+Case generation and splits & Seeds 51--53; base-level partition (\cref{sec:setup}); case-file hash & Specified; generator
+code not yet public \\
+Grading rules & \Cref{app:methods}; frozen grader with fixtures & Specified; code not yet public \\
+Edit recipes & Hashed manifests; \cref{sec:proposals} gives the selected edit's form & Specified; weights pending
+licence check \\
+Selection rules & \Cref{sec:evaluation} & Specified \\
+Frozen analysis & F2 commit; inference rules in \cref{app:methods} & Specified; code not yet public \\
+Agent provenance & Transcript, submission records, API usage log & Held; redacted release pending \\
+Per-row outputs & All arms and splits & Held; not yet public \\
+Compute and cost & \Cref{sec:limits} & Reported \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Data for the trade-off figure}
+\label{app:figdata}
+
+\Cref{tab:figdata} lists the values plotted in \cref{fig:tradeoff}. The intervals were computed after confirmation
+from the stored per-row outputs on H, with the frozen bootstrap (base resampling within task, $B = 10{,}000$, frozen
+seed). No model was rerun. The script checks that each point estimate matches the sealed report exactly. These
+marginal intervals are descriptive and were not part of the frozen analysis.
+
+\begin{table}[ht]
+\centering\small
+\caption{Rates on H with marginal 95\% bootstrap intervals. Recovery counts are gold answers among the 261 false
+abstentions; unsupported counts are among the 576 unanswerable rows (every base has four, so the base-weighted rate
+equals the pooled fraction).}
+\label{tab:figdata}
+\begin{tabular}{@{}lllll@{}}
+\toprule
+Arm & Recovery [95\% CI] & Rows & Unsupported [95\% CI] & Rows \\
+\midrule
+B0 unedited & 0 & 0/261 & 0.035 [0.023, 0.047] & 20/576 \\
+Selected edit & 0.816 [0.756, 0.871] & 212/261 & 0.042 [0.028, 0.056] & 24/576 \\
+B1 logit bias & 0.793 [0.728, 0.855] & 210/261 & 0.095 [0.078, 0.113] & 55/576 \\
+B2 instruction & 0.721 [0.646, 0.795] & 190/261 & 0.083 [0.066, 0.101] & 48/576 \\
+B3 option removed & 0.977 [0.958, 0.992] & 252/261 & 0.682 [0.642, 0.720] & 393/576 \\
+B4 steering & 0.786 [0.718, 0.849] & 209/261 & 0.078 [0.061, 0.095] & 45/576 \\
+B5 orthogonalisation & 0.678 [0.600, 0.751] & 184/261 & 0.031 [0.017, 0.047] & 18/576 \\
+\bottomrule
+\end{tabular}
+\end{table}

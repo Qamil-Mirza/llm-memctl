@@ -1,15 +1,15 @@
-Small instruction-tuned language models sometimes answer ``unknown'' even when their context contains enough
-evidence to answer correctly. In Qwen2.5-3B-Instruct, this false abstention can follow a note in which the model
-has already quoted the relevant fact. Earlier interventions recovered correct answers but also encouraged
-unsupported answers. We ask whether an agent-proposed weight edit can improve this trade-off.
-Following weight-space programming \citep{takehi2026wsp}, a Claude agent inspected the model on an exploration
-split and proposed three edits. We evaluated them in a pre-registered case study in one model, with separate
-selection and sealed confirmation splits, a transfer split, and six frozen comparators serving repair or pathway
-tests. The selected repair was a rank-1 change to the attention output projection in layer 35. It met the
-pre-registered repair criterion on sealed data: the base-weighted recovery rate on false abstentions was 82\%,
-while unsupported answers on unanswerable questions rose from 3.5\% to 4.2\%. It damaged already-correct answers
-at a base-weighted rate of 3\%. Its release-versus-unsupported-answer trade-off was better than a prompt
-instruction, activation steering and directional orthogonalisation. The comparison with a simple logit bias
-against ``unknown'' was inconclusive. A separate two-head edit provided evidence about a pathway through which
-answers can be released, but the agent's explanation of that component was not supported by the pre-registered
-tests.
+Small instruction-tuned language models sometimes answer ``unknown'' when their context contains the answer.
+In Qwen2.5-3B-Instruct, this false abstention often follows a generated note that already quotes the relevant fact.
+Earlier interventions recovered such answers but also encouraged unsupported answers. We ask whether a weight edit proposed by an AI agent can do better. A Claude agent
+studied the model on an exploration split and submitted three closed-form edits. We chose candidates and doses on a
+separate split, froze the analysis plan by commit, and evaluated once on sealed confirmation data. The
+selected repair, a rank-1 update to the layer-35 attention output projection, met the pre-specified repair
+criterion. Utility rose by 0.117 (95\% CI 0.096 to 0.138). In base-weighted terms, the edit recovered 82\% of false abstentions,
+unsupported answers to unanswerable questions rose from 3.5\% to 4.2\%, and 3\% of initially correct answers were
+lost. Under Holm-corrected tests, its trade-off between recovery and
+unsupported answers was better than that of an added prompt instruction, activation steering or directional
+orthogonalisation. Superiority over removing the ``unknown'' option was not established. Against a logit bias on
+``unknown'', the comparison was inconclusive: neither superiority nor equivalence was shown. A separate two-head edit
+showed that intervening on a layer-33 component is sufficient, though not necessary, to release answers. The frozen
+tests did not establish the agent's account of what that component computes. The evidence comes from one model,
+synthetic city questions and a single agent run.

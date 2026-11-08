@@ -1,49 +1,124 @@
-\section{The independent evaluation}
+\section{Evaluation design}
 \label{sec:evaluation}
 
-The evaluation separates two questions: whether an edit \emph{repairs} false abstention (branch R), and whether
-the proposed \emph{pathway and explanation} survive intervention tests (branch M). Each branch can select a
-different edit and dose. Success in one does not imply success in the other.
+The evaluation separates two questions. The \emph{repair} branch asks whether an edit improves the model's
+behaviour. The \emph{pathway} branch asks whether the component the agent named lies on a route that produces the
+behaviour, and whether the agent's account of that component holds. Each branch selected its own edit and dose, and
+success in one branch does not imply success in the other. \Cref{fig:pipeline} shows the sequence of stages and which
+data each stage could read.
 
-\paragraph{Replay and screening on E.}
-After the agent finished, the evaluation harness replayed every submission on all of E. The repair screen
-required a utility gain over B0 with a one-sided 97.5\% lower bound above zero and at least 20 false-abstention
-bases in DE or RC. The pathway screen required an effect of at least 0.05 in the declared direction, with a
-one-sided 97.5\% bound beyond zero and at least 20 bases in the relevant endpoint population. If no submission
-met either screen, S, H and T would have remained unread. E outcomes remained exploratory because the agent
-had used that split to develop the edits.
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}[
+  font=\small,
+  stage/.style={draw=black!70, rounded corners=2pt, fill=#1, align=center, text width=3.05cm, minimum height=1.95cm,
+                inner sep=4pt},
+  data/.style={draw=black!55, rounded corners=1pt, fill=#1, align=center, text width=3.05cm, minimum height=0.85cm,
+               inner sep=3pt, font=\footnotesize},
+  arr/.style={-{Stealth[length=2.2mm]}, thick, black!70},
+  node distance=0.42cm]
+  \node[stage=blue!7] (s1) {\textbf{1. Explore}\\[2pt] Agent studies the model, proposes and tests edits, submits
+    three with hypotheses};
+  \node[stage=blue!7, right=of s1] (s2) {\textbf{2. Screen \& select}\\[2pt] Analysts replay all submissions on E,
+    then choose candidates and doses on S};
+  \node[stage=orange!12, right=of s2] (s3) {\textbf{3. Freeze (F2)}\\[2pt] Candidates, doses, comparators and
+    analysis code committed (\texttt{02bb2f6})};
+  \node[stage=green!9, right=of s3] (s4) {\textbf{4. Confirm}\\[2pt] H and T-city generated and read once; no
+    rescue variant};
+  \draw[arr] (s1) -- (s2);
+  \draw[arr] (s2) -- (s3);
+  \draw[arr] (s3) -- (s4);
+  \node[data=blue!3, below=0.55cm of s1] (d1) {E: agent only\\(144 bases)};
+  \node[data=blue!3, below=0.55cm of s2] (d2) {E replay; S: analysts\\(S: 96 bases)};
+  \node[data=black!4, below=0.55cm of s3] (d3) {H and T-city do not\\exist yet: sealed};
+  \node[data=green!4, below=0.55cm of s4] (d4) {H (144 bases): confirm\\T-city (72): describe};
+  \foreach \i in {1,2,3,4} {\draw[black!45, dashed] (s\i.south) -- (d\i.north);}
+  \node[anchor=east, font=\footnotesize\itshape, text=black!60, align=right] at ($(d1.west)+(-0.1,0)$) {data\\read};
+\end{tikzpicture}
+\caption{Evaluation pipeline. Each stage could read only the data shown beneath it. The agent saw only E. Analysts
+used E to screen submissions and S to select candidates and doses, separately for the repair and pathway branches.
+The confirmatory plan was frozen by commit (F2) before any model outputs on H or T-city were generated; each was then
+generated and read once. Earlier freezes (F0, F1) fixed the data, grader, comparators and edit rules before the agent
+started.}
+\label{fig:pipeline}
+\end{figure}
 
-\paragraph{Selection on S.}
-The entry rules were then evaluated on S. For repair, candidate and comparator doses were chosen to maximise
-utility, and the qualifying candidate with the highest utility was selected; candidate ties favoured fewer
-edited weights. For the pathway branch, dose selection maximised the declared signed effect, subject to the
-pre-registered limit on degenerate outputs. Candidate selection used the standardised effect, separately from
-repair. Dose ties favoured the setting closest to no change.
+\paragraph{Stage 1 and 2a: replay and screening on E.}
+After the agent finished, the harness replayed every submission on all of E. To enter the repair branch, a submission
+needed a utility gain over B0 whose one-sided 97.5\% lower bound was above zero, with at least 20 false-abstention
+bases in DE or RC. To enter the pathway branch, it needed an effect of at least 0.05 on its signed endpoint, with a
+one-sided bound beyond zero and at least 20 bases. If no submission had entered either branch, S, H and T-city would
+have stayed unread. Results on E are exploratory because the agent developed its edits there (\cref{app:e}).
 
-The repair candidate was submission 2, a rank-1 edit to the layer-35 attention output projection, at dose 2.
-Its utility on S was 0.429, compared with 0.402 for the next submission and 0.303 for B0. Dose 2 was the top of
-the frozen grid; larger doses were not searched. The pathway candidate was submission 1, the two-head edit,
-at dose 1.5, with the layer-33 head designated as its primary component. Selected repair-comparator doses
-were $-8$ for logit bias (B1), 1 for steering (B4), and $\beta = 1$ for orthogonalisation (B5).
+\paragraph{Stage 2b: selection on S.}
+For the repair branch, each entering candidate and each comparator was run at every dose in its frozen grid, and the
+dose with the highest utility on S was kept. The candidate with the highest utility was selected; ties would have
+favoured fewer changed weights, and dose ties the setting closest to no change. For the pathway branch, the dose
+maximised the signed effect subject to a limit on degenerate outputs, and the candidate with the largest
+standardised effect was selected.
 
-\paragraph{Freezing the confirmation.}
-The selected candidates, doses, comparator settings and analysis code were frozen before any H or T model
-outputs were generated or read. This freeze, F2, is recorded at commit \texttt{02bb2f6}, with design hash
-\texttt{d02d9f9c\ldots}. The confirmation run checked that commit before accessing H or T.
+The repair candidate was submission 2, the rank-1 layer-35 edit, at dose 2. Its utility on S was 0.429, against
+0.402 for submission 1 and 0.303 for B0. Dose 2 was the top of the frozen grid $\{0.5, 1, 1.5, 2\}$, and utility was
+still rising there; larger doses were not searched. The pathway candidate was submission 1, the two-head edit, at
+dose 1.5. Its primary component was set to the layer-33 output projection, because reverting that component removed
+more of the effect on S than reverting layer 32.
 
-\paragraph{Decision criteria.}
-H and T were each evaluated once. The repair criterion on H required a positive lower bound for the utility
-gain, damage no greater than 0.05, degenerate outputs no greater than 0.02, and counterfactual following of at
-least 0.90. The damage and counterfactual thresholds applied to point estimates; uncertainty was reported
-alongside them.
+\paragraph{Stage 3: freezing the confirmation.}
+The selected candidates, doses, comparator settings and analysis code were committed before any model output on H
+or T-city was generated. This freeze, F2, is commit \texttt{02bb2f6} (design hash \texttt{d02d9f9c\ldots}). The
+confirmation run checked the design against that commit before touching H or T-city.
 
-A better trade-off than a repair comparator could be established in either of two ways:
-\textbf{O1}, higher recovery with an unsupported-answer increase smaller than 0.05; or
-\textbf{O2}, fewer unsupported answers with a recovery loss smaller than 0.05. Superiority and non-inferiority
-had to pass together for the relevant orientation. Holm correction covered all ten comparisons---two
-orientations for each of B1--B5. Pathway tests formed a separate family (\cref{sec:explain}).
+\paragraph{Stage 4: the repair criterion.}
+On H, the selected edit counted as a repair if it met four conditions: (i) the utility gain over B0 had a one-sided
+97.5\% lower bound above zero; (ii) damage was at most 0.05; (iii) degenerate outputs were at most 0.02; and (iv)
+counterfactual following was at least 0.90. Conditions (ii) and (iv) apply to point estimates. Passing them does not
+show that the true damage is below 0.05 or that the true following rate is above 0.90; we report their intervals
+alongside.
+
+\paragraph{Comparing trade-offs.}
+An edit can beat a comparator in two ways, and we test both:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{O1 (more recovery at no real cost):} the edit recovers more false abstentions than the comparator
+        (superiority), \emph{and} its unsupported-answer rate is not more than 0.05 higher (non-inferiority).
+  \item \textbf{O2 (fewer unsupported answers at no real cost):} the edit gives fewer unsupported answers
+        (superiority), \emph{and} its recovery is not more than 0.05 lower (non-inferiority).
+\end{itemize}
+Each orientation is an intersection--union test: both component tests must pass, and the orientation's $p$-value
+is the larger of the two component $p$-values. The edit is ``better'' than a comparator if either orientation passes
+after Holm correction across all ten tests (two orientations for each of B1--B5).
+
+These tests answer different questions from an equivalence test. Superiority asks whether the edit is better;
+non-inferiority asks whether it is not worse by more than a margin; equivalence, tested with two one-sided tests
+(TOST), asks whether the difference lies within $\pm 0.05$. A failed superiority test is not evidence of
+equivalence. For B1, the frozen plan therefore also ran TOST on the recovery and
+unsupported-answer differences.
+
+\paragraph{Pathway tests.}
+The pathway branch has its own Holm family of three tests, M1 to M3, described with their results in
+\cref{sec:explain}.
 
 \paragraph{Uncertainty.}
-We used a paired bootstrap clustered by base and stratified by task, with $B = 10{,}000$ draws.
-Intervals are 95\% unless stated otherwise. The intervals describe uncertainty in individual estimates;
-confirmatory decisions use the corrected tests. \Cref{app:methods} gives the inference rules.
+Intervals and $p$-values come from a paired bootstrap that resamples base cases within each task
+($B = 10{,}000$ draws). Intervals are 95\% unless stated otherwise. They describe the precision of single estimates;
+confirmatory decisions rest on the corrected tests. \Cref{tab:status} lists which analyses are confirmatory, and
+\cref{app:methods} gives the inference rules.
+
+\begin{table}[t]
+\centering\small
+\caption{Status of each analysis. Only confirmatory tests support claims; the others are descriptive.}
+\label{tab:status}
+\begin{tabularx}{\linewidth}{@{}L{0.31\linewidth}L{0.17\linewidth}Y@{}}
+\toprule
+Analysis & Data & Status \\
+\midrule
+Repair criterion (four conditions) & H & Confirmatory \\
+O1 and O2 against B1--B5 (ten tests) & H & Confirmatory; Holm across the ten \\
+TOST equivalence with B1 & H & Confirmatory, reported beside O1/O2 \\
+Pathway tests M1--M3 & H & Confirmatory; Holm across the three \\
+Marginal intervals, \cref{fig:tradeoff} & H & Descriptive; computed after confirmation \\
+Transfer to unseen cities & T-city & Descriptive \\
+Replay, entry and agent-prediction scores & E & Exploratory \\
+Selection results; S-to-H consistency & S & Descriptive \\
+\bottomrule
+\end{tabularx}
+\end{table}

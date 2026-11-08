@@ -1,19 +1,33 @@
-\noindent\fbox{\parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{\small
-\textbf{Key findings from the sealed evaluation}
-\begin{itemize}\setlength\itemsep{1pt}
-  \item \textbf{The selected edit met the repair criterion.} The rank-1 edit to the layer-35 attention output
-        improved utility by $+0.117$ (95\% CI 0.096 to 0.138). It recovered the correct city on 212 of 261
-        false abstentions. Base-weighted unsupported-answer rates rose from 0.035 to 0.042, and damage to
-        already-correct answers was 0.030.
-  \item \textbf{The comparison with simpler fixes was mixed.} The edit had a better trade-off than an added
-        prompt instruction, a layer-29 steering intervention and directional orthogonalisation, after Holm
-        correction. Superiority over removing the ``unknown'' option was not established. Against logit bias,
-        neither superiority nor equivalence was established.
-  \item \textbf{New-city results were consistent with confirmation.} On the descriptive transfer set, utility
-        was 0.422 versus 0.303 for the unedited model, recovery was 0.817, and unsupported answers were 0.062
-        versus 0.059. This was not a second confirmation test.
-  \item \textbf{Repair and explanation were tested separately.} For a different, two-head edit, a layer-33
-        intervention was sufficient but not necessary to release answers under the tested conditions.
-        The agent's account of what the component computes was not supported by the frozen tests.
-\end{itemize}}}
-\vspace{0.5em}
+\begin{table}[H]
+\centering\footnotesize\renewcommand{\arraystretch}{1.05}\setlength{\tabcolsep}{4pt}
+\caption*{\textbf{Summary of results and their evidential status.} All rows refer to the sealed confirmation split
+(H) unless marked otherwise. ``Shown'' means a pre-specified confirmatory test passed; ``descriptive'' results were
+not tested.}
+\begin{tabularx}{\linewidth}{@{}YL{0.47\linewidth}L{0.15\linewidth}@{}}
+\toprule
+Claim & Evidence & Status \\
+\midrule
+The rank-1 layer-35 edit repairs false abstention &
+Utility $+0.117$ [0.096, 0.138]; recovery 0.816; unsupported answers 0.035 $\to$ 0.042; damage 0.030 &
+Shown \\
+Better trade-off than a prompt instruction (B2), steering (B4) and orthogonalisation (B5) &
+Holm-adjusted $p$ = 0.005, 0.033, 0.007 &
+Shown \\
+Better trade-off than logit bias against ``unknown'' (B1) &
+Holm-adjusted $p$ = 0.092; equivalence (TOST) $p$ = 0.21 and 0.70 &
+Inconclusive \\
+Better trade-off than removing the ``unknown'' option (B3) &
+B3 recovers 0.977 but answers 0.682 of unanswerable questions; neither test passed &
+Not established \\
+The repair carries over to unseen cities &
+T-city: utility 0.422 vs 0.303; recovery 0.817 &
+Descriptive \\
+A layer-33 component lies on a pathway that releases answers (separate two-head edit) &
+Transplant releases 0.808; clamp removes 0.193 &
+Shown: sufficient, not necessary \\
+The agent's account of what that component computes &
+No predictive gain (AUROC ceiling 0.998); interaction 0.0005 [$-0.025$, 0.027] &
+Not established \\
+\bottomrule
+\end{tabularx}
+\end{table}

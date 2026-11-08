@@ -8,9 +8,20 @@
 \usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{longtable}
+\usepackage{array}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
 \usepackage{graphicx}
 \usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{positioning,fit,calc,arrows.meta}
+\usepackage[font=small,labelfont=bf,skip=6pt]{caption}
+\usepackage{float}
+\renewcommand{\topfraction}{0.85}
+\renewcommand{\textfraction}{0.12}
+\renewcommand{\floatpagefraction}{0.75}
+\setcounter{topnumber}{3}
+\setcounter{totalnumber}{4}
 \usepackage{newunicodechar}
 \newunicodechar{§}{\S}
 \usepackage[numbers,sort&compress]{natbib}
@@ -18,6 +29,9 @@
 \usepackage{cleveref}
 \usepackage{enumitem}
 \setlist{itemsep=2pt,topsep=4pt}
+\usepackage{xurl}
+\setlength{\parskip}{0pt}
+\renewcommand{\arraystretch}{1.12}
 
 % Writing aids. Set \drafttrue to \draftfalse to hide every note before release.
 \newif\ifdraft \drafttrue
@@ -25,13 +39,19 @@
 \newcommand{\pending}[1]{\ifdraft\textcolor{orange}{[PENDING #1]}\fi}
 \newcommand{\tbd}{\textcolor{orange}{---}}   % empty result cell; never fill with a guess
 
-\title{Evaluating Agent-Proposed Weight Edits for False Abstention:\\
-\large A controlled case study in Qwen2.5-3B-Instruct}
-\author{Qamil Mirza\\ \small\todo{affiliation, contact}}
-\date{Technical report v0.2 (draft) --- \today}
+% Consistent names for the populations and arms.
+\newcommand{\edit}{selected edit}
+
+\title{Evaluating Agent-Proposed Weight Edits for False Abstention:\\[2pt]
+\large A Controlled Case Study in Qwen2.5-3B-Instruct}
+\author{Qamil Mirza\\[2pt]
+\small College of Computing, Data Science, and Society, University of California, Berkeley\\
+\small\href{mailto:qamilmirza@berkeley.edu}{\texttt{qamilmirza@berkeley.edu}}}
+\date{\vspace{-0.6em}Technical report, version 0.3 (draft), \today}
 
 \begin{document}
 \maketitle
+\vspace{-1.5em}
 
 \begin{abstract}
 \input{sections/00-abstract}
@@ -39,27 +59,33 @@
 
 \input{sections/keyfindings}
 
-\input{sections/01-question}
-\input{sections/02-whats-new}
+\input{sections/01-introduction}
+\input{sections/02-related}
 \input{sections/03-setup}
 \input{sections/04-proposals}
 \input{sections/05-evaluation}
 \input{sections/06-results}
 \input{sections/07-what-edits-explain}
-\input{sections/07b-followup}
-\input{sections/08-limits}
+\input{sections/08-discussion}
+\input{sections/09-limits}
+\input{sections/10-conclusion}
 
-\section*{Disclosure}
+\section*{Disclosure of AI assistance}
 \input{sections/disclosure}
+
+\ifdraft
+\input{sections/blockers}
+\fi
 
 \bibliographystyle{plainnat}
 \bibliography{refs}
 
 \appendix
 \input{sections/A-exploratory-E}
-\input{sections/B-claims-evidence}
-\input{sections/C-artefacts}
+\input{sections/B-claims}
+\input{sections/C-methods}
+\clearpage
 \input{sections/D-related-work}
-\input{sections/E-methods}
+\input{sections/E-reproducibility}
 
 \end{document}

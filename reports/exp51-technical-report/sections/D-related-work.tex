@@ -2,34 +2,74 @@
 \label{app:related}
 
 \begingroup\small
-\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.25\linewidth}>{\raggedright\arraybackslash}p{0.34\linewidth}>{\raggedright\arraybackslash}p{0.35\linewidth}@{}}
-\caption{Closest work. Descriptions and bibliographic details marked for verification need a primary-source check before release.}\label{tab:related}\\
+\setlength{\LTpre}{2pt}
+\begin{longtable}{@{}L{0.2\linewidth}L{0.37\linewidth}L{0.37\linewidth}@{}}
+\caption{The closest work and how this study differs. Descriptions follow each paper's abstract or main text.}
+\label{tab:related}\\
 \toprule
-Work & What it did & How this report differs \\
+Work & What it did & How this study differs \\
 \midrule
 \endfirsthead
 \toprule
-Work & What it did & How this report differs \\
+Work & What it did & How this study differs \\
 \midrule
 \endhead
-\bottomrule
+\midrule
+\multicolumn{3}{r}{\footnotesize\emph{Continued on next page}} \\
 \endfoot
-Weight-space programming \citep{takehi2026wsp} & an LLM agent edits a small fraction of Qwen3.5-0.8B's weights to stop reasoning loops, with held-out evaluation & a behaviour (looping) with no correct refusals to protect; here the score penalises new guessing on unanswerable questions, and confirmation is sealed and pre-registered \\
-Steer2Edit \citep{steer2edit2026} & steering vectors turned into rank-1 edits of individual heads and neurons & not one of our frozen comparators; future work \\
-Safety heads \citep{zhou2025safetyheads} & ablating one attention head in Llama-2-7b-chat sharply raises compliance with harmful requests & the refusal there is wanted; ours is an unwanted ``unknown'' with the evidence in view \\
-Retrieval heads \citep{wu2025retrievalheads} & under 5\% of heads do in-context retrieval; pruning them causes hallucination, pruning random heads does not & our interventions target false abstention with sufficient evidence; the role of the selected heads remains unresolved. Random-head controls are part of our follow-up \\
-Refusal and unanswerability directions \citep{arditi2024refusal,lavi2025unanswerability,lee2025cast} & a single direction mediates refusal; an unanswerability direction steers abstention; conditional steering & our evaluated ungated pushes also increased unsupported answering; an earlier gate was template-limited \\
-False-refusal vector ablation \citep{wang2025falserefusal} & a false-refusal direction folded into the weights; scored on released false refusals against kept true refusals & safety over-refusal, not evidence in view; not agent-proposed; not one of our frozen comparators \\
-Residual Paving \citep{hinkley2026paving} & gated residual-stream edits of safety refusals with a three-way selectivity scheme, on a held-out split & the closest selectivity yardstick; safety refusal, no weight change, not agent-proposed, not pre-registered \\
-Dr.\ No \citep{hasanov2026drno} & SAE-feature steering that balances answering against abstention in vision-language models & activation steering only; no weight edit, no pre-registration \\
-GRAB-RAG \citep{setiawan2026grabrag} & benchmark of small frozen RAG models under supportive, missing and misleading context & no intervention; a ready source of natural counterfactual evidence for future tests \\
-LLMs as auditors \citep{liu2026auditors} & an agent auditing small networks did as well without weight access when it had a calculation tool & auditing, not editing; a caution that an agent's account of weights may not drive its success, consistent with branch M \\
-Pre-registered interpretability \citep{readablenotsteerable2026} & pre-registered, once-only held-out tests of representation steering & precedent for the method, outside language models \\
-Abstention as prompt artefact; answer release \citep{ling2025artifact,liu2026broken} & abstention can follow the ``unknown'' option; answers are recoverable after refusal and release is local & predicts that a late edit can release answers; this part is expected, not new \\
-Commit--abstain circuit \citep{commitabstain2026} & a commit-versus-abstain circuit across ten models & different models and setting; no factual grading of released answers \\
-Abstention behaviour \citep{joren2025sufficient,kirichenko2025abstentionbench,kumaran2026confidence} & models misuse sufficient context; over- and under-abstention; confidence thresholds drive abstention & behavioural or closed-book accounts; no component-level localisation of in-view false abstention \\
-Interpretability agents \citep{shaham2024maia,barez2026agenda} & agents that describe components or propose interventions & here one agent-proposed intervention is tested against pre-registered bars \\
-Knowledge editing \citep{meng2022rome,meng2023memit} & locate and edit stored facts & a decision behaviour, not a stored fact \\
 \bottomrule
+\endlastfoot
+\multicolumn{3}{@{}l}{\emph{Agents and weight edits}} \\*
+Weight-space programming \citep{takehi2026wsp} & An LLM agent improved Qwen3.5-0.8B's maths by removing a reasoning-loop
+direction, changing 0.016\% of its weights; checked on held-out benchmarks &
+Target behaviour has no wanted refusals to protect; here unsupported answers on unanswerable questions are penalised,
+and confirmation is sealed and pre-specified \\
+Steer2Edit \citep{steer2edit2026} & Converts steering vectors into edits of individual heads and neurons &
+Not agent-proposed; not among our frozen comparators \\
+Interpretability agents \citep{shaham2024maia,barez2026agenda} & Agents that describe components, or a proposed agenda
+for agents that choose and apply interventions & Here one agent-proposed intervention is tested against
+pre-specified bars \\
+LLMs as auditors \citep{liu2026auditors} & Single-prompt LLM audits (and repairs) of small clinical networks; a
+calculation tool mattered more than weight access & Language models and agentic editing; a caution that an agent's
+account of the weights may not drive its success \\
+Knowledge editing \citep{meng2022rome,meng2023memit} & Locate and edit stored factual associations & Our target is a
+decision behaviour, not a stored fact \\
+\addlinespace
+\multicolumn{3}{@{}l}{\emph{Refusal, abstention and their components}} \\*
+Refusal and unanswerability directions \citep{arditi2024refusal,lavi2025unanswerability,lee2025cast} & A single
+direction mediates refusal; a linear direction tracks unanswerability; conditional steering makes interventions
+input-dependent & Our earlier ungated pushes increased unsupported answering; an earlier gate was template-limited \\
+Safety heads \citep{zhou2025safetyheads} & Ablating single attention heads in Llama-2-7b-chat sharply raises
+compliance with harmful requests & There the refusal is wanted; ours is an unwanted ``unknown'' with the evidence in
+view \\
+Retrieval heads \citep{wu2025retrievalheads} & Under 5\% of heads perform in-context retrieval; pruning them causes
+hallucination, pruning random heads does not & Our interventions target false abstention with sufficient evidence;
+the role of the selected heads is unresolved, and random-head controls are part of the follow-up \\
+Commit--abstain circuit \citep{commitabstain2026} & Describes a commit-versus-abstain circuit across ten models
+(3B--14B); a policy trained on its activations reduces false abstentions & The closest target behaviour; their fix is
+a trained activation-level policy, not an agent-proposed weight edit, and is not pre-registered \\
+Abstention as prompt artefact; answer release \citep{ling2025artifact,liu2026broken} & Abstention can follow the
+``unknown'' option; suppressed answers can often be released, and release is more local than refusal restoration &
+Predicts that a late edit can release answers; that part of our result is expected \\
+Abstention behaviour \citep{joren2025sufficient,kirichenko2025abstentionbench,kumaran2026confidence} & Models
+misuse sufficient context; models fail to abstain on unanswerable questions; internal confidence drives abstention &
+Behavioural or confidence-based accounts; no component-level edit for in-view false abstention \\
+\addlinespace
+\multicolumn{3}{@{}l}{\emph{Selective interventions}} \\*
+False-refusal vector ablation \citep{wang2025falserefusal} & Removes a false-refusal direction from the weights;
+scores released false refusals against kept true refusals & Safety over-refusal, not evidence in view; not
+agent-proposed; not among our comparators \\
+Residual Paving \citep{hinkley2026paving} & Trained, gated residual modules on a frozen backbone edit safety refusals,
+scored on three objectives on a held-out split & The closest selectivity yardstick; safety refusal, trained modules,
+not agent-proposed, not pre-registered \\
+Dr.\ No \citep{hasanov2026drno} & SAE-feature steering that trades answering against abstention, mainly in
+vision-language models & Activation steering only; no weight edit, no pre-registration \\
+\addlinespace
+\multicolumn{3}{@{}l}{\emph{Evaluation practice and benchmarks}} \\*
+Pre-registered interpretability \citep{readablenotsteerable2026} & Pre-registered, once-only held-out tests of
+representation steering in learned fluid models & Precedent for the method, outside language models \\
+GRAB-RAG \citep{setiawan2026grabrag} & Small frozen RAG models under supportive, missing, degraded and misleading
+context; prompt-based abstention policies and verifiers & No internal (weight or activation) intervention; a source
+of natural counterfactual evidence for future tests \\
 \end{longtable}
 \endgroup

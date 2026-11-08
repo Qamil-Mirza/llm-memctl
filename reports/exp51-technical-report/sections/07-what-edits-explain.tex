@@ -1,46 +1,98 @@
 \section{What the edits explain}
 \label{sec:explain}
 
-An edit can improve answers without explaining why the original model failed. We therefore distinguish
-\emph{repair}, a beneficial change in behaviour; \emph{pathway evidence}, an intervention linking the edit's
-effect to a named component; and a \emph{mechanistic account}, a description that also predicts the unedited
-model's behaviour. The repair result above concerns the layer-35 edit. The pathway evaluation selected a
-different candidate: the two-head edit, at dose 1.5, with the layer-33 head fixed in advance as the primary
-component.
+An edit can improve behaviour without explaining why the original model failed. We distinguish three levels of
+evidence, each answering a different question (\cref{tab:levels}). The levels are tested on different edits. The
+repair result concerns the layer-35 rank-1 edit. The pathway and account tests concern a different submission, the
+two-head edit, because the pathway branch selected it on S. Nothing in this section tests the layer-35 edit's own
+explanation.
 
-\paragraph{A pathway through layer 33.}
-Both pathway tests passed after Holm correction across the three branch-M tests ($p < 0.001$).
-Reverting the layer-33 component in the edited model reduced recovery on false abstentions by 0.293
-(95\% CI 0.225 to 0.368). The edit also recovered 0.717 more than the mean of five size-matched random edits,
-B6. These tests address the effect of changing that component and the comparison with random perturbations.
+\begin{table}[t]
+\centering\small
+\caption{Three levels of evidence and what this study found at each.}
+\label{tab:levels}
+\begin{tabularx}{\linewidth}{@{}L{0.17\linewidth}YL{0.17\linewidth}L{0.21\linewidth}@{}}
+\toprule
+Level & Question & Edit tested & Result on H \\
+\midrule
+Behavioural repair & Does the edit improve outcomes on unseen cases? & Rank-1, layer 35 & Shown
+(\cref{sec:results}) \\
+Pathway & Does manipulating the named component change the behaviour? & Two heads, L32h2 and L33h10 & Shown at
+layer 33: sufficient, not necessary \\
+Mechanistic account & Do the observations support the agent's description of what the component computes? &
+Two heads (account of L33h10) & Not established \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
-Two activation interventions asked whether the effect could be transferred or blocked. Adding the edit's
-change to the layer-33 output at the answer position in the unedited model recovered 0.808 of false
-abstentions. Clamping that output back to its original value in the edited model removed only 0.193.
-The layer-33 intervention was therefore sufficient, but not necessary, to release answers under these
-conditions. The remaining recovery is consistent with another route, possibly through the layer-32 head;
-that explanation was not directly tested. Without a random-head comparison, these results do not establish
-that the two selected heads have a unique role.
+\paragraph{Setting.}
+The pathway tests use the \emph{controlled-prefix} setting. The model is given the unedited model's own note, token
+for token, and generates only the answer, so differences in the answer cannot come from a changed note. The
+endpoint is the share of false abstentions answered with the gold city. A shared text prefix does not imply a shared
+internal state, because an edit changes the activations computed over that prefix.
 
-\paragraph{The explanation was not established.}
-The agent's account of what the component computes was not supported by the frozen tests. Its proposed
-variable added no predictive value for false abstention, although the baseline predictor already had an
-AUROC of 0.998 and left little room for improvement. Intervening on the variable also failed to establish a
-different effect on answerable versus unanswerable questions relative to a matched logit bias: the
-interaction was 0.0005 (95\% CI $-0.025$ to 0.027). Two activity predictions held, but the combined account
-test did not pass.
+\subsection{Pathway evidence: a route through layer 33}
 
-This negative has an important qualification. The agent described the heads as an evidence-independent
-``unknown'' prior. A null interaction is close to what that description would predict, so the frozen predictor
-and interaction tests fit this account poorly. The result means that the account was not shown by the
-pre-registered tests; it is not a refutation of that account.
+The two-head edit zeroes the output columns of head 2 in layer 32 and head 10 in layer 33. At its selected dose of
+1.5 it is a strong intervention, and it is not selective: on S it produced unsupported answers on 96\% of unanswerable
+rows (total effect). Its role in this study is to locate where an answer-release effect can be produced, not to serve
+as a repair.
 
-At its pathway-test dose, the two-head edit was also not selective: on S it produced unsupported answers on
-96\% of unanswerable rows. The pathway result identifies where an answer-release effect can be produced.
-It does not explain the selected layer-35 repair.
+\paragraph{M1: the named component and random edits.}
+Reverting only the layer-33 part of the edit, inside the edited model, reduced recovery by 0.293 (95\% CI 0.225 to
+0.368). The full edit also recovered 0.717 (95\% CI 0.664 to 0.770) more than the mean of five random edits of the
+same size (B6). Both tests passed (Holm-adjusted $p < 0.001$ across the three pathway tests).
 
-\paragraph{Exploratory observations.}
-On E, doubling the two heads changed 180 of 572 correct answers (31\%) into ``unknown'', within the agent's
-prediction of 30--40\%. Removing the heads recovered most false abstentions on that split. These observations
-motivated the bidirectional interpretation, but E was the split the agent studied and cannot independently
-confirm it. The exploratory results are collected in \cref{app:e}.
+\paragraph{M2: transplant and clamp.}
+Two activation interventions asked whether the layer-33 change can produce the effect alone, and whether the effect
+needs it. Adding the edit's change in the layer-33 output, at the answer position only, to the \emph{unedited} model
+recovered 0.808 of false abstentions (95\% CI 0.744 to 0.870). Clamping that output back to its original value in the
+\emph{edited} model removed only 0.193 (95\% CI 0.138 to 0.253). The test passed ($p < 0.001$). Under these
+conditions the layer-33 change is therefore sufficient to release answers but not necessary for the edited model to
+release them. The remaining release presumably travels by another route. The layer-32 head is a candidate, since
+reverting it removed a smaller share on S (0.078, against 0.264 for layer 33), but that route was not tested
+directly.
+
+\paragraph{What the pathway tests do not show.}
+The control B6 applies random Gaussian changes to the same weight entries, matched in size column by column. M1
+therefore shows that the agent's specific change to those columns matters more than a random change of the same
+size. It does not show that L32h2 and L33h10 are unusual among late
+attention heads; zeroing other pairs might release answers as well. The tests also say nothing about the selected
+layer-35 repair, which acts at a different layer through a different kind of edit.
+
+\subsection{Mechanistic account: not established}
+
+The agent described L33h10 as writing an evidence-independent ``unknown'' prior. It defined the variable $f$ as the
+projection of the layer-33 attention output, at the answer position, onto that head's mean output direction. The
+frozen account test M3 had three parts and passed only if all of them did.
+\begin{enumerate}[leftmargin=*,label=(\alph*)]
+  \item \emph{Activity predictions in the unedited model.} The agent predicted how $f$ would change under four
+        manipulations of the memory. All four passed their frozen tests. Removing the evidence lowered $f$ ($-1.08$,
+        95\% CI $-1.54$ to $-0.62$), as predicted. Changing the city ($-0.16$), adding distractors ($+1.03$, 95\% CI
+        0.52 to 1.55) and replacing absent evidence with unrelated evidence ($-0.04$) each stayed within frozen
+        equivalence margins of 5.2 to 6.6 units, set at twice the standard deviation on S. The distractor effect
+        nonetheless excludes zero and is larger than the agent's own stated bound of 0.5.
+  \item \emph{A separating intervention.} Setting $f$ directly in the unedited model was compared with the logit bias whose
+        effect on S was closest to it. If $f$ carries answerability information, its effect should differ between
+        answerable and unanswerable questions more than the bias's effect does. The interaction was 0.0005 (95\% CI
+        $-0.025$ to 0.027; $p = 0.49$).
+  \item \emph{Frozen prediction.} Adding $f$ to a frozen logistic model that predicts which answerable
+        rows end in false abstention, rather than a correct answer, did not improve it on H: the change in AUROC was $-4.5 \times 10^{-5}$ ($p = 0.82$).
+\end{enumerate}
+Parts (b) and (c) did not pass, so M3 was not rejected (Holm-adjusted $p = 0.82$). Setting $f$ behaved like a generic push
+away from ``unknown'', not like an answerability signal.
+
+\paragraph{Why this is not a refutation.}
+Two features of the tests limit what the negative result means. First, the baseline predictor in (c) already had an
+AUROC of 0.998, so almost no improvement was possible. Second, the tests fit the agent's account poorly. An
+evidence-independent prior should \emph{not} separate answerable from unanswerable questions, so a null interaction in
+(b) is close to what the account itself predicts. The interaction test was built to detect an answerability signal, and
+the agent's account claimed the opposite. The correct reading is that the pre-registered tests did not establish the account.
+They did not show it to be false.
+
+\subsection{Exploratory observations on E}
+
+On the exploration split, doubling the two heads (submission 3) turned 180 of 572 correct answers (31\%) into
+``unknown'', inside the agent's predicted range of 30--40\%. Removing the heads recovered most false abstentions on
+that split. Together these suggest that the heads act in both directions. The agent built its edits on E, however, so
+these observations cannot confirm that interpretation (\cref{app:e}).
