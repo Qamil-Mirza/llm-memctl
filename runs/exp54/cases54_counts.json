@@ -1,0 +1,95 @@
+{
+ "pass": true,
+ "cases54_sha256": "1f0d41333b73cd3abac4bfd6fd68456eef881e872132c8de8b2778bfaab3839b",
+ "n_rows": 1950,
+ "n_bases": 150,
+ "seed": 55,
+ "split": "W",
+ "excluded_key_splits": [
+  "E",
+  "S"
+ ],
+ "key_overlap": {
+  "E": {
+   "rows_with_key_in_split": 0,
+   "rows_with_key": 1350
+  },
+  "S": {
+   "rows_with_key_in_split": 0,
+   "rows_with_key": 1350
+  },
+  "H": {
+   "rows_with_key_in_split": 882,
+   "rows_with_key": 1350
+  },
+  "Tcity": {
+   "rows_with_key_in_split": 0,
+   "rows_with_key": 1350
+  },
+  "N": {
+   "rows_with_key_in_split": 930,
+   "rows_with_key": 1350
+  }
+ },
+ "problems": {
+  "rows_per_base": [],
+  "closure": [],
+  "canonical_key": [],
+  "memory_text": [],
+  "duplicate": [],
+  "cf": [],
+  "swap": [],
+  "una_city": [],
+  "t_city": [],
+  "b2_b3": [],
+  "pool_tokens": [],
+  "e_key_overlap": [],
+  "s_key_overlap": [],
+  "old_prompt": [],
+  "n_prompt": []
+ },
+ "counts": {
+  "DE|ANS": 300,
+  "DE|CF": 150,
+  "DE|UNA-rel": 150,
+  "DE|UNA-swap": 50,
+  "RC|ANS": 300,
+  "RC|CF": 150,
+  "RC|UNA-rel": 150,
+  "RC|UNA-swap": 50,
+  "TU|ANS": 300,
+  "TU|CF": 150,
+  "TU|UNA-rel": 150,
+  "TU|UNA-swap": 50
+ },
+ "attempts": {
+  "0": 55,
+  "1": 35,
+  "2": 20,
+  "3": 12,
+  "4": 8,
+  "5": 4,
+  "6": 2,
+  "7": 1,
+  "8": 3,
+  "9": 3,
+  "10": 1,
+  "12": 1,
+  "15": 1,
+  "18": 1,
+  "21": 1,
+  "23": 1,
+  "50": 1
+ },
+ "redraw_reasons": {
+  "prompt_repeats": 179,
+  "no_swap_entity": 182,
+  "rc_key": 21
+ },
+ "old_cases": {
+  "runs/exp49/cases49.jsonl": "d11894ac2b868ef58204274cb44979953b3727adb74a9ad57e8924922ef0e82b",
+  "runs/exp50/cases50.jsonl": "c6eb5ed7772c49c25056a8666881cf571eb4e58ca755935613fb730421d89260",
+  "n_rows_added": 1950
+ },
+ "cases51_sha256": "5eeb7c402a5805ba9899bb22f229a6ed6d89938d4de0ef76176be66d146a8501"
+}
