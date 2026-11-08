@@ -234,3 +234,42 @@ def check_refusal_ids(encode_fn, cfg: FamilyConfig) -> tuple[int, ...]:
     if got != cfg.refusal_ids:
         raise ValueError(f"{cfg.key}: refusal ids {got} from the tokenizer, config says {cfg.refusal_ids}")
     return got
+
+
+# --- §52 stage 0: readers below 3B (D-74; runs/exp52/probe.json) --------------------------------------------------
+# Kept OUT of FAMILIES so every §43 path and test above is unchanged; §52 scripts use SMALL52 / get52. No §24 run,
+# cache or verdicts exist for these readers (exp_tag "exp52", verdicts ""): stage 0 generates their outputs once.
+# No lens partner (partner_key ""). Facts from the tokenizers and configs at the pinned revisions:
+# - Qwen 2.5 0.5B / 1.5B: the 3B's template (default Qwen system text) and refusal ids (9788, 21693).
+# - Llama 3.2 1B: the 3B's tokenizer and template; the date pinned to LLAMA_DATE as for the 3B.
+# - Gemma 3 1B / 270M: Gemma3ForCausalLM (text only), so the layers sit at `model.layers`; the 4B's tokenizer ids.
+# - SmolLM2 1.7B: ChatML with a default system text ("You are a helpful AI assistant named SmolLM, ..."); its BOS piece
+#   is <|im_start|>, which occurs at every turn, so bos_in_chat is False (check_bos would count every turn).
+
+def _small(key, model_id, layer_path, n_layers, hidden, stop, refusal, **kw):
+    return FamilyConfig(key=key, model_id=model_id, weights=None, partner_key="", partner_model_id="",
+                        exp_tag="exp52", verdicts="", verdict_arm="fixed8", layer_path=layer_path, n_layers=n_layers,
+                        hidden=hidden, stop_tokens=stop, refusal_ids=refusal, laptop_env=LAPTOP_ENV, **kw)
+
+
+QWEN05B = _small("qwen05b", "Qwen/Qwen2.5-0.5B-Instruct", "model.layers", 24, 896, ("<|im_end|>", "<|endoftext|>"),
+                 (9788, 21693))
+QWEN15B = _small("qwen15b", "Qwen/Qwen2.5-1.5B-Instruct", "model.layers", 28, 1536, ("<|im_end|>", "<|endoftext|>"),
+                 (9788, 21693))
+LLAMA1B = _small("llama1b", "meta-llama/Llama-3.2-1B-Instruct", "model.layers", 16, 2048,
+                 ("<|eot_id|>", "<|end_of_text|>", "<|eom_id|>"), (9987, 22435),
+                 template_kwargs={"date_string": LLAMA_DATE}, bos_in_chat=True, bos_token="<|begin_of_text|>")
+GEMMA1B = _small("gemma1b", "google/gemma-3-1b-it", "model.layers", 26, 1152, ("<end_of_turn>", "<eos>"),
+                 (11908, 60355), system_role=False, bos_in_chat=True, bos_token="<bos>")
+GEMMA270M = _small("gemma270m", "google/gemma-3-270m-it", "model.layers", 18, 640, ("<end_of_turn>", "<eos>"),
+                   (11908, 60355), system_role=False, bos_in_chat=True, bos_token="<bos>")
+SMOL17B = _small("smol17b", "HuggingFaceTB/SmolLM2-1.7B-Instruct", "model.layers", 24, 2048,
+                 ("<|im_end|>", "<|endoftext|>"), (6552, 34695))
+
+SMALL52 = {c.key: c for c in (QWEN05B, QWEN15B, LLAMA1B, GEMMA1B, GEMMA270M, SMOL17B)}
+
+
+def get52(key: str) -> FamilyConfig:
+    if key not in SMALL52:
+        raise KeyError(f"unknown §52 reader {key!r} (known: {sorted(SMALL52)})")
+    return SMALL52[key]
