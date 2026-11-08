@@ -1,0 +1,56 @@
+\section{Methods in detail}
+\label{app:methods}
+
+\paragraph{Answer span and grading.}
+The grader uses the text after the last \texttt{Answer:} marker and scores the preceding note separately.
+A missing marker is its own class and contributes to the reported degenerate-output rate.
+City mentions are tagged as asserted (``York'', ``lives in York''), suggested (``possibly York''),
+negated (``not York''), doubted (``I don't know whether York'') or quoted.
+Only asserted and suggested mentions count as answers. With no asserted or suggested answer, an abstention
+phrase yields the abstention class. One city is graded as gold, wrong or other content; one city together
+with an abstention phrase is mixed; two or more distinct asserted or suggested cities are conflicting.
+The grader and its fixtures were frozen before the agent saw E.
+
+\paragraph{Utility.}
+\begin{center}\small
+\begin{tabularx}{\linewidth}{@{}lcccY@{}}
+\toprule
+Row & Gold & Abstention & Mixed & Wrong, conflicting, other, degenerate or missing \\
+\midrule
+Answerable, counterfactual & $+1$ & $0$ & $0$ & $-\lambda$ \\
+Unanswerable & --- & $0$ & $-\lambda$ & $-\lambda$ \\
+\bottomrule
+\end{tabularx}
+\end{center}
+$\lambda = 1$ is primary; $\lambda = 2$ is a secondary setting. Each base contributes equally to aggregate
+utility. Within a base, answerable and unanswerable rows each supply half the weight. Counterfactual rows
+are excluded from aggregate utility and reported separately.
+
+\paragraph{Two intervention settings.}
+For the \emph{total effect}, the model generates both its note and its answer under the intervention. This
+is the primary setting for repair. For the \emph{controlled-prefix effect}, the intervention recomputes the
+unedited model's stored token IDs through the answer marker, then generates only the answer. This is the
+primary setting for pathway tests. Its shared text prefix does not imply a shared internal state.
+
+\paragraph{Inference.}
+The paired percentile bootstrap is clustered by base and stratified by task, with $B = 10{,}000$ attempted
+draws and a fixed seed. Tests use approximate percentile inversion. For a one-sided null
+$\theta \leq \theta_0$, the tail score is
+\[
+  p = \frac{1 + \#\{b : \theta_b^* \leq \theta_0\}}{B_{\mathrm{valid}} + 1}.
+\]
+Undefined replicates, such as those with an empty denominator or undefined AUROC, are excluded and counted.
+If more than 1\% of attempted draws fail, the statistic receives no decision. If all valid draws equal the
+point estimate, the frozen rule assigns $1/(B_{\mathrm{valid}}+1)$ when that estimate is on the alternative
+side of the threshold, and 1 otherwise. This degenerate-distribution rule differs from dropping undefined
+draws. These are approximate bootstrap tests, not exact randomization tests.
+
+Equivalence uses two one-sided tests (TOST). For an intersection--union claim, the composite $p$ is the
+largest elementary $p$. The repair family contains O1 and O2 against B1--B5, ten hypotheses; the pathway
+family contains M1--M3. Each family is Holm-corrected at 0.05, with no study-wide guarantee claimed.
+Marginal 95\% intervals describe uncertainty; corrected tests determine the confirmatory decisions.
+The 0.05 margins, 0.90 counterfactual-following threshold and 20-base minimum are operational conventions.
+
+\paragraph{Stopping rules.}
+H and T were evaluated once, with no rescue variant or second agent run. If no candidate met the E screening
+rule or the S entry rule, the study would have stopped and documented that outcome without opening H or T.

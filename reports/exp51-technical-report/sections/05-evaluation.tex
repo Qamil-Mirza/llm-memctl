@@ -1,0 +1,49 @@
+\section{The independent evaluation}
+\label{sec:evaluation}
+
+The evaluation separates two questions: whether an edit \emph{repairs} false abstention (branch R), and whether
+the proposed \emph{pathway and explanation} survive intervention tests (branch M). Each branch can select a
+different edit and dose. Success in one does not imply success in the other.
+
+\paragraph{Replay and screening on E.}
+After the agent finished, the evaluation harness replayed every submission on all of E. The repair screen
+required a utility gain over B0 with a one-sided 97.5\% lower bound above zero and at least 20 false-abstention
+bases in DE or RC. The pathway screen required an effect of at least 0.05 in the declared direction, with a
+one-sided 97.5\% bound beyond zero and at least 20 bases in the relevant endpoint population. If no submission
+met either screen, S, H and T would have remained unread. E outcomes remained exploratory because the agent
+had used that split to develop the edits.
+
+\paragraph{Selection on S.}
+The entry rules were then evaluated on S. For repair, candidate and comparator doses were chosen to maximise
+utility, and the qualifying candidate with the highest utility was selected; candidate ties favoured fewer
+edited weights. For the pathway branch, dose selection maximised the declared signed effect, subject to the
+pre-registered limit on degenerate outputs. Candidate selection used the standardised effect, separately from
+repair. Dose ties favoured the setting closest to no change.
+
+The repair candidate was submission 2, a rank-1 edit to the layer-35 attention output projection, at dose 2.
+Its utility on S was 0.429, compared with 0.402 for the next submission and 0.303 for B0. Dose 2 was the top of
+the frozen grid; larger doses were not searched. The pathway candidate was submission 1, the two-head edit,
+at dose 1.5, with the layer-33 head designated as its primary component. Selected repair-comparator doses
+were $-8$ for logit bias (B1), 1 for steering (B4), and $\beta = 1$ for orthogonalisation (B5).
+
+\paragraph{Freezing the confirmation.}
+The selected candidates, doses, comparator settings and analysis code were frozen before any H or T model
+outputs were generated or read. This freeze, F2, is recorded at commit \texttt{02bb2f6}, with design hash
+\texttt{d02d9f9c\ldots}. The confirmation run checked that commit before accessing H or T.
+
+\paragraph{Decision criteria.}
+H and T were each evaluated once. The repair criterion on H required a positive lower bound for the utility
+gain, damage no greater than 0.05, degenerate outputs no greater than 0.02, and counterfactual following of at
+least 0.90. The damage and counterfactual thresholds applied to point estimates; uncertainty was reported
+alongside them.
+
+A better trade-off than a repair comparator could be established in either of two ways:
+\textbf{O1}, higher recovery with an unsupported-answer increase smaller than 0.05; or
+\textbf{O2}, fewer unsupported answers with a recovery loss smaller than 0.05. Superiority and non-inferiority
+had to pass together for the relevant orientation. Holm correction covered all ten comparisons---two
+orientations for each of B1--B5. Pathway tests formed a separate family (\cref{sec:explain}).
+
+\paragraph{Uncertainty.}
+We used a paired bootstrap clustered by base and stratified by task, with $B = 10{,}000$ draws.
+Intervals are 95\% unless stated otherwise. The intervals describe uncertainty in individual estimates;
+confirmatory decisions use the corrected tests. \Cref{app:methods} gives the inference rules.

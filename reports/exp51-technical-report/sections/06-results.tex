@@ -1,0 +1,62 @@
+\section{Results and costs}
+\label{sec:results}
+
+% Main-text confirmation results come from H; E results remain in Appendix A.
+The selected layer-35 edit met all four pre-registered repair criteria on H. Utility improved by
+$+0.117$ (95\% CI 0.096 to 0.138). Damage to already-correct answers was 0.030, below the 0.05 limit on the
+point estimate, although its upper bound was 0.055. Degenerate outputs were 0.008, below the 0.02 limit,
+and counterfactual following was 0.917, above the 0.90 threshold.
+
+\paragraph{Comparison with simpler interventions.}
+The edit improved the release-versus-unsupported-answer trade-off over the added instruction (B2),
+activation steering (B4) and directional orthogonalisation (B5). Their Holm-adjusted $p$-values were
+0.005, 0.033 and 0.007, respectively (\cref{tab:h}).
+
+The logit-bias comparison (B1) was inconclusive. The edit had higher recovery (0.816 versus 0.793) and fewer
+unsupported answers (0.042 versus 0.095), but the comparison did not survive Holm correction
+(adjusted $p = 0.092$). Equivalence was not established either: the two one-sided tests (TOST) gave
+$p = 0.21$ for recovery and 0.70 for unsupported answers. The edit also caused damage that logit bias did not:
+11 of 593 previously correct answers became incorrect, a base-weighted damage rate of 0.030.
+Both logit bias and the layer-29 steering intervention damaged none of those answers.
+
+Removing the ``unknown'' option (B3) recovered almost every false abstention, but produced unsupported answers
+on 68\% of unanswerable questions. Superiority over this comparator was not established under the frozen test.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}Yrrrrrl@{}}
+\toprule
+Arm (on H) & Rel & Uns & Dam & CF-follow & $U$ & Edit better? \\
+\midrule
+B0 unedited & 0 & 0.035 & 0 & 0.632 & 0.317 & --- \\
+\textbf{Selected edit} & \textbf{0.816} & \textbf{0.042} & \textbf{0.030} & \textbf{0.917} & \textbf{0.435} & --- \\
+B1 logit bias ($-8$) & 0.793 & 0.095 & 0 & 0.919 & 0.406 & inconclusive \\
+B2 ``do not reply unknown'' & 0.721 & 0.083 & 0.046 & 0.882 & 0.389 & yes (O2, 0.005) \\
+B3 no ``unknown'' option & 0.977 & 0.682 & 0.021 & 0.975 & 0.130 & not established \\
+B4 layer-29 push ($\alpha = 1$) & 0.786 & 0.078 & 0 & 0.921 & 0.418 & yes (O2, 0.033) \\
+B5 orthogonalisation ($\beta = 1$) & 0.678 & 0.031 & 0.099 & 0.838 & 0.401 & yes (O1, 0.007) \\
+\bottomrule
+\end{tabularx}
+\caption{Sealed confirmation on H: 48 bases per task, with 261 false-abstention (FA), 593 already-correct (C)
+and 576 unanswerable (UNA) rows. Rel is recovery, Uns unsupported answering, Dam damage, and CF-follow
+following changed evidence. Rates are base-weighted means, so they need not equal pooled row-count fractions;
+$U$ uses $\lambda = 1$. The final column asks whether the selected edit has a better trade-off than that
+comparator, giving the test and its Holm-adjusted $p$ across ten tests. Values were independently recounted
+from per-row outputs. B6, the random-edit control, is used only in the pathway tests (\cref{sec:explain}).}
+\label{tab:h}
+\end{table}
+
+% Planned figure: recovery versus unsupported answering for the selected edit and B1--B5, with CIs.
+
+\paragraph{Transfer to new cities.}
+T-city contains 24 bases per task with unseen cities. It was read once and provides a descriptive transfer
+check, not a second confirmation. Results were consistent with H: utility was 0.422 versus 0.303 for the
+unedited model, recovery was 0.817, unsupported answering was 0.062 versus 0.059, damage was 0.031,
+and counterfactual following was 0.912. Comparator utilities retained their order:
+B4 0.415, B1 0.412, B5 0.409, B2 0.397 and B3 0.107.
+Transfer to a reworded instruction was not tested (\cref{sec:setup}).
+
+\paragraph{Costs.}
+The agent run cost \$3.58 in API usage. GPU evaluation cost \$4.38 for selection, including \$0.09 for a failed
+first attempt, and \$2.57 for confirmation over 4.36 hours on one A40: \$6.95 in total GPU charges.
+The exploration-split replay took about 59 hours on a laptop CPU, with \$0 in cloud charges.

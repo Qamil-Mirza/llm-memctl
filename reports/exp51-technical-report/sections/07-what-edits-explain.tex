@@ -1,0 +1,46 @@
+\section{What the edits explain}
+\label{sec:explain}
+
+An edit can improve answers without explaining why the original model failed. We therefore distinguish
+\emph{repair}, a beneficial change in behaviour; \emph{pathway evidence}, an intervention linking the edit's
+effect to a named component; and a \emph{mechanistic account}, a description that also predicts the unedited
+model's behaviour. The repair result above concerns the layer-35 edit. The pathway evaluation selected a
+different candidate: the two-head edit, at dose 1.5, with the layer-33 head fixed in advance as the primary
+component.
+
+\paragraph{A pathway through layer 33.}
+Both pathway tests passed after Holm correction across the three branch-M tests ($p < 0.001$).
+Reverting the layer-33 component in the edited model reduced recovery on false abstentions by 0.293
+(95\% CI 0.225 to 0.368). The edit also recovered 0.717 more than the mean of five size-matched random edits,
+B6. These tests address the effect of changing that component and the comparison with random perturbations.
+
+Two activation interventions asked whether the effect could be transferred or blocked. Adding the edit's
+change to the layer-33 output at the answer position in the unedited model recovered 0.808 of false
+abstentions. Clamping that output back to its original value in the edited model removed only 0.193.
+The layer-33 intervention was therefore sufficient, but not necessary, to release answers under these
+conditions. The remaining recovery is consistent with another route, possibly through the layer-32 head;
+that explanation was not directly tested. Without a random-head comparison, these results do not establish
+that the two selected heads have a unique role.
+
+\paragraph{The explanation was not established.}
+The agent's account of what the component computes was not supported by the frozen tests. Its proposed
+variable added no predictive value for false abstention, although the baseline predictor already had an
+AUROC of 0.998 and left little room for improvement. Intervening on the variable also failed to establish a
+different effect on answerable versus unanswerable questions relative to a matched logit bias: the
+interaction was 0.0005 (95\% CI $-0.025$ to 0.027). Two activity predictions held, but the combined account
+test did not pass.
+
+This negative has an important qualification. The agent described the heads as an evidence-independent
+``unknown'' prior. A null interaction is close to what that description would predict, so the frozen predictor
+and interaction tests fit this account poorly. The result means that the account was not shown by the
+pre-registered tests; it is not a refutation of that account.
+
+At its pathway-test dose, the two-head edit was also not selective: on S it produced unsupported answers on
+96\% of unanswerable rows. The pathway result identifies where an answer-release effect can be produced.
+It does not explain the selected layer-35 repair.
+
+\paragraph{Exploratory observations.}
+On E, doubling the two heads changed 180 of 572 correct answers (31\%) into ``unknown'', within the agent's
+prediction of 30--40\%. Removing the heads recovered most false abstentions on that split. These observations
+motivated the bidirectional interpretation, but E was the split the agent studied and cannot independently
+confirm it. The exploratory results are collected in \cref{app:e}.

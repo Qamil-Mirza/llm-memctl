@@ -1,0 +1,30 @@
+\section{What's new here}
+\label{sec:new}
+
+% The first-in-setting claim and the descriptions below still need a complete primary-source audit.
+An agent proposing a useful weight edit is not itself new. Weight-space programming demonstrated that approach
+\citep{takehi2026wsp}, and Steer2Edit studied edits to individual heads and neurons \citep{steer2edit2026}.
+Earlier work also identified attention heads involved in safety refusal \citep{zhou2025safetyheads}.
+
+Selectivity is an established concern. False-refusal vector ablation folded an intervention into model weights
+and evaluated released false refusals against preserved true refusals \citep{wang2025falserefusal}.
+Residual Paving used a gated residual update to address three objectives: change the target behaviour, preserve
+benign behaviour, and retain wanted refusals \citep{hinkley2026paving}. Research on prompt-induced abstention
+and local answer release also motivates testing late-layer interventions
+\citep{liu2026broken,ling2025artifact}. Pre-registered, once-only held-out tests have precedent in
+interpretability outside language models \citep{readablenotsteerable2026}.
+\Cref{app:related} compares these studies with ours.
+
+\paragraph{The contribution of this report.}
+This is a pre-registered case study in one model. The proposed contribution is the combination of four elements:
+false abstention with sufficient evidence in context; evaluation of answer recovery, unsupported answers, damage
+to correct answers and following changed evidence; sealed confirmation of agent-proposed edits; and comparison
+with frozen prompt, steering, orthogonalisation and logit-bias interventions. To our knowledge, this is the first
+pre-registered test on sealed data of an agent-proposed weight edit for false abstention with the evidence in view.
+
+The result has a clear boundary. The selected edit improved the pre-registered trade-off over three of the
+simpler interventions. Against a logit bias on ``unknown'', however, the comparison was inconclusive. The point
+estimates favoured the edit on recovery (0.816 versus 0.793) and unsupported answers (0.042 versus 0.095), but
+the edit damaged more already-correct answers (0.030 versus none). The comparison did not survive correction
+for multiple tests (Holm $p = 0.092$). We found no earlier head-to-head comparison of a weight edit with logit
+bias for abstention; whether this edit improves on that baseline remains unresolved here.

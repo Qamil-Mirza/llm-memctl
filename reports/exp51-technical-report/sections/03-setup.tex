@@ -1,0 +1,98 @@
+\section{The experimental setup}
+\label{sec:setup}
+
+We evaluated Qwen2.5-3B-Instruct, a 36-layer model, in fp32 with greedy decoding. The prompt asks it to write
+a short memory note and then an \texttt{Answer:} line containing a city or ``unknown''. The instruction
+explicitly offers ``unknown'' when the memory does not supply an answer.
+
+\paragraph{What the note tells us.}
+The note is a prompted summary of the memory, not a verified reasoning trace. When we describe a response as
+``note, then refuse'', we mean that the gold city appears in that summary before \texttt{Answer: unknown}.
+This shows that the city was written down. It does not establish that the model completed an internal
+derivation, and we do not treat the note as a faithful explanation of the computation.
+
+\paragraph{Tasks and examples.}
+The synthetic memories support three tasks: \textbf{direct extraction (DE)}, such as ``Where does A live?'';
+\textbf{relational composition (RC)}, such as ``In which city does A's supervisor work?''; and
+\textbf{temporal updating (TU)}, such as ``Where does A live now?'' after a move.
+Each underlying \emph{base case} produces 13 related rows: 6 answerable rows (two variants at three hardness
+levels), 3 unanswerable rows with a related distractor (UNA-rel), 1 unanswerable row with a swapped name
+(UNA-swap), and 3 counterfactual rows in which the evidence specifies a different city (CF).
+
+We call the unedited model \textbf{B0}. Its responses define the populations used throughout the evaluation:
+\textbf{FA} contains answerable rows on which B0 abstains falsely; \textbf{C} contains answerable rows it gets
+correct; \textbf{UNA} contains all unanswerable rows; and \textbf{CF} contains the changed-evidence rows.
+Each intervention is evaluated on the same fixed populations.
+
+\paragraph{Splits.}
+Related variants stay together when cases are assigned to exploration, selection, confirmation and transfer
+splits (\cref{tab:splits}). The partition also prevents a person--evidence-city key, including a
+counterfactual variant's key, from crossing splits. No canonical base key or exact memory text appears in two
+splits. Names, cities and templates can still be shared; disjoint cases do not imply entirely different
+vocabularies. The agent saw only the exploration split, E.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}llYY@{}}
+\toprule
+Split & Bases per task & Access & Purpose \\
+\midrule
+E & 48 & Agent & Exploration only \\
+S & 32 & Analysts & Dose selection and candidate selection \\
+H & 48 & Sealed; read once & Confirmation \\
+T-city & 24 & Sealed; read once & Transfer to new cities \\
+\bottomrule
+\end{tabularx}
+\caption{E and S use generator seed 51 with disjoint cases, H uses seed 52, and T-city uses seed 53.
+Rows from earlier experiments are excluded by prompt hash. A second planned transfer split with a reworded
+instruction, T-format, was dropped before the first design freeze (F0).}
+\label{tab:splits}
+\end{table}
+
+\paragraph{Scoring.}
+A frozen rule-based grader scores the answer after the last \texttt{Answer:} marker, separately from the note
+(\cref{app:methods}). It distinguishes a correct answer, abstention, wrong answer, mixed answer and abstention,
+conflicting answers, other content, and degenerate or missing outputs.
+
+The primary utility, $U$, rewards a correct answer with $+1$ and assigns abstention $0$. A mixed answer receives
+$0$ on an answerable row and $-1$ on an unanswerable row; other errors receive $-1$. Within each base,
+answerable and unanswerable rows each contribute half the weight. Counterfactual rows are scored separately
+and do not enter $U$. We also report:
+\begin{itemize}
+  \item \textbf{Recovery (Rel):} the share of baseline false abstentions that become correct answers.
+  \item \textbf{Unsupported answering (Uns):} the share of unanswerable rows given an asserted or suggested answer.
+  \item \textbf{Damage (Dam):} the share of baseline-correct rows that are no longer correct.
+  \item \textbf{Counterfactual following (CF-follow):} the share of changed-evidence rows answered with the new city.
+  \item \textbf{Degenerate outputs (Deg):} degenerate responses and responses missing an answer marker.
+\end{itemize}
+Rates are base-weighted. We also give raw row counts where useful; these need not yield the same percentages.
+
+\paragraph{Comparators.}
+Five interventions serve as repair baselines, with settings frozen after selection on S:
+\begin{itemize}
+  \item \textbf{B1, logit bias:} penalise ``unknown'' tokens after the answer marker.
+  \item \textbf{B2, added instruction:} append ``Do not reply unknown.'' to the prompt.
+  \item \textbf{B3, option removal:} remove the ``unknown'' option from the instruction.
+  \item \textbf{B4, activation steering:} apply the earlier refusal-direction push at layer 29.
+  \item \textbf{B5, directional orthogonalisation:} remove a direction fitted on E from the relevant weights,
+        following an adaptation of \citet{arditi2024refusal}.
+\end{itemize}
+A sixth comparator, \textbf{B6}, consists of five size-matched random edits. It is used in the pathway tests,
+not in the main repair comparison (\cref{sec:explain}).
+
+\begin{figure}[ht]
+\centering
+\begin{tabularx}{\linewidth}{@{}YYYY@{}}
+\toprule
+\textbf{Explore} & \textbf{Select} & \textbf{Freeze} & \textbf{Evaluate} \\
+\midrule
+Agent proposes edits on E; the harness replays them. &
+S selects candidates and doses separately for repair and pathway tests. &
+F2 fixes candidates, settings and analysis before confirmation. &
+H tests the frozen claims; T-city checks transfer descriptively. \\
+\bottomrule
+\end{tabularx}
+\caption{The agent sees only E. S selects the candidates and doses for repair and pathway tests. The
+confirmatory plan is frozen by commit before any model outputs on H or T are generated; each is then read once.}
+\label{fig:pipeline}
+\end{figure}

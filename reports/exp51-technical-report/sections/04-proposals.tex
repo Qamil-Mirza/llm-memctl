@@ -1,0 +1,47 @@
+\section{What the agent proposed}
+\label{sec:proposals}
+
+The editor was a fresh Claude Opus 5.5 session run through the API. It worked in a sandbox with read-only access
+to the exploration split, E, and no access to this project's records or to S, H or T. Its tools could run the
+model, record activations and apply candidate edits. Analysis was limited to closed-form operations such as
+means, projections, SVD and single linear solves; gradient-based optimisation was not allowed.
+
+An edit could affect at most four components: attention output projections (\texttt{o\_proj}), MLP output
+projections (\texttt{down\_proj}) or layer norms. Allowed edits were rank-$\le$4 updates or sparse column edits.
+The embedding, unembedding and rows for the ``unknown'' token were off limits. Before testing an edit, the
+agent had to identify the component, state a hypothesis, predict outcomes for each row type, and describe
+expected activity in the unedited model.
+
+One run produced six saved edits and three submissions (\cref{tab:submissions}). It took 73 turns,
+16 forward-pass requests and 63 Python runs, over about 16.4 hours, at an API cost of \$3.58.
+
+\begin{table}[ht]
+\centering\small
+\begin{tabularx}{\linewidth}{@{}l>{\raggedright\arraybackslash}p{3.2cm}Y@{}}
+\toprule
+\# & Edit & The agent's hypothesis (abridged; not an established explanation) \\
+\midrule
+1 & Zero the \texttt{o\_proj} columns of heads L32h2 and L33h10 (repair) &
+The two heads write a nearly constant ``unknown'' vector at the answer position, independent of the evidence.
+Other late heads write the evidence city. False abstention occurs when the city signal is too weak to overcome
+this default. Removing the default should recover false abstentions while preserving abstention on
+unanswerable questions, where the ``unknown'' margin is larger. \\
+2 & Rank-1 update to the layer-35 \texttt{o\_proj} (repair) &
+Layer-35 attention contains an ``answer is available'' signal that is nearly as strong on false abstentions as
+on correct answers, and absent on unanswerable questions. The edit reads that signal and writes toward city
+tokens in the final layer, where no later layer can undo it. \\
+3 & Double the same two heads (diagnostic) &
+If the heads supply an abstention default, strengthening them should turn correct answers into ``unknown'',
+even when the note names the city. \\
+\bottomrule
+\end{tabularx}
+\caption{The agent's three submissions. Edits 1 and 3 change about 0.52M weights; edit 2 changes about 4.19M.
+\todo{Check these abridged hypotheses against the transcript and add the key quotations.}}
+\label{tab:submissions}
+\end{table}
+
+For edit 1, the agent predicted recovery of about 85\% of false abstentions, retention of at least 97\% of
+correct answers, and an increase in unsupported answers on UNA-rel from about 1\% to at most 4\%.
+For edit 2, it predicted 75--80\% recovery with essentially unchanged unsupported answering. For edit 3, it
+predicted that 30--40\% of correct answers would become ``unknown''. These predictions were recorded for
+evaluation; they did not determine candidate selection.
