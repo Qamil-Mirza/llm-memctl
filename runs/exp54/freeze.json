@@ -1,0 +1,104 @@
+{
+ "experiment": "§54 rev 0, stage-0 freeze (committed before any model call)",
+ "proposal": {"path": "research/proposals/2026-11-07-exp54-native-switch.md", "sha256": "6f889b9ee81e29910c362bd4c4447529082ddff77274c1c22f06b72d7e9079cb", "decision": "D-78 at 7eb3c10", "approved": "stages 0-4 only, $0, laptop; stage 5 NOT approved"},
+ "model": {"id": "Qwen/Qwen2.5-3B-Instruct", "revision": "aa8e72537993ba99e69dfaafa59ed015b17504d1", "engine": "scripts/exp51_engine.py (float32, CPU, greedy, batch 1 for every patched pass)", "n_layers": 36, "n_heads": 16, "head_dim": 128, "hidden": 2048},
+
+ "seeds": {
+  "dev": 55,
+  "sealed_stage5": 56,
+  "seed56_rule": "seed 56 is not generated, rendered or read in stages 0-4",
+  "split_rng": "random.Random('54-split-' + task)",
+  "criterion5_rng": "random.Random('54-c5-' + set_name)",
+  "atp_random30_rng": "random.Random('54-atp-random30')"
+ },
+
+ "data": {
+  "split_name": "W",
+  "generator": "the §51 F2 generator via scripts/exp53_cases.build with SEED = 55 and SPLIT = 'W' (same templates, note format, instruction block, distractor scheme and 13 rows per base as §51 / §53)",
+  "bases_per_task": 50,
+  "tasks": ["DE", "RC", "TU"],
+  "n_bases": 150,
+  "n_rows": 1950,
+  "excluded_key_splits": ["E", "S"],
+  "prompt_distinctness": "every W prompt differs (sha256) from every §49, §50, §51 and §53 (N) row and from every other W row; no W memory text equals an E memory text",
+  "key_overlap_note": "the DE / TU (name, gold city) cells are allocated deterministically as in §53, so W shares DE / TU effective keys with N (and through N with H). Only W's own outputs are ever read; no output of H, T-city, N-held or §50 held is read. Overlap counts are reported in cases54_counts.json",
+  "b0_rows": "stage 1: the 900 ANS rows (rep a and rep b x H0-H2 x 150 bases), own notes, §51 B0 procedure (batched layout 64, total-effect stop rule). UNA-rel B0: stage 3 only, dev-B bases only. CF and UNA-swap rows are generated but not run",
+  "size_rule": "the size is fixed here. It is not enlarged after the stage-1 counts are seen"
+ },
+
+ "definitions": {
+  "P_ans": "the designated marker's ':' token (scripts/exp51_common.designated: the last '\\nAnswer:' in the generation, unmerged)",
+  "unknown_token": {"text": " unknown", "id": 9788},
+  "t_star": "A's own first answer token: A's B0 gen_ids[j] (the first token generated after A's marker)",
+  "D": "D = logit[9788] - logit[t_star] at P_ans (the logit row predicting the first answer token). Positive D: unknown wins",
+  "flip_pair": "same base and hardness, rep a and rep b, one twin graded 'gold' and the other 'abstention' under its own B0 (§51 grader). A = the gold twin, F = the abstaining twin",
+  "pair_requirements": "A and F both p_ans_ok; len(A prompt_ids) == len(F prompt_ids) (only timestamp tokens differ); failures counted and excluded",
+  "controlled_prefixes": {
+   "A": "A's own B0 ids through its marker: A.prompt_ids + A.gen_ids[:A.j]",
+   "F_primary": "F.prompt_ids + A.gen_ids[:A.j] (A's note and marker copied token for token, no re-tokenisation)"
+  },
+  "primary_pair": "a flip pair whose forced-note F (F_primary prefix, greedy prefix mode, <= 16 new tokens, §51 grader) is still graded 'abstention', AND D_A < 0 < D_F on the controlled prefixes",
+  "note_driven_pair": "a flip pair whose forced-note F is graded 'gold' (reported separately, not used for K)",
+  "other_pair": "forced-note F graded neither gold nor abstention, or the D sign condition fails (counted)",
+  "secondary_pair": "every flip pair with each twin on its own B0 prefix (own notes), D_A < 0 < D_F at each twin's own P_ans; reported beside the primary pairs, descriptive",
+  "components": "layers 20-35: each attention head's output at P_ans (its 128-dim slice of the o_proj input) and each MLP's output at P_ans (down_proj output). 16 x 16 heads + 16 MLPs = 272. Named LxhY and MLPx",
+  "patch": "replace the component's output at P_ans in the recipient's forward with the donor twin's natural value at P_ans; all later components recompute. Only P_ans is touched, so the recipient's prefix KV cache through P_ans - 1 is reused and each patched pass is one token",
+  "gap_closed_forward": "(D_F - D_F,patched) / (D_F - D_A), patch A -> F on F's primary prefix",
+  "gap_closed_reverse": "(D_A,patched - D_A) / (D_F - D_A), patch F -> A on A's prefix",
+  "direct_effect": "recipient's final-layer residual at P_ans plus the patched components' change in what they write to the residual (head: o_proj columns x slice difference; MLP: output difference), through the final RMSNorm (recomputed) and the unembedding, D recomputed. Every other component held at the recipient's values",
+  "indirect_effect": "total effect minus direct effect, in D units and in gap closed",
+  "generation_check": "greedy from the recipient's prefix (prefix mode, <= 16 new tokens, stop at EOS or a newline after a non-empty answer) with the patch applied at P_ans only; graded with the §51 grader against the row's gold"
+ },
+
+ "split_rule": {
+  "unit": "base",
+  "procedure": "bases with >= 1 primary pair: within each task, sort base keys, shuffle with random.Random('54-split-' + task); concatenate the shuffled lists in task order DE, RC, TU and assign alternately dev-A, dev-B, dev-A, ... All other bases get the same procedure separately (its own alternation, starting at dev-A). Every pair, C row, UNA-rel row and FA row follows its base",
+  "use": "dev-A: stage 2 screen and the choice of K. dev-B: stage 3 verification only. K is committed before any dev-B patch is run"
+ },
+
+ "criteria": {
+  "applies_to": "a set K of at most 5 components; stage 3 on dev-B primary pairs",
+  "1_differs_within_twins": {"test": "per component c in K and per pair, s = ||w_c(A) - w_c(F)|| / spread_c(cell), where w_c is what c writes to the residual at P_ans (head: o_proj columns x slice; MLP: down_proj output) on the controlled prefixes, and spread_c(cell) = sqrt(mean_x ||w_c(x) - mean||^2) over the C-labelled ANS rows of the same half (dev-B) and cell (task x hardness) at their own B0 P_ans. If a cell has < 10 C rows, its task's C rows over all hardnesses are used", "bar": "median s over pairs >= 0.5 for every component of K; reported for every component"},
+  "2_sufficient_forward": {"test": "patch K from A into F", "bar": "median gap_closed_forward >= 0.5 AND generation graded 'gold' on >= 50% of pairs"},
+  "3_sufficient_reverse": {"test": "patch K from F into A", "bar": "median gap_closed_reverse >= 0.5 AND generation graded 'abstention' on >= 30% of pairs"},
+  "4_necessary": {"test": "start from F; patch every component (272, or 160 under the time rule) from A except K, which is set to F's own natural values", "bar": "median gap_closed_forward(all but K) < 0.5 x median gap_closed_forward(all)"},
+  "5_specific": {"test": "the forward patch with 20 random sets of K's size and type mix (same number of heads and MLPs), each drawn uniformly without replacement from the components not in K, the 20 sets distinct", "bar": "K's median forward gap closed ranks 1 of 21; ties count against K (p = 1/21, as in §53)"},
+  "multiplicity": "no family-wise claim; each criterion is judged at its own bar"
+ },
+
+ "stage2_screen": {
+  "data": "dev-A primary pairs only",
+  "atp": "for each pair and component, est. change in D = (donor - recipient value) . dD/d(component) at the recipient, from one forward and one backward pass of the one-token P_ans step per pair and direction (attribution patching, Kramar et al. 2024). The AtP* QK fix is not needed (no keys or queries are patched, only outputs at P_ans); GradDrop is not used",
+  "rank": "median over dev-A pairs of the estimated forward gap closed, descending (signed)",
+  "real_patch_check": "single-component real patches, forward and reverse, for the top 30 by AtP, a random 30 drawn from the other components (random.Random('54-atp-random30')) and the always-included list; Pearson and Spearman correlation between estimated and real forward gap closed reported",
+  "always_included": ["L32h2", "L33h10", "L32h13", "L32h3", "L33h3", "L33h15", "L33h11", "MLP33", "MLP34", "MLP35", "L35h12", "L35h13"],
+  "greedy_pool": "every component with a real-patch result (top 30 U random 30 U always-included, <= 72)",
+  "greedy": "start empty; at each step add the pool component that maximises the median forward gap closed of the real joint patch on dev-A (ties: lower layer, then head before MLP, then lower head index); stop at 5 components. K = the shortest prefix of this sequence whose median forward gap closed >= 0.5",
+  "commit": "runs/exp54/K.json committed (explicit path) before any dev-B patch"
+ },
+
+ "stage3": {
+  "named_sets": {"movers": ["L32h13", "L32h3", "L33h3", "L33h15", "L33h11"], "movers_plus_L35MLP": ["L32h13", "L32h3", "L33h3", "L33h15", "L33h11", "MLP35"]},
+  "named_sets_rule": "criteria 1-5 run for both named sets on dev-B, reported as descriptive (their random sets use their own type mix)",
+  "descriptive": [
+   "direct vs indirect split for K and both named sets",
+   "mean transplant: the mean A - F write difference of each K component over dev-A primary pairs, added to F's natural value at P_ans on every dev-B primary pair (D, gap closed, generation)",
+   "the same mean transplant on dev-B UNA-rel rows (own B0 prefix, generation: answer rate) and on dev-B FA rows that are in no flip pair (release rate)",
+   "criteria 2 and 3 for K on dev-B secondary pairs (own notes)"
+  ]
+ },
+
+ "stage4": "only if K passes criteria 1-5. For each head in K: pattern-only patch (A's attention weights at P_ans over all positions, F's values), value-only patch (F's weights, A's value vectors), and the head's output at P_ans split by source position group (evidence line, other memory lines, note tokens, timestamp tokens, instruction, chat template). For an MLP in K: the MLP's output change when its input is patched with the residual contributions of K's heads only vs everything else. dev-A and dev-B, descriptive",
+
+ "stopping_rules": [
+  {"where": "stage 1", "result": "< 40 primary pairs, or < 20 bases with a primary pair, or < 2 tasks", "action": "report the counts and the share of note-driven pairs; stop; no rescue (D-45)"},
+  {"where": "stage 2", "result": "no greedy prefix of <= 5 components reaches median forward gap closed >= 0.5 on dev-A", "action": "report 'at head/MLP resolution in layers 20-35 the decision is distributed' and the top components' shares; stop"},
+  {"where": "stage 3", "result": "K fails any of criteria 2-5 on dev-B", "action": "report which criterion failed and the named sets; stop; K is not re-chosen on dev-B"},
+  {"where": "stage 3", "result": "K passes 2, 3 and 5 but fails 1", "action": "report K as a lever, not a switch; stop"},
+  {"where": "stage 3", "result": "K passes all five", "action": "run stage 4, then the Advisor proposes stage 5 to the user"}
+ ],
+
+ "time_rule": "before stage 2, time one real dev-A primary pair through the full per-pair stage-2 workload (donor captures, AtP forward and backward both directions, the real-patch check). If the projected stages 2 + 3 exceed about 24 h on the laptop, every component list is restricted to layers 26-35 (16 x 10 heads + 10 MLPs = 160, the always-included list is unchanged) BEFORE any stage-2 result is computed, and the restriction is recorded as a deviation. Peak RSS is logged",
+
+ "hard_rules": ["no pod, no spend", "no output of H, T-city, N-held or §50 held is read", "document, don't rescue (D-45): K is never re-chosen on dev-B, no rescue variants", "seed 56 untouched"]
+}
