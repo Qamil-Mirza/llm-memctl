@@ -1,0 +1,13 @@
+{
+ "key": "qwen05b",
+ "question_id": "e4e14d04",
+ "prompt_tokens": 1060,
+ "median_prompt_tokens": 1060,
+ "max_prompt_tokens": 3195,
+ "new_tokens": 2,
+ "row_s": 2.14353609085083,
+ "prefill_s": 1.8961751670576632,
+ "decode_s_per_token": 0.12128204293549061,
+ "peak_rss_gb": 3.3060150146484375,
+ "note": "timing only; this output is not the cache and is not read"
+}

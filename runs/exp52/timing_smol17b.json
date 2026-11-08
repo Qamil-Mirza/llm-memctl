@@ -1,0 +1,13 @@
+{
+ "key": "smol17b",
+ "question_id": "76d63226",
+ "prompt_tokens": 1090,
+ "median_prompt_tokens": 1090,
+ "max_prompt_tokens": 3441,
+ "new_tokens": 16,
+ "row_s": 15.721123218536377,
+ "prefill_s": 8.089293783996254,
+ "decode_s_per_token": 0.47533892310457304,
+ "peak_rss_gb": 10.097301483154297,
+ "note": "timing only; this output is not the cache and is not read"
+}

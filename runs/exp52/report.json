@@ -1,0 +1,344 @@
+{
+ "gemma270m": {
+  "marker_rate": {
+   "k": 22,
+   "n": 126,
+   "rate": 0.1746
+  },
+  "in_view_abstention": {
+   "k": 1,
+   "n": 22,
+   "rate": 0.0455
+  },
+  "reading_floor": {
+   "k": 13,
+   "n": 126,
+   "rate": 0.1032
+  },
+  "reading_floor_marked_only": {
+   "k": 6,
+   "n": 126,
+   "rate": 0.0476
+  },
+  "note_then_refuse": {
+   "k": 0,
+   "n": 1,
+   "rate": 0.0
+  },
+  "refusal_phrase_not_unknown": 0,
+  "post_hoc_any_output_unknown": {
+   "k": 3,
+   "n": 126,
+   "rate": 0.0238
+  },
+  "post_hoc_unmarked_unknown": {
+   "k": 2,
+   "n": 104,
+   "rate": 0.0192
+  },
+  "hit_max_tokens": 0,
+  "mean_row_s": 2.3,
+  "unknown_not_in_view_answerable": {
+   "k": 3,
+   "n": 8,
+   "rate": 0.375
+  },
+  "post_hoc_any_output_unknown_not_in_view": {
+   "k": 5,
+   "n": 62,
+   "rate": 0.0806
+  },
+  "unknown_unanswerable": {
+   "k": 0,
+   "n": 1,
+   "rate": 0.0
+  },
+  "secondary_done": "74/74",
+  "gate": "FAIL (marker, floor, abstention)"
+ },
+ "qwen05b": {
+  "marker_rate": {
+   "k": 6,
+   "n": 126,
+   "rate": 0.0476
+  },
+  "in_view_abstention": {
+   "k": 1,
+   "n": 6,
+   "rate": 0.1667
+  },
+  "reading_floor": {
+   "k": 30,
+   "n": 126,
+   "rate": 0.2381
+  },
+  "reading_floor_marked_only": {
+   "k": 0,
+   "n": 126,
+   "rate": 0.0
+  },
+  "note_then_refuse": {
+   "k": 0,
+   "n": 1,
+   "rate": 0.0
+  },
+  "refusal_phrase_not_unknown": 0,
+  "post_hoc_any_output_unknown": {
+   "k": 17,
+   "n": 126,
+   "rate": 0.1349
+  },
+  "post_hoc_unmarked_unknown": {
+   "k": 16,
+   "n": 120,
+   "rate": 0.1333
+  },
+  "hit_max_tokens": 1,
+  "mean_row_s": 4.8,
+  "unknown_not_in_view_answerable": {
+   "k": 1,
+   "n": 6,
+   "rate": 0.1667
+  },
+  "post_hoc_any_output_unknown_not_in_view": {
+   "k": 11,
+   "n": 62,
+   "rate": 0.1774
+  },
+  "unknown_unanswerable": {
+   "k": 0,
+   "n": 1,
+   "rate": 0.0
+  },
+  "secondary_done": "74/74",
+  "gate": "FAIL (marker, abstention)"
+ },
+ "llama1b": {
+  "marker_rate": {
+   "k": 40,
+   "n": 126,
+   "rate": 0.3175
+  },
+  "in_view_abstention": {
+   "k": 2,
+   "n": 40,
+   "rate": 0.05
+  },
+  "reading_floor": {
+   "k": 30,
+   "n": 126,
+   "rate": 0.2381
+  },
+  "reading_floor_marked_only": {
+   "k": 4,
+   "n": 126,
+   "rate": 0.0317
+  },
+  "note_then_refuse": {
+   "k": 0,
+   "n": 2,
+   "rate": 0.0
+  },
+  "refusal_phrase_not_unknown": 3,
+  "post_hoc_any_output_unknown": {
+   "k": 2,
+   "n": 126,
+   "rate": 0.0159
+  },
+  "post_hoc_unmarked_unknown": {
+   "k": 0,
+   "n": 86,
+   "rate": 0.0
+  },
+  "hit_max_tokens": 70,
+  "mean_row_s": 61.9,
+  "unknown_not_in_view_answerable": {
+   "k": 2,
+   "n": 20,
+   "rate": 0.1
+  },
+  "post_hoc_any_output_unknown_not_in_view": {
+   "k": 2,
+   "n": 62,
+   "rate": 0.0323
+  },
+  "unknown_unanswerable": {
+   "k": 2,
+   "n": 4,
+   "rate": 0.5
+  },
+  "secondary_done": "74/74",
+  "gate": "FAIL (marker, abstention)"
+ },
+ "gemma1b": {
+  "marker_rate": {
+   "k": 13,
+   "n": 126,
+   "rate": 0.1032
+  },
+  "in_view_abstention": {
+   "k": 0,
+   "n": 13,
+   "rate": 0.0
+  },
+  "reading_floor": {
+   "k": 22,
+   "n": 126,
+   "rate": 0.1746
+  },
+  "reading_floor_marked_only": {
+   "k": 5,
+   "n": 126,
+   "rate": 0.0397
+  },
+  "note_then_refuse": {
+   "k": 0,
+   "n": 0,
+   "rate": null
+  },
+  "refusal_phrase_not_unknown": 0,
+  "post_hoc_any_output_unknown": {
+   "k": 26,
+   "n": 126,
+   "rate": 0.2063
+  },
+  "post_hoc_unmarked_unknown": {
+   "k": 26,
+   "n": 113,
+   "rate": 0.2301
+  },
+  "hit_max_tokens": 0,
+  "mean_row_s": 7.3,
+  "unknown_not_in_view_answerable": {
+   "k": 1,
+   "n": 4,
+   "rate": 0.25
+  },
+  "post_hoc_any_output_unknown_not_in_view": {
+   "k": 22,
+   "n": 62,
+   "rate": 0.3548
+  },
+  "unknown_unanswerable": {
+   "k": 0,
+   "n": 2,
+   "rate": 0.0
+  },
+  "secondary_done": "74/74",
+  "gate": "FAIL (marker, abstention)"
+ },
+ "qwen15b": {
+  "marker_rate": {
+   "k": 2,
+   "n": 126,
+   "rate": 0.0159
+  },
+  "in_view_abstention": {
+   "k": 0,
+   "n": 2,
+   "rate": 0.0
+  },
+  "reading_floor": {
+   "k": 2,
+   "n": 126,
+   "rate": 0.0159
+  },
+  "reading_floor_marked_only": {
+   "k": 1,
+   "n": 126,
+   "rate": 0.0079
+  },
+  "note_then_refuse": {
+   "k": 0,
+   "n": 0,
+   "rate": null
+  },
+  "refusal_phrase_not_unknown": 0,
+  "post_hoc_any_output_unknown": {
+   "k": 121,
+   "n": 126,
+   "rate": 0.9603
+  },
+  "post_hoc_unmarked_unknown": {
+   "k": 121,
+   "n": 124,
+   "rate": 0.9758
+  },
+  "hit_max_tokens": 1,
+  "mean_row_s": 10.7,
+  "unknown_not_in_view_answerable": {
+   "k": 0,
+   "n": 3,
+   "rate": 0.0
+  },
+  "post_hoc_any_output_unknown_not_in_view": {
+   "k": 58,
+   "n": 62,
+   "rate": 0.9355
+  },
+  "unknown_unanswerable": {
+   "k": 0,
+   "n": 0,
+   "rate": null
+  },
+  "secondary_done": "74/74",
+  "gate": "FAIL (marker, floor, abstention)"
+ },
+ "smol17b": {
+  "marker_rate": {
+   "k": 101,
+   "n": 126,
+   "rate": 0.8016
+  },
+  "in_view_abstention": {
+   "k": 0,
+   "n": 101,
+   "rate": 0.0
+  },
+  "reading_floor": {
+   "k": 44,
+   "n": 126,
+   "rate": 0.3492
+  },
+  "reading_floor_marked_only": {
+   "k": 35,
+   "n": 126,
+   "rate": 0.2778
+  },
+  "note_then_refuse": {
+   "k": 0,
+   "n": 0,
+   "rate": null
+  },
+  "refusal_phrase_not_unknown": 1,
+  "post_hoc_any_output_unknown": {
+   "k": 1,
+   "n": 126,
+   "rate": 0.0079
+  },
+  "post_hoc_unmarked_unknown": {
+   "k": 1,
+   "n": 25,
+   "rate": 0.04
+  },
+  "hit_max_tokens": 1,
+  "mean_row_s": 21.6,
+  "unknown_not_in_view_answerable": {
+   "k": 0,
+   "n": 48,
+   "rate": 0.0
+  },
+  "post_hoc_any_output_unknown_not_in_view": {
+   "k": 2,
+   "n": 62,
+   "rate": 0.0323
+  },
+  "unknown_unanswerable": {
+   "k": 0,
+   "n": 11,
+   "rate": 0.0
+  },
+  "secondary_done": "74/74",
+  "gate": "FAIL (abstention)"
+ }
+}
