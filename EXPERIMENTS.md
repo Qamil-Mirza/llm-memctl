@@ -8584,6 +8584,91 @@ M3 activity predictions (per base, S margins):
   edits themselves are not new (literature pass 2026-11-05).
 - One sealed read; no rescue (D-45).
 
+## 52. Do readers below 3B say "unknown" with the evidence in view? A feasibility screen of six instruction-tuned readers (2026-11-04, proposed rev 0, D-74; laptop stage 0 2026-11-08)
+
+**Status: stage 0 RUN, gate FAILS for all six readers. Nothing is queued for Q-A to Q-D. Laptop, CPU fp32, $0.**
+- **What was planned.** The §43 stage-0 screen, repeated below 3B. The question was whether the in-view "unknown" habit
+  (Qwen 2.5 3B 0.300, §43) follows the family or the size.
+  - Readers: Qwen2.5-0.5B-Instruct, Qwen2.5-1.5B-Instruct, Llama-3.2-1B-Instruct, gemma-3-1b-it, gemma-3-270m-it
+    (the floor) and SmolLM2-1.7B-Instruct, at pinned HF revisions.
+  - A reader is queued only if it passes all three bars: marker rate ≥ 0.70, reading floor ≥ 0.15, and in-view
+    abstention ≥ 0.15 on at least 10 rows.
+- **Setting (frozen at 0c88a93, before any model output).**
+  - Rows: the 126 §43 dev rows (folds 0–1; answerable, all evidence in view, at least one evidence line). The qids
+    and prompt bytes are identical to the Llama, Gemma and Phi §24 records.
+  - Also run, for description only: 74 further fold-0–1 rows (62 answerable but not all in view, 12 unanswerable).
+  - Prompt: the frozen reader prompt (7b5fc30), `fixed8`, with the §24 contexts. Prompts sha 7d3b5609. No tuning.
+  - Each model's own chat template, one user turn. Qwen and SmolLM2 insert their own default system text; the Llama
+    date is pinned to 09 Oct 2026.
+  - Decoding: greedy, 256 new tokens, fp32 on CPU with 8 threads, transformers 5.17.0.
+  - Family configs: `memctl/analysis/families.py` `SMALL52`, kept out of `FAMILIES`, so §43 paths are byte-identical
+    and its tests pass.
+- **Measures.**
+  - The answer is the §23 graded answer: the phrase after the last `Answer:`, or the whole output when there is no
+    marker.
+  - Marker rate is over the 126 rows.
+  - In-view abstention is the share of marked rows whose answer starts with "unknown".
+  - Reading floor is `answer_selection.d1(answer, gold)` over the 126 rows.
+- **Timing** (one median row of about 1,060 tokens per reader, measured before any duration was quoted).
+  - Prefill takes 0.7 s (270M) to 8.1 s (SmolLM2). Decoding takes 0.07 to 0.48 s per token.
+  - Measured mean seconds per row over the 126 rows: 2.3 (270M), 4.8 (Qwen 0.5B), 61.9 (Llama 1B), 7.3 (Gemma 1B),
+    10.7 (Qwen 1.5B) and 21.6 (SmolLM2).
+  - Wall time 09:26–15:34. Peak RSS ≤ 10.1 GB.
+- **Result (126 in-view rows per reader).**
+
+  | Reader | Marker | In-view abstention (marked) | Floor | Floor, marked only | §24 phrases | Gate |
+  |---|---|---|---|---|---|---|
+  | gemma-3-270m | 0.175 (22) | 0.045 (1/22) | 0.103 (13) | 0.048 (6) | 0 | FAIL: marker, floor, abstention |
+  | Qwen 2.5 0.5B | 0.048 (6) | 0.167 (1/6) | 0.238 (30) | 0.000 (0) | 0 | FAIL: marker, abstention |
+  | Llama 3.2 1B | 0.318 (40) | 0.050 (2/40) | 0.238 (30) | 0.032 (4) | 3 | FAIL: marker, abstention |
+  | gemma-3-1b | 0.103 (13) | 0.000 (0/13) | 0.175 (22) | 0.040 (5) | 0 | FAIL: marker, abstention |
+  | Qwen 2.5 1.5B | 0.016 (2) | 0.000 (0/2) | 0.016 (2) | 0.008 (1) | 0 | FAIL: marker, floor, abstention |
+  | SmolLM2 1.7B | 0.802 (101) | **0.000 (0/101)** | 0.349 (44) | 0.278 (35) | 1 | FAIL: abstention |
+
+  Note-then-refuse, the §49 signature (the gold already in the note), is 0 of the 4 in-view abstentions in all
+  readers combined.
+- **Reading, per the frozen gate.**
+  - **SmolLM2 1.7B: the habit is absent.** It is the only reader that passes the marker and floor bars, and it never
+    answers "unknown" with the evidence in view (0 of 101 marked rows). It never answers "unknown" on a marked row:
+    0 of 48 marked rows answerable but not all in view, and 0 of 11 unanswerable rows. Because it does not abstain
+    even when no answer is available, the absence reflects no abstention at all, not abstention that responds to
+    the evidence.
+  - **The other five do not follow the format, so in-view abstention is not measurable here.**
+    - Qwen 0.5B and 1.5B, Gemma 1B and gemma-270m mostly answer at once without a note (1–5 new tokens).
+    - Llama 1B writes a long note but seldom reaches the marker. It hit the 256-token limit on 70 of 126 rows.
+  - Read with the confound stated in the proposal: one prompt, tuned on Qwen 7B, serves every reader.
+- **Floor caveat.** On an unmarked row the graded answer is the whole output, so a long note that contains the gold
+  counts toward the floor. Llama 1B's 0.238 falls to 0.032 when only marked rows count.
+- **Post hoc, descriptive only (no gate, no claim).**
+
+  | Reader | Bare-or-marked "unknown", 126 in-view rows | The same on 62 answerable rows not all in view | Marked "unknown", not all in view |
+  |---|---|---|---|
+  | gemma-3-270m | 0.024 (3) | 0.081 (5) | 3/8 |
+  | Qwen 2.5 0.5B | 0.135 (17) | 0.177 (11) | 1/6 |
+  | Llama 3.2 1B | 0.016 (2) | 0.032 (2) | 2/20 |
+  | gemma-3-1b | 0.206 (26) | 0.355 (22) | 1/4 |
+  | Qwen 2.5 1.5B | **0.960 (121)** | **0.935 (58)** | 0/3 |
+  | SmolLM2 1.7B | 0.008 (1) | 0.032 (2) | 0/48 |
+
+  - **Qwen 1.5B** outputs a bare "unknown", with no note and no marker, on 121 of 126 in-view rows and on 58 of 62
+    rows where the evidence is not all in view. Its refusal does not respond to the evidence, and its floor is 2 of
+    126. So it looks like a blanket refusal, not the 3B's evidence-use failure.
+  - **Gemma 1B** says "unknown" more often when the evidence is not all in view (0.355) than when it is (0.206).
+  - **Pipeline check** (requested at review; `scripts/exp52_pipecheck.py`): on all 126 rows, Qwen 0.5B and 1.5B got
+    the same chat string and token ids, and they equal the Qwen 2.5 3B §23 prompt and ids for the same qids (126 of
+    126). The vocabularies and chat templates are identical across the three. The 1.5B's pattern is the model's, not
+    a configuration error.
+- **What this leaves.**
+  - Below 3B, with this prompt, the in-view "unknown" habit is not measurable in five readers and absent in the one
+    that follows the format.
+  - No reader goes to Q-A to Q-D. No prompt-variation arm was run. That would be a new proposal and the user's
+    decision.
+
+Results: `runs/exp52/freeze.json` (sha256 92268a0a…), `rows52.jsonl`, `probe.json` at 0c88a93. The rest, at
+0f25a1c: `gen_{reader}.jsonl` (200 rows each, the cache for any later stage), `timing_*.json`, `report.json`,
+`pipecheck.json` and the chain logs. Scripts: `scripts/exp52_probe.py`, `exp52_freeze.py`, `exp52_run.py`,
+`exp52_report.py` and `exp52_pipecheck.py`.
+
 ## 53. Are the two §51 edits specific, and do they carry over to real questions? Random-edit controls, activity predictions and a LongMemEval transfer, Qwen 2.5 3B (2026-11-05, pre-registered rev 1b; pod 2026-11-07)
 
 **Status: COMPLETE (results review ACCEPT). Each of the four pre-registered claims passed its own test (C1, C2, C4,
