@@ -3,6 +3,16 @@
 **Status: rev 0 APPROVED for stages 0–4 (user, 2026-11-07: "approved, go ahead with stages 0–4"; D-78).** Stages
 0–4 cost $0 and use no held-out data. Stage 5 needs a separate approval.
 
+**Rev 0a (Advisor, at the stage-0 freeze review, before any model call;
+`research/reviews/2026-11-07-exp54-freeze-review.md`):**
+- **Criterion 1** now compares the within-twin difference with the same quantity on *stable* twins: same base and
+  hardness, both answer gold under the same forced note. The bar is a ratio of at least 2, with at least 20 stable
+  pairs required, instead of the spread across C rows from different bases. That spread is dominated by content, so
+  every component would have failed mechanically.
+- **Criterion 4** is not evaluable, and K cannot be called the switch, if patching all components itself closes less
+  than half the gap.
+- **The stage-2 pool** becomes every component if the measured one-pair timing fits the 24 h budget.
+
 ---
 
 ## 1. The question in one paragraph
