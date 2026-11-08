@@ -1,0 +1,17 @@
+[22:54:58] B0 on 39 dev rows done at +16 s
+[22:54:58] sample: [('FA', 16), ('C', 2), ('UNA', 12)]
+[22:55:09] D-target: 30 rows, 12 s
+[22:55:21] D-randread00: 30 rows, 12 s
+[22:55:33] A-target: 30 rows, 12 s
+[22:55:46] A-rand00: 28 rows, 13 s
+[22:55:59] arm C done (12 s)
+[22:56:06] C5 f reads done
+[22:56:07] A-amp-target: 2 rows, 1 s
+[22:56:09] A-amp-rand00: 2 rows, 1 s
+[22:56:22] B-opt done
+[22:56:46] B-DLA done
+[22:56:58] A-single-L32: 30 rows, 12 s
+[22:57:09] A-late00: 28 rows, 11 s
+[22:57:20] D-randwrite00: 28 rows, 11 s
+[22:57:28] B1-ref: 30 rows, 8 s
+[22:57:28] all stages done at +166 s
