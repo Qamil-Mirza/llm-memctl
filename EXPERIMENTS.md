@@ -8658,7 +8658,7 @@ selective relative to random edits of the same kind, not better than the simples
   draws, the chance that at least one claim passes is at most about 0.19. A rank test with 20 draws cannot give a p
   below 1/21.
 
-Headline (draft, for Advisor wording):
+Headline (Advisor-reviewed wording):
 
 > Both §51 weight edits beat random edits of the same form. Zeroing the two chosen heads released 75% of
 > the model's false "unknown" answers, against at most 46% for 20 random head pairs. The L35 edit's read direction
