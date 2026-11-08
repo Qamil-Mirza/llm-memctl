@@ -8584,6 +8584,123 @@ M3 activity predictions (per base, S margins):
   edits themselves are not new (literature pass 2026-11-05).
 - One sealed read; no rescue (D-45).
 
+## 53. Are the two §51 edits specific, and do they carry over to real questions? Random-edit controls, activity predictions and a LongMemEval transfer, Qwen 2.5 3B (2026-11-05, pre-registered rev 1b; pod 2026-11-07)
+
+**Status: COMPLETE (results review ACCEPT). Each of the four pre-registered claims passed its own test (C1, C2, C4,
+C5). No family-wise claim is made. On N a plain logit bias matches both edits on the utility, so the edits are
+selective relative to random edits of the same kind, not better than the simplest baseline.**
+- **What was tested.** §51 left two edits: submission 1 (zero the `o_proj` columns of L32h2 and L33h10,
+  `c64ea090781450cf`) and submission 2 (rank-1 L35 `o_proj`, `8364bf135ac59a83`, dose 2). §53 asks whether each edit
+  beats random edits of the same form. It also asks whether the editor's activity predictions for submission 2 hold
+  on fresh bases, and whether either edit carries over to LongMemEval. N is a new controlled split (seed 54, 1,950
+  rows), disjoint from E and S keys; it shares 867 of 1,350 keyed rows with H and none with T-city. N-dev (20% of
+  bases) was used only for calibration and checks. N-held (80%) was read once. The sample was 150 FA, 150 C and
+  150 UNA rows (seed 5300, drawn from the N-held B0 labels before any edited run; 228 FA were available).
+- **C1 SHOWN: the two-head ablation's release is specific.** A-target released **0.751** of FA rows. The 20 random
+  L32×L33 head pairs released at most 0.464 (median 0.163). Rank 1 of 21 (p = 1/21), and target − median = 0.589
+  ≥ 0.30. z = 5.2 (descriptive).
+- **C3 (descriptive): so is its cost.** A-target's unsupported-answer rate on UNA is **0.075**, the highest of all 21
+  (random-pair max 0.071; B0 0.031).
+- **C2 SHOWN, narrowly: the amplified pair creates abstention specifically.** The §51 diagnostic (the two heads × 2)
+  turned **0.381** of correct answers into abstentions. The best of the 20 amplified random pairs reached 0.345
+  (median 0.094). Rank 1 of 21; z = 2.9 (descriptive). Of the four claims, this one passed by the smallest gap.
+- **C4 SHOWN: the L35 edit's read direction matters, relative to random reads.** D-target's U(λ=1) was **0.403**.
+  The 20 D-randread edits used the same write vector and the same RMS gate on N-dev FA rows, with a random read
+  vector, sign-aligned (rev 1b). Their best U1 was 0.300 (median −0.069). Rank 1 of 21. D-target's unsupported-answer
+  rate (0.058) is below the D-randread median (0.228). z = 1.4 (descriptive).
+  - The random reads varied widely: Rel 0.00–0.94, Uns 0.00–0.88, Dam 0.00–1.00 (median 0.31). They failed in two
+    ways:
+    - some released FA rows but also answered UNA rows (draw 07: Rel 0.94, Uns 0.88);
+    - others broke generation outright (draws 12 and 19: degenerate on 0.91 and 1.00 of rows, Dam 0.99 and 1.00),
+      even though each was sign-aligned on N-dev FA rows.
+    - The best random draw was draw 13 (U1 0.300: Rel 0.79, Uns 0.12, Dam 0.08). D-target had Rel 0.691, Uns 0.058 and
+      Dam 0.023.
+  - **Beside C4, the simplest baseline: B1-ref.** §51's frozen logit bias against " unknown" (−8, never tuned on N)
+    gave **U1 0.406**, against D-target 0.403 and A-target 0.414 (Rel 0.698, Uns 0.075, Dam 0). On N neither edit
+    improves on a plain output bias. This is descriptive and consistent with §51's "B1 inconclusive". C4 says the gate
+    `w` carries the selectivity relative to random read vectors. It does not say the edit beats an output bias.
+- **C5 SHOWN: the editor's four activity predictions for submission 2 hold on fresh bases** (IUT p ≈ 1e-4). f is the
+  L35 `o_proj` output at the answer ':' projected on `w/|w|`, in the **unedited** model. It is per base, on N-held
+  (119–120 bases per manipulation; 7 B0 rows with no answer line have no read site). Mean Δf, task-stratified
+  bootstrap:
+  - evidence removed: **−3.77** [−3.89, −3.65] (predicted decrease; one-sided sign test);
+  - distractors added: **−1.12** [−1.38, −0.86] (predicted decrease);
+  - unrelated vs absent: **+0.22** [0.13, 0.32] (predicted increase);
+  - city changed: **−0.03**, 90% CI [−0.13, 0.08]. This is equivalent within the frozen tolerance of ±1.123 (2 SD on
+    N-dev), not invariance.
+  - The directional predictions are sign-only tests. The 2-SD margin applies to the equivalence prediction alone.
+  - C5 tests the editor's description of the L35 signal on the unedited model, not the edit's effect, and only its
+    activity predictions: no predictor or interaction test was run for submission 2. It is the first test of
+    submission 2's account; it does not establish that account, and it says nothing about §51's M3, which tested
+    submission 1's account.
+- **Descriptive arms.**
+  - A-single: L32h2 alone released 0.486 and L33h10 alone 0.606 (the pair together 0.751).
+  - A-late: 10 random pairs from L30–L35 released at most 0.306 (median 0.171).
+  - D-randwrite: 10 edits with the gate `w` and a random write vector released at most 0.307 (median 0.227). Their
+    U1 was at most 0.148.
+  - B-DLA, direct logit attribution onto " unknown" − gold first token at P_ans, unedited, mean over FA rows: L32h2
+    +7.58, L33h10 +10.52, L35h12 +1.40, L35h13 +0.52. Submission 2's L35 write at dose 2 gave −27.6 on FA, −34.8 on C
+    and −0.52 on UNA. This is attribution only, not mechanism.
+  - **B-opt: not estimable.** No FA row abstained under the option-removed prompt (B0 gold 145 of 150), so the
+    edited arms had n = 0.
+- **Arm C, real questions (LongMemEval dev folds 0–1, 138 rows; descriptive, small).**
+  - B0 (fresh, on the pod) refused 28 of the 126 population rows, 26 of them with the answer in view. 35 contained
+    the gold.
+  - A-target released 20 of the 26 in-view refusals, but only **8 contain the gold**. Gold rose from 35 to 45; 2 of
+    35 correct rows were damaged.
+  - D-target released 19 (**7 with the gold**); gold 45; 3 damaged.
+  - A release is not a correct answer: most releases did not contain the gold.
+  - On the 12 abstention questions, both edits answered fewer than B0 (4 against 6).
+  - Reproduction against the §23 cache is imperfect (refusal flag 121/138, first word 97/138, marked 119/138), so the
+    baseline is the fresh B0, not §23's numbers.
+- **Multiplicity.** C1, C2, C4 and C5 were judged each at its own pre-registered bar (rank 1 of 21 plus its
+  co-requirement; IUT at 0.05 for C5), with no family-wise claim. If each target were exchangeable with its random
+  draws, the chance that at least one claim passes is at most about 0.19. A rank test with 20 draws cannot give a p
+  below 1/21.
+
+Headline (draft, for Advisor wording):
+
+> Both §51 weight edits beat random edits of the same form. Zeroing the two chosen heads released 75% of
+> the model's false "unknown" answers, against at most 46% for 20 random head pairs. The L35 edit's read direction
+> scored better on the pre-registered trade-off than all 20 random read directions of the same size, with fewer
+> unsupported answers than the median random read (0.058 against 0.228). The editor's four predictions about how its signal responds to the prompt held on fresh cases.
+> But a plain logit bias against "unknown" matched both edits on the same trade-off. On real LongMemEval questions,
+> most of the answers the edits released were not correct.
+
+Pre-registration `research/proposals/2026-11-05-exp53-head-controls.md`:
+- rev 0 (D-75); rev 1 at b70e7c5 (D-76; both edits);
+- rev 1a at 3a01186 (per-claim rank bars replace Holm, which no 20-draw rank test could pass; RMS calibration; N key
+  rule; frozen sample-drawing rule; arm C B0 fresh);
+- rev 1b at e3b3018 / ea88023 (sign-align D-randread read vectors; proposal sha 97edca99).
+
+Freeze: manifest `runs/exp53/manifest.json`, sha256 b2b14bac…9f93, 86 arms, committed at a177536 by the Advisor before
+any N-held output. The pod verified it against its own shallow clone (guard; a tampered copy exits 4 in D-30).
+
+Deviations and build notes (all before any N-held output):
+- **D-randread sign (rev 1b).** In the first manifest (ca4e40d8), 13 of the 20 random read vectors had a negative
+  median gate on N-dev FA rows (draws 0, 1, 2, 3, 5, 6, 8, 10, 12, 13, 17, 18, 19), so they pushed toward "unknown".
+  Found at the Advisor's manifest review. These were negated; RMS scales are unchanged (`--stage signfix`). The
+  post-flip medians are 0.078–1.063 (target 0.961).
+- **Laptop smoke cut** to 6 labelled N-dev rows (2 FA, 2 C, 2 UNA) and 2 LongMemEval rows, with B0 records copied from
+  the N-dev B0 (`--case-ids`, `--lme-limit`). The full 39-row smoke would have taken about 1.6 h on CPU. The pod's own
+  GPU smoke ran 39 N-dev rows over all smoke arms before the held run.
+- **Schedule.** The laptop N-dev B0 swapped (RSS 15–19 GB of 23 GB) and took 2 h 25 min. The Executor then lost
+  1.5 h before starting calibration, after its waiter was stopped under memory pressure. Neither affects any result.
+
+Spend: pod p27yys25r4uos2, A40 secure at $0.59/h, about 15,779 s billed ≈ **$2.59** (quote $2.55, hard stop $3.10). The
+chain exited 0 at +15,645 s; no arm was cut. RunPod programme total ≈ **$33.75 of $36** (D-73).
+
+Review: `research/reviews/2026-11-07-exp53-results-review.md` (ACCEPT; independent recount of all 87 arms, claims and
+C5 estimates; margin use confirmed).
+
+Code: `scripts/exp53_cases.py`, `exp53_lme_rows.py`, `exp53_run.py`, `exp53_pod.sh`, `exp53_bundle.sh`;
+`tests/test_exp53.py` (7 tests). Build at 9ff3d61; sign rule at 1dce499.
+
+Results:
+- `runs/exp53/gpu_pod/runs/exp53/pod/report.json` (sha256 f1ba6dad…), plus timing, sample, logs and pod.done, at
+  7b9e271. The 26,400 arm records and 1,560 B0 records stay local (`runs/exp53/gpu_pod/pod_out.tar.gz`).
+- Calibration: `runs/exp53/calibration.json`. Laptop smoke: `runs/exp53/smoke_laptop/report.json`.
+
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
 **Status: STOPPED at the regeneration sanity check; no gradient was computed.** Secondary to §34 (the J-lens
