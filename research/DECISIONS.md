@@ -265,3 +265,25 @@ the user has made the decision.
   OPEN_QUESTIONS only, if the user wants them: a predictor/interaction test of submission 2's account, and a
   head-to-head of the edits against B1 on fresh data with power for a difference.
 - **Authority.** The user, Advisor pane, 2026-11-07: "do draft the decision entry and the state update". "Go" (2026-11-07).
+
+## D-78 (2026-11-07) — §54 opened: native switch for false "unknown", stages 0–4 approved
+
+- **What.** Proposal `research/proposals/2026-11-07-exp54-native-switch.md` (rev 0). It looks for the component(s)
+  of the **unedited** Qwen 2.5 3B that carry the decision to say "unknown" with the answer in view.
+  - Instrument: timestamp-only twin pairs (rep a / rep b, same note forced into both), activation patching of natural
+    values at P_ans, layers 20–35.
+  - A candidate set K (≤ 5 components) counts as the switch only if it passes five pre-set criteria: differs within
+    twins; sufficient forward; sufficient in reverse; necessary given the rest of the late stack; rank 1 of 21 against
+    random sets.
+  - K is chosen on dev-A and verified on dev-B (split by base).
+- **Why.** The claims audit of the technical report (2026-11-07) found no native computation shown to be necessary,
+  sufficient and specific for false abstention. §51's editor notes give an untested competition account (mover heads
+  vs a near-constant prior, L35 MLP compensating); §50's dev patch places the decision-relevant difference in the
+  residual at P_ans by layer 26.
+- **Scope approved.** Stages 0–4 only: $0, laptop, new seed 55 (development). No §50–§53 held split is read. Stage 5
+  (sealed seed 56) needs a separate user decision, with measured time and, if a pod is needed, a quote and hard stop.
+- **Stopping rules.** As frozen in proposal §6 (feasibility gate ≥ 40 primary pairs from ≥ 20 bases and ≥ 2 tasks;
+  distributed-decision stop at stage 2; no re-choice of K on dev-B). Closure under D-45: document, don't rescue.
+- **Context.** The Qwen weight-editing line (§51/§53) is closed (D-76, D-77). The §53 LongMemEval release audit
+  (`research/audits/2026-11-07-exp53-lme-release-audit.md`) left the arm C conclusion standing under its pre-set rule.
+- **Authority.** The user, Advisor pane, 2026-11-07: "approved, go ahead with stages 0–4".
