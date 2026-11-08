@@ -70,9 +70,12 @@ sign test with no margin. The 2×SD margin applies only to the **equivalence** p
 5. **C5 tests the agent's description of the signal on the unedited model.** It does not test the edit's effect.
    - city_changed: write "equivalent within the frozen tolerance". That is not near-invariance (§13.4a). The tolerance
      is 2 SD.
-   - The predictions held on fresh bases. This is the first support for the account's activity predictions. §51's M3
-     was not shown because of the AUROC ceiling, and this does not reverse that result: it is a different test on a
-     different split.
+   - The predictions held on fresh bases. C5 is the first test of submission 2's account, and it covers only that
+     account's activity predictions: no predictor or interaction test was run for submission 2. It does not establish
+     the account.
+   - **Correction (same day, before EXPERIMENTS §53 was committed):** an earlier version of this review said C5 "does
+     not reverse §51's M3". That framing was wrong. §51's M3 tested submission 1's (the two-head edit's) account,
+     whose predictions were different. C5 says nothing about M3.
 6. **Arm C (LongMemEval) is descriptive and small.**
    - A-target released 20 of 26 in-view refusals, but only 8 contain the gold. Gold rose from 35 to 45; 2 of 35
      correct answers were damaged.
@@ -82,6 +85,10 @@ sign test with no margin. The 2×SD margin applies only to the **equivalence** p
      (refusal flag 121/138, first word 97/138), so it is the fresh B0, not the §23 numbers, that is the baseline.
 7. **B-opt is not estimable.** No FA row abstains when the "unknown" option is removed (B0 gold 145/150), so n = 0.
 8. **B-DLA** is descriptive direct-attribution only. It does not show mechanism.
+
+9. **C4 failure modes (Executor's per-draw addition, checked).** Draw 07 releases but answers UNA rows (Rel 0.944,
+   Uns 0.879). Draws 12 and 19 break generation (Deg 0.906 and 1.000; C→abstention 0). They do not turn answers into
+   "unknown". The best draw is 13 (U1 0.300).
 
 ## Spend
 - As reported by the Executor: about 15,779 s billed, 4.383 h × $0.59 ≈ $2.59 (quote $2.55, hard stop $3.10). The
