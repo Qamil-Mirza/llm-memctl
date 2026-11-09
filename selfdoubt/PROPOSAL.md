@@ -302,3 +302,17 @@ cited as evidence for E2.
 - sampling is fixed;
 - dev's role is stated;
 - F15/F16 are not used as evidence.
+
+## Found while building Stage 0 (2026-11-08, build 885d61e; Advisor-verified in the authors' code at b87d61b)
+
+1. **The public release sends an empty update.**
+   - In `src/parser_utils.py`, `--mode` accepts `subsequent_interrupt_update` but not `subsequent_intervene`.
+   - `src/prompt_utils.py:452` fills in the update text only when the mode is `subsequent_intervene` or
+     `subsequent_intervene_hard`.
+   - Run as released, the update experiment therefore gives the model `<update></update>` with nothing inside.
+   - The paper's printed examples show the update text, so the paper's runs probably used earlier code. This looks
+     like a release bug, not a flaw in the results. It is worth reporting to the authors. Our pipeline fills in the
+     update the way their matching branch does, and a test pins both behaviours.
+2. **The authors cut the trace by tokens, not characters** (`int(X · n_tokens)`, decode, re-add `<think>\n`). Our
+   pipeline does the same by default.
+3. **MATH-500 `original_answer` is a bare answer, not boxed.** It is scored with their `strip_answer_string`.
