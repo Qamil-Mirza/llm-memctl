@@ -320,3 +320,35 @@ def test_deadline_stops_between_chunks(tok, items, tmp_path):
     eng = E.FakeEngine(M8, tok)
     assert RUN.run_phase("FULL", eng, store, C.plan_full(M8, tok, sel), 64, 1, 0.0001, tmp_path, "t") is True
     assert eng.calls == 0 and not store.recs
+
+
+def test_deadline_mid_chunk_keeps_finished(tok, items, tmp_path):
+    """The engine stops inside a chunk: finished requests are stored, unfinished ones only counted, rerun fills them."""
+    import json as _json
+    sel = C.stub_items(items, C.make_split(items), 1)                         # 2 items
+    md = tmp_path / "Qwen3-8B"
+    store = C.Store(md / "gen.jsonl")
+    RUN.run_phase("FULL", E.FakeEngine(M8, tok), store, C.plan_full(M8, tok, sel), 64, 64, None, md, "t1")
+    plan = C.plan_continuations(M8, tok, sel, store.full_by_item(M8))
+    eng = E.FakeEngine(M8, tok, deadline_after=7)
+    assert RUN.run_phase("CONT", eng, store, plan, 64, 64, 1e12, md, "t1") is True
+    assert len(store.recs) == 2 + 7
+    st = [_json.loads(l) for l in (md / "phases.jsonl").read_text().splitlines()][-1]
+    assert st["n_unfinished"] == 15 and st["gen_tokens_partial"] == 45
+    eng2 = E.FakeEngine(M8, tok)
+    assert RUN.run_phase("CONT", eng2, C.Store(md / "gen.jsonl"), plan, 64, 64, None, md, "t2") is False
+    assert eng2.calls == 15 and len(C.Store(md / "gen.jsonl").recs) == 24
+    m = RUN.write_measure(tmp_path, 0.60, 1000, source_counts={"gsm8k": 500, "math500": 500})
+    mm = m["models"]["Qwen3-8B"]
+    assert mm["phases"]["CONT"]["n_unfinished_at_deadline_all_invocations"] == 15
+    assert mm["phases"]["CONT"]["n_missing_now"] == 0                       # the rerun filled them
+    assert mm["phases"]["CONT"]["gen_tokens_per_request_high"] >= mm["phases"]["CONT"]["gen_tokens_per_request_low"]
+    assert m["projected_token_high_usd_all_models"] >= m["projected_token_low_usd_all_models"] > 0
+    assert set(mm["projection_by_source"]) == {"gsm8k", "math500"}
+
+
+def test_busy_rate():
+    # 10 requests; first two windows have >= 5 running (100 tok in 10 s, then 80 in 10 s), the tail is excluded
+    tr = [[0.0, 10, 0], [10.0, 8, 100], [20.0, 3, 180], [30.0, 1, 200]]
+    assert RUN.busy_rate([tr], [10]) == 9.0
+    assert RUN.busy_rate([None], [10]) is None

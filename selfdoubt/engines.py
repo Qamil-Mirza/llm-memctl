@@ -83,7 +83,7 @@ class HFEngine:
         self.eos = gc.eos_token_id if isinstance(gc.eos_token_id, list) else [gc.eos_token_id]
         self.pad = gc.pad_token_id if gc.pad_token_id is not None else self.eos[0]
 
-    def generate(self, reqs, max_tokens: int, max_model_len: int = 40960):
+    def generate(self, reqs, max_tokens: int, max_model_len: int = 40960, deadline: float | None = None):
         torch = self.torch
         out = []
         for r in reqs:
@@ -111,7 +111,7 @@ class VLLMEngine:
     name = "vllm"
 
     def __init__(self, model: str, path: str | None = None, max_model_len: int = 40960,
-                 gpu_memory_utilization: float = 0.90, dtype: str = "bfloat16"):
+                 gpu_memory_utilization: float = 0.90, dtype: str = "bfloat16", max_num_seqs: int | None = None):
         # In-process engine core so torch.cuda.max_memory_allocated() sees the model and KV cache.
         os.environ.setdefault("VLLM_ENABLE_V1_MULTIPROCESSING", "0")
         from vllm import LLM, SamplingParams
@@ -121,25 +121,62 @@ class VLLMEngine:
         self.max_model_len = max_model_len
         self.llm = LLM(model=path or model, revision=None if path else MODELS[model], tokenizer=path or model,
                        dtype=dtype, max_model_len=max_model_len, gpu_memory_utilization=gpu_memory_utilization,
-                       enable_prefix_caching=True, seed=0)
+                       enable_prefix_caching=True, seed=0,
+                       **({"max_num_seqs": max_num_seqs} if max_num_seqs else {}))
+        self._batch = 0
+        self.last_trace = None
 
-    def generate(self, reqs, max_tokens: int, max_model_len: int | None = None):
+    def generate(self, reqs, max_tokens: int, max_model_len: int | None = None, deadline: float | None = None,
+                 trace_every_s: float = 10.0):
+        """Step loop over the engine (not LLM.generate) so a deadline stops gracefully mid-batch: finished requests
+        are returned in full; unfinished ones are aborted and returned as {"unfinished": True, n_gen_tokens=<partial>}
+        so their tokens still count towards throughput. Same sampling and token ids as LLM.generate (DELTA outputs,
+        detokenize=False; text is decoded from the ids below, as before). self.last_trace: [elapsed_s, n_unfinished,
+        cumulative generated tokens] every trace_every_s."""
+        from vllm.sampling_params import RequestOutputKind
         mml = max_model_len or self.max_model_len
-        prompts, params, mts = [], [], []
-        for r in reqs:
+        eng = self.llm.llm_engine
+        self._batch += 1
+        rid = [f"b{self._batch}-{i}" for i in range(len(reqs))]
+        mts, plen = {}, {}
+        for i, r in zip(rid, reqs):
             ids = encode_prompt(self.tok, r.prompt)
             mt = max(1, min(max_tokens, mml - len(ids)))
-            prompts.append({"prompt_token_ids": ids})
-            params.append(self.SP(n=1, max_tokens=mt, seed=r.seed, skip_special_tokens=False, **SAMPLING))
-            mts.append(mt)
-        res = self.llm.generate(prompts, params, use_tqdm=False)
+            sp = self.SP(n=1, max_tokens=mt, seed=r.seed, skip_special_tokens=False, detokenize=False,
+                         output_kind=RequestOutputKind.DELTA, **SAMPLING)
+            eng.add_request(i, {"prompt_token_ids": ids}, sp)
+            mts[i], plen[i] = mt, len(ids)
+        toks = {i: [] for i in rid}
+        fin = {}
+        t0 = last = time.time()
+        total = 0
+        self.last_trace = [[0.0, len(rid), 0]]
+        while eng.has_unfinished_requests():
+            if deadline is not None and time.time() > deadline:
+                eng.abort_request([i for i in rid if i not in fin])
+                break
+            for o in eng.step():
+                c = o.outputs[0]
+                toks[o.request_id].extend(c.token_ids)
+                total += len(c.token_ids)
+                if o.finished:
+                    fin[o.request_id] = c.finish_reason
+            now = time.time()
+            if now - last >= trace_every_s:
+                self.last_trace.append([round(now - t0, 1), len(rid) - len(fin), total])
+                last = now
+        self.last_trace.append([round(time.time() - t0, 1), len(rid) - len(fin), total])
         out = []
-        for o, mt in zip(res, mts):
-            c = o.outputs[0]
-            new = list(c.token_ids)
-            hit = c.finish_reason == "length"
-            out.append({"token_ids": new, "text": self.tok.decode(new), "n_prompt_tokens": len(o.prompt_token_ids),
-                        "n_gen_tokens": len(new), "finish_reason": c.finish_reason, "hit_max": hit, "max_tokens": mt})
+        for i in rid:
+            new = toks[i]
+            if i not in fin:
+                out.append({"unfinished": True, "token_ids": new, "text": None, "n_prompt_tokens": plen[i],
+                            "n_gen_tokens": len(new), "finish_reason": "deadline", "hit_max": False,
+                            "max_tokens": mts[i]})
+                continue
+            hit = fin[i] == "length"
+            out.append({"token_ids": new, "text": self.tok.decode(new), "n_prompt_tokens": plen[i],
+                        "n_gen_tokens": len(new), "finish_reason": fin[i], "hit_max": hit, "max_tokens": mts[i]})
         return out
 
     def memory(self):
@@ -156,15 +193,22 @@ class FakeEngine:
     """Deterministic stand-in for tests: FULL answers 'think ... \\boxed{7}'; continuations echo a fixed answer."""
     name = "fake"
 
-    def __init__(self, model: str, tokenizer, answers: dict | None = None, fail_after: int | None = None):
+    def __init__(self, model: str, tokenizer, answers: dict | None = None, fail_after: int | None = None,
+                 deadline_after: int | None = None):
         self.model_name, self.tok, self.answers, self.calls, self.fail_after = model, tokenizer, answers or {}, 0, \
             fail_after
+        self.deadline_after = deadline_after   # with a deadline set: requests after this many calls come back unfinished
+        self.last_trace = None
 
-    def generate(self, reqs, max_tokens: int, max_model_len: int = 40960):
+    def generate(self, reqs, max_tokens: int, max_model_len: int = 40960, deadline: float | None = None):
         out = []
         for r in reqs:
             if self.fail_after is not None and self.calls >= self.fail_after:
                 raise SimulatedInterrupt("simulated interrupt")
+            if deadline is not None and self.deadline_after is not None and self.calls >= self.deadline_after:
+                out.append({"unfinished": True, "token_ids": [1, 2, 3], "text": None, "n_prompt_tokens": 5,
+                            "n_gen_tokens": 3, "finish_reason": "deadline", "hit_max": False, "max_tokens": max_tokens})
+                continue
             self.calls += 1
             ans = self.answers.get((r.arm, r.cut), "7")
             text = ("<think>\nLet me compute step by step. First 3 plus 4 is 7. Then check again.\n</think>\n\n"
@@ -173,6 +217,8 @@ class FakeEngine:
             ids = self.tok.encode(text)
             out.append({"token_ids": ids, "text": text, "n_prompt_tokens": len(encode_prompt(self.tok, r.prompt)),
                         "n_gen_tokens": len(ids), "finish_reason": "stop", "hit_max": False, "max_tokens": max_tokens})
+        # synthetic trace: everything decodes in 1 s with all requests running (exercises busy_rate / projections)
+        self.last_trace = [[0.0, len(reqs), 0], [1.0, len(reqs), sum(o["n_gen_tokens"] for o in out)]]
         return out
 
     def memory(self):
