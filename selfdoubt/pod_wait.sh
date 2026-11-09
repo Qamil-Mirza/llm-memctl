@@ -4,6 +4,7 @@
 # runs/exp55/pod_wait.sh. Run in the background after selfdoubt/pod_launch.sh, with the same L (and COPY_AT for long runs).
 set -uo pipefail
 WT="${WT:-/home/qamil-mirza/Code/llm-memctl/.worktrees/self-doubt}"; MAIN="${MAIN:-/home/qamil-mirza/Code/llm-memctl}"; cd "$WT"
+PLAN="${PLAN:-}"; if [ -n "$PLAN" ]; then set -a; . "$PLAN"; set +a; fi   # L and COPY_AT from the launcher's plan
 L="${L:-runs/selfdoubt/stub_launch}"; COPY_AT="${COPY_AT:-1920}"   # s after create: copy whatever exists by then
 OUTREL=$(python3 -c "import json; print(json.load(open('$L/plan.json'))['outrel'])" 2>/dev/null || echo runs/selfdoubt/stub)
 # same account as the launcher: KEY_VAR from pod.json (older pod.json without it = RUNPOD_API_KEY), same header file

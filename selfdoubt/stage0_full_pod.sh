@@ -1,33 +1,31 @@
 #!/usr/bin/env bash
-# selfdoubt Stage 0 FULL pod: the user's "1.7B-first" plan of 2026-11-09 (PROPOSAL.md, Budget, "Stage 0 plan chosen
-# by the user"). Held-out split only; generation only, no scoring (readings need the frozen scorer at 1baf905 and
+# selfdoubt Stage 0 FULL pod: generation only, no scoring (readings need the frozen scorer at 1baf905 and
 # --heldout-confirmed, and go to the Advisor first). The Executor needs the user's own line in its pane before launch.
-# Steps in priority order, each until done or the run deadline (graceful: finished requests kept, streamed to disk):
-#   1. Qwen3-1.7B GSM8K, all 250 held-out
-#   2. Qwen3-1.7B MATH-500, the first 100 held-out in seed-56 shuffle order (common.shuffled_heldout)
-#   3. Qwen3-8B GSM8K, all 250 held-out
+# Steps come from STEPS, in order; each runs until done or the run deadline (graceful: finished requests kept, streamed
+# to disk). A step starts only if at least its MIN_S (its ceiling time) is left; otherwise it is skipped (rc 8).
+#   STEPS="name|model|source|split|limit|min_s;..."   model 17 = Qwen3-1.7B, 8 = Qwen3-8B; limit empty = all;
+#   output of a step: $OUT/<split>/full/<Model>/gen.jsonl (stage0_run --out-root $OUT/<split>). A store already
+#   there (shipped in the bundle) is resumed: done keys are skipped.
+# 2026-11-09 plan (user decision 7): pod 1 = s0 1.7B GSM8K dev 250, s1 1.7B MATH-500 held-out --limit 250 over the
+# seeded store (stage0_seed_store.py); pod 2 = s1 8B GSM8K held-out 250, s2 8B MATH-500 held-out --limit 100.
 # Order: preflight -> self-stop watchdog -> GPU -> hub + background downloads -> vLLM install -> split sha -> steps.
-# Copy back runs/selfdoubt/full (per-model gen.jsonl, phases.jsonl, run_meta.json, measure.json, logs, env.txt).
-#   RUNPOD_POD_ID=<id> RUN_S=<s> SELF_STOP_S=<s> bash selfdoubt/stage0_full_pod.sh
+#   RUNPOD_POD_ID=<id> RUN_S=<s> SELF_STOP_S=<s> OUT=<dir> STEPS=... bash selfdoubt/stage0_full_pod.sh
 #   ENGINE=stub PYTHON=<venv>/bin/python bash selfdoubt/stage0_full_pod.sh       # files + imports + split only
-# Laptop rehearsal (dev split, never held-out): SPLIT=dev N1=3 N2=2 N3=3 M8=M17=Qwen/Qwen3-0.6B R8=R17=<rev>
-#   EXTRA="--max-model-len 3072 ..." in a scratch copy.
-# Knobs: MAXTOK (16384), USD_H (0.60), CHUNK (4096 = one generate call per phase), FULLFRAC (0.3 of a step's time
-# for its FULL phase, so a step cut by the deadline still has continuations), SPLIT (heldout), N1/N2/N3 (items per
-# step: all / 100 / all).
+#   ENGINE=plan PYTHON=<fake> ...    # $0 test: no GPU/install/download; runs the steps with $PYTHON as the runner
+# Knobs: MAXTOK (16384), USD_H (0.59), CHUNK (4096 = one generate call per phase), FULLFRAC (0.3 of a step's time
+# for its FULL phase).
 set -euo pipefail
 export PIP_BREAK_SYSTEM_PACKAGES=1 HF_HUB_DISABLE_PROGRESS_BARS=1 VLLM_ENABLE_V1_MULTIPROCESSING=0 TOKENIZERS_PARALLELISM=false
 cd "$(dirname "$0")/.."
 ENGINE="${ENGINE:-vllm}"; RUN_S="${RUN_S:-1500}"; MAXTOK="${MAXTOK:-16384}"; SELF_STOP_S="${SELF_STOP_S:-}"
-USD_H="${USD_H:-0.60}"; CHUNK="${CHUNK:-4096}"; FULLFRAC="${FULLFRAC:-0.3}"
-SPLIT="${SPLIT:-heldout}"; N1="${N1:-}"; N2="${N2:-100}"; N3="${N3:-}"
-OUT=runs/selfdoubt/full; PY="${PYTHON:-python}"
+USD_H="${USD_H:-0.59}"; CHUNK="${CHUNK:-4096}"; FULLFRAC="${FULLFRAC:-0.3}"
+STEPS="${STEPS:-}"; OUT="${OUT:-runs/selfdoubt/full}"; PY="${PYTHON:-python}"
 mkdir -p "$OUT"; rm -f "$OUT/pod.done"
 T0=$(date +%s); DEADLINE=$(( T0 + RUN_S ))
 trap 'rc=$?; echo "exit=$rc engine=$ENGINE at $(date -u +%FT%TZ) total_s=$(( $(date +%s) - T0 ))" > "$OUT/pod.done"' EXIT
 log() { echo "$(date -u +%T) $*" | tee -a "$OUT/pod.log"; }
 left() { echo $(( DEADLINE - $(date +%s) )); }
-log "selfdoubt stage0 full pod; split $SPLIT; engine $ENGINE; run budget $RUN_S s; self-stop ${SELF_STOP_S:-none} s; max_tokens $MAXTOK"
+log "selfdoubt stage0 full pod; out $OUT; steps '$STEPS'; engine $ENGINE; run budget $RUN_S s; self-stop ${SELF_STOP_S:-none} s; max_tokens $MAXTOK"
 
 # Pins (2026-11-08). vLLM 0.11.0 is the newest release whose PyPI metadata pins torch==2.8.0 (0.10.2 also does;
 # 0.11.1+ pin torch 2.9.0; the authors' 0.10.1 pins torch 2.7.1), so the image's torch 2.8.0+cu128 is kept.
@@ -65,6 +63,19 @@ split_check() {   # recomputes the split from the pinned dataset revision and co
 assert sha == '$SPLIT_SHA', sha; print('split sha ok', sha)" | tee -a "$OUT/pod.log" || { log "split sha mismatch"; exit 3; }
 }
 
+NEED17=0; NEED8=0
+if [ "$ENGINE" != stub ]; then
+  [ -n "$STEPS" ] || { log "STEPS is empty"; exit 3; }
+  IFS=';' read -ra STEP_LIST <<< "$STEPS"
+  for st in "${STEP_LIST[@]}"; do
+    IFS='|' read -r _n _m _s _sp _l _min <<< "$st"
+    [[ "$_n" =~ ^[a-z0-9_]+$ && "$_m" =~ ^(17|8)$ && "$_s" =~ ^(gsm8k|math500)$ && "$_sp" =~ ^(dev|heldout)$ \
+       && "$_l" =~ ^[0-9]*$ && "$_min" =~ ^[0-9]+$ ]] || { log "bad step '$st'"; exit 3; }
+    [ "$_m" = 17 ] && NEED17=1; [ "$_m" = 8 ] && NEED8=1
+  done
+  for sp in dev heldout; do mkdir -p "$OUT/$sp"; cp -n runs/selfdoubt/split.json "$OUT/$sp/split.json"; done
+fi
+
 if [ "$ENGINE" = stub ]; then
   export CUDA_VISIBLE_DEVICES=""; import_check; split_check
   log "stub: preflight only (files, wrapper sha, imports, split sha); no GPU work"; exit 0
@@ -72,7 +83,9 @@ fi
 
 # Self-stop: the pod removes itself if the laptop vanishes. An ssh shell lacks the container's RUNPOD_* env, so read
 # it from PID 1 (RUNPOD_POD_ID is also exported by the launch command). The laptop's DELETE timer stays the backstop.
-if [ -n "$SELF_STOP_S" ]; then
+if [ "$ENGINE" = plan ]; then
+  log "plan: no watchdog, GPU, install or download; runner $PY"
+elif [ -n "$SELF_STOP_S" ]; then
   nohup setsid bash -c "sleep $SELF_STOP_S; echo \"\$(date -u +%T) self-stop\" >> '$OUT/pod.log'; \
     for kv in \$(tr '\\0' '\\n' < /proc/1/environ | grep -E '^RUNPOD_(API_KEY|POD_ID)='); do export \"\$kv\"; done; \
     if command -v runpodctl >/dev/null && [ -n \"\${RUNPOD_POD_ID:-}\" ]; then runpodctl remove pod \"\$RUNPOD_POD_ID\" \
@@ -81,6 +94,7 @@ if [ -n "$SELF_STOP_S" ]; then
   log "self-stop watchdog armed at +$SELF_STOP_S s (runpodctl $(command -v runpodctl || echo MISSING))"
 fi
 
+if [ "$ENGINE" != plan ]; then
 until nvidia-smi >/dev/null 2>&1; do [ $(( $(date +%s) - T0 )) -lt 120 ] || { log "no GPU"; exit 4; }; sleep 5; done
 nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader | tee -a "$OUT/pod.log"
 TORCH_VERSION=$($PY -c "import torch; print(torch.__version__.split('+')[0])"); echo "torch==${TORCH_VERSION}" > "$OUT/constraints.txt"
@@ -90,8 +104,8 @@ TORCH_VERSION=$($PY -c "import torch; print(torch.__version__.split('+')[0])"); 
 timeout 300 $PY -m pip install -q -c "$OUT/constraints.txt" "$HUB_PIN" 2>&1 | tail -2
 snap() { $PY -c "import huggingface_hub as h; print(h.snapshot_download('$1', revision='$2', \
 allow_patterns=['*.json','*.safetensors','*.txt','tokenizer*','merges.txt','vocab.json']))"; }
-( timeout 900 bash -c "$(declare -f snap); PY=$PY; snap $M17 $R17" > "$OUT/snap17.path" 2> "$OUT/snap17.err"; echo $? > "$OUT/snap17.rc" ) &
-( timeout 900 bash -c "$(declare -f snap); PY=$PY; snap $M8 $R8" > "$OUT/snap8.path" 2> "$OUT/snap8.err"; echo $? > "$OUT/snap8.rc" ) &
+[ "$NEED17" = 1 ] && ( timeout 900 bash -c "$(declare -f snap); PY=$PY; snap $M17 $R17" > "$OUT/snap17.path" 2> "$OUT/snap17.err"; echo $? > "$OUT/snap17.rc" ) &
+[ "$NEED8" = 1 ] && ( timeout 900 bash -c "$(declare -f snap); PY=$PY; snap $M8 $R8" > "$OUT/snap8.path" 2> "$OUT/snap8.err"; echo $? > "$OUT/snap8.rc" ) &
 log "downloads started; installing $VLLM_PIN $TF_PIN"
 timeout 900 $PY -m pip install -q -c "$OUT/constraints.txt" "$VLLM_PIN" "$TF_PIN" "$HUB_PIN" \
   latex2sympy2==1.9.1 word2number==1.1 pyarrow numpy 2>&1 | tail -3
@@ -101,29 +115,35 @@ assert transformers.__version__ == '4.57.1'; assert torch.__version__.startswith
 $PY -m pip freeze 2>/dev/null | grep -iE "^(vllm|torch|transformers|xformers|flashinfer|tokenizers|huggingface|hf.xet|latex2sympy2|antlr4|sympy)" > "$OUT/env.txt" || true
 log "install done at +$(( $(date +%s) - T0 )) s"
 import_check; split_check
+fi
 wait_snap() {  # wait_snap <tag>: wait for the background download (bounded by its own timeout 900)
   until [ -s "$OUT/snap$1.rc" ]; do [ "$(left)" -gt 60 ] || { log "download $1 not done in time"; exit 6; }; sleep 3; done
   [ "$(cat "$OUT/snap$1.rc")" = 0 ] || { log "snapshot $1 failed: $(tail -2 "$OUT/snap$1.err")"; exit 6; }
   tail -1 "$OUT/snap$1.path"
 }
-HO=""; [ "$SPLIT" = heldout ] && HO="--allow-heldout"
-step() {  # step <name> <model> <snapshot> <source> <n or empty>
-  local name="$1" model="$2" snapdir="$3" source="$4" n="$5" rc=0
+wait_model() {  # wait_model <17|8>: snapshot dir (PLAN in plan mode)
+  if [ "$ENGINE" = plan ]; then echo "PLAN$1"; return; fi
+  wait_snap "$1"
+}
+step() {  # step <name> <17|8> <source> <split> <limit or empty> <min_s>
+  local name="$1" tag="$2" source="$3" split="$4" n="$5" min_s="$6" rc=0 model ho=""
+  model=$M17; [ "$tag" = 8 ] && model=$M8
+  [ "$split" = heldout ] && ho="--allow-heldout"
   local guard=$(( $(left) - 30 ))
-  [ "$guard" -gt 300 ] || { log "skipping $name: only $guard s left"; return 8; }
-  set +e; timeout "$guard" $PY -u selfdoubt/stage0_run.py --engine vllm --mode full --split-name "$SPLIT" $HO \
-    --model "$model" --snapshot "$snapdir" --source "$source" ${n:+--limit "$n"} --max-tokens "$MAXTOK" \
-    --usd-per-hour "$USD_H" --chunk "$CHUNK" --full-frac "$FULLFRAC" --deadline-s "$(( guard - 60 ))" $EXTRA \
+  [ "$guard" -ge "$min_s" ] || { log "skipping $name: $guard s left < its ceiling $min_s s"; return 8; }
+  local snapdir; snapdir=$(wait_model "$tag") || { log "no snapshot for $name"; return 6; }
+  log "start $name: $model $source $split limit ${n:-all}; snapshot $snapdir; guard $guard s (ceiling $min_s s)"
+  set +e; timeout "$guard" $PY -u selfdoubt/stage0_run.py --engine vllm --mode full --split-name "$split" $ho \
+    --out-root "$OUT/$split" --model "$model" --snapshot "$snapdir" --source "$source" ${n:+--limit "$n"} \
+    --max-tokens "$MAXTOK" --usd-per-hour "$USD_H" --chunk "$CHUNK" --full-frac "$FULLFRAC" \
+    --deadline-s "$(( guard - 60 ))" $EXTRA \
     2>&1 | tee -a "$OUT/$name.log" | grep -vE "^(INFO|DEBUG|WARNING|\(EngineCore)"; rc=${PIPESTATUS[0]}; set -e
   log "stage $name rc $rc at +$(( $(date +%s) - T0 )) s"; return $rc
 }
-S17=$(wait_snap 17)
-log "snapshot 1.7B $S17 at +$(( $(date +%s) - T0 )) s"
 RC=0
-set +e; step s1_1p7b_gsm8k "$M17" "$S17" gsm8k "$N1"; rc=$?; set -e; [ $rc -eq 0 ] || RC=$rc
-set +e; step s2_1p7b_math500 "$M17" "$S17" math500 "$N2"; rc=$?; set -e; [ $rc -eq 0 ] || RC=$rc
-S8=$(wait_snap 8)
-log "snapshot 8B $S8 at +$(( $(date +%s) - T0 )) s"
-set +e; step s3_8b_gsm8k "$M8" "$S8" gsm8k "$N3"; rc=$?; set -e; [ $rc -eq 0 ] || RC=$rc
+for st in "${STEP_LIST[@]}"; do
+  IFS='|' read -r _n _m _s _sp _l _min <<< "$st"
+  set +e; step "$_n" "$_m" "$_s" "$_sp" "$_l" "$_min"; rc=$?; set -e; [ $rc -eq 0 ] || RC=$rc
+done
 log "pod done at +$(( $(date +%s) - T0 )) s (rc $RC): copy back $OUT"
 exit $RC

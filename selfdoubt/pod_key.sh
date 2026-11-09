@@ -22,14 +22,17 @@ rp_write_hdr() {
 
 # rp_preflight <hdr> <cap_usd>: needs EXPECT_EMAIL. Prints the account email, balance and pods (never the key).
 # Returns non-zero unless the email matches, the balance covers the cap, and the account has 0 pods (pods are listed).
+# Sibling: RP_ALLOW_IDS (comma-separated pod ids our own launcher recorded) may be running; any other pod aborts.
+# RP_EXTRA_CAP (USD) is the siblings' remaining worst case, added to the cap the balance must cover.
 rp_preflight() {
   [ -n "${EXPECT_EMAIL:-}" ] || { echo "ABORT: EXPECT_EMAIL not set" >&2; return 2; }
   local gq pods
   gq=$(curl -s -H @"$1" -H 'Content-Type: application/json' "$GQL" -d '{"query":"{ myself { email clientBalance } }"}')
   pods=$(curl -s -H @"$1" "$API/pods")
-  RP_GQ="$gq" RP_PODS="$pods" python3 - "$EXPECT_EMAIL" "$2" "$KEY_VAR" <<'PY'
+  RP_GQ="$gq" RP_PODS="$pods" python3 - "$EXPECT_EMAIL" "$2" "$KEY_VAR" "${RP_ALLOW_IDS:-}" "${RP_EXTRA_CAP:-0}" <<'PY'
 import json, os, sys
 want, cap, var = sys.argv[1].strip().lower(), float(sys.argv[2]), sys.argv[3]
+allow, extra = {x for x in sys.argv[4].split(",") if x}, float(sys.argv[5])
 try:
     me = json.loads(os.environ["RP_GQ"])["data"]["myself"]
     email, bal = (me["email"] or "").strip().lower(), float(me["clientBalance"])
@@ -40,13 +43,17 @@ try:
     assert isinstance(pods, list)
 except Exception as e:
     print(f"ABORT: pod list failed for {var} ({type(e).__name__})"); sys.exit(3)
-print(f"account ({var}): {email}, balance ${bal:.4f}; cap ${cap:.3f}; pods {len(pods)}")
+need = cap + extra
+print(f"account ({var}): {email}, balance ${bal:.4f}; cap ${cap:.3f}"
+      + (f" + sibling ${extra:.3f}" if extra else "") + f"; pods {len(pods)}")
 for p in pods:
-    print(f"  pod {p.get('id')} name={p.get('name')} status={p.get('desiredStatus')} $/h={p.get('costPerHr')}")
+    tag = " (allowed sibling)" if p.get("id") in allow else ""
+    print(f"  pod {p.get('id')} name={p.get('name')} status={p.get('desiredStatus')} $/h={p.get('costPerHr')}{tag}")
 bad = []
 if email != want: bad.append(f"email is {email}, expected {want}")
-if bal < cap: bad.append(f"balance ${bal:.4f} below cap ${cap:.3f}")
-if pods: bad.append(f"{len(pods)} pod(s) already on this account")
+if bal < need: bad.append(f"balance ${bal:.4f} below cap ${need:.3f}")
+other = [p for p in pods if p.get("id") not in allow]
+if other: bad.append(f"{len(other)} pod(s) already on this account")
 if bad:
     print("ABORT: " + "; ".join(bad)); sys.exit(4)
 print("pre-flight OK")

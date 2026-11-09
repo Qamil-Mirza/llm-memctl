@@ -27,6 +27,18 @@ Audience: Mihran Miroyan, co-first author of Wu, Miroyan et al., "Are Large Reas
    in which an agent proposes rank-1 weight edits, scored here on valid and invalid updates. It is planned for Stage 3,
    funded from the second account.
 
+### Decisions taken with the user (2026-11-09, relayed by the Advisor)
+
+7. **Stage 0 completion on the second account.** Run all four remaining jobs on the gmail account ($25), on two pods:
+   - pod 1, Qwen3-1.7B: GSM8K dev 250, all arms (step 0, added by the Advisor so Stage 2 is designed on dev);
+     then re-run the 19 incomplete MATH-500 items with all 11 rows each, plus MATH-500 held-out items 101–250;
+   - pod 2, Qwen3-8B: GSM8K held-out 250, then MATH-500 held-out first 100 in shuffle order.
+   A MATH item counts only if all 11 of its continuations finished; incomplete items are left out of every reading
+   until they are re-run (Advisor rule, 2026-11-09). Each pod still needs the user's own approval line.
+8. **Stages 1 and 2 are built in parallel**, not in the order above. Stage 2's pilot is designed on dev only
+   (Qwen3-1.7B dev stale failures vs dev successes); its readings and bars are written in and frozen before any
+   held-out run.
+
 ## The gap
 
 Wu, Miroyan et al. show that when a reasoning model gets an update in the middle of its thinking, it often keeps

@@ -199,3 +199,70 @@ def test_launch_and_wait_use_one_account(env):
         except OSError:
             pass
     assert left == [], left
+
+
+def test_preflight_allows_only_the_recorded_sibling(env):
+    gql(env["fake"], "qamilmirza@gmail.com", 25.0)
+    (env["fake"] / "pods.json").write_text(json.dumps([{"id": "sib1", "name": "selfdoubt-s0c-pod1"}]))
+    base = dict(KEY_VAR="RUNPOD_API_KEY_2", EXPECT_EMAIL="qamilmirza@gmail.com", CAP_USD="4.4")
+    r = preflight(env, RP_ALLOW_IDS="sib1", RP_EXTRA_CAP="4.5", **base)
+    assert r.returncode == 0 and "(allowed sibling)" in r.stdout and "+ sibling $4.500" in r.stdout, r.stdout
+    r = preflight(env, RP_ALLOW_IDS="other", **base)
+    assert r.returncode != 0 and "1 pod(s) already" in r.stdout
+    (env["fake"] / "pods.json").write_text(json.dumps([{"id": "sib1"}, {"id": "stray"}]))
+    r = preflight(env, RP_ALLOW_IDS="sib1", **base)
+    assert r.returncode != 0 and "1 pod(s) already" in r.stdout
+    gql(env["fake"], "qamilmirza@gmail.com", 8.0)
+    (env["fake"] / "pods.json").write_text(json.dumps([{"id": "sib1"}]))
+    r = preflight(env, RP_ALLOW_IDS="sib1", RP_EXTRA_CAP="4.5", **base)      # 4.4 + 4.5 > 8
+    assert r.returncode != 0 and "below cap $8.900" in r.stdout
+
+
+def _sibling(env, key_var="RUNPOD_API_KEY_2"):
+    import time
+    d = env["wt"] / "runs/selfdoubt/sib_launch"; d.mkdir(parents=True)
+    (d / "pod.json").write_text(json.dumps({"pod": "sib1", "price": "0.59", "created": int(time.time()),
+                                            "delete_after_s": 3600, "key_var": key_var}))
+    return "runs/selfdoubt/sib_launch"
+
+
+def test_launch_with_sibling_proceeds_to_create(env):
+    gql(env["fake"], "qamilmirza@gmail.com", 25.0)
+    (env["fake"] / "pods.json").write_text(json.dumps([{"id": "sib1"}]))
+    r = launch(env, KEY_VAR="RUNPOD_API_KEY_2", EXPECT_EMAIL="qamilmirza@gmail.com", ALLOW_SIBLING=_sibling(env))
+    assert r.returncode == 3 and "CREATE FAILED" in r.stdout, r.stdout + r.stderr   # fake create returns {}
+    assert "sibling allowed: sib1" in r.stdout and "+ sibling $0.59" in r.stdout
+
+
+def test_launch_sibling_from_other_account_is_not_allowed(env):
+    gql(env["fake"], "qamilmirza@gmail.com", 25.0)
+    (env["fake"] / "pods.json").write_text(json.dumps([{"id": "sib1"}]))
+    r = launch(env, KEY_VAR="RUNPOD_API_KEY_2", EXPECT_EMAIL="qamilmirza@gmail.com",
+               ALLOW_SIBLING=_sibling(env, key_var="RUNPOD_API_KEY"))
+    assert r.returncode == 2 and "pre-flight failed" in r.stdout
+
+
+def test_launch_deletes_at_once_if_price_above_quote(env):
+    fake = env["fake"]
+    gql(fake, "qamilmirza@gmail.com", 25.0)
+    (fake / "create.json").write_text(json.dumps({"id": "podX", "costPerHr": 0.79}))
+    r = launch(env, KEY_VAR="RUNPOD_API_KEY_2", EXPECT_EMAIL="qamilmirza@gmail.com", NOSSH_S="480")
+    assert r.returncode == 4 and "PRICE 0.79/h above the quoted 0.59/h" in r.stdout, r.stdout + r.stderr
+    assert any(c["method"] == "DELETE" and c["url"].endswith("/pods/podX") for c in calls(fake))
+
+
+def test_launch_plan_file_is_sourced(env):
+    fake, wt = env["fake"], env["wt"]
+    gql(fake, "qamilmirza@gmail.com", 25.0)
+    (wt / "selfdoubt/plans").mkdir(exist_ok=True)
+    (wt / "selfdoubt/plans/t.env").write_text(
+        "KEY_VAR=RUNPOD_API_KEY_2\nEXPECT_EMAIL=qamilmirza@gmail.com\nL=runs/selfdoubt/p_launch\n"
+        "OUTREL=runs/selfdoubt/p_out\nHARD_S=60\nNOSSH_S=0\nBUNDLE_EXTRA=runs/selfdoubt/extra.txt\n")
+    (wt / "runs/selfdoubt/extra.txt").write_text("x")
+    r = subprocess.run(["bash", str(wt / "selfdoubt/pod_launch.sh")], env=dict(env["env"], PLAN="selfdoubt/plans/t.env"),
+                       capture_output=True, text=True, timeout=60)
+    assert r.returncode == 3 and (wt / "runs/selfdoubt/p_launch/plan.json").exists(), r.stdout + r.stderr
+    import tarfile
+    names = tarfile.open(wt / "runs/selfdoubt/p_launch/bundle.tgz").getnames()
+    assert "runs/selfdoubt/extra.txt" in names and "selfdoubt/plans/t.env" in names
+    assert all(c["auth"] == f"Authorization: Bearer {KEY2}" for c in calls(fake))
