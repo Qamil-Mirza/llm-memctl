@@ -129,3 +129,24 @@ LongMemEval P2 is dropped first, then W UNA-swap.
 - P1 is one clean wording out of many. A different consistent wording could give a different rate. P1 is chosen
   because it keeps P0's task-line condition and makes the note instruction agree with it.
 - Free generation lets the note change with the prompt. The controlled-prefix arm is there to separate that.
+
+## Rev 0a (2026-11-08, before any output): three implementation rulings
+
+Raised by the Executor at build time and accepted by the Advisor. They change no reading.
+1. **Token limit.** New W generations run at 256 new tokens. The reused P0 ANS rows (§54 B0) ran at the §51 engine's
+   160. All 900 stopped at EOS with at most 100 new tokens, so the limit never bound. The 20-row P0 rerun at 256
+   checks byte identity.
+2. **LongMemEval P0 engine.** The cached §23 outputs are vLLM bf16 on a pod, so they are not used for P0. P0 is rerun
+   on all 200 rows with the laptop HF fp32 engine, paired with P1 and P2. Agreement with the §23 cache is reported
+   descriptively. In the drop order, this rerun ranks above LongMemEval P2.
+3. **LongMemEval grading.** The §51 grader is city-specific. LongMemEval uses the §52 rules, identical across arms:
+   - FA: the §23 graded answer starts with "unknown";
+   - gold proxy: `answer_selection.d1(answer, gold)`;
+   - Uns: an answer other than "unknown" on the 12 `_abs` rows;
+   - note-then-refuse: `d1(note, gold)` among abstentions.
+
+   There is no U(λ) on LongMemEval. All of it is descriptive.
+
+Controlled-prefix arm: P1 and P2 are built as §51 B3 (chat ids of the arm's prompt + the B0 note through the marker,
+16 new tokens, graded head + tail; P2 = `b3_prefix`). P0's prefix arm is B0 itself. Dam is measured against B0. Rows
+without a P_ans are NM, as in §51.
