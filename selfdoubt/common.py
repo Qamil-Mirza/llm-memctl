@@ -103,16 +103,39 @@ def stub_items(items: list[dict], split: dict, n_per_source: int = 5) -> list[di
     return g + m[:n_per_source]
 
 
+def shuffled_order(items: list[dict], split: dict, src: str, which: str, seed: int = SPLIT_SEED) -> list[int]:
+    """The ids of split[which][src] in the order the seed-56 shuffle (make_split) produced them. split.json stores each
+    half sorted; this recovers the shuffle order, which is content-blind. Used to take "the first N" of a half."""
+    ids = sorted(int(r["id"]) for r in items if r["source"] == src)
+    rng = random.Random(f"{seed}:{src}")
+    rng.shuffle(ids)
+    half = len(ids) // 2
+    order = ids[:half] if which == "dev" else ids[half:]
+    assert sorted(order) == list(split[which][src]), "split.json does not match the seed-56 shuffle"
+    return order
+
+
+def shuffled_heldout(items: list[dict], split: dict, src: str, n: int | None = None) -> list[int]:
+    """First n held-out ids of a source in seed-56 shuffle order (PROPOSAL, Stage 0 plan of 2026-11-09)."""
+    o = shuffled_order(items, split, src, "heldout")
+    return o[:n] if n else o
+
+
 def select_items(items: list[dict], split: dict, mode: str, which: str = "dev", limit: int | None = None,
                  sources=SOURCES) -> list[dict]:
+    """stub / smoke: fixed dev items. full: per source, the ids of the chosen half in seed-56 shuffle order, the first
+    `limit` of each source (all if None)."""
     if mode == "stub":
         return stub_items(items, split, 5)
     if mode == "smoke":
         s = stub_items(items, split, 1)
         return s[:limit] if limit else s
     by_id = {int(r["id"]): r for r in items}
-    sel = [by_id[i] for src in sources for i in split[which][src]]
-    return sel[:limit] if limit else sel
+    sel = []
+    for src in sources:
+        o = shuffled_order(items, split, src, which)
+        sel += [by_id[i] for i in (o[:limit] if limit else o)]
+    return sel
 
 
 # ---------------------------------------------------------------- seeds and keys

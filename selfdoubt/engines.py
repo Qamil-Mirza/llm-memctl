@@ -83,7 +83,8 @@ class HFEngine:
         self.eos = gc.eos_token_id if isinstance(gc.eos_token_id, list) else [gc.eos_token_id]
         self.pad = gc.pad_token_id if gc.pad_token_id is not None else self.eos[0]
 
-    def generate(self, reqs, max_tokens: int, max_model_len: int = 40960, deadline: float | None = None):
+    def generate(self, reqs, max_tokens: int, max_model_len: int = 40960, deadline: float | None = None,
+                 on_finish=None):
         torch = self.torch
         out = []
         for r in reqs:
@@ -127,7 +128,7 @@ class VLLMEngine:
         self.last_trace = None
 
     def generate(self, reqs, max_tokens: int, max_model_len: int | None = None, deadline: float | None = None,
-                 trace_every_s: float = 10.0):
+                 trace_every_s: float = 10.0, on_finish=None):
         """Step loop over the engine (not LLM.generate) so a deadline stops gracefully mid-batch: finished requests
         are returned in full; unfinished ones are aborted and returned as {"unfinished": True, n_gen_tokens=<partial>}
         so their tokens still count towards throughput. Same sampling and token ids as LLM.generate (DELTA outputs,
@@ -147,6 +148,7 @@ class VLLMEngine:
             eng.add_request(i, {"prompt_token_ids": ids}, sp)
             mts[i], plen[i] = mt, len(ids)
         toks = {i: [] for i in rid}
+        idx = {i: k for k, i in enumerate(rid)}
         fin = {}
         t0 = last = time.time()
         total = 0
@@ -161,6 +163,10 @@ class VLLMEngine:
                 total += len(c.token_ids)
                 if o.finished:
                     fin[o.request_id] = c.finish_reason
+                    if on_finish is not None:          # stream: the caller stores the record now, not at chunk end
+                        k = idx[o.request_id]
+                        on_finish(k, self._result(toks[o.request_id], c.finish_reason, plen[o.request_id],
+                                                  mts[o.request_id]))
             now = time.time()
             if now - last >= trace_every_s:
                 self.last_trace.append([round(now - t0, 1), len(rid) - len(fin), total])
@@ -174,10 +180,12 @@ class VLLMEngine:
                             "n_gen_tokens": len(new), "finish_reason": "deadline", "hit_max": False,
                             "max_tokens": mts[i]})
                 continue
-            hit = fin[i] == "length"
-            out.append({"token_ids": new, "text": self.tok.decode(new), "n_prompt_tokens": plen[i],
-                        "n_gen_tokens": len(new), "finish_reason": fin[i], "hit_max": hit, "max_tokens": mts[i]})
+            out.append(self._result(new, fin[i], plen[i], mts[i]))
         return out
+
+    def _result(self, new, finish_reason, n_prompt, mt):
+        return {"token_ids": new, "text": self.tok.decode(new), "n_prompt_tokens": n_prompt, "n_gen_tokens": len(new),
+                "finish_reason": finish_reason, "hit_max": finish_reason == "length", "max_tokens": mt}
 
     def memory(self):
         import torch
@@ -200,7 +208,8 @@ class FakeEngine:
         self.deadline_after = deadline_after   # with a deadline set: requests after this many calls come back unfinished
         self.last_trace = None
 
-    def generate(self, reqs, max_tokens: int, max_model_len: int = 40960, deadline: float | None = None):
+    def generate(self, reqs, max_tokens: int, max_model_len: int = 40960, deadline: float | None = None,
+                 on_finish=None):
         out = []
         for r in reqs:
             if self.fail_after is not None and self.calls >= self.fail_after:

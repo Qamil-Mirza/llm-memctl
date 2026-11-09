@@ -433,3 +433,18 @@ def test_norm_dev_gold_roundtrip(items):
             bad.append((i, g))
     assert not bad, bad[:10]
     assert n_vec >= 4                                    # 4 matrix + tuple-like golds take the vector path
+
+
+def test_shuffled_heldout_rule(items):
+    """Stage 0 plan (2026-11-09): MATH-500 = first 100 held-out ids in seed-56 shuffle order; fixed, content-blind."""
+    split = C.make_split(items)
+    o = C.shuffled_heldout(items, split, "math500")
+    assert len(o) == 250 and sorted(o) == split["heldout"]["math500"]
+    first = C.shuffled_heldout(items, split, "math500", 100)
+    assert first == o[:100] and len(set(first)) == 100
+    assert first != sorted(first)                                            # shuffle order, not id order
+    sel = C.select_items(items, split, "full", "heldout", 100, sources=("math500",))
+    assert [int(r["id"]) for r in sel] == first
+    assert not set(first) & set(split["dev"]["math500"])
+    g = C.select_items(items, split, "full", "heldout", None, sources=("gsm8k",))
+    assert sorted(int(r["id"]) for r in g) == split["heldout"]["gsm8k"]

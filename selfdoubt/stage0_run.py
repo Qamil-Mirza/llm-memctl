@@ -36,7 +36,20 @@ def run_phase(name, engine, store, reqs, max_tokens, chunk, deadline, out_dir, i
     """Generate the pending requests in chunks; append records and one stats line per chunk (phases.jsonl). The
     deadline is checked between chunks and passed to the engine, which (vLLM) stops mid-chunk and returns finished
     requests in full and unfinished ones as partial token counts: those are counted in the chunk's stats (throughput)
-    but not stored, so a rerun regenerates them. A hard kill still loses the chunk in flight."""
+    but not stored, so a rerun regenerates them. vLLM streams: each record is stored the moment its request finishes
+    (no chunk tail, and a hard kill loses only requests in flight)."""
+    def make_rec(r, g):
+        rec = {"key": r.key, "model": r.model, "revision": C.MODELS[r.model], "item_id": r.item_id,
+               "source": r.source, "arm": r.arm, "cut": r.cut, "seed": r.seed, "engine": engine.name,
+               "prompt_sha256": C.sha256_text(r.prompt), "text": g["text"],
+               "n_prompt_tokens": g["n_prompt_tokens"], "n_gen_tokens": g["n_gen_tokens"],
+               "finish_reason": g["finish_reason"], "hit_max": g["hit_max"], "max_tokens": g["max_tokens"],
+               "sampling": C.SAMPLING, "ts": time.strftime("%Y-%m-%dT%H:%M:%S"), **r.meta}
+        if r.arm == "FULL":
+            rec["prompt"] = r.prompt
+            rec["total_reasoning_length"] = C.total_reasoning_length(engine.tok, r.model, g["text"])
+        return rec
+
     pending = [r for r in reqs if not store.done(r.key)]
     log(f"phase {name}: {len(reqs)} requests, {len(reqs) - len(pending)} already done, {len(pending)} to run")
     stopped = False
@@ -49,30 +62,22 @@ def run_phase(name, engine, store, reqs, max_tokens, chunk, deadline, out_dir, i
         st = {"phase": name, "invocation": invocation, "chunk_index": i // chunk, "engine": engine.name,
               "model": engine.model_name, "n_requests": len(batch), "prompt_tokens": 0, "gen_tokens": 0,
               "n_hit_max": 0, "n_unfinished": 0, "gen_tokens_partial": 0, "max_tokens": max_tokens, "chunk": chunk}
+        def stream(k, g, batch=batch):                  # vLLM: called as each request finishes
+            store.append([make_rec(batch[k], g)])
         with E.GpuMemPoller() as poll:
             tb = time.time()
-            res = engine.generate(batch, max_tokens, deadline=deadline)
+            res = engine.generate(batch, max_tokens, deadline=deadline, on_finish=stream)
             st["wall_s"] = round(time.time() - tb, 2)
-        recs = []
         for r, g in zip(batch, res):
             if g.get("unfinished"):
                 st["n_unfinished"] += 1
                 st["gen_tokens_partial"] += g["n_gen_tokens"]
                 continue
-            rec = {"key": r.key, "model": r.model, "revision": C.MODELS[r.model], "item_id": r.item_id,
-                   "source": r.source, "arm": r.arm, "cut": r.cut, "seed": r.seed, "engine": engine.name,
-                   "prompt_sha256": C.sha256_text(r.prompt), "text": g["text"],
-                   "n_prompt_tokens": g["n_prompt_tokens"], "n_gen_tokens": g["n_gen_tokens"],
-                   "finish_reason": g["finish_reason"], "hit_max": g["hit_max"], "max_tokens": g["max_tokens"],
-                   "sampling": C.SAMPLING, "ts": time.strftime("%Y-%m-%dT%H:%M:%S"), **r.meta}
-            if r.arm == "FULL":
-                rec["prompt"] = r.prompt
-                rec["total_reasoning_length"] = C.total_reasoning_length(engine.tok, r.model, g["text"])
-            recs.append(rec)
+            if not store.done(r.key):                 # engines without streaming: store at chunk end
+                store.append([make_rec(r, g)])
             st["prompt_tokens"] += g["n_prompt_tokens"]
             st["gen_tokens"] += g["n_gen_tokens"]
             st["n_hit_max"] += int(g["hit_max"])
-        store.append(recs)
         all_tok = st["gen_tokens"] + st["gen_tokens_partial"]
         st["gen_tok_per_s"] = round(all_tok / st["wall_s"], 2) if st["wall_s"] else None
         st["nvidia_smi_max_used_mib"] = poll.max_mib
@@ -226,7 +231,8 @@ def main(argv=None):
                     help="share of the post-load time given to the FULL phase (rest: CONT); default: no split")
     ap.add_argument("--split-name", choices=["dev", "heldout"], default="dev")
     ap.add_argument("--allow-heldout", action="store_true", help="required to generate on held-out items")
-    ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--limit", type=int, default=None, help="full: first N per source in seed-56 shuffle order")
+    ap.add_argument("--source", choices=list(C.SOURCES), default=None, help="full: one source only (default both)")
     ap.add_argument("--cut-unit", choices=["token", "char"], default="token", help="token = the authors' rule")
     ap.add_argument("--usd-per-hour", type=float, default=0.60)
     ap.add_argument("--n-items-full", type=int, default=1000, help="items per model for the cost projection")
@@ -247,7 +253,8 @@ def main(argv=None):
     items = C.load_items()
     split, split_sha = C.ensure_split(items, out_root / "split.json")
     log(f"split.json sha256 {split_sha}")
-    sel = C.select_items(items, split, a.mode, a.split_name, a.limit)
+    sel = C.select_items(items, split, a.mode, a.split_name, a.limit,
+                         sources=(a.source,) if a.source else C.SOURCES)
     mode_dir = out_root / a.mode
     md = mode_dir / C.model_tag(a.model)
     md.mkdir(parents=True, exist_ok=True)

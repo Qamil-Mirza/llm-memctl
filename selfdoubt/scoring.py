@@ -1,4 +1,4 @@
-"""Stage 0 scoring: answer extraction (vendored) with the frozen Stage 0 normaliser, the four categories, the doubt coder.
+r"""Stage 0 scoring: answer extraction (vendored) with the frozen Stage 0 normaliser, the four categories, the doubt coder.
 
 gsm8k   : the authors' rule, unchanged: gold "#### x" (extract_gsm8k_gt_answer); prediction =
           sanitize_answer(extract_answer(text)); string equality.
