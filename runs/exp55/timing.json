@@ -1,0 +1,18 @@
+{
+ "W": {
+  "n_prompt": 304,
+  "new_tokens": 32,
+  "stop": "eos",
+  "row_s": 34.96469736099243
+ },
+ "LME": {
+  "n_prompt": 1054,
+  "new_tokens": 74,
+  "stop": "eos",
+  "row_s": 88.20092248916626,
+  "median_prompt_tokens": 1054,
+  "max_prompt_tokens": 3193
+ },
+ "peak_rss_gb": 17.261821746826172,
+ "note": "timing only (P1 prompts, batch 1); outputs discarded"
+}
