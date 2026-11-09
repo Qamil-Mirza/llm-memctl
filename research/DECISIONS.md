@@ -303,6 +303,22 @@ the user has made the decision.
 - **Spend.** $0. RunPod programme total unchanged at about $33.75 of $36.
 - **Authority.** The user, Advisor pane, 2026-11-08: "Go".
 
+## D-80 (2026-11-08) — §52 closed at its stage-0 gate; nothing queued; STATE F21 added
+
+- **What.** §52 stage 0 screened six instruction-tuned readers below 3B (Qwen 2.5 0.5B/1.5B, Llama 3.2 1B, gemma-3
+  1B/270M, SmolLM2 1.7B) on the 126 §43 dev rows with the frozen prompt. The gate fails for all six, so nothing goes to
+  Q-A to Q-D. Under D-45 it stops: no prompt-variation arm, no rescue.
+- **Record.** EXPERIMENTS §52 (6c7b1d3); freeze 0c88a93; outputs, report and pipeline check 0f25a1c. STATE F21.
+- **Reading.**
+  - Five readers do not follow the note + `Answer:` format, so in-view abstention is not measurable for them.
+  - SmolLM2 follows it but never abstains, not even on unanswerable rows.
+  - Post hoc: Qwen 1.5B gives a blanket, evidence-insensitive bare "unknown" (0.960 in view, 0.935 not in view). The
+    pipeline check passes.
+- **Context.** All six used the same frozen prompt that §55 (D-81) now tests. A rerun under §55's P1 would be a new
+  proposal.
+- **Spend.** $0. RunPod programme total unchanged at about $33.75 of $36.
+- **Authority.** The user, Advisor pane, 2026-11-08: "Go on D-80".
+
 ## D-81 (2026-11-08) — §55 opened: clean, consistent abstention prompt against the frozen prompt
 
 - **What.** Proposal `research/proposals/2026-11-08-exp55-clean-prompt.md` (rev 0, 9ddb074). Three reader prompts on
