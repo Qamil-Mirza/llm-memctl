@@ -241,6 +241,24 @@ on both datasets probably do not fit.
    data, not outputs. If they shared traces, Stage 0 could cost almost nothing. Whether to ask is part of the user's
    Mihran decision.
 
+### Stage 0 plan chosen by the user (2026-11-09; supersedes the cut order and item 4 above)
+
+From the stub (`runs/selfdoubt/stub/measure.json`, ≈ $0.18), the user chose the "1.7B-first" plan in the Advisor's
+pane on 2026-11-09. One A40, held-out split only, all cuts 0.3 / 0.5 / 0.9 plus X = 0, max_tokens 16384, the same
+sampling. Steps in priority order; the graceful deadline keeps whatever has finished:
+
+1. Qwen3-1.7B, GSM8K: all 250 held-out items.
+2. Qwen3-1.7B, MATH-500: the first 100 held-out items in the seed-56 shuffle order. The rule, fixed before launch:
+   the 500 MATH-500 ids, sorted, shuffled with `random.Random("56:math500")` (`common.make_split`); the held-out half
+   is positions 250–499 of that shuffle; the first 100 of those, in shuffle order (`common.shuffled_heldout`). No
+   choice by content.
+3. Qwen3-8B, GSM8K: all 250 held-out items.
+
+Quote (token projection from the stub): $0.31 + $0.29 + $0.61 = $1.21, plus about 5 min of install and loads,
+≈ $1.26 (about 2.1 h). Hard DELETE at create + 2 h 15 min (≈ $1.35 at most). Qwen3-8B on MATH-500 and Qwen3-1.7B on
+MATH-500 items 101–250 wait for the $25 account. Readings need the frozen scorer (item 4 of "Found while building")
+and `--heldout-confirmed`, and go to the Advisor first.
+
 ## What the pitch would show (contents decided later)
 
 - **Figure 1 (Stage 0):** of the failures after an update, the share that are the answer the same prefix gives with
@@ -315,4 +333,18 @@ cited as evidence for E2.
      update the way their matching branch does, and a test pins both behaviours.
 2. **The authors cut the trace by tokens, not characters** (`int(X · n_tokens)`, decode, re-add `<think>\n`). Our
    pipeline does the same by default.
-3. **MATH-500 `original_answer` is a bare answer, not boxed.** It is scored with their `strip_answer_string`.
+3. **MATH-500 `original_answer` is a bare answer, not boxed.** Gold, prediction and the N answer now go through one
+   normaliser (item 4).
+4. **The authors' `score_response` misses matrix and tuple answers** (found 2026-11-09 on the stub; normaliser frozen
+   by the Advisor the same day). It strips the extracted answer twice, and the second strip deletes the `\\` row
+   separators of a pmatrix, so a correct (-2, -14, -7) is compared as "-2-14-7". A tuple written against a pmatrix
+   gold also fails. Exposure on dev: 4 matrix and 10 parenthesised-tuple golds of 250; their scorer fails 3 dev golds
+   written back verbatim as `\boxed{gold}`. Small, and a note for the Mihran list, not a claim about their results.
+   Our Stage 0 normaliser (`selfdoubt/scoring.py`): one strip; vectors and tuples parsed from the raw boxed text and
+   compared entry by entry with `math_equal` (equal length; a scalar never equals a vector; intervals with mixed
+   brackets stay scalars); strip_answer_string's `x=` / `x\in` keys applied once on the scalar path. GSM8K scoring
+   is unchanged.
+5. **Qwen3-1.7B sometimes never closes `</think>`** (7 of 10 stub U0 rows at X = 0, not at the token cap). It writes
+   `\boxed{...}` inside the thinking and then ends. The answer parses, and the row is correctly not "truncated".
+   Known case for the doubt coder: when `</think>` is missing, the coder treats the text before the first `\boxed`
+   as reasoning. To be implemented when the coder is built.
