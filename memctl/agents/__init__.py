@@ -6,8 +6,6 @@ from memctl.agents.base import Agent
 from memctl.registry import load
 
 REGISTRY = {
-    "scripted_reader": "memctl.agents.scripted:ScriptedReader",
-    "scripted_tool_agent": "memctl.agents.scripted:ScriptedToolAgent",
     "llm": "memctl.agents.llm:LLMAgent",
     "null": "memctl.agents.base:NullAgent",
 }

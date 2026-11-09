@@ -6,11 +6,8 @@ from memctl.envs.base import TaskEnvironment
 from memctl.registry import load
 
 REGISTRY = {
-    "synthetic_recall": "memctl.envs.synthetic:SyntheticRecallEnv",
-    "workflow": "memctl.envs.workflow:WorkflowEnv",
     "locomo": "memctl.envs.locomo:LoCoMoEnv",
     "longmemeval": "memctl.envs.longmemeval:LongMemEvalEnv",
-    "streammembench": "memctl.envs.streammembench:StreamMemBenchEnv",
     "utilmem": "memctl.envs.utilmem:UtilMemEnv",
 }
 

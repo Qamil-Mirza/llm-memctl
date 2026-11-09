@@ -28,10 +28,11 @@ with checks on Llama, Gemma and Phi.
    - On controlled tasks, most false "unknown"s are "note, then refuse": the model writes the right answer in its own
      note and then says "unknown" (§49). Asking the model whether the evidence is sufficient was not a usable measure
      (§50).
-3. **Proposed: agent-guided weight editing (Experiment 51).** A Claude editor proposes small weight edits to the 3B,
-   tested on a working split and confirmed on sealed splits under a frozen pre-registration. The design is in
-   [research/proposals/2026-11-02-exp51-agent-weight-editing.md](research/proposals/2026-11-02-exp51-agent-weight-editing.md).
-   No result is recorded yet.
+3. **Experiments 51–55.** Agent-proposed weight edits and their random-edit controls (§51, §53), a screen of readers
+   below 3B (§52), twin-pair patching for a native "unknown" switch (§54), and a clean-prompt check (§55): with the
+   evidence and model fixed, a consistent abstention rule does not reduce false "unknown"s, and removing the option
+   removes them only by making the model answer questions that have no answer. Results and caveats are in
+   [EXPERIMENTS.md](EXPERIMENTS.md); what they support is in [research/STATE.md](research/STATE.md).
 
 ## Research questions
 
@@ -45,45 +46,33 @@ with checks on Llama, Gemma and Phi.
 | Path | What |
 |---|---|
 | [research/](research/) | State, decisions, open questions, proposals, reviews, audits and briefings |
-| [EXPERIMENTS.md](EXPERIMENTS.md) | Full record of every experiment, with numbers and caveats |
-| `memctl/` | Library: memory, controllers, retrieval and reranking, LLM readers and judge, splits, run logging |
-| `scripts/` | Experiment scripts (for example `exp51_*.py`) |
-| `configs/`, `runs/`, `cache/` | Configs, run outputs, and cached paid LLM outputs (never delete the caches) |
-| [docs/research/](docs/research/) | Per-experiment reports and the earlier research note |
-| [README_RESEARCH.md](README_RESEARCH.md), [INFRA_REPORT.md](INFRA_REPORT.md) | How to run things, and infrastructure notes |
-| [RESET_HANDOFF.md](RESET_HANDOFF.md) | Working roles and rules since the 2026-10-10 reset |
+| [EXPERIMENTS.md](EXPERIMENTS.md) | Full record of §33–§55, with numbers and caveats; §1–§32 condensed |
+| `memctl/` | Library: data loaders for the §23/§24 prompts, answer selection and grading, the lenses, steering, patching and editing tools, LLM backends and the judge |
+| `scripts/` | Experiment scripts (`expNN_*.py`, the J-lens fit / read / eval scripts, pod chains) |
+| `runs/`, `cache/` | Run outputs and cached model outputs, not in git (never delete the §23/§24 generation caches: every prompt is rebuilt from them) |
+| [docs/research/](docs/research/) | Per-experiment report copies (§23, §24, §34, §35) and the J-lens design notes under `docs/superpowers/` |
 
-The earlier Phase 2 work (eviction policies on LoCoMo) is kept on branch `phase2-locomo-baseline`, tag
-`phase2-complete`:
+**The memory-controller era (§1–§32)** was removed from the working tree on 2026-11-09. Its code, configs, tests and
+full experiment text are at the git tag `memctl-era-final`; its run data is in the local archive
+`archive/memctl-era-data.tar.zst` (manifest beside it). To look at or restore a file:
 
 ```bash
-git show phase2-locomo-baseline:memctl/memory.py
-git checkout phase2-locomo-baseline -- memctl/memory.py   # bring one file back
+git show memctl-era-final:memctl/controllers/heuristics.py
+git checkout memctl-era-final -- memctl/rl                 # bring a folder back
+tar -I zstd -xf archive/memctl-era-data.tar.zst runs/exp19_gate_f0   # unpack one run
 ```
+
+The earlier Phase 2 work (eviction policies on LoCoMo) is on branch `phase2-locomo-baseline`, tag `phase2-complete`.
 
 ## Running
 
 ```bash
 python3 -m venv .venv
-.venv/bin/pip install -c constraints.txt -e ".[dev]"
+.venv/bin/pip install -c constraints.txt -e ".[dev,models,stats]"
 .venv/bin/pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
 .venv/bin/python -m pytest -q
-.venv/bin/python -m memctl.run --config configs/stage1_smoke.yaml
 ```
 
 Secrets (`HF_TOKEN`, `RUNPOD_API_KEY`, `ANTHROPIC_API_KEY`) go in `.env`, copied from `.env.example`. GPU runs use
-rented RunPod pods. Each experiment's proposal records its cost and hard stop.
-
-The Docker setup is kept for running local Hugging Face models on a GPU:
-
-```bash
-cp .env.example .env
-printf 'MEMCTL_UID=%s\nMEMCTL_GID=%s\n' "$(id -u)" "$(id -g)" >> .env
-docker compose build
-docker compose run --rm memctl          # runs the tests
-```
-
-On Linux the GPU needs the NVIDIA Container Toolkit, including
-`nvidia-ctk runtime configure --runtime=docker` and
-`nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml` (both root). Full notes, with the
-measured model sizes, are in `docs/porting.md` on the `phase2-locomo-baseline` branch.
+rented RunPod pods (image-based A40, HF fp32); each experiment's proposal records its cost and hard stop, and each
+pod chain (`scripts/expNN_pod.sh`) has a laptop stub mode.

@@ -1,1 +1,1 @@
-"""memctl: agent memory management on long-horizon tasks. Scaffold; see docs/archive/restart.md."""
+"""memctl: code for the mechanistic investigation of evidence-use failures in small language models (honors thesis)."""
