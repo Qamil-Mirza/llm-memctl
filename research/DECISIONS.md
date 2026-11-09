@@ -332,3 +332,7 @@ the user has made the decision.
   Stopping rule D-45.
 - **Number.** D-80 is held for the pending §52 closure (awaits the user's Go).
 - **Authority.** The user, Advisor pane, 2026-11-08: "approved, go ahead with §55".
+- **Amendment (2026-11-08, rev 0b bc8e145).** At the user's request §55 moves to one A40 pod: HF fp32 with tf32 off,
+  all arms on the pod, laptop partials unused. Quote about $1.00; hard stop $1.50 / 150 min. The user's approval line
+  in the Executor pane: "approved: §55 on one A40, about $1.00, hard stop $1.50 / 150 min". After it the worst-case
+  programme total is about $35.25 of $36.
