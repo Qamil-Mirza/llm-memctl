@@ -336,3 +336,27 @@ the user has made the decision.
   all arms on the pod, laptop partials unused. Quote about $1.00; hard stop $1.50 / 150 min. The user's approval line
   in the Executor pane: "approved: §55 on one A40, about $1.00, hard stop $1.50 / 150 min". After it the worst-case
   programme total is about $35.25 of $36.
+
+## D-82 (2026-11-08) — §55 complete: false abstention on controlled tasks is the price of the abstention option; STATE F22 added
+
+- **What.** §55 (rev 0 + 0a + 0b) compared three prompts on Qwen 2.5 3B, all on one A40 pod with the §51 HF fp32 engine:
+  P0 (the frozen prompt), P1 (one consistent "unknown" rule) and P2 (no "unknown" instruction). Data: 750 W controlled
+  rows and 200 LongMemEval dev rows.
+- **Readings, as frozen.**
+  - **R1:** "the inconsistency is not the main cause". The consistent wording raises FA from 0.311 to 0.380 (+0.069
+    [0.022, 0.118]). Which sentence is responsible was not tested.
+  - **R2:** "the false abstention is largely the price of having an abstention option". P2 has FA 0, but answers
+    0.653 of unanswerable rows (+0.620 over P1). U(λ=1) falls by 0.138, so removing the option is not a fix.
+  - With P0's note fixed, the P1 instruction alone moves FA by +0.160. 163/171 P1 abstentions have the gold in their
+    own note.
+  - LongMemEval, descriptive: P2 removes all 28 in-view "unknown"s but adds only 11 gold, and answers 11 of 12
+    unanswerable rows.
+- **Record.** EXPERIMENTS §55 (0c016d4); results f07fbfd; freeze 3bfb13f; proposal revs 9ddb074 / 45eaee6 / bc8e145.
+  STATE F22.
+- **Consequence (fixed in the proposal).** Controlled-task false abstention is framed as abstention inflation, a
+  calibration trade-off, with arXiv 2507.16199 as the closest prior work. A cross-model table from cached outputs is
+  not built on P0 alone. Earlier controlled-task results (§49–§54) stand under P0; the inconsistency was not inflating
+  them.
+- **Spend.** Pod x75t0k719w43yh, lifetime 3,498 s ≈ $0.57 (billing not yet posted). Programme total ≈ $34.32 of $36.
+- **Authority.** The user, Advisor pane, 2026-11-08: "Go on D-82".
+
