@@ -1,0 +1,2 @@
+01:34:02 stage smoke root runs/exp55/pod/smoke pod=True device=cuda backend=hf engine=hf-5.17.0-torch-2.8.0+cu128-cuda-float32-notf32
+01:34:51 smoke: {'w_class_agree': 8, 'w_token_agree': 8, 'n': 8, 'lme_ran': 2, 'pass': True}

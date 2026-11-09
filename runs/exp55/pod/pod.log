@@ -1,0 +1,11 @@
+01:33:18 exp55 pod; engine hf; run budget 7500 s
+NVIDIA A40, 46068 MiB
+01:33:49 snapshot /root/.cache/huggingface/hub/models--Qwen--Qwen2.5-3B-Instruct/snapshots/aa8e72537993ba99e69dfaafa59ed015b17504d1
+01:34:52 stage smoke rc 0 at +94 s
+01:35:27 stage check20 rc 0 at +129 s
+01:55:52 stage wfree rc 0 at +1354 s
+02:02:59 stage wprefix rc 0 at +1781 s
+02:11:29 stage lmeP0 rc 0 at +2291 s
+02:20:21 stage lmeP1 rc 0 at +2823 s
+02:30:28 stage lmeP2 rc 0 at +3430 s
+02:30:28 pod done at +3430 s (rc 0): copy back runs/exp55/pod

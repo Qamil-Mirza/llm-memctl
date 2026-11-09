@@ -1,0 +1,12 @@
+02:11:43 stage lme root runs/exp55/pod/run pod=True device=cuda backend=hf engine=hf-5.17.0-torch-2.8.0+cu128-cuda-float32-notf32
+02:13:11 LME P1: 20 rows, 2.6 s/row
+02:13:54 LME P1: 40 rows, 2.4 s/row
+02:14:47 LME P1: 60 rows, 2.5 s/row
+02:15:34 LME P1: 80 rows, 2.4 s/row
+02:16:38 LME P1: 100 rows, 2.6 s/row
+02:17:36 LME P1: 120 rows, 2.6 s/row
+02:18:17 LME P1: 140 rows, 2.6 s/row
+02:19:10 LME P1: 160 rows, 2.6 s/row
+02:19:41 LME P1: 180 rows, 2.5 s/row
+02:20:20 LME P1: 200 rows, 2.4 s/row
+02:20:20 LME P1: 200 rows in 480 s

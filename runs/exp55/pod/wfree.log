@@ -1,0 +1,4 @@
+01:35:41 stage wfree root runs/exp55/pod/run pod=True device=cuda backend=hf engine=hf-5.17.0-torch-2.8.0+cu128-cuda-float32-notf32
+01:41:38 W free P0: 750 rows in 346 s; peak RSS 6.9 GB
+01:49:18 W free P1: 750 rows in 448 s; peak RSS 6.9 GB
+01:55:52 W free P2: 750 rows in 383 s; peak RSS 6.9 GB
