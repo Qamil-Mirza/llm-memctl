@@ -8858,6 +8858,113 @@ Results: `runs/exp54/cases54.jsonl` (sha256 1f0d4133…), `cases54_counts.json`,
 `pairs_pre_regrade.json` and the stage-1 logs, at 0aeef23 and 71b9ce7. The 900 B0 records stay local
 (`runs/exp54/run/b0/W/`).
 
+## 55. How much false abstention survives a clean, consistent abstention prompt? Frozen vs consistent vs no-option prompt, Qwen 2.5 3B (2026-11-08, pre-registered rev 0 + 0a + 0b; pod 2026-11-09)
+
+**Status: RUN. R1: "the inconsistency is not the main cause". The consistent wording raises false abstention. R2:
+"the false abstention is largely the price of having an abstention option". Removing the option is not a fix.**
+- **What was planned.** The frozen reader prompt (7b5fc30) gives two conditions for "unknown":
+  - the task line: "If the memory does not contain the answer, reply: unknown";
+  - the note sentence: "Reply unknown only if the memory has nothing at all on the topic."
+
+  Three arms, built by exact string replacement. Each arm's only difference from P0 is the two sentences
+  (asserted per row):
+  - **P0:** the frozen prompt, byte-identical.
+  - **P1:** one consistent rule. The task line reads "...does not state the answer, reply: unknown" and the note
+    sentence reads "Reply unknown only if the memory does not state the answer."
+  - **P2:** both sentences removed. This is the §51 `prompt_b3` text, equal on all 750 W rows.
+- **Data (development only; seed 56 sealed).**
+  - **W:** the §54 split (seed 55), bases with even `base_index`: 75 bases, 25 per task. Rows: ANS 450, UNA-rel 225,
+    UNA-swap 75. No CF rows.
+  - **LongMemEval:** the 200 §52 rows (folds 0–1): 126 answerable with all evidence in view, 62 answerable but not
+    all in view, 12 unanswerable. The prompts equal the Qwen 3B §23 records (200/200), P0 concat sha 7d3b5609 (= §52).
+- **Freeze 3bfb13f, before any output.** Rulings, before any output:
+  - **rev 0a (45eaee6):**
+    - W runs at 256 new tokens.
+    - LongMemEval P0 is rerun on the same engine as P1 and P2.
+    - LongMemEval is graded with the §52 rules, descriptive only:
+      - FA = the graded answer starts with "unknown";
+      - gold proxy = `d1`;
+      - the whole output is graded when there is no marker.
+  - **rev 0b (bc8e145):** the user moved the run to a pod.
+    - All arms are generated on the pod, so the §54 B0 reuse was dropped.
+    - The 20 W check rows became a device check against the laptop §54 B0.
+- **Engine.** The §51 HF engine: Qwen 2.5 3B Instruct fp32, tf32 off, greedy.
+  - W free generation is batched at 64 in case-id order.
+  - The W controlled prefix uses `chat_ids(prompt_Pk)` + P0's own note through the marker, 16 new tokens, graded
+    head + tail. P2's prefix equals `CM.b3_prefix`; P0's prefix arm is P0's free generation itself.
+  - LongMemEval runs at batch 1 with 256 new tokens.
+  - W is graded with `grade51`. Rates are base-weighted, with 95% intervals from the paired base-cluster bootstrap
+    stratified by task (stats51, B 10,000, seed 5102). LongMemEval uses a paired question bootstrap.
+- **Run.** Pod x75t0k719w43yh, one A40 secure at $0.59/h. Created 01:32:32 and deleted 02:30:50 UTC on 2026-11-09;
+  0 pods before and after.
+  - Lifetime 3,498 s ≈ **$0.57** (quote $1.00, hard stop $1.50 / 150 min). Billing not yet posted.
+  - All rows complete and nothing dropped: W 750 × 3 free, 750 × 2 prefix; LongMemEval 200 × 3.
+  - D-22 smoke: 8/8 graded classes and 8/8 tokens equal to the laptop §54 B0.
+  - Device check: 20/20 tokens and classes equal.
+  - Stage times: W free 1,225 s for 2,250 rows; prefix 427 s; LongMemEval 1,649 s for 600 rows. The quote assumed
+    about 5 s per LongMemEval row; the measured rate is 2.1 s.
+- **W, free generation** (base-weighted; counts in brackets):
+
+  | Arm | FA (ANS) | Gold (ANS) | Uns (UNA) | Uns, UNA-rel | Uns, UNA-swap | U(λ = 1) |
+  |---|---|---|---|---|---|---|
+  | P0 | 0.311 (140/450) | 0.678 (305) | 0.030 (9/300) | 2/225 | 7/75 | 0.315 |
+  | P1 | 0.380 (171/450) | 0.613 (276) | 0.033 (10/300) | 5/225 | 5/75 | 0.282 |
+  | P2 | 0.000 (0/450) | 0.987 (444) | 0.653 (196/300) | 145/225 | 51/75 | 0.143 |
+
+  - P1 − P0: FA **+0.069 [0.022, 0.118]**, Gold −0.064 [−0.111, −0.018], Uns +0.003 [−0.013, 0.020], U −0.033
+    [−0.058, −0.008].
+  - P2 − P1: FA −0.380 [−0.429, −0.333], Gold +0.373 [0.324, 0.427], Uns **+0.620 [0.563, 0.677]**, U **−0.138
+    [−0.181, −0.096]**.
+- **Readings, as frozen.**
+  - **R1:** FA(P1) / FA(P0) = 1.22, which is at least ⅔. Reading: **"the inconsistency is not the main cause."** In
+    direction, the consistent wording raises FA from 0.311 to 0.380. P0's wording, which differs from P1 in both
+    sentences, including its stricter note sentence ("nothing at all on the topic"), gives lower false abstention than
+    the consistent rule; the inconsistency was not inflating it. Which sentence is responsible was not tested.
+  - **R2:** FA(P2) = 0 is at most ⅓ FA(P1), and the lower bound of Uns(P2) − Uns(P1) is 0.563 > 0. Reading: **"the
+    false abstention is largely the price of having an abstention option."** Removing the option is **not a fix**:
+    Uns rises by 0.62, far beyond the 0.05 allowance, and U(λ = 1) falls by 0.138.
+- **Controlled prefix** (P0's own note held fixed; 5 rows per arm have no P_ans and are NM):
+
+  | Arm | FA | Gold | Uns | Dam (P0-gold rows that become wrong) |
+  |---|---|---|---|---|
+  | P0 (= free) | 0.311 (140/450) | 0.678 | 0.030 | — |
+  | P1 | 0.471 (209/447) | 0.527 | 0.027 (8/298) | 68/305 |
+  | P2 | 0.000 (0/447) | 1.000 (447/447) | 0.587 (175/298) | 0/305 |
+
+  - With the note fixed, the P1 instruction alone moves FA by **+0.160 [0.120, 0.202]**.
+  - 163 of 171 P1 abstentions in free generation have the gold in their own note (`d1`).
+  - Reading: the instruction acts at the answer step. No mechanism is claimed.
+- **LongMemEval (descriptive; 12 unanswerable rows are too few for a claim).**
+
+  | Arm | "unknown", in view (126) | Gold proxy, in view | Marker, in view | "unknown", not all in view (62) | Unanswerable answered (12) |
+  |---|---|---|---|---|---|
+  | P0 | 28 | 35 | 95 | 37 | 6 |
+  | P1 | 35 | 34 | 89 | 36 | 4 |
+  | P2 | 0 | 46 | 113 | 1 | 11 |
+
+  - P1 − P0, in-view "unknown": +0.056 [0.000, 0.111].
+  - P2 turns 28 in-view "unknown"s into 0 but raises the gold proxy by only 11 (35 → 46, +0.087 [0.016, 0.159]), and
+    it answers 11 of 12 unanswerable rows.
+  - Pod P0 matches the §23 vLLM bf16 cache on the "unknown" flag on only 173 of 200 rows. The engine matters for
+    real-chat numbers.
+- **Disclosures.**
+  - The first laptop run was stopped at the user's request, before any P1, P2 or UNA output. Its partials (a
+    20-row P0 rerun, 20/20 byte-identical to §54 B0, and 450 copied §54 B0 records) are unused and uncommitted
+    (`runs/exp55/run/UNUSED.txt`).
+  - The laptop stub of the pod smoke stage was stopped after its 8 W rows, because the dummy LME rows were slow. LME
+    generation was covered by the LME stub. The stub tested resume (448 → 512 rows, finished files untouched), the
+    deadline exit 9, and the prefix path on 20 real P0 notes.
+  - D-30: a fresh venv (torch 2.8.0) passed the install line.
+- **What this changes (decided in the proposal).**
+  - False abstention on these controlled tasks is framed as abstention inflation, a calibration trade-off, with
+    arXiv 2507.16199 as the closest prior work.
+  - A cross-model table from cached outputs is not built on P0 alone.
+
+Results: `runs/exp55/freeze.json` (sha256 24ec9eb6…), `rows_W.jsonl` and `rows_LME.jsonl` at 3bfb13f. Runner 43917de
+/ 244a586. Report `runs/exp55/report.json`, pod logs and launch scripts at f07fbfd. The raw pod records stay local
+(`runs/exp55/pod/run/`). Scripts: `scripts/exp55_prompts.py`, `exp55_freeze.py`, `exp55_run.py`, `exp55_pod.sh`
+and `exp55_report.py`.
+
 ## 33. Input-gradient attribution on the 3B and 7B readers: where does the gradient of the answer land in the prompt? (2026-10-12, pre-registered in the spec; pod run 2026-10-13 stopped by its own sanity check)
 
 **Status: STOPPED at the regeneration sanity check; no gradient was computed.** Secondary to §34 (the J-lens
