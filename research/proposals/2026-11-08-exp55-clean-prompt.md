@@ -150,3 +150,19 @@ Raised by the Executor at build time and accepted by the Advisor. They change no
 Controlled-prefix arm: P1 and P2 are built as §51 B3 (chat ids of the arm's prompt + the B0 note through the marker,
 16 new tokens, graded head + tail; P2 = `b3_prefix`). P0's prefix arm is B0 itself. Dam is measured against B0. Rows
 without a P_ans are NM, as in §51.
+
+## Rev 0b (2026-11-08, before any P1/P2/UNA output): run on one A40 pod
+
+The user asked to move §55 from the laptop to a pod to shorten the run. The laptop chain was stopped before writing
+any P1, P2 or UNA row. Its only outputs are a 20-row P0 check (20/20 byte-identical to §54 B0) and copies of B0; they
+are kept on disk, marked unused (`runs/exp55/run/UNUSED.txt`), and are not part of the result.
+- **Engine.** HF fp32 on CUDA with tf32 off: the §51 engine, as on the §51/§53 pods. No vLLM, no bf16.
+- **All arms on the pod.** P0, P1 and P2 are all generated there, so arm comparisons are same-device. The §54 B0
+  reuse is dropped.
+- **Device check.** The pod's P0 on the 20 W check rows is compared with the laptop §54 B0. Token and class agreement
+  are reported; it does not stop the run.
+- **Unchanged:** rows, prompts, grader, measures, readings and the rev 0a LongMemEval rulings.
+- **Spend.** Quote about $0.95–1.00 (about 95–100 min at $0.59/h). Hard stop $1.50, 150 min of pod lifetime, by a
+  delete timer. It needs the user's own approval line in the Executor pane.
+- **Drop order while billing.** If the measured LongMemEval rate projects past the hard stop, LongMemEval P2 is
+  dropped first, without a blocking question (the no-blocking-question-while-billing rule), and reported afterwards.
