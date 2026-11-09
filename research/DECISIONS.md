@@ -302,3 +302,17 @@ the user has made the decision.
   ESTABLISHED.
 - **Spend.** $0. RunPod programme total unchanged at about $33.75 of $36.
 - **Authority.** The user, Advisor pane, 2026-11-08: "Go".
+
+## D-81 (2026-11-08) — §55 opened: clean, consistent abstention prompt against the frozen prompt
+
+- **What.** Proposal `research/proposals/2026-11-08-exp55-clean-prompt.md` (rev 0, 9ddb074). Three reader prompts on
+  Qwen 2.5 3B: P0 (frozen, 7b5fc30, two different "unknown" conditions), P1 (one consistent condition), P2 (no
+  "unknown" instruction). W controlled rows (even base_index: 450 ANS, 225 UNA-rel, 75 UNA-swap) and the 200 §52
+  LongMemEval dev rows; free generation plus a controlled-prefix arm on W. Readings R1/R2 fixed in the proposal.
+- **Why.** The frozen prompt's two abstention conditions disagree; §53 B-opt (145/150) and §51 B3 (Rel 0.977, Uns
+  0.682) show the option drives most controlled-task false abstentions; arXiv 2507.16199 ("abstention inflation")
+  reports the same effect and a mid-layer-preserved, late-overridden answer. Reviewer concern raised by the user.
+- **Scope.** Laptop only, $0, development data only; seed 56 sealed. Freeze committed before any model output.
+  Stopping rule D-45.
+- **Number.** D-80 is held for the pending §52 closure (awaits the user's Go).
+- **Authority.** The user, Advisor pane, 2026-11-08: "approved, go ahead with §55".
