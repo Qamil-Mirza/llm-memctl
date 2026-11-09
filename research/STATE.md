@@ -5,6 +5,15 @@ The current, defensible state of the memctl project. Every claim points to a sec
 EXPERIMENTS.md wins, and this file should be fixed. Only the Advisor edits this file
 (see [RESET_HANDOFF.md](../RESET_HANDOFF.md)).
 
+> **Repo cleanup, 2026-11-08 (119f0eb, branch `cleanup/mech-interp-only`).** The memctl-era code, configs, docs and
+> run folders for §1–§32 were removed, and EXPERIMENTS §1–§32 were condensed into one section. Links in this file to
+> removed paths still resolve:
+> - tracked files: `git show memctl-era-final:<path>` (tag at 0c016d4, local only);
+> - untracked run data: `archive/memctl-era-data.tar.zst` and `archive/memctl-era-external.tar.zst`, listed in the
+>   `.manifest` files beside them.
+>
+> Kept in place: runs/exp23_*, runs/exp24_*, their caches and verdicts, and everything from §33 on.
+
 ## In one paragraph
 
 The project asked whether a learned memory controller helps a language model answer questions over long

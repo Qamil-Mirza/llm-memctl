@@ -6,6 +6,15 @@ The numbers and caveats are in [EXPERIMENTS.md](../EXPERIMENTS.md); this file on
 (`items`, `steps`, `rewards`, `memory_actions`) are stored as `.jsonl.gz`.
 `memctl.runlog.open_trace` reads them transparently.
 
+> **Repo cleanup, 2026-11-08 (119f0eb, branch `cleanup/mech-interp-only`).** The memctl-era code, configs, docs and
+> run folders for §1–§32 were removed, and EXPERIMENTS §1–§32 were condensed into one section. Links in this file to
+> removed paths still resolve:
+> - tracked files: `git show memctl-era-final:<path>` (tag at 0c016d4, local only);
+> - untracked run data: `archive/memctl-era-data.tar.zst` and `archive/memctl-era-external.tar.zst`, listed in the
+>   `.manifest` files beside them.
+>
+> Kept in place: runs/exp23_*, runs/exp24_*, their caches and verdicts, and everything from §33 on.
+
 ## Shared reproducibility facts
 
 - **Data:** `data/longmemeval` (LongMemEval-S, 500 questions, 470 answerable; 5 stratified folds from
