@@ -352,3 +352,84 @@ def test_busy_rate():
     tr = [[0.0, 10, 0], [10.0, 8, 100], [20.0, 3, 180], [30.0, 1, 200]]
     assert RUN.busy_rate([tr], [10]) == 9.0
     assert RUN.busy_rate([None], [10]) is None
+
+
+# ---------------------------------------------------------------- Stage 0 math normaliser (frozen 2026-11-09)
+
+PM = r"\begin{pmatrix} -2 \\ -14 \\ -7 \end{pmatrix}"
+
+
+def test_norm_row_separators_survive():
+    """The released double strip turned this into '-2-14-7'; the normaliser keeps the entries."""
+    assert S.vector_entries(PM) == ["-2", "-14", "-7"]
+    assert S.pred_answer("math500", "</think> \\boxed{" + PM + "}") == ["-2", "-14", "-7"]
+    assert S.is_correct("math500", PM, "</think>\n\n\\boxed{" + PM + "}")
+    assert not S.is_correct_authors("math500", PM, "</think>\n\n\\boxed{" + PM + "}")   # the released miss
+
+
+def test_norm_pmatrix_tuple_bmatrix_left_right():
+    gold = r"\begin{pmatrix} -18 \\ -49 \\ 96 \end{pmatrix}"
+    for p in ["(-18,-49,96)", r"\left( -18, -49, 96 \right)", r"\begin{bmatrix} -18 \\ -49 \\ 96 \end{bmatrix}",
+              r"\begin{pmatrix}-18\\-49\\96\end{pmatrix}"]:
+        assert S.is_correct("math500", gold, "\\boxed{" + p + "}"), p
+    assert not S.is_correct("math500", gold, "\\boxed{(-18,-49,95)}")
+    assert not S.is_correct("math500", gold, "\\boxed{(-18,-49)}")                      # length must match
+    assert not S.is_correct("math500", gold, "\\boxed{-18}")                             # scalar never = vector
+    assert not S.same_answer("math500", ["-18", "-49", "96"], "-18")
+
+
+def test_norm_fractions_inside_vectors():
+    gold = r"\begin{pmatrix} 16/49 \\ 48/49 \\ 24/49 \end{pmatrix}"
+    assert S.is_correct("math500", gold, r"\boxed{\left(\frac{16}{49}, \frac{48}{49}, \frac{24}{49}\right)}")
+    assert S.is_correct("math500", gold, r"\boxed{\begin{pmatrix} \dfrac{16}{49} \\ \frac{48}{49} \\ \tfrac{24}{49} \end{pmatrix}}")
+    assert not S.is_correct("math500", gold, r"\boxed{\left(\frac{2}{3}, \frac{14}{15}, \frac{1}{3}\right)}")
+    assert S.vector_entries(r"(\frac{1,2}{3}, 4)") == [r"\frac{1,2}{3}", "4"]          # commas inside braces
+
+
+def test_norm_intervals_stay_out_of_tuple_path():
+    for iv in ["(0,1]", "[0,1)", "[0,1]", r"(-\infty, 3]", "(1+2)", "(3)"]:
+        assert S.vector_entries(iv) is None, iv
+    assert S.is_correct("math500", "(0,1]", r"\boxed{(0,1]}")
+    assert not S.is_correct("math500", "(0,1]", r"\boxed{(0,1)}")                       # interval != tuple
+    assert not S.is_correct("math500", "[0,1]", r"\boxed{(0,1)}")
+
+
+def test_norm_prefixed_tuple():
+    assert S.is_correct("math500", r"(2,\infty)", r"\boxed{x \in (2, \infty)}")
+    assert S.is_correct("math500", r"(2,\infty)", r"\boxed{(2, \infty)}")
+    assert not S.is_correct("math500", r"(2,\infty)", r"\boxed{x \in [2, \infty)}")
+    assert S.is_correct("math500", r"x \in [-2,7]", r"\boxed{[-2, 7]}")                  # dev gold 883 form
+    assert S.is_correct("math500", r"[-2,7]", r"\boxed{x \in [-2,7]}")
+
+
+def test_norm_matrix_shape():
+    m = r"\begin{pmatrix} 1 & 2 \\ 3 & 4 \end{pmatrix}"
+    assert S.vector_entries(m) == [["1", "2"], ["3", "4"]]
+    assert S.is_correct("math500", m, r"\boxed{\begin{bmatrix}1&2\\3&4\end{bmatrix}}")
+    assert not S.is_correct("math500", m, r"\boxed{(1,2,3,4)}")
+    assert S.vector_entries(r"\begin{pmatrix} 1 & 2 \end{pmatrix}") == ["1", "2"]          # row vector flattens
+
+
+def test_norm_scalars_single_strip():
+    assert S.is_correct("math500", r"\frac{14}{3}", r"\boxed{\dfrac{14}{3}}")
+    assert S.is_correct("math500", "p - q", r"\boxed{p - q}")
+    assert S.same_answer("math500", S.pred_answer("math500", r"\boxed{\frac{1}{2}}"), "0.5")
+
+
+def test_norm_dev_gold_roundtrip(items):
+    """Every dev MATH-500 gold equals itself written as a model would (\\boxed{gold}). Dev split only."""
+    split = C.make_split(items)
+    by_id = {int(r["id"]): r for r in items}
+    dev = split["dev"]["math500"]
+    assert len(dev) == 250
+    bad = []
+    n_vec = 0
+    for i in dev:
+        g = by_id[i]["original_answer"]
+        cg = S.gold_answer("math500", g)
+        n_vec += isinstance(cg, list)
+        text = "...</think>\n\nThe answer is $\\boxed{" + g + "}$."
+        if not (S.valid_pred(cg) and S.pred_answer("math500", text) == cg and S.is_correct("math500", g, text)):
+            bad.append((i, g))
+    assert not bad, bad[:10]
+    assert n_vec >= 4                                    # 4 matrix + tuple-like golds take the vector path
