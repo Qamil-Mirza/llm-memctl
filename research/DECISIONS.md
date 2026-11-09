@@ -357,6 +357,6 @@ the user has made the decision.
   calibration trade-off, with arXiv 2507.16199 as the closest prior work. A cross-model table from cached outputs is
   not built on P0 alone. Earlier controlled-task results (§49–§54) stand under P0; the inconsistency was not inflating
   them.
-- **Spend.** Pod x75t0k719w43yh, lifetime 3,498 s; billing posted $0.587 (7a3e4ee). Programme total ≈ $34.34 of $36.
+- **Spend.** Pod x75t0k719w43yh, lifetime 3,498 s; billing posted $0.587 (5475d0a). Programme total ≈ $34.34 of $36.
 - **Authority.** The user, Advisor pane, 2026-11-08: "Go on D-82".
 
