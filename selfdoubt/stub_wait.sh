@@ -21,7 +21,7 @@ $S "cd /root/sd && tar -czf /root/stub_out.tgz runs/selfdoubt/stub" && \
   tar -xzf "$L/stub_out.tgz" -C "$WT" && echo "copied back $(date -u +%T)" >> "$L/wait.log"
 curl -s -X DELETE -H "Authorization: Bearer $KEY" "$API/pods/$POD" >> "$L/wait.log" 2>&1
 echo "deleted $POD at $(date -u +%T) (lifetime $(( $(date +%s) - CREATED )) s)" >> "$L/wait.log"
-kill "$(cat $L/hardstop.pid)" 2>/dev/null && echo "hard-stop timer killed" >> "$L/wait.log"
+kill "$(cat $L/hardstop.pid)" 2>/dev/null && echo "hard-stop timer killed" >> "$L/wait.log" && rm -f "$L/auth.hdr"
 mkdir -p "$MAIN/runs/selfdoubt/stub" && cp -a runs/selfdoubt/stub/. "$MAIN/runs/selfdoubt/stub/" && echo "copied to main checkout" >> "$L/wait.log"
 n=$(curl -s -H "Authorization: Bearer $KEY" "$API/pods" | python3 -c "import sys,json; print(len(json.load(sys.stdin)))")
 echo "pods after: $n" >> "$L/wait.log"; echo "WAIT DONE pods_after=$n"

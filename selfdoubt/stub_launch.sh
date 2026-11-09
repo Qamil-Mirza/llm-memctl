@@ -29,8 +29,10 @@ POD=$(python3 -c "import json; d=json.load(open('$L/create.json')); print(d.get(
 PRICE=$(python3 -c "import json; d=json.load(open('$L/create.json')); print(d.get('costPerHr') or d.get('adjustedCostPerHr'))")
 echo "{\"pod\": \"$POD\", \"price\": \"$PRICE\", \"created\": $CREATED, \"delete_after_s\": $HARD_S}" > "$L/pod.json"
 echo "created $POD at $(date -u +%T) price $PRICE/h" | tee -a "$L/launch.log"
+# the timer reads the key from a 600-mode header file, so it never appears on a process command line (ps)
+( umask 077; printf 'Authorization: Bearer %s\n' "$KEY" > "$WT/$L/auth.hdr" )
 nohup setsid bash -c "sleep $HARD_S; echo HARDSTOP \$(date -u +%T) >> '$WT/$L/hardstop.log'; \
-  curl -s -X DELETE -H 'Authorization: Bearer $KEY' '$API/pods/$POD' >> '$WT/$L/hardstop.log' 2>&1" > /dev/null 2>&1 < /dev/null &
+  curl -s -X DELETE -H @'$WT/$L/auth.hdr' '$API/pods/$POD' >> '$WT/$L/hardstop.log' 2>&1" > /dev/null 2>&1 < /dev/null &
 echo $! > "$L/hardstop.pid"; echo "hard-stop timer pid $(cat $L/hardstop.pid) ($HARD_S s after create)" | tee -a "$L/launch.log"
 del_now() { echo "$1: deleting $POD now" | tee -a "$L/launch.log"; curl -s -X DELETE -H "Authorization: Bearer $KEY" "$API/pods/$POD" >> "$L/launch.log" 2>&1
   kill "$(cat $L/hardstop.pid)" 2>/dev/null || true; exit 4; }
