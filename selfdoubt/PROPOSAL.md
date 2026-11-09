@@ -21,6 +21,11 @@ Audience: Mihran Miroyan, co-first author of Wu, Miroyan et al., "Are Large Reas
    without the user's explicit approval, and this applies to the stub as well (see Budget).
 3. **Models:** both Qwen3-8B and Qwen3-1.7B.
 4. **What goes to Mihran, and when:** decided later.
+5. **Second budget (user, 2026-11-08).** A second RunPod account holds $25. It is set up only after the $1.66 under
+   the programme cap is used. The same spending rule applies to it.
+6. **Weight-space programming (user, 2026-11-08).** It is to be considered as a fix candidate: the thesis §51 method,
+   in which an agent proposes rank-1 weight edits, scored here on valid and invalid updates. It is planned for Stage 3,
+   funded from the second account.
 
 ## The gap
 
@@ -191,9 +196,16 @@ The candidates are:
 - a steering direction (from the with- vs without-clause contrast, or from what Stage 2 finds);
 - attention routing (Guo et al.);
 - the prompt fix;
-- a logit bias toward the new answer, a control that tied our weight edits in thesis §53.
+- a logit bias toward the new answer, a control that tied our weight edits in thesis §53;
+- **an agent-proposed weight edit** (the thesis §51 protocol). The editor is given Stage 2's locus and a dev split
+  of V and I2 cases, and proposes a rank-1 edit. The edit is confirmed once on a sealed held-out split, against
+  random edits of the same form and the logit-bias control (thesis §53, F19).
 
 Each is scored on V and I2 with U(λ).
+
+On novelty: agent-made weight-edit fixes are not new in themselves (MIT's weight-space programming work, 2026-11;
+Steer2Edit). What would be new is **selectivity**. Does an edit that releases self-doubt also raise acceptance of
+forged updates? That is confirmed once on sealed held-out data, under a pre-registered reading.
 
 ## Controls the literature requires
 
