@@ -3346,7 +3346,7 @@ Results: `runs/exp54/cases54.jsonl` (sha256 1f0d4133…), `cases54_counts.json`,
     stratified by task (stats51, B 10,000, seed 5102). LongMemEval uses a paired question bootstrap.
 - **Run.** Pod x75t0k719w43yh, one A40 secure at $0.59/h. Created 01:32:32 and deleted 02:30:50 UTC on 2026-11-09;
   0 pods before and after.
-  - Lifetime 3,498 s ≈ **$0.57** (quote $1.00, hard stop $1.50 / 150 min). Billing not yet posted.
+  - Lifetime 3,498 s; **billing posted $0.587** (3,498,414 ms billed, disk included; quote $1.00, hard stop $1.50 / 150 min).
   - All rows complete and nothing dropped: W 750 × 3 free, 750 × 2 prefix; LongMemEval 200 × 3.
   - D-22 smoke: 8/8 graded classes and 8/8 tokens equal to the laptop §54 B0.
   - Device check: 20/20 tokens and classes equal.
