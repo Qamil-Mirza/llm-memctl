@@ -97,6 +97,7 @@ def _paired(diffs: dict, n_boot: int, level: float, seed: int = 56) -> dict:
 
 
 EQ_BAND = 0.10     # R1.B1 / R1.B2: SHOWN if the 90% interval is inside +-0.10 (inclusive), NOT SHOWN if wholly outside
+MIN_B2_PAIRS = 200  # Advisor 2026-11-09: fewer R1.B2 pairs than this is reported as such (the reading is unchanged)
 
 
 def r1b(store: Path, stage0_store: Path, split_name: str, n_boot: int) -> dict:
@@ -124,7 +125,12 @@ def r1b(store: Path, stage0_store: Path, split_name: str, n_boot: int) -> dict:
     ug = {r["item_id"]: r["category"] == "new" for r in R.score_model(s0, items)
           if r["arm"] == "UG" and r["cut"] == cut and ok(r)}
     b2 = {i: by[i]["V0"] - ug[i] for i in by if "V0" in by[i] and i in ug}
-    out = {"split_name": split_name, "cut": cut, "payload": "plain", "band": EQ_BAND}
+    v0 = {i for i in by if "V0" in by[i]}
+    out = {"split_name": split_name, "cut": cut, "payload": "plain", "band": EQ_BAND,
+           "r1b2_pairing": {"join": "item id", "s1_v0_items_kept": len(v0), "stage0_ug_items_kept": len(ug),
+                            "pairs": len(b2), "min_pairs": MIN_B2_PAIRS, "below_min": len(b2) < MIN_B2_PAIRS,
+                            "note": (f"only {len(b2)} R1.B2 pairs (< {MIN_B2_PAIRS}); reported, not shrunk silently"
+                                     if len(b2) < MIN_B2_PAIRS else "ok")}}
     for name, d, what in (("R1.B1", b1, "acc(I2b) - acc(VG), S1"),
                           ("R1.B2", b2, "acc(V0 under S1) - acc(UG, Stage 0, authors' prompt), same items")):
         p = _paired(d, n_boot, 0.90)
@@ -164,6 +170,24 @@ def v2(store_s1t: Path, store_s0: Path, split_name: str, n_boot: int) -> dict:
     return out
 
 
+def heldout(store_s1t: Path, store_s1: Path, stage0_store: Path, split_name: str, n_boot: int) -> dict:
+    """The Stage 1 held-out readings, all frozen at c69f28e, nothing new:
+    - the selectivity reading (gate, then dI2b - 0.5 dV) on the PRIMARY setting S1t (v2 dev rule: S1t's gate passed);
+    - R1.B1 and R1.B2 on the S1 setting (r1b), with the R1.B2 item-id join reported.
+    Plain payload throughout. Run on dev stores it is the dry check (the numbers the rules were formed on)."""
+    items = {int(r["id"]): r for r in C.load_items()}
+    keep = split_ids(split_name)
+    recs = [r for r in C.Store(store_s1t).recs.values() if r["item_id"] in keep]
+    got = {r.get("sys", "s1") for r in recs}
+    if got != {"s1t"}:
+        raise SystemExit(f"{store_s1t}: expected sys s1t, found {sorted(got)}")
+    rd = S1.readings(S1.score(recs, items), n_boot, payload="plain")
+    return {"split_name": split_name, "payload": "plain", "rules": "PROPOSAL c69f28e (frozen); primary setting s1t",
+            "primary_s1t": {k: rd[k] for k in ("n_items", "acceptance", "deltas", "gate", "selectivity", "U_lambda1", "U_lambda2") if k in rd},
+            "payload_sanity_s1t": S1.payload_sanity({"plain": rd["acceptance"]}),
+            "s1_r1b": r1b(store_s1, stage0_store, split_name, n_boot)}
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -187,6 +211,13 @@ def main(argv=None):
     b.add_argument("--split-name", choices=["dev", "heldout"], default="dev")
     b.add_argument("--heldout-confirmed", action="store_true")
     b.add_argument("--n-boot", type=int, default=2000)
+    h = sub.add_parser("heldout", help="the frozen Stage 1 held-out readings (S1t selectivity + S1 R1.B1/B2)")
+    h.add_argument("--store-s1t", required=True)
+    h.add_argument("--store-s1", required=True)
+    h.add_argument("--stage0-store", required=True, help="Stage 0 store of the same split (UG rows at the same cut)")
+    h.add_argument("--split-name", choices=["dev", "heldout"], default="heldout")
+    h.add_argument("--heldout-confirmed", action="store_true")
+    h.add_argument("--n-boot", type=int, default=2000)
     a = ap.parse_args(argv)
     if a.cmd == "cut":
         print(json.dumps(cut_choice(Path(a.stage0_store), a.n_boot), indent=1))
@@ -196,6 +227,10 @@ def main(argv=None):
     if a.cmd == "v2":
         out = v2(Path(a.store_s1t), Path(a.store_s0), a.split_name, a.n_boot)
         (Path(a.store_s1t).parent.parent.parent / f"stage1_v2_{a.split_name}.json").write_text(
+            json.dumps(out, indent=1) + "\n")
+    elif a.cmd == "heldout":
+        out = heldout(Path(a.store_s1t), Path(a.store_s1), Path(a.stage0_store), a.split_name, a.n_boot)
+        (Path(a.store_s1t).parent.parent.parent / f"stage1_final_{a.split_name}.json").write_text(
             json.dumps(out, indent=1) + "\n")
     elif a.cmd == "r1b":
         out = r1b(Path(a.store), Path(a.stage0_store), a.split_name, a.n_boot)

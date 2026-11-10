@@ -53,6 +53,14 @@ sha() { sha256sum "$1" | cut -d' ' -f1; }
 [ "$(sha selfdoubt/vendor/interrupt_lrm/prompts/intervene/w_prompt_guidance.json)" = \
   5108777179a4385cef92bbd1227c10f5529d2ac20d726f9d1f61831864ce15f8 ] || { log "w wrapper sha mismatch"; exit 3; }
 grep -q "$UPSTREAM" selfdoubt/vendor/interrupt_lrm/__init__.py || { log "vendored commit mismatch"; exit 3; }
+# FULL_CHECK="path|sha256;...": bundled stores that must be byte-identical to the file already scored (Stage 1
+# held-out reuses the Stage 0 held-out FULL traces, so it must be the very store Stage 0 scored)
+if [ -n "${FULL_CHECK:-}" ]; then
+  IFS=';' read -ra _fc <<< "$FULL_CHECK"
+  for _x in "${_fc[@]}"; do IFS='|' read -r _p _h <<< "$_x"
+    [ "$(sha "$_p" 2>/dev/null)" = "$_h" ] || { log "bundled store $_p: sha mismatch or missing"; exit 3; }
+    log "bundled store ok: $_p"; done
+fi
 
 import_check() {
   $PY -c "import sys; sys.path.insert(0, '.'); from selfdoubt import common, engines, scoring, stage0_run, stage0_report; \
