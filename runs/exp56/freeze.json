@@ -33,8 +33,9 @@
   "out": "NM (no usable P_ans), W (ANS answered wrong)",
   "grader": "memctl/analysis/grade51.py via exp51_common.grade (head + tail of the P0 generation)"
  },
- "t_star_rule": "t* = argmax of the unmodified logits at P_ans over the vocabulary minus the frozen §51 B1 set (every id whose decoded, lower-cased, stripped text begins with 'unknown'); D = logit[UNK_ID] − logit[t*], UNK_ID = first id of ' unknown'. Same for every class; for ANS rows agreement of t* with gold_first_id (first id of ' ' + gold) is reported descriptively",
- "dla": "a_i = down_proj input at P_ans; DLA_i = a_i · <down_proj.weight[:, i], g ⊙ (u_unk − u_t*) / σ>, σ = sqrt(mean(h²)+eps) of the final-norm input at P_ans; stored layers 20–35 (a and DLA, float32), all-layer MLP / attention / embedding DLA; sum check 1e-4 on 2 dev-A rows (runs/exp56/dla_test.json)",
+ "t_star_rule": "rev 0a (df5d028), rule (c), every class: t* = the highest-logit token at P_ans among the first tokens of ' ' + city for the row's city_pool (all rows 'main', 12 cities, single tokens asserted); D = logit[UNK_ID] − logit[t*], UNK_ID = first id of ' unknown' (9788). Descriptive: the rev-0 rule's t* (argmax over the vocabulary minus the §51 B1 set) per class, and city-t* = gold_first_id on ANS rows (75 of 603 C rows answer name-first)",
+ "rev": "rev 0 freeze 98d96e7; updated for rev 0a (df5d028) before any neuron is ranked",
+ "dla": "a_i = down_proj input at P_ans; DLA_i = a_i · <down_proj.weight[:, i], g ⊙ (u_unk − u_t*) / σ>, σ = sqrt(mean(h²)+eps) of the final-norm input at P_ans; stored for all 36 layers (a and DLA, float32; rev 0a), plus all-layer MLP / attention / embedding DLA; sum check 1e-4 on 2 dev-A rows (runs/exp56/dla_test.json, recomputed under rev 0a)",
  "ablation": "down_proj pre-hook at absolute position P_ans only, §51 prefix mode (MAX_NEW_RELEASE 16), graded head + tail",
  "engine": {
   "script": "scripts/exp51_engine.py",
@@ -46,8 +47,8 @@
   "threads": 16
  },
  "code": {
-  "scripts/exp56_common.py": "cd8d76e496ba340371afe1e4333d58cc6d6e89b51e1677f334c1b95a1287372a",
-  "scripts/exp56_stage0.py": "5ee12e4262aca89acb904863e65665783c5e1283a4ac3f4a2b69b5111acd8379",
+  "scripts/exp56_common.py": "ddb533b9d89d4fb377aa287c3d368a2e47eacae6ef56a57d29eebe98ec876f56",
+  "scripts/exp56_stage0.py": "b2d0b2b46e159ed9143f7a81e92407514be459bb675424ea9e8118d4298858e1",
   "scripts/exp51_common.py": "9d3b436b8f83cf3211602d6537a7e94ff38874a2469c7ca1fc9e9ec5779d19fe",
   "memctl/analysis/grade51.py": "560846fc912776165d0289f39c35cd136435f722e3d4318504563dcf913c2ab9"
  },

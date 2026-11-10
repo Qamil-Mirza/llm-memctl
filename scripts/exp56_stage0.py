@@ -113,18 +113,20 @@ def stage_dla_test(e):
         ids = CM.prefix_ids(rec)
         assert len(ids) - 1 == rec["p_ans"]
         t0 = time.time()
-        res = rd.read(ids)
+        res = rd.read(ids, X.city_ids(e.encode, r))
         dsum = res["dla"].astype(np.float64).sum(1)
         err = np.abs(dsum - res["mlp_dla"])
         decomp = res["emb_dla"] + res["attn_dla"].sum() + res["mlp_dla"].sum()
         out.append({"case_id": x["case_id"], "cls": x["cls"], "t_star": res["t_star"],
-                    "t_star_text": e.decode([res["t_star"]]), "D": res["D"], "D_lin": res["D_lin"],
+                    "t_star_text": e.decode([res["t_star"]]), "t_star_rev0_text": e.decode([res["t_star_rev0"]]),
+                    "D": res["D"], "D_lin": res["D_lin"],
                     "decomposition_sum": float(decomp), "max_abs_err_layer_sum": float(err.max()),
                     "worst_layer": int(err.argmax()), "mlp_dla_range": [float(res["mlp_dla"].min()),
                                                                         float(res["mlp_dla"].max())],
                     "pass": bool(err.max() <= TOL), "read_s": round(time.time() - t0, 2)})
         log(json.dumps(out[-1]))
-    summ = {"tol": TOL, "rows": out, "pass": all(o["pass"] for o in out),
+    summ = {"tol": TOL, "rule": "rev 0a (df5d028): t* = best city token of the row's pool", "rows": out,
+            "pass": all(o["pass"] for o in out),
             "note": "layer sum check over all 36 layers; D_lin = <h_final, v>; decomposition = emb + sum attn + sum mlp DLA"}
     (OUT / "dla_test.json").write_text(json.dumps(summ, indent=1))
     log(f"DLA sum check pass={summ['pass']}")
@@ -139,7 +141,7 @@ def stage_timing(e):
     rd = X.Reader(e)
     ids = CM.prefix_ids(rec)
     t0 = time.time()
-    res = rd.read(ids)
+    res = rd.read(ids, X.city_ids(e.encode, r))
     t_read = time.time() - t0
     p = OUT / "stage0_timing" / f"{x['case_id']}.npz"
     t1 = time.time()
@@ -215,13 +217,16 @@ def stage_freeze():
                     "UA": "UNA-rel/UNA-swap, any other graded class (descriptive only)",
                     "out": "NM (no usable P_ans), W (ANS answered wrong)",
                     "grader": "memctl/analysis/grade51.py via exp51_common.grade (head + tail of the P0 generation)"},
-        "t_star_rule": ("t* = argmax of the unmodified logits at P_ans over the vocabulary minus the frozen §51 B1 set "
-                        "(every id whose decoded, lower-cased, stripped text begins with 'unknown'); D = logit[UNK_ID] − "
-                        "logit[t*], UNK_ID = first id of ' unknown'. Same for every class; for ANS rows agreement of t* "
-                        "with gold_first_id (first id of ' ' + gold) is reported descriptively"),
+        "t_star_rule": ("rev 0a (df5d028), rule (c), every class: t* = the highest-logit token at P_ans among the first "
+                        "tokens of ' ' + city for the row's city_pool (all rows 'main', 12 cities, single tokens "
+                        "asserted); D = logit[UNK_ID] − logit[t*], UNK_ID = first id of ' unknown' (9788). Descriptive: "
+                        "the rev-0 rule's t* (argmax over the vocabulary minus the §51 B1 set) per class, and city-t* = "
+                        "gold_first_id on ANS rows (75 of 603 C rows answer name-first)"),
+        "rev": "rev 0 freeze 98d96e7; updated for rev 0a (df5d028) before any neuron is ranked",
         "dla": ("a_i = down_proj input at P_ans; DLA_i = a_i · <down_proj.weight[:, i], g ⊙ (u_unk − u_t*) / σ>, "
-                "σ = sqrt(mean(h²)+eps) of the final-norm input at P_ans; stored layers 20–35 (a and DLA, float32), "
-                "all-layer MLP / attention / embedding DLA; sum check 1e-4 on 2 dev-A rows (runs/exp56/dla_test.json)"),
+                "σ = sqrt(mean(h²)+eps) of the final-norm input at P_ans; stored for all 36 layers (a and DLA, float32; "
+                "rev 0a), plus all-layer MLP / attention / embedding DLA; sum check 1e-4 on 2 dev-A rows "
+                "(runs/exp56/dla_test.json, recomputed under rev 0a)"),
         "ablation": "down_proj pre-hook at absolute position P_ans only, §51 prefix mode (MAX_NEW_RELEASE 16), "
                     "graded head + tail",
         "engine": {"script": "scripts/exp51_engine.py", "sha256": X.sha_file(ROOT / "scripts/exp51_engine.py"),

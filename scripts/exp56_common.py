@@ -8,16 +8,17 @@ Fixed choices of this build (stage-0 freeze):
 - Forward input = the row's stored B0 prompt ids + gen ids through the designated marker's ':' (CM.prefix_ids), so
   the last position is P_ans (= rec["p_ans"]). One teacher-forced pass, no cache.
 - "unknown" first token: UNK_ID = the first id of " unknown" (9788 in the Qwen 2.5 vocabulary; it is the token after
-  ':' on every abstention row of §54 B0 and §55 P0). t* = argmax of the unmodified logits at P_ans over the vocabulary
-  with every id of the frozen §51 B1 set (decoded, lower-cased, stripped text begins with "unknown") removed. Same rule
-  for every class; no gold is used. For ANS rows t* is compared with the gold's first token (first id of " " + gold),
-  descriptively.
+  ':' on every abstention row of §54 B0 and §55 P0).
+- t* (rev 0a, df5d028, rule (c), every class): the highest-logit token at P_ans among the first tokens of the row's
+  city_pool (" " + city; every city is one token, asserted). Reported beside it, descriptively: the rev-0 rule's t*
+  (argmax over the vocabulary minus the frozen §51 B1 set, every id whose decoded, lower-cased, stripped text begins
+  with "unknown").
 - D = logit[UNK_ID] − logit[t*] at P_ans.
 - Neuron i of layer l: a_i = the input of mlp.down_proj at P_ans (= silu(gate_i(x)) · up_i(x)); write vector w_i =
   down_proj.weight[:, i]. v = g ⊙ (u_unk − u_t*) / σ with g = model.norm.weight, σ = sqrt(mean(h²) + eps) of the
   final-norm input h at P_ans, u = lm_head rows. DLA_i = a_i · ⟨w_i, v⟩; MLP DLA of layer l = ⟨mlp_out_l, v⟩ with
   mlp_out_l captured from the down_proj output. Positive = pushes "unknown".
-- Stored per row: a and DLA for LAYERS (default 20–35, 16 × 11,008 each, float32), plus for all layers the MLP DLA,
+- Stored per row (rev 0a): a and DLA for all 36 layers (36 × 11,008 each, float32), plus for all layers the MLP DLA,
   the attention (o_proj) DLA and the embedding DLA, so the full decomposition of D is checkable.
 - Ablation: a forward pre-hook on mlp.down_proj sets the chosen neurons to the given values at absolute position P_ans
   only (the §51 engine's prefix mode: KV over positions < P_ans, step 0 = P_ans); later steps are not touched.
@@ -41,7 +42,7 @@ CASES = ROOT / "runs/exp54/cases54.jsonl"
 B054 = ROOT / "runs/exp54/run"                 # §54 B0: ANS rows, both halves (laptop, max_new 160)
 P055 = ROOT / "runs/exp55/pod/run/P0"          # §55 P0: UNA rows, even half (pod, HF fp32 no-tf32, max_new 256)
 DEVB_UNA = OUT / "run/devb_una"                # new P0 UNA generation, odd half (laptop, §55 settings)
-LAYERS = tuple(range(20, 36))
+LAYERS = tuple(range(36))                      # rev 0a: all layers (rev 0 default was 20-35)
 UNK_TEXT = " unknown"
 CLASSES = ("FA", "C", "TA", "UA")
 
@@ -52,6 +53,25 @@ def sha_file(p) -> str:
 
 def cases() -> list[dict]:
     return [json.loads(l) for l in CASES.read_text().splitlines()]
+
+
+def city_pool(row: dict) -> list[str]:
+    from memctl.analysis import grade51 as GR
+    if row["city_pool"] == "main":
+        return list(GR.MAIN_CITIES)
+    if row["city_pool"] == "T":
+        return list(CM.t_cities())
+    raise ValueError(row["city_pool"])
+
+
+def city_ids(encode, row: dict) -> list[int]:
+    """First (and only) token of " " + city for each city of the row's pool; single tokens asserted."""
+    out = []
+    for c in city_pool(row):
+        t = encode(" " + c)
+        assert len(t) == 1, (c, t)
+        out.append(t[0])
+    return out
 
 
 def half_of(row: dict) -> str:
@@ -101,7 +121,8 @@ class Reader:
         mask[self.unk_set] = True
         self.mask = mask
 
-    def read(self, ids: list[int]) -> dict:
+    def read(self, ids: list[int], cand_ids: list[int]) -> dict:
+        """cand_ids: the row's city first tokens; t* = the highest-logit one (rev 0a)."""
         torch, e = self.torch, self.e
         n = e.n_layers
         cap: dict = {}
@@ -134,12 +155,15 @@ class Reader:
                 h.remove()
         logits = out.logits[0, -1].float()
         masked = logits.masked_fill(self.mask, float("-inf"))
-        t_star = int(masked.argmax())
+        t_frozen = int(masked.argmax())                                             # rev-0 rule, descriptive
+        cand = self.torch.as_tensor(list(cand_ids), dtype=self.torch.long)
+        t_star = int(cand[int(logits[cand].argmax())])
         h = cap["h"].float()
         sigma = float(torch.sqrt((h * h).mean() + self.eps))
         v = self.g * (self.U[self.unk_id] - self.U[t_star]) / sigma
         D = float(logits[self.unk_id] - logits[t_star])
-        res = {"t_star": t_star, "unk_id": self.unk_id, "D": D, "D_lin": float(h @ v), "sigma": sigma,
+        res = {"t_star": t_star, "t_star_rev0": t_frozen, "logit_t_rev0": float(logits[t_frozen]),
+               "unk_id": self.unk_id, "D": D, "D_lin": float(h @ v), "sigma": sigma,
                "logit_unk": float(logits[self.unk_id]), "logit_tstar": float(logits[t_star]),
                "top1": int(logits.argmax()),
                "mlp_dla": np.array([float(cap[("mlp", l)] @ v) for l in range(n)], np.float64),
@@ -158,7 +182,7 @@ def save_read(path: Path, res: dict, meta: dict) -> None:
     tmp = path.with_suffix(".tmp.npz")
     np.savez(tmp, a=res["a"], dla=res["dla"], layers=res["layers"], mlp_dla=res["mlp_dla"],
              attn_dla=res["attn_dla"],
-             meta=np.array(json.dumps({**meta, **{k: res[k] for k in ("t_star", "unk_id", "D", "D_lin", "sigma",
+             meta=np.array(json.dumps({**meta, **{k: res[k] for k in ("t_star", "t_star_rev0", "logit_t_rev0", "unk_id", "D", "D_lin", "sigma",
                                                                          "logit_unk", "logit_tstar", "top1",
                                                                          "emb_dla")}})))
     tmp.replace(path)

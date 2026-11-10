@@ -31,18 +31,20 @@ def fake_rec(e):
 def test_layer_sum_and_decomposition(eng):
     rd = X.Reader(eng, layers=range(eng.n_layers))
     rec = fake_rec(eng)
-    res = rd.read(X.CM.prefix_ids(rec))
+    cities = [eng.encode(" Leeds")[0], eng.encode(" York")[0]]
+    res = rd.read(X.CM.prefix_ids(rec), cities)
+    assert res["t_star"] in cities
     assert np.allclose(res["dla"].astype(np.float64).sum(1), res["mlp_dla"], atol=1e-4)
     assert abs(res["D"] - res["D_lin"]) < 1e-3
     dec = res["emb_dla"] + res["attn_dla"].sum() + res["mlp_dla"].sum()
     assert abs(dec - res["D_lin"]) < 1e-3
-    assert res["t_star"] not in rd.unk_set and rd.unk_id == eng.encode(" unknown")[0]
+    assert res["t_star_rev0"] not in rd.unk_set and rd.unk_id == eng.encode(" unknown")[0]
 
 
 def test_ablation_no_op_and_p_ans_only(eng):
     rec = fake_rec(eng)
     rd = X.Reader(eng, layers=range(eng.n_layers))
-    res = rd.read(X.CM.prefix_ids(rec))
+    res = rd.read(X.CM.prefix_ids(rec), [eng.encode(" Leeds")[0]])
     l = eng.n_layers - 1
     idx = np.arange(5)
     same = {l: (idx, res["a"][l][idx])}                       # set to its own value: nothing changes
@@ -60,3 +62,14 @@ def test_ablation_no_op_and_p_ans_only(eng):
             h.remove()
     hits = [(lo, T) for lo, T in fired if lo <= rec["p_ans"] < lo + T]
     assert len(hits) == 1 and hits[0] == (rec["p_ans"], 1)    # the prefill stops before P_ans; step 0 is P_ans
+
+
+def test_city_ids_single_token_main_pool():
+    from transformers import AutoTokenizer
+    if not (EN.SNAPSHOT / "tokenizer.json").exists():
+        pytest.skip("Qwen tokenizer not on this machine")
+    tok = AutoTokenizer.from_pretrained(str(EN.SNAPSHOT))
+    enc = lambda s: list(tok(s, add_special_tokens=False).input_ids)
+    ids = X.city_ids(enc, {"city_pool": "main"})
+    assert len(ids) == len(set(ids)) == 12 and X.Reader.__init__ is not None
+    assert enc(" Leeds")[0] in ids
