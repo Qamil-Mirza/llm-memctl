@@ -53,8 +53,9 @@ def test_runner_fake_engine_dev_only(tmp_path, tok):
             "--limit", "2", "--out-root", str(out), "--cut", "0.5"]
     assert R.main(args, engine=eng) == 0
     recs = [json.loads(x) for x in (out / "stage1/Qwen3-1.7B/gen.jsonl").read_text().splitlines()]
-    assert len(recs) == 2 * len(S1.ARMS) and {r["arm"] for r in recs} == set(S1.ARMS)
-    assert all(r["key"].startswith("S1|") and r["cut"] == 0.5 and r["payload"] == "plain" for r in recs)
+    tool = [a for a in S1.ARMS if a.startswith("I")]
+    assert len(recs) == 2 * (len(S1.ARMS) + len(tool)) and {r["arm"] for r in recs} == set(S1.ARMS)   # plain + doc
+    assert all(r["key"].startswith("S1|") and r["cut"] == 0.5 for r in recs)
     full = (out / "full/Qwen3-1.7B/gen.jsonl").read_text().splitlines()
     assert len(full) == 2                                   # FULL generated once for items without one
     n_calls = eng.calls
@@ -91,11 +92,16 @@ def test_readings_gate_and_selectivity():
            "I2b": [1] * 40 + [0] * 60, "I2c": [1] * 70 + [0] * 30}
     r = S1.readings(rows_for(acc), n_boot=300)
     assert abs(r["deltas"]["dV"]["point"] - 0.5) < 1e-9 and r["gate"]["pass"]
-    assert abs(r["deltas"]["dI2b"]["point"] - 0.4) < 1e-9 and r["not_selective"]["verdict"] == "SHOWN"
+    assert abs(r["deltas"]["dI2b"]["point"] - 0.4) < 1e-9 and r["selectivity"]["verdict"] == "NOT SELECTIVE"
     assert abs(r["U_lambda1"]["point"] - 0.1) < 1e-9
     acc["VG"] = acc["V0"][:]
     r = S1.readings(rows_for(acc), n_boot=300)
-    assert not r["gate"]["pass"] and r["not_selective"]["verdict"].startswith("UNDETERMINED")
+    assert not r["gate"]["pass"] and r["selectivity"]["verdict"].startswith("UNDETERMINED")
+    acc["VG"] = [1] * 90 + [0] * 10
+    acc["I2b"] = [0] * n
+    assert S1.readings(rows_for(acc), n_boot=300)["selectivity"]["verdict"] == "SELECTIVE"
+    assert S1.payload_sanity({"plain": {"I1": 0, "I2c": 0}, "doc": {"I1": 0, "I2c": 0.1}})["pass"]
+    assert not S1.payload_sanity({"plain": {"I1": 0, "I2c": 0}, "doc": {"I1": 0, "I2c": 0}})["pass"]
 
 
 def test_second_payload_reruns_only_tool_arms(tmp_path, tok):
@@ -104,10 +110,10 @@ def test_second_payload_reruns_only_tool_arms(tmp_path, tok):
     out = tmp_path / "dev"
     eng = E.FakeEngine("Qwen/Qwen3-1.7B", tok)
     args = ["--engine", "fake", "--model", "Qwen/Qwen3-1.7B", "--split-name", "dev", "--source", "gsm8k",
-            "--limit", "1", "--out-root", str(out), "--cut", "0.9"]
+            "--limit", "1", "--out-root", str(out), "--cut", "0.9", "--payload", "plain"]
     assert R.main(args, engine=eng) == 0
     c0 = eng.calls
-    assert R.main(args + ["--payload", "doc"], engine=eng) == 0
+    assert R.main(args[:-1] + ["doc"], engine=eng) == 0
     recs = [json.loads(x) for x in (out / "stage1/Qwen3-1.7B/gen.jsonl").read_text().splitlines()]
     tool = [a for a in S1.ARMS if a.startswith("I")]
     assert eng.calls - c0 == len(tool) and len(recs) == len(S1.ARMS) + len(tool)

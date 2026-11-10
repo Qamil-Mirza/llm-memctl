@@ -47,12 +47,15 @@ def main(argv=None, engine=None):
     ap.add_argument("--max-num-seqs", type=int, default=None)
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--cut", type=float, required=True, help="dev-chosen cut (frozen before held-out)")
-    ap.add_argument("--payload", choices=sorted(S1.PAYLOADS), default="plain")
+    ap.add_argument("--payload", default="plain,doc",
+                    help="comma list; plain = PRIMARY (carries the reading), doc = SECONDARY (descriptive)")
     ap.add_argument("--arms", default=",".join(S1.ARMS))
     a = ap.parse_args(argv)
     if a.split_name == "heldout" and not a.allow_heldout:
         raise SystemExit("held-out generation needs --allow-heldout (only after the dev choices are frozen)")
     arms = tuple(x for x in a.arms.split(",") if x)
+    payloads = tuple(x for x in a.payload.split(",") if x)
+    assert payloads and set(payloads) <= set(S1.PAYLOADS), payloads
     assert set(arms) <= set(S1.ARMS), arms
     t0 = time.time()
     deadline = t0 + a.deadline_s if a.deadline_s else None
@@ -65,7 +68,7 @@ def main(argv=None, engine=None):
     md = out_root / "stage1" / tag
     md.mkdir(parents=True, exist_ok=True)
     store = C.Store(md / "gen.jsonl")
-    log(f"stage1: {len(sel)} {a.split_name} items, cut {a.cut}, payload {a.payload}, arms {arms}; "
+    log(f"stage1: {len(sel)} {a.split_name} items, cut {a.cut}, payloads {payloads}, arms {arms}; "
         f"FULL records {len(full_store.full_by_item(a.model))}; stage1 records {len(store.recs)}")
     if engine is None:
         if a.engine == "hf":
@@ -75,7 +78,7 @@ def main(argv=None, engine=None):
                                   gpu_memory_utilization=a.gpu_memory_utilization, max_num_seqs=a.max_num_seqs)
     inv = time.strftime("%Y%m%dT%H%M%S")
     meta = {"model": a.model, "revision": C.MODELS[a.model], "split_name": a.split_name, "split_sha256": sha,
-            "cut": a.cut, "payload": a.payload, "arms": list(arms), "system_prompt": S1.system_prompt_s1(),
+            "cut": a.cut, "payloads": list(payloads), "arms": list(arms), "system_prompt": S1.system_prompt_s1(),
             "item_ids": [int(r["id"]) for r in sel], "max_tokens": a.max_tokens, "sampling": C.SAMPLING,
             "provenance": C.provenance()}
     (md / "run_meta.json").write_text(json.dumps(meta, indent=1) + "\n")
@@ -85,7 +88,12 @@ def main(argv=None, engine=None):
         stopped = run_phase("FULL", engine, full_store, C.plan_full(a.model, engine.tok, need_full), a.max_tokens,
                             a.chunk, deadline, out_root / "full" / tag, inv)
     if not (deadline and time.time() > deadline):
-        reqs = S1.plan(a.model, engine.tok, sel, full_store.full_by_item(a.model), a.cut, a.payload, arms)
+        reqs, seen = [], set()
+        for pl in payloads:            # V arms and N are payload-free: planned once
+            for r in S1.plan(a.model, engine.tok, sel, full_store.full_by_item(a.model), a.cut, pl, arms):
+                if r.key not in seen:
+                    seen.add(r.key)
+                    reqs.append(r)
         stopped = run_phase("S1", engine, store, reqs, a.max_tokens, a.chunk, deadline, md, inv) or stopped
     else:
         stopped = True

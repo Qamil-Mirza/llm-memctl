@@ -11,7 +11,7 @@ export PIP_BREAK_SYSTEM_PACKAGES=1 HF_HUB_DISABLE_PROGRESS_BARS=1 TOKENIZERS_PAR
 cd "$(dirname "$0")/.."
 ENGINE="${ENGINE:-pilot}"; RUN_S="${RUN_S:-1500}"; SELF_STOP_S="${SELF_STOP_S:-}"
 OUT="${OUT:-runs/selfdoubt/s2_pilot_pod}"; ROWS="${ROWS:-}"; ROWS_SHA="${ROWS_SHA:-}"; PY="${PYTHON:-python}"
-OFFSETS="${OFFSETS:-0,32,128}"
+OFFSETS="${OFFSETS:-0,32,128,end}"
 mkdir -p "$OUT"; rm -f "$OUT/pod.done"
 T0=$(date +%s); DEADLINE=$(( T0 + RUN_S ))
 trap 'rc=$?; echo "exit=$rc engine=$ENGINE at $(date -u +%FT%TZ) total_s=$(( $(date +%s) - T0 ))" > "$OUT/pod.done"' EXIT

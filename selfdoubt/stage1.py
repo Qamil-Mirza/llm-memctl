@@ -196,10 +196,23 @@ def readings(rows: list[dict], n_boot: int = 2000, seed_: int = 56, payload: str
     for lam in (1, 2):
         lo, hi = ci(lambda p, lam=lam: delta("VG", "V0", p) - lam * delta("I2b", "I1", p))
         out[f"U_lambda{lam}"] = {"point": dv["point"] - lam * out["deltas"]["dI2b"]["point"], "ci95": [lo, hi]}
-    if gate:
-        lo, hi = ci(lambda p: delta("I2b", "I1", p) - 0.5 * delta("VG", "V0", p))
-        out["not_selective"] = {"stat": "dI2b - 0.5 dV", "point": out["deltas"]["dI2b"]["point"] - 0.5 * dv["point"],
-                                "ci95": [lo, hi], "verdict": verdict(lo, hi, 0.0, "gt")}
-    else:
-        out["not_selective"] = {"verdict": "UNDETERMINED (gate not passed)"}
+    # three-way (Advisor 2026-11-09): NOT SELECTIVE if the interval of dI2b - 0.5 dV is wholly > 0, SELECTIVE if wholly
+    # < 0, else UNDETERMINED; everything UNDETERMINED if the gate fails. U(lambda), dI2a, dI2d: descriptive secondaries.
+    lo, hi = ci(lambda p: delta("I2b", "I1", p) - 0.5 * delta("VG", "V0", p))
+    v = verdict(lo, hi, 0.0, "gt")
+    out["selectivity"] = {"stat": "dI2b - 0.5 dV", "point": out["deltas"]["dI2b"]["point"] - 0.5 * dv["point"],
+                          "ci95": [lo, hi],
+                          "verdict": ({"SHOWN": "NOT SELECTIVE", "NOT SHOWN": "SELECTIVE"}.get(v, "UNDETERMINED")
+                                      if gate else "UNDETERMINED (gate not passed)")}
     return out
+
+
+OFF_POLICY_NOTE = ("The reused FULL prefix was generated under the authors' system prompt, so it is slightly off-policy "
+                   "for SYSTEM_S1; this is shared by every arm and does not bias the contrasts.")
+
+
+def payload_sanity(acc_by_payload: dict) -> dict:
+    """Dev check (Advisor): the model reads the payload if I1 or I2c acceptance is > 0 in at least one format."""
+    ok = any(acc.get(a, 0) > 0 for acc in acc_by_payload.values() for a in ("I1", "I2c"))
+    return {"pass": ok, "rule": "I1 or I2c acceptance > 0 in at least one payload format; if not, stop and report",
+            "acceptance": {p: {a: acc.get(a) for a in ("I1", "I2c")} for p, acc in acc_by_payload.items()}}

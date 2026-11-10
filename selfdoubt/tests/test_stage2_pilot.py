@@ -35,7 +35,9 @@ def make_row(tok, upd="Use 12 apples and 7 pears instead of 30.", new="19", old=
     return {"row_id": f"1|0.50|{cls}", "item_id": 1, "cut": 0.5, "cls": cls, "new": new, "old": old, "update": upd,
             "base_prompt": base, "base_span": P.update_span(base, fp + prefix, "U0", upd),
             "x0_prompt": x0, "x0_span": P.update_span(x0, fp + "<think>\n", "U0", upd),
-            "n_prompt": fp + prefix, "continuation": "Okay, with 12 apples and 7 pears the total is 12 + 7 = 19.",
+            "n_prompt": fp + prefix,
+            "continuation": "Okay, with 12 apples and 7 pears the total is 12 + 7 = 19.\n</think>\n\n\\boxed{19}",
+            "fact_new": "12", "fact_old": "30", "fact_skip": None,
             "prompt_sha256": C.sha256_text(base)}
 
 
@@ -97,9 +99,29 @@ def test_cache_suffix_equals_full_forward(tiny, tok):
         assert torch.allclose(full, part, atol=1e-4)
 
 
+def test_fact_pair_and_end_offset(tok):
+    assert P.fact_pair("He has 30 apples and 7 pears.", "He has 12 apples and 7 pears.",
+                       "Use 30 apples instead of 12.") == (("30", "12"), None)
+    assert P.fact_pair("A 1,200 B 3", "A 1,500 B 3", "Make it 1,200.") == (("1200", "1500"), None)
+    assert P.fact_pair("x 5", "x 5", "same")[0] is None
+    assert P.fact_pair("x 5 y 6", "x 5", "u")[1].startswith("number counts")
+    assert P.fact_pair("x 5", "x 4", "set it to 9")[1].startswith("first changed")
+    c = "so 12 + 7 = 19.\n</think>\n\n\\boxed{19}"
+    k = P.end_offset(tok, c)
+    assert tok.decode(tok(c, add_special_tokens=False)["input_ids"][:k]).endswith("\n\n") and P.end_offset(tok, "no") is None
+
+
 def test_patch_invariants(tiny, tok):
     row = make_row(tok)
-    (r,) = [x for x in P.measure_row(tiny, row, offsets=(0,)) if x["offset"] == 0]
+    recs = P.measure_row(tiny, row, offsets=(0, "end"))
+    assert not any("skip" in x or "skip_x0" in x for x in recs), recs
+    (r,) = [x for x in recs if x["offset"] == 0 and x["target"] == "ans"]
+    (f,) = [x for x in recs if x["offset"] == 0 and x["target"] == "fact"]
+    (e,) = [x for x in recs if x["offset"] == "end" and x["target"] == "ans"]
+    assert f["tok_new"] == "1" and f["tok_old"] == "3" and abs(f["patch_swap"][0] - f["m_donor"]) < 1e-3
+    assert e["patch_swap"] == [] and e["k_tokens"] > 0
+    assert r["base_logit_new"] - r["base_logit_old"] == pytest.approx(r["m_base"], abs=1e-3)
+    assert r["lens_base_new"][-1] - r["lens_base_old"][-1] == pytest.approx(r["m_base"], abs=1e-3)
     assert "skip" not in r and r["layers"] == list(range(tiny.n_layers + 1))
     assert abs(r["patch_swap"][0] - r["m_donor"]) < 1e-3     # embedding-layer swap patch = the donor
     assert abs(r["patch_swap"][-1] - r["m_base"]) < 1e-3     # last-layer patch at digit positions cannot reach the readout
@@ -121,7 +143,8 @@ def test_run_resumes_and_report(tiny, tok, tmp_path, monkeypatch):
     assert P.run(rows, out, P.MODEL, None, "cpu", "float32", (0, 8), None, None)["rows_done_now"] == 1
     assert P.run(rows, out, P.MODEL, None, "cpu", "float32", (0, 8), None, None)["rows_done_now"] == 0
     rep = P.report(out, n_boot=50)
-    assert set(rep["by_offset"]) == {"0", "8"} and "swap_effect_stale_minus_new" in rep["by_offset"]["0"]
+    assert {"ans|0", "ans|8", "fact|0", "fact|8"} <= set(rep["tables"])
+    assert "swap_effect_stale_minus_new" in rep["tables"]["ans|0"] and rep["skips"] == {}
 
 
 # ---------------------------------------------------------------- pod script, plan mode ($0)
@@ -161,7 +184,7 @@ def test_pod_plan_runs_and_reports(pod):
     assert r.returncode == 0, r.stdout + r.stderr
     run, rep = pod["calls"].read_text().splitlines()
     assert run.startswith("-u selfdoubt/stage2_pilot.py run --rows runs/selfdoubt/s2/rows.jsonl")
-    assert "--snapshot PLAN17" in run and "--offsets 0,32,128" in run and "--deadline-s" in run
+    assert "--snapshot PLAN17" in run and "--offsets 0,32,128,end" in run and "--deadline-s" in run
     assert rep == "-u selfdoubt/stage2_pilot.py report --res runs/selfdoubt/s2_out/res.jsonl"
     assert "rows ok: 2 dev GSM8K rows" in (pod["wt"] / "runs/selfdoubt/s2_out/pod.log").read_text()
 
@@ -172,3 +195,40 @@ def test_pod_refuses_heldout_rows_and_bad_sha(pod):
     assert r.returncode == 3 and not pod["calls"].exists()
     r = run_pod(pod, [{"item_id": split["dev"]["gsm8k"][0], "row_id": "a"}], sha="0" * 64)
     assert r.returncode == 3 and not pod["calls"].exists()
+
+
+def test_combined_pod_plan_wiring(pod):
+    dev = json.loads((WT / "runs/selfdoubt/split.json").read_text())["dev"]["gsm8k"]
+    p = pod["wt"] / "runs/selfdoubt/s2/rows.jsonl"
+    p.write_text(json.dumps({"item_id": dev[0], "row_id": "a"}) + "\n")
+    e = dict(os.environ, ENGINE="plan", PYTHON=str(pod["runner"]), RUN_S="9000", OUT="runs/selfdoubt/c",
+             PILOT_S="4000", ROWS="runs/selfdoubt/s2/rows.jsonl", ROWS_SHA=hashlib.sha256(p.read_bytes()).hexdigest(),
+             S1_STEPS="s1_1p7b_gsm8k_dev|17|gsm8k|dev|250|3300", S1_EXTRA="--cut 0.9 --payload plain,doc")
+    r = subprocess.run(["bash", str(pod["wt"] / "selfdoubt/s1s2_pod.sh")], env=e, capture_output=True, text=True,
+                       timeout=60)
+    assert r.returncode == 0, r.stdout + r.stderr
+    calls = pod["calls"].read_text().splitlines()
+    assert calls[0].startswith("-u selfdoubt/stage2_pilot.py run") and "--out runs/selfdoubt/c/s2/res.jsonl" in calls[0]
+    assert calls[1].startswith("-u selfdoubt/stage2_pilot.py report")
+    s1 = calls[2]
+    assert s1.startswith("-u selfdoubt/stage1_run.py --engine vllm --mode full --split-name dev")
+    assert "--out-root runs/selfdoubt/c/s1/dev" in s1 and s1.endswith("--cut 0.9 --payload plain,doc")
+    assert "--allow-heldout" not in s1 and (pod["wt"] / "runs/selfdoubt/c/pod.done").exists()
+    e["S1_STEPS"] = "s1_x|17|gsm8k|heldout|250|3300"
+    assert subprocess.run(["bash", str(pod["wt"] / "selfdoubt/s1s2_pod.sh")], env=e, capture_output=True,
+                          timeout=60).returncode == 3
+
+
+def test_combined_plan_file():
+    v = {}
+    for line in (SD / "plans/s1s2_dev.env").read_text().splitlines():
+        if line and not line.startswith("#"):
+            k, x = line.split("=", 1)
+            v[k] = x.strip('"')
+    assert v["KEY_VAR"] == "RUNPOD_API_KEY_2" and v["POD_SCRIPT"] == "selfdoubt/s1s2_pod.sh"
+    assert int(v["COPY_AT"]) == int(v["HARD_S"]) - 240
+    ceiling = 200 + int(v["PILOT_S"]) + int(v["S1_STEPS"].split("|")[-1]) + 400
+    assert int(v["HARD_S"]) >= 1.25 * ceiling - 1
+    rows = WT / v["ROWS"]
+    if rows.exists():
+        assert hashlib.sha256(rows.read_bytes()).hexdigest() == v["ROWS_SHA"]

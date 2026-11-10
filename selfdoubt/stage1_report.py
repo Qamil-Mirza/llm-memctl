@@ -57,19 +57,24 @@ def cut_choice(store: Path, n_boot: int = 2000) -> dict:
     return out
 
 
-def read(store: Path, split_name: str, n_boot: int, payload: str = "plain") -> dict:
+def read(store: Path, split_name: str, n_boot: int) -> dict:
+    """Readings with "plain" (PRIMARY) and "doc" (SECONDARY, descriptive), the payload sanity check and category counts."""
     keep = split_ids(split_name)
     items = {int(r["id"]): r for r in C.load_items()}
     recs = [r for r in C.Store(store).recs.values() if r["item_id"] in keep]
     rows = S1.score(recs, items)
-    out = S1.readings(rows, n_boot, payload=payload)
+    present = sorted({r.get("payload") or "plain" for r in rows if r["arm"].startswith("I")})
+    out = {"split_name": split_name, "note": S1.OFF_POLICY_NOTE, "primary": "plain", "by_payload": {}}
+    for pl in present:
+        out["by_payload"][pl] = S1.readings(rows, n_boot, payload=pl)
+    out["payload_sanity"] = S1.payload_sanity({pl: d["acceptance"] for pl, d in out["by_payload"].items()})
     cats = {}
     for r in rows:
-        cats.setdefault(r["arm"], {}).setdefault(r["category"], 0)
-        cats[r["arm"]][r["category"]] += 1
+        k = r["arm"] + (f"|{r.get('payload')}" if r["arm"].startswith("I") else "")
+        cats.setdefault(k, {}).setdefault(r["category"], 0)
+        cats[k][r["category"]] += 1
     out["categories"] = cats
-    out["split_name"] = split_name
-    (store.parent / f"stage1_readings_{split_name}_{payload}.json").write_text(json.dumps(out, indent=1) + "\n")
+    (store.parent / f"stage1_readings_{split_name}.json").write_text(json.dumps(out, indent=1) + "\n")
     (store.parent / f"scored_{split_name}.jsonl").write_text("".join(json.dumps(r) + "\n" for r in rows))
     return out
 
@@ -85,14 +90,13 @@ def main(argv=None):
     r.add_argument("--split-name", choices=["dev", "heldout"], default="dev")
     r.add_argument("--heldout-confirmed", action="store_true")
     r.add_argument("--n-boot", type=int, default=2000)
-    r.add_argument("--payload", choices=sorted(S1.PAYLOADS), default="plain")
     a = ap.parse_args(argv)
     if a.cmd == "cut":
         print(json.dumps(cut_choice(Path(a.stage0_store), a.n_boot), indent=1))
         return 0
     if a.split_name == "heldout" and not a.heldout_confirmed:
         raise SystemExit("held-out readings need --heldout-confirmed (after the dev choices are frozen)")
-    print(json.dumps(read(Path(a.store), a.split_name, a.n_boot, a.payload), indent=1))
+    print(json.dumps(read(Path(a.store), a.split_name, a.n_boot), indent=1))
     return 0
 
 
