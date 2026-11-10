@@ -431,3 +431,8 @@ cited as evidence for E2.
    `\boxed{...}` inside the thinking and then ends. The answer parses, and the row is correctly not "truncated".
    Known case for the doubt coder: when `</think>` is missing, the coder treats the text before the first `\boxed`
    as reasoning. To be implemented when the coder is built.
+6. **Scorer 1baf905's timeout wrapper could hang every worker** (found 2026-11-09 on the 1.7B MATH-500 held-out
+   store): a timed-out sympy call kept running in its worker, and once all 4 workers hung every later call returned
+   "not equal" after 5 s. Fixed at 7d09937 (the timed-out worker is killed); the rule is unchanged (5 s -> not equal).
+   Readings from now on cite 7d09937. Each scoring run reports a timeout ledger (rows resting on a timeout, by source ×
+   arm × cut) with a 60 s rescore as a sensitivity (selfdoubt/ledger.py).

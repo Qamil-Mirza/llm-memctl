@@ -61,7 +61,11 @@ def _timed(fn, *args, default=False):
         return fut.result(timeout=TIMEOUT_S)
     except FTimeout:
         _kill_pool()
+        TIMEOUTS.append((getattr(fn, "__name__", str(fn)), args))
         return default
+
+
+TIMEOUTS: list = []   # (function name, args) of every call that hit the timeout; the ledger (selfdoubt/ledger.py) reads it
 
 
 def boxed_raw(text: str) -> str | None:

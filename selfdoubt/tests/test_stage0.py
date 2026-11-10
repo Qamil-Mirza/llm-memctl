@@ -461,3 +461,21 @@ def test_timed_kills_hung_worker(monkeypatch):
     assert _t.time() - t0 < 1.0
     S._kill_pool()
 
+
+def test_ledger_attribution():
+    """Rows rest on a timeout through their own record, their reference record, or their same-answer pair."""
+    from selfdoubt import ledger as LG
+    from selfdoubt import common as CC
+    rec = lambda arm, cut, t: {"item_id": 1, "source": "math500", "arm": arm, "cut": cut, "text": t}  # noqa
+    recs = [rec("FULL", None, "F"), rec("N", 0.9, "Ntext"), rec("U0", 0.9, "U9"), rec("U0", CC.X0, "U0x"),
+            rec("UG", CC.X0, "UGx")]
+    rows = [{"item_id": 1, "arm": "N", "cut": 0.9, "pred": "3"},
+            {"item_id": 1, "arm": "U0", "cut": 0.9, "pred": "4", "ref_pred": "3"},
+            {"item_id": 1, "arm": "U0", "cut": CC.X0, "pred": "5", "ref_pred": "7"},
+            {"item_id": 1, "arm": "UG", "cut": CC.X0, "pred": "6", "ref_pred": "7"}]
+    assert LG._attribute(recs, rows, [("canon_pred", ("math500", "Ntext"))]) == {(1, "N", 0.9), (1, "U0", 0.9)}
+    assert LG._attribute(recs, rows, [("_correct", ("math500", "g", "F"))]) == {
+        (1, "N", 0.9), (1, "U0", CC.X0), (1, "UG", CC.X0)}
+    assert LG._attribute(recs, rows, [("_same", ("math500", "6", "7"))]) == {(1, "UG", CC.X0)}
+    assert LG._attribute(recs, rows, [("_same", ("math500", "3", "7"))]) == {(1, "N", 0.9)}   # N vs FULL pred
+    assert LG._attribute(recs, rows, []) == set()
