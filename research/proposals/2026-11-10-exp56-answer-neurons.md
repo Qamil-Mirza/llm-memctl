@@ -4,6 +4,23 @@
 $0, and use development data only. Stage 4 (sealed confirmation) needs a separate approval. The section number is
 provisional until the Executor opens it in EXPERIMENTS.md. The decision number D-83 is proposed.
 
+**Rev 0a (Advisor, at the stage-0 gate, 2026-11-10; before any neuron is ranked; only the two DLA test rows had been
+read):**
+- **t* rule.** In the stage-0 test, the top non-"unknown" token on a TA row was "未知" (Chinese for "unknown"), so D
+  compared two ways of abstaining. Rule (c) replaces the rule in §3 for every class: t* is the highest-logit token
+  among the first tokens of the row's `city_pool` (all cities are single tokens, §50). D is then "unknown" against the
+  model's best city answer on every row, whether ANS or UNA. Reported beside it:
+  - the frozen rule's t* distribution per class;
+  - city-t* = gold-city agreement on ANS rows (the 75 name-first C rows are noted).
+- **Storage.** Activations and DLA are stored for all 36 layers, so that K50 is computed over all 396,288 neurons as
+  §3 defines; layers 20–35 are no longer the default. Mean-ablation values come from stored activations.
+- **Order.** Stage 1 runs first; dev-B UNA generation follows only if stage 1 does not stop.
+- **Stage 2 engine.** The prefix is prefilled once per row and the KV cache copied per arm. The arms are batched with
+  per-sequence ablation at P_ans, step 0. This is allowed only after a test against batch 1 on 10 dev-A rows × all
+  arms: greedy outputs identical on ≥ 99% of row-arms and |ΔD| ≤ 1e-3 at P_ans, with every difference listed. If the
+  test fails, stage 2 uses prefill-once batch 1 (about 13 h).
+- Readings R1–R4 and the stopping rules are unchanged.
+
 ## 1. The question in one paragraph
 
 Every fix for false abstention so far (prompt, §38 push, §51 rank-1 edit, removing the option) behaves like a dial.
