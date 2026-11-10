@@ -260,6 +260,31 @@ denominator, as in Stage 0. Tables: `selfdoubt/results/stage1_v2_dev.json`.
 - Caveat (d): the S1t-vs-S0 comparison is dev only. S1t raises V0 by 0.093 over S0 and leaves I2b about the same. No
   held-out reading touches it.
 
+### Stage 1 results (held-out, 2026-11-10; pod 6jlr8m87m7psco; tables 8244173; Advisor ACCEPT)
+
+Qwen3-1.7B, GSM8K held-out 250, cut 0.9, plain payload, 10 arms, S1t (primary) then S1. 236 items after drops (S1t);
+235 R1.B2 pairs (floor 200). 0 scorer timeouts. Tables: `selfdoubt/results/stage1_heldout.json`.
+
+| Setting | V0 | VG | ΔV (gate: ≥ 0.15, 95% excludes 0) | I2b | ΔI2b | Selectivity ΔI2b − 0.5·ΔV |
+|---|---|---|---|---|---|---|
+| S1t | 0.767 | 0.835 | +0.068 [+0.017, +0.127] **fails** | 0.775 | +0.525 [+0.458, +0.593] | +0.492 [+0.422, +0.559] UNDETERMINED (gate not passed) |
+
+- **Primary (S1t): the gate did not replicate** (+0.068 on held-out vs +0.162 on dev), so the frozen selectivity reading
+  is UNDETERMINED. The selectivity point estimate is reported only as a description. It lies on the same side as dev, and
+  it is not a verdict.
+- Why, descriptively: V0 rose (dev 0.672 → held-out 0.767) while VG stayed flat (0.831 → 0.835). On held-out the
+  authors' guidance adds little over the S1t baseline. The forged wrapper sits a few points below VG in both splits
+  (I2b/VG: dev 0.760/0.831, held-out 0.775/0.835).
+- **R1.B1 SHOWN** (S1, 90% interval, ±0.10 band): acc(I2b) − acc(VG) = −0.038 [−0.068, −0.009]. Under S1 the forged
+  wrapper is accepted within 0.10 of the genuine one. The interval is wholly below 0, so forged acceptance is a few
+  points lower, but it stays inside the band.
+- **R1.B2 SHOWN** (S1, 90% interval, ±0.10 band): V0(S1) − Stage 0 UG on the same items = −0.055 [−0.094, −0.017].
+  Under S1, the stated rule alone matches the paper's fix on valid updates within 0.10. The interval is again wholly
+  below 0 (about 5.5 points lower), inside the band.
+- I1 (no wrapper) is accepted at 0.25 on held-out vs 0.15 on dev. Payload sanity passes (I1 0.250, I2c 0.712).
+- No post-hoc switch: S0 was not run on held-out. Running it now would be a forking path. If it is ever run, it is
+  exploratory and labelled as such, not confirmatory.
+
 ## Stage 2: the mechanism (Q3). Needs a new budget.
 
 **Model and data.** Qwen3-1.7B first, because it fails most. The data comes in two parts:
