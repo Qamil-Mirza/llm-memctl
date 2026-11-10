@@ -266,3 +266,19 @@ def test_launch_plan_file_is_sourced(env):
     names = tarfile.open(wt / "runs/selfdoubt/p_launch/bundle.tgz").getnames()
     assert "runs/selfdoubt/extra.txt" in names and "selfdoubt/plans/t.env" in names
     assert all(c["auth"] == f"Authorization: Bearer {KEY2}" for c in calls(fake))
+
+
+def test_launch_with_two_siblings(env):
+    import time
+    gql(env["fake"], "qamilmirza@gmail.com", 25.0)
+    (env["fake"] / "pods.json").write_text(json.dumps([{"id": "sib1"}, {"id": "sib2"}]))
+    a = _sibling(env)
+    d = env["wt"] / "runs/selfdoubt/sib2_launch"; d.mkdir(parents=True)
+    (d / "pod.json").write_text(json.dumps({"pod": "sib2", "price": "0.59", "created": int(time.time()),
+                                            "delete_after_s": 7200, "key_var": "RUNPOD_API_KEY_2"}))
+    sib = f"{a} runs/selfdoubt/sib2_launch runs/selfdoubt/missing_launch"
+    r = launch(env, KEY_VAR="RUNPOD_API_KEY_2", EXPECT_EMAIL="qamilmirza@gmail.com", ALLOW_SIBLING=sib)
+    assert r.returncode == 3 and "CREATE FAILED" in r.stdout, r.stdout + r.stderr
+    assert "sibling allowed: sib1,sib2" in r.stdout and "+ sibling $1.77" in r.stdout, r.stdout
+    r = launch(env, KEY_VAR="RUNPOD_API_KEY_2", EXPECT_EMAIL="qamilmirza@gmail.com", ALLOW_SIBLING=a)
+    assert r.returncode == 2 and "1 pod(s) already" in r.stdout          # sib2 not listed: aborts

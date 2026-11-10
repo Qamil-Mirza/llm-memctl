@@ -20,6 +20,7 @@ cd "$(dirname "$0")/.."
 ENGINE="${ENGINE:-vllm}"; RUN_S="${RUN_S:-1500}"; MAXTOK="${MAXTOK:-16384}"; SELF_STOP_S="${SELF_STOP_S:-}"
 USD_H="${USD_H:-0.59}"; CHUNK="${CHUNK:-4096}"; FULLFRAC="${FULLFRAC:-0.3}"
 STEPS="${STEPS:-}"; OUT="${OUT:-runs/selfdoubt/full}"; PY="${PYTHON:-python}"
+RUNNER="${RUNNER:-selfdoubt/stage0_run.py}"   # Stage 1: selfdoubt/stage1_run.py (same CLI; its args in EXTRA)
 mkdir -p "$OUT"; rm -f "$OUT/pod.done"
 T0=$(date +%s); DEADLINE=$(( T0 + RUN_S ))
 trap 'rc=$?; echo "exit=$rc engine=$ENGINE at $(date -u +%FT%TZ) total_s=$(( $(date +%s) - T0 ))" > "$OUT/pod.done"' EXIT
@@ -43,7 +44,7 @@ for f in selfdoubt/__init__.py selfdoubt/common.py selfdoubt/engines.py selfdoub
          selfdoubt/vendor/interrupt_lrm/prompt_utils_qwen.py selfdoubt/vendor/interrupt_lrm/math_utils.py \
          selfdoubt/vendor/interrupt_lrm/math_parsing_util.py selfdoubt/vendor/interrupt_lrm/LICENSE \
          selfdoubt/vendor/interrupt_lrm/prompts/intervene/wo_prompt_guidance.json \
-         selfdoubt/vendor/interrupt_lrm/prompts/intervene/w_prompt_guidance.json runs/selfdoubt/split.json; do
+         selfdoubt/vendor/interrupt_lrm/prompts/intervene/w_prompt_guidance.json runs/selfdoubt/split.json "$RUNNER"; do
   test -e "$f" || { log "missing $f"; exit 3; }; done
 sha() { sha256sum "$1" | cut -d' ' -f1; }
 [ "$(sha runs/selfdoubt/split.json)" = "$SPLIT_SHA" ] || { log "split.json sha mismatch"; exit 3; }
@@ -132,8 +133,8 @@ step() {  # step <name> <17|8> <source> <split> <limit or empty> <min_s>
   local guard=$(( $(left) - 30 ))
   [ "$guard" -ge "$min_s" ] || { log "skipping $name: $guard s left < its ceiling $min_s s"; return 8; }
   local snapdir; snapdir=$(wait_model "$tag") || { log "no snapshot for $name"; return 6; }
-  log "start $name: $model $source $split limit ${n:-all}; snapshot $snapdir; guard $guard s (ceiling $min_s s)"
-  set +e; timeout "$guard" $PY -u selfdoubt/stage0_run.py --engine vllm --mode full --split-name "$split" $ho \
+  log "start $name: $RUNNER $model $source $split limit ${n:-all}; snapshot $snapdir; guard $guard s (ceiling $min_s s)"
+  set +e; timeout "$guard" $PY -u "$RUNNER" --engine vllm --mode full --split-name "$split" $ho \
     --out-root "$OUT/$split" --model "$model" --snapshot "$snapdir" --source "$source" ${n:+--limit "$n"} \
     --max-tokens "$MAXTOK" --usd-per-hour "$USD_H" --chunk "$CHUNK" --full-frac "$FULLFRAC" \
     --deadline-s "$(( guard - 60 ))" $EXTRA \
