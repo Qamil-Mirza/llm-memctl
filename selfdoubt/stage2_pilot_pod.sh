@@ -68,16 +68,23 @@ else
 allow_patterns=['*.json','*.safetensors','*.txt','tokenizer*','merges.txt','vocab.json']))" > "$OUT/snap17.path" \
     2> "$OUT/snap17.err"; echo $? > "$OUT/snap17.rc" ) &
   log "download started; installing $TF_PIN"
-  timeout 600 $PY -m pip install -q -c "$OUT/constraints.txt" "$TF_PIN" "$HUB_PIN" pyarrow numpy 2>&1 | tail -3
+  timeout 600 $PY -m pip install -q -c "$OUT/constraints.txt" "$TF_PIN" "$HUB_PIN" pyarrow numpy \
+    latex2sympy2==1.9.1 word2number==1.1 2>&1 | tail -3     # the report's R2 readings import the Stage 0 scorer
   $PY -c "import transformers, torch; assert transformers.__version__ == '4.57.1'; assert torch.__version__.startswith('2.8.0'); \
 print(transformers.__version__, torch.__version__)" | tee -a "$OUT/pod.log" || { log "install check failed"; exit 4; }
-  $PY -m pip freeze 2>/dev/null | grep -iE "^(torch|transformers|tokenizers|huggingface|hf.xet|safetensors)" > "$OUT/env.txt" || true
+  $PY -m pip freeze 2>/dev/null | grep -iE "^(torch|transformers|tokenizers|huggingface|hf.xet|safetensors|latex2sympy2|antlr4|sympy)" > "$OUT/env.txt" || true
   until [ -s "$OUT/snap17.rc" ]; do [ "$(left)" -gt 60 ] || { log "download not done in time"; exit 6; }; sleep 3; done
   [ "$(cat "$OUT/snap17.rc")" = 0 ] || { log "snapshot failed: $(tail -2 "$OUT/snap17.err")"; exit 6; }
   SNAP=$(tail -1 "$OUT/snap17.path")
   log "setup done at +$(( $(date +%s) - T0 )) s; snapshot $SNAP"
 fi
 
+# report-path smoke check BEFORE the paid generation (v2 pod 2026-11-09: the report failed after the run on a
+# missing latex2sympy2); a failure here stops the pod with nothing generated
+set +e
+$PY -u selfdoubt/stage2_pilot.py check 2>&1 | tee -a "$OUT/pod.log"; ck=${PIPESTATUS[0]}
+set -e
+[ "$ck" = 0 ] || { log "report path check failed (rc $ck)"; exit 4; }
 guard=$(( $(left) - 60 ))
 [ "$guard" -gt 120 ] || { log "no time left to run ($guard s)"; exit 8; }
 log "run: guard $guard s"

@@ -182,7 +182,8 @@ def test_pod_plan_runs_and_reports(pod):
     dev = json.loads((WT / "runs/selfdoubt/split.json").read_text())["dev"]["gsm8k"]
     r = run_pod(pod, [{"item_id": dev[0], "row_id": "a"}, {"item_id": dev[1], "row_id": "b"}])
     assert r.returncode == 0, r.stdout + r.stderr
-    run, rep = pod["calls"].read_text().splitlines()
+    chk, run, rep = pod["calls"].read_text().splitlines()
+    assert chk == "-u selfdoubt/stage2_pilot.py check"                 # report path checked before generation
     assert run.startswith("-u selfdoubt/stage2_pilot.py run --rows runs/selfdoubt/s2/rows.jsonl")
     assert "--snapshot PLAN17" in run and "--offsets 0,32,128,end" in run and "--deadline-s" in run
     assert rep == "-u selfdoubt/stage2_pilot.py report --res runs/selfdoubt/s2_out/res.jsonl --label dev"
@@ -208,9 +209,10 @@ def test_combined_pod_plan_wiring(pod):
                        timeout=60)
     assert r.returncode == 0, r.stdout + r.stderr
     calls = pod["calls"].read_text().splitlines()
-    assert calls[0].startswith("-u selfdoubt/stage2_pilot.py run") and "--out runs/selfdoubt/c/s2/res.jsonl" in calls[0]
-    assert calls[1].startswith("-u selfdoubt/stage2_pilot.py report")
-    s1 = calls[2]
+    assert calls[0] == "-u selfdoubt/stage2_pilot.py check"
+    assert calls[1].startswith("-u selfdoubt/stage2_pilot.py run") and "--out runs/selfdoubt/c/s2/res.jsonl" in calls[1]
+    assert calls[2].startswith("-u selfdoubt/stage2_pilot.py report")
+    s1 = calls[3]
     assert s1.startswith("-u selfdoubt/stage1_run.py --engine vllm --mode full --split-name dev")
     assert "--out-root runs/selfdoubt/c/s1/dev" in s1 and s1.endswith("--cut 0.9 --payload plain,doc")
     assert "--allow-heldout" not in s1 and (pod["wt"] / "runs/selfdoubt/c/pod.done").exists()
@@ -295,7 +297,7 @@ def test_pod_heldout_mode(pod):
     e["HELDOUT_CONFIRMED"] = "1"
     r = subprocess.run(sh, env=e, capture_output=True, text=True, timeout=60)
     assert r.returncode == 0, r.stdout + r.stderr
-    assert pod["calls"].read_text().splitlines()[1].endswith("--label heldout")
+    assert pod["calls"].read_text().splitlines()[2].endswith("--label heldout")
     p.write_text(json.dumps({"item_id": split["dev"]["gsm8k"][0], "row_id": "d"}) + "\n")   # dev row in heldout mode
     e["ROWS_SHA"] = hashlib.sha256(p.read_bytes()).hexdigest()
     pod["calls"].unlink()
@@ -314,9 +316,9 @@ def test_combined_v2_wiring(pod):
     r = subprocess.run(sh, env=e, capture_output=True, text=True, timeout=60)
     assert r.returncode == 0, r.stdout + r.stderr
     calls = pod["calls"].read_text().splitlines()
-    assert calls[1].endswith("--label heldout")
-    assert "--split-name dev" in calls[2] and calls[2].endswith("--cut 0.9 --payload plain --sys s1t,s0")
-    assert "--allow-heldout" not in calls[2]
+    assert calls[0].endswith("stage2_pilot.py check") and calls[2].endswith("--label heldout")
+    assert "--split-name dev" in calls[3] and calls[3].endswith("--cut 0.9 --payload plain --sys s1t,s0")
+    assert "--allow-heldout" not in calls[3]
     e["S1_EXTRA"] = "--cut 0.9 --payload plain --sys s1t,s0 --split-name heldout"
     assert subprocess.run(sh, env=e, capture_output=True, timeout=60).returncode == 3
 
@@ -341,3 +343,18 @@ def test_v2_plan_file():
         assert hashlib.sha256(rows.read_bytes()).hexdigest() == v["ROWS_SHA"]
         ho = set(json.loads((WT / "runs/selfdoubt/split.json").read_text())["heldout"]["gsm8k"])
         assert all(json.loads(x)["item_id"] in ho for x in rows.read_text().splitlines())
+
+
+def test_pod_report_check_fails_before_generation(pod, tmp_path):
+    """A missing report dependency stops the pod before the paid run (v2 pod 2026-11-09 failed after it)."""
+    pod["runner"].write_text(f'#!/bin/sh\necho "$@" >> {tmp_path}/calls.txt\n[ "$3" = check ] && exit 1\nexit 0\n')
+    dev = json.loads((WT / "runs/selfdoubt/split.json").read_text())["dev"]["gsm8k"]
+    r = run_pod(pod, [{"item_id": dev[0], "row_id": "a"}])
+    assert r.returncode == 4, r.stdout + r.stderr
+    assert pod["calls"].read_text().splitlines() == ["-u selfdoubt/stage2_pilot.py check"]
+
+
+def test_report_check_runs_locally():
+    r = subprocess.run([sys.executable, str(SD / "stage2_pilot.py"), "check"], capture_output=True, text=True,
+                       timeout=300)
+    assert r.returncode == 0 and "report path ok" in r.stdout, r.stdout + r.stderr

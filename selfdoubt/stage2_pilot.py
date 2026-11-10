@@ -698,6 +698,8 @@ def main(argv=None):
     r.add_argument("--layers", default=None, help="comma list (test only); default all")
     r.add_argument("--deadline-s", type=float, default=None)
     r.add_argument("--limit", type=int, default=None)
+    sub.add_parser("check", help="import the report path (incl. r2_readings and the Stage 0 scorer); pods run this "
+                   "before the paid generation so a missing dependency fails early")
     p = sub.add_parser("report")
     p.add_argument("--res", required=True)
     p.add_argument("--n-boot", type=int, default=2000)
@@ -712,6 +714,11 @@ def main(argv=None):
             raise SystemExit("held-out select needs --heldout-confirmed (readings frozen first: PROPOSAL c69f28e)")
         print(json.dumps(select(Path(a.store), Path(a.out), a.cap, a.match, split_name=a.split_name,
                                 check_scored=Path(a.check_scored) if a.check_scored else None), indent=1))
+    elif a.cmd == "check":
+        from selfdoubt import stage0_report  # noqa: F401  (pulls in the scorer: sympy, latex2sympy2, word2number)
+        r2 = r2_readings([], n_boot=10)
+        assert all(r2[k]["verdict"] == "UNDETERMINED" for k in ("R2.1", "R2.2", "R2.3", "R2.4")), r2
+        print("report path ok")
     elif a.cmd == "run":
         lay = [int(x) for x in a.layers.split(",")] if a.layers else None
         print(json.dumps(run(Path(a.rows), Path(a.out), a.model, a.snapshot, a.device, a.dtype,
