@@ -15,7 +15,7 @@ on these dates).
 | 2 | berkeley | 2026-11-09 08:36:44–10:45:51 PT (16:36:44–18:45:51 UTC) | Stage 0, user's 1.7B-first plan of 2026-11-09 (held-out: 1.7B GSM8K 250, 1.7B MATH-500 first 100 in seed-56 shuffle order, 8B GSM8K 250; selfdoubt/stage0_full_pod.sh) | 7j0yqkyb346ymt (A40 SECURE, $0.59/h, disk 80) | quote ≈ $1.26 (~2.1 h); hard DELETE at create + 2 h 15 min ≈ $1.35 max | 7,747 s (2 h 9.1 min) | $1.300 (billing record $1.30029, 7,747,545 ms) | $1.485 | ≈ $0.175 of ≈ $1.66 |
 | 3 | gmail | 2026-11-09 from 16:04:43 PT (2026-11-10 00:04:43 UTC) | Stage 0 completion pod 1 (PROPOSAL decision 7): Qwen3-1.7B GSM8K dev 250; MATH-500 held-out re-run of the 19 incomplete items + items 101–250 (plan selfdoubt/plans/s0c_pod1.env) | oep20eldnrgkcg (A40 SECURE, $0.59/h, disk 80) | quote central $2.79 (4.7 h), ceiling $3.62; hard DELETE at create + 27,700 s (7 h 42 min) = $4.54 max | running | pending | pending | pending |
 | 4 | gmail | 2026-11-09 from 16:15:19 PT (2026-11-10 00:15:19 UTC) | Stage 0 completion pod 2 (PROPOSAL decision 7): Qwen3-8B GSM8K held-out 250; MATH-500 held-out first 100 (plan selfdoubt/plans/s0c_pod2.env) | x3akypcjbh6x0l (A40 SECURE, $0.59/h, disk 80) | quote central $2.84 (4.8 h), ceiling $3.49; hard DELETE at create + 26,700 s (7 h 25 min) = $4.38 max | running | pending | pending | pending |
-| 5 | gmail | 2026-11-09 from 17:16:41 PT (2026-11-10 01:16:41 UTC) | Combined DEV pod (Advisor item 9): Stage 2 pilot (Qwen3-1.7B, GSM8K dev rows ec37f18e, 80 stale + 80 new) then Stage 1 dev (250 items × 15 continuations, cut 0.9, payloads plain + doc); plan selfdoubt/plans/s1s2_dev.env | m8hbjos8105hu9 (A40 SECURE, $0.59/h, disk 80) | quote central $1.00 (1 h 42 min), ceiling $1.52; hard DELETE at create + 11,700 s (3 h 15 min) = $1.92 max | running | pending | pending | pending |
+| 5 | gmail | 2026-11-09 17:16:41–18:36:50 PT (2026-11-10 01:16:41–02:36:50 UTC) | Combined DEV pod (Advisor item 9): Stage 2 pilot (Qwen3-1.7B, GSM8K dev rows ec37f18e, 80 stale + 80 new) then Stage 1 dev (250 items × 15 continuations, cut 0.9, payloads plain + doc); plan selfdoubt/plans/s1s2_dev.env | m8hbjos8105hu9 (A40 SECURE, $0.59/h, disk 80) | quote central $1.00 (1 h 42 min), ceiling $1.52; hard DELETE at create + 11,700 s (3 h 15 min) = $1.92 max | 4,809 s (1 h 20.2 min) | posting: ≈ $0.79 at $0.59/h ($0.222 posted at 18:40 PT) | pending (rows 3–4 running) | pending |
 
 Running totals: berkeley $1.485 of ≈ $1.66 (≈ $0.175 left; programme ≈ $35.83 of $36; balance $3.5692). gmail $0.000 of $25.
 
@@ -41,3 +41,6 @@ Notes
   Pre-flight: gmail, balance $23.7187, 2 pods (pods 1 and 2, allowed siblings; their remaining worst case $7.605
   added to the cap). Created at $0.59/h; hard DELETE timer at 20:31:41 PT (04:31:41 UTC on 11-10). Pilot started
   17:17:50 PT (setup 20 s); first rows ~16 s each on the A40.
+  Outcome: pilot done 18:00:30 PT (160 rows, 2,580 s from pod start, rc 0); Stage 1 dev 250 items done 18:36:41 PT
+  (2,171 s, rc 0). The waiter copied back at 18:36:49 PT and deleted the pod at 18:36:50 PT; 2 pods after (pods 1, 2).
+  Gmail balance $21.3316 at 18:40 PT with pods 1 and 2 still billing.
