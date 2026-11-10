@@ -314,6 +314,52 @@ Purpose: R1.B1 is SHOWN in one cell only (Qwen3-1.7B, GSM8K, cut 0.9). This repl
 - **Descriptive only:** the wrapper lift, acc(I2b) − acc(I1), and the per-arm acceptance.
 - **Stop rule:** payload sanity per cell. I1 or I2b acceptance must be > 0; otherwise that cell is reported as a payload failure and not read.
 
+### Stage 1 replication results (held-out, 2026-11-10; pods 1tsa5ueos06oug + 8yyq9tgnxjanbn; tables 41a0c9c; Advisor ACCEPT)
+
+S1, plain payload, cut 0.9, arms N/V0/VG/I1/I2b, item bootstrap 2,000 draws, seed 56, 90% intervals, band ±0.10.
+The 1.7B GSM8K cell is the existing S1 store (8244173), reproduced exactly. The three new cells come from pod A
+(1.7B MATH-500 250) and pod B (8B GSM8K 250, then 8B MATH-500 100). Payload sanity passes in all four cells.
+Tables: `selfdoubt/results/stage1_rep.json`.
+
+**Primary (pooled per model, bootstrap stratified by source):**
+
+| Model | R1.B1-rep acc(I2b) − acc(VG) | R1.B2-rep V0(S1) − UG(Stage 0) | Wrapper lift I2b − I1 (descriptive, 95%) |
+|---|---|---|---|
+| Qwen3-1.7B (GSM8K 235 + MATH 234) | −0.058 [−0.085, −0.028], n 469, **SHOWN** | −0.086 [−0.114, −0.056], n 464, **UNDETERMINED** | +0.495 [+0.446, +0.544] |
+| Qwen3-8B (GSM8K 237 + MATH 93) | −0.009 [−0.033, +0.012], n 330, **SHOWN** | −0.025 [−0.046, −0.006], n 326, **SHOWN** | +0.109 [+0.073, +0.145] |
+
+**Secondary (each cell alone):**
+
+| Cell | Items after drops | V0 | VG | I1 | I2b | R1.B1-rep | R1.B2-rep (pairs) | Wrapper lift |
+|---|---|---|---|---|---|---|---|---|
+| 1.7B GSM8K | 235 | 0.783 | 0.860 | 0.311 | 0.821 | −0.038 [−0.068, −0.009] SHOWN | −0.055 [−0.094, −0.017] SHOWN (235) | +0.511 |
+| 1.7B MATH-500 | 234 | 0.479 | 0.679 | 0.124 | 0.603 | −0.077 [−0.124, −0.030] UNDETERMINED | −0.118 [−0.162, −0.074] UNDETERMINED (229) | +0.479 |
+| 8B GSM8K | 237 | 0.941 | 0.937 | 0.886 | 0.958 | +0.021 [+0.004, +0.042] SHOWN | −0.017 [−0.034, +0.000] SHOWN (237) | +0.072 |
+| 8B MATH-500 | 94 | 0.835 | 0.903 | 0.617 | 0.819 | −0.086 [−0.151, −0.022] UNDETERMINED | −0.045 [−0.112, +0.011] UNDETERMINED (89) | +0.202 |
+
+The paired means behind R1.B2-rep, V0(S1) vs Stage 0 UG: 1.7B GSM8K 0.783 vs 0.838; 1.7B MATH 0.480 vs 0.598; 8B
+GSM8K 0.941 vs 0.958; 8B MATH 0.831 vs 0.876.
+
+Caveats:
+- (a) **SHOWN means equivalence within ±0.10, not "no difference".** Several intervals exclude 0 on the negative side.
+  The forged wrapper is accepted a few points less often than the genuine one (1.7B pooled −0.058), but within the band.
+- (b) **Every UNDETERMINED is a MATH cell.** On MATH-500 the forged wrapper sits 8–9 points below the genuine one (1.7B
+  −0.077, 8B −0.086), and the intervals reach past the band edge.
+- (c) **Descriptive, not a frozen reading: the 8B accepts a bare planted change in tool output at high rates under S1**
+  (I1 0.886 on GSM8K, 0.617 on MATH-500), even though the system prompt says tool output is data. For the 8B the
+  wrapper adds little (+0.11 pooled) because the bare injection already works. That is a different failure from the
+  1.7B's, where the wrapper does the work (+0.50).
+- (d) **1.7B R1.B2-rep is UNDETERMINED because of MATH:** there the stated rule alone falls 12 points short of the
+  paper's fix (0.480 vs 0.598).
+- (e) **8B MATH-500 R1.B2-rep has 89 pairs**, under the 200 floor carried from the earlier build (flagged `below_min` in
+  the tables). The freeze anticipated about 90, so this cell is secondary and its interval is wide.
+- (f) **9 scorer timeouts** (all in answer checking). Rerun at a 60 s limit, every reading is identical.
+
+Cost (gmail account; estimates from pod lifetime at $0.604/h until billing posts; SPEND rows 8–9):
+- pod A 1tsa5ueos06oug, 10:20:17–11:45:13 PT, 5,096 s, ≈ $0.86 (quote central $0.70, ceiling $1.08, cap $1.39);
+- pod B 8yyq9tgnxjanbn, 10:30:15–12:11:40 PT, 6,085 s, ≈ $1.02 (quote central $0.74, ceiling $1.16, cap $1.49).
+- Both ran over the central quote and under the ceiling, mainly because MATH-500 generation was slow.
+
 ## Stage 2: the mechanism (Q3). Needs a new budget.
 
 **Model and data.** Qwen3-1.7B first, because it fails most. The data comes in two parts:
