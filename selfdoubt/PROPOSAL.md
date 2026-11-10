@@ -290,6 +290,30 @@ R1.B1 I2b 0.821 vs VG 0.860; R1.B2 V0(S1) 0.783 vs Stage 0 UG 0.838 (235 pairs).
 - No post-hoc switch: S0 was not run on held-out. Running it now would be a forking path. If it is ever run, it is
   exploratory and labelled as such, not confirmatory.
 
+### Stage 1 replication across models and sources (frozen by the Advisor 2026-11-10, before any row exists)
+
+Purpose: R1.B1 is SHOWN in one cell only (Qwen3-1.7B, GSM8K, cut 0.9). This replicates the same two readings, unchanged, in the cells that Stage 0 already covers on held-out.
+
+- **Cells (held-out, FULL traces reused from the Stage 0 stores):**
+  - 1.7B MATH-500, 250 items;
+  - 8B GSM8K, 250 items;
+  - 8B MATH-500, 100 items (the Stage 0 8B MATH pool).
+- **Setting:** S1 only, plain payload, cut 0.9. S1 is the setting in which R1.B1/B2 were formed and confirmed. It is also the strictest test, because the system prompt says outright that tool output is data. S0 and S1t are not run; the gate-based selectivity reading is not taken here.
+- **Arms:** N (reference), V0, VG, I1, I2b. The other arms are not run.
+- **Conventions:** as frozen above, with no changes:
+  - drop items where N = gold or N is invalid;
+  - truncated rows are excluded pairwise;
+  - item bootstrap, 2,000 draws, seed 56.
+- **Readings** (each three-way on a 90% interval: SHOWN if the interval is inside ±0.10, NOT SHOWN if it is wholly outside, UNDETERMINED otherwise):
+  - **R1.B1-rep**, acc(I2b) − acc(VG);
+  - **R1.B2-rep**, acc(V0 | S1) − acc(UG | Stage 0, cut 0.9), on the same items.
+  - **Primary:** pooled per model over GSM8K + MATH-500, with the bootstrap stratified by source.
+    - The 1.7B pool reuses the existing S1 GSM8K store (8244173) and adds the new MATH-500 cell.
+    - The 8B pool consists of both new cells.
+  - **Secondary:** each cell on its own (8B MATH-500 has about 90 usable items, so its interval will be wide).
+- **Descriptive only:** the wrapper lift, acc(I2b) − acc(I1), and the per-arm acceptance.
+- **Stop rule:** payload sanity per cell. I1 or I2b acceptance must be > 0; otherwise that cell is reported as a payload failure and not read.
+
 ## Stage 2: the mechanism (Q3). Needs a new budget.
 
 **Model and data.** Qwen3-1.7B first, because it fails most. The data comes in two parts:
