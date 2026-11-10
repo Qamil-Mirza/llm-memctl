@@ -30,19 +30,37 @@ TIMEOUT_S = 5
 _POOL = None
 
 
+def _warm():
+    return True
+
+
 def _pool():
+    """One spawned worker, warmed (spawn + imports) before any timed call, so the 5 s budget covers the check only."""
     global _POOL
     if _POOL is None:
-        _POOL = ProcessPoolExecutor(max_workers=4, mp_context=mp.get_context("spawn"))
+        _POOL = ProcessPoolExecutor(max_workers=1, mp_context=mp.get_context("spawn"))
+        _POOL.submit(_warm).result()
     return _POOL
 
 
+def _kill_pool():
+    global _POOL
+    if _POOL is not None:
+        for p in list((getattr(_POOL, "_processes", None) or {}).values()):
+            p.kill()
+        _POOL.shutdown(wait=False, cancel_futures=True)
+        _POOL = None
+
+
 def _timed(fn, *args, default=False):
+    """fn(*args) with the 5 s timeout -> default. A timed-out call keeps running inside its worker (cancel() cannot stop
+    a started future), so the worker is killed and a fresh one is used next. Before 2026-11-09 (fix after 1baf905) the
+    stuck worker was left running: once all 4 workers hung, every later call waited 5 s and returned the default."""
     fut = _pool().submit(fn, *args)
     try:
         return fut.result(timeout=TIMEOUT_S)
     except FTimeout:
-        fut.cancel()
+        _kill_pool()
         return default
 
 

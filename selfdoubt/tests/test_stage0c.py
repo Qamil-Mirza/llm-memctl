@@ -57,7 +57,7 @@ def test_seed_store_expectations_abort(tmp_path):
 
 
 def test_seeded_store_resume_regenerates_exactly_the_dropped_rows(tmp_path):
-    """The real pod-1 store (if built): every complete item has 11 rows, no incomplete item has any."""
+    """The real pod-1 store: seeded (100 FULL, 81 complete, the 19 incomplete with no rows) or completed (250 x 11)."""
     p = WT / "runs/selfdoubt/s0c_pod1/heldout/full/Qwen3-1.7B/gen.jsonl"
     if not p.exists():
         pytest.skip("pod-1 store not seeded here")
@@ -69,7 +69,11 @@ def test_seeded_store_resume_regenerates_exactly_the_dropped_rows(tmp_path):
             full.add(r["item_id"])
         else:
             rows.setdefault(r["item_id"], set()).add((r["arm"], r["cut"]))
-    assert len(full) == 100 and len(rows) == 81 and all(v == set(ROWS) for v in rows.values())
+    assert all(v == set(ROWS) for v in rows.values())
+    if len(full) == 250:               # after pod 1 (2026-11-09): every item complete
+        assert set(rows) == full
+        return
+    assert len(full) == 100 and len(rows) == 81      # the seeded store before pod 1
     rd = WT / "runs/selfdoubt/full/heldout_1p7b_readings.json"
     if rd.exists():
         inc = {int(i) for i in json.loads(rd.read_text())["math500"]["incomplete"]}

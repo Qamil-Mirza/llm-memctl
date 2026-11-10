@@ -448,3 +448,16 @@ def test_shuffled_heldout_rule(items):
     assert not set(first) & set(split["dev"]["math500"])
     g = C.select_items(items, split, "full", "heldout", None, sources=("gsm8k",))
     assert sorted(int(r["id"]) for r in g) == split["heldout"]["gsm8k"]
+
+
+def test_timed_kills_hung_worker(monkeypatch):
+    """A timed-out call must not leave its worker hung: the next call gets a fresh worker and a real answer."""
+    import time as _t
+    monkeypatch.setattr(S, "TIMEOUT_S", 1)
+    for _ in range(5):                       # more hangs than the old pool's 4 workers
+        assert S._timed(_t.sleep, 60, default="to") == "to"
+    t0 = _t.time()
+    assert S._timed(abs, -3) == 3
+    assert _t.time() - t0 < 1.0
+    S._kill_pool()
+
