@@ -13,6 +13,8 @@ on these dates).
 |---|---|---|---|---|---|---|---|---|---|
 | 1 | berkeley | 2026-11-09 07:58:52–08:17:16 PT (15:58:52–16:17:16 UTC) | Stage 0 timed stub (sizing only, 10 dev items × Qwen3-8B + Qwen3-1.7B, max_tokens 16384) | n5vlwx4k2olf2l (A40 SECURE, $0.59/h, disk 80) | $0.35 / 35 min | 1,104 s (18.4 min) | $0.185 (billing record $0.18488) | $0.185 | ≈ $1.475 of ≈ $1.66 |
 | 2 | berkeley | 2026-11-09 08:36:44–10:45:51 PT (16:36:44–18:45:51 UTC) | Stage 0, user's 1.7B-first plan of 2026-11-09 (held-out: 1.7B GSM8K 250, 1.7B MATH-500 first 100 in seed-56 shuffle order, 8B GSM8K 250; selfdoubt/stage0_full_pod.sh) | 7j0yqkyb346ymt (A40 SECURE, $0.59/h, disk 80) | quote ≈ $1.26 (~2.1 h); hard DELETE at create + 2 h 15 min ≈ $1.35 max | 7,747 s (2 h 9.1 min) | $1.300 (billing record $1.30029, 7,747,545 ms) | $1.485 | ≈ $0.175 of ≈ $1.66 |
+| 3 | gmail | 2026-11-09 from 16:04:43 PT (2026-11-10 00:04:43 UTC) | Stage 0 completion pod 1 (PROPOSAL decision 7): Qwen3-1.7B GSM8K dev 250; MATH-500 held-out re-run of the 19 incomplete items + items 101–250 (plan selfdoubt/plans/s0c_pod1.env) | oep20eldnrgkcg (A40 SECURE, $0.59/h, disk 80) | quote central $2.79 (4.7 h), ceiling $3.62; hard DELETE at create + 27,700 s (7 h 42 min) = $4.54 max | running | pending | pending | pending |
+| 4 | gmail | 2026-11-09 from 16:15:19 PT (2026-11-10 00:15:19 UTC) | Stage 0 completion pod 2 (PROPOSAL decision 7): Qwen3-8B GSM8K held-out 250; MATH-500 held-out first 100 (plan selfdoubt/plans/s0c_pod2.env) | x3akypcjbh6x0l (A40 SECURE, $0.59/h, disk 80) | quote central $2.84 (4.8 h), ceiling $3.49; hard DELETE at create + 26,700 s (7 h 25 min) = $4.38 max | running | pending | pending | pending |
 
 Running totals: berkeley $1.485 of ≈ $1.66 (≈ $0.175 left; programme ≈ $35.83 of $36; balance $3.5692). gmail $0.000 of $25.
 
@@ -27,3 +29,8 @@ Notes
   stopped at the run deadline 10:45 PT with 945 of 1,100 finished. Step 3 (8B GSM8K) never started. The waiter deleted
   the pod at 10:45:51 PT; 0 pods after. Billed: the per-pod record, fully posted when checked at 13:49 PT, is $1.30029. The
   balance drop of $1.278 measured at 10:46 PT was $0.022 short because billing was still posting.
+- Rows 3–4 approval: the user's line in the Executor pane, 2026-11-09: "approved: self-doubt Stage 0 completion, two A40
+  pods on the gmail account, hard caps $4.54 (pod 1) and $4.38 (pod 2)". Both together: central $5.63, max $8.92 of $25.
+  Pre-flight before pod 1: gmail, balance $25.0000, 0 pods. Before pod 2: balance $24.9092, 1 pod (pod 1, allowed
+  sibling). Both created at $0.59/h. Hard DELETE timers: pod 1 at 23:46:23 PT, pod 2 at 23:40:19 PT (07:46:23 and
+  07:40:19 UTC on 11-10). Steps started: pod 1 GSM8K dev at 16:10:19 PT; pod 2 8B GSM8K held-out at 16:16:59 PT.
