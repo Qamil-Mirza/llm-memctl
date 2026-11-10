@@ -1,0 +1,41 @@
+{
+ "tol": 0.0001,
+ "rows": [
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "cls": "FA",
+   "t_star": 24688,
+   "t_star_text": " Liverpool",
+   "D": 0.48294830322265625,
+   "D_lin": 0.48294758796691895,
+   "decomposition_sum": 0.48294783011078835,
+   "max_abs_err_layer_sum": 1.4970579244044657e-06,
+   "worst_layer": 34,
+   "mlp_dla_range": [
+    -9.916219711303711,
+    1.1270285844802856
+   ],
+   "pass": true,
+   "read_s": 5.67
+  },
+  {
+   "case_id": "W-DE00_UNArel_H0",
+   "cls": "TA",
+   "t_star": 109259,
+   "t_star_text": "\u672a\u77e5",
+   "D": 16.39535903930664,
+   "D_lin": 16.395347595214844,
+   "decomposition_sum": 16.39534781500697,
+   "max_abs_err_layer_sum": 9.38182428189549e-07,
+   "worst_layer": 34,
+   "mlp_dla_range": [
+    -5.375338554382324,
+    3.992827892303467
+   ],
+   "pass": true,
+   "read_s": 6.29
+  }
+ ],
+ "pass": true,
+ "note": "layer sum check over all 36 layers; D_lin = <h_final, v>; decomposition = emb + sum attn + sum mlp DLA"
+}

@@ -1,0 +1,55 @@
+{
+ "experiment": "§56 MLP neurons behind false 'unknown' at P_ans (Qwen 2.5 3B)",
+ "proposal": "research/proposals/2026-11-10-exp56-answer-neurons.md rev 0 (6e6b075); D-83 (4f529ca)",
+ "frozen_before_any_neuron_measured": "rows, classes, t* rule, DLA code (the 2-row sum test is part of stage 0)",
+ "data": {
+  "cases": {
+   "file": "runs/exp54/cases54.jsonl",
+   "sha256": "1f0d41333b73cd3abac4bfd6fd68456eef881e872132c8de8b2778bfaab3839b",
+   "seed": 55
+  },
+  "rows": {
+   "file": "runs/exp56/rows.jsonl",
+   "sha256": "d833da436b85e8ad04c53622bf3a77eed0ca1e45d8e017e2a04672aeff384c2c",
+   "n": 1500
+  },
+  "devb_una_todo": {
+   "file": "runs/exp56/devb_una_todo.jsonl",
+   "sha256": "d5d24a4eba89861c98303e9cdcecd2e6b2f2ebde3d034ed287e0564c26ff21b3"
+  },
+  "split_rule": "dev-A = even base_index, dev-B = odd base_index; CF rows not used",
+  "sources": {
+   "ANS (both halves)": "§54 B0 runs/exp54/run/b0/W (laptop, max_new 160)",
+   "UNA dev-A": "§55 P0 runs/exp55/pod/run/P0/b0/W (pod, HF fp32 no-tf32, max_new 256; device check 20/20 byte-identical to laptop §54 B0, runs/exp55/check20.json)",
+   "UNA dev-B": "new: scripts/exp56_devb_una.py, §55 run_free (S4.run_b0 at max_new 256, layout 64, rows sorted by case id), laptop"
+  },
+  "sealed": "seed 56 unused; seed 57 not generated"
+ },
+ "classes": {
+  "FA": "ANS, cls abstention",
+  "C": "ANS, cls gold",
+  "TA": "UNA-rel/UNA-swap, cls abstention",
+  "UA": "UNA-rel/UNA-swap, any other graded class (descriptive only)",
+  "out": "NM (no usable P_ans), W (ANS answered wrong)",
+  "grader": "memctl/analysis/grade51.py via exp51_common.grade (head + tail of the P0 generation)"
+ },
+ "t_star_rule": "t* = argmax of the unmodified logits at P_ans over the vocabulary minus the frozen §51 B1 set (every id whose decoded, lower-cased, stripped text begins with 'unknown'); D = logit[UNK_ID] − logit[t*], UNK_ID = first id of ' unknown'. Same for every class; for ANS rows agreement of t* with gold_first_id (first id of ' ' + gold) is reported descriptively",
+ "dla": "a_i = down_proj input at P_ans; DLA_i = a_i · <down_proj.weight[:, i], g ⊙ (u_unk − u_t*) / σ>, σ = sqrt(mean(h²)+eps) of the final-norm input at P_ans; stored layers 20–35 (a and DLA, float32), all-layer MLP / attention / embedding DLA; sum check 1e-4 on 2 dev-A rows (runs/exp56/dla_test.json)",
+ "ablation": "down_proj pre-hook at absolute position P_ans only, §51 prefix mode (MAX_NEW_RELEASE 16), graded head + tail",
+ "engine": {
+  "script": "scripts/exp51_engine.py",
+  "sha256": "b54c1e886024be82c05319402d40122bd5ffc333dad61791cd35604281b3c8ce",
+  "snapshot": "aa8e72537993ba99e69dfaafa59ed015b17504d1",
+  "model": "Qwen/Qwen2.5-3B-Instruct",
+  "dtype": "float32",
+  "device": "cpu",
+  "threads": 16
+ },
+ "code": {
+  "scripts/exp56_common.py": "cd8d76e496ba340371afe1e4333d58cc6d6e89b51e1677f334c1b95a1287372a",
+  "scripts/exp56_stage0.py": "5ee12e4262aca89acb904863e65665783c5e1283a4ac3f4a2b69b5111acd8379",
+  "scripts/exp51_common.py": "9d3b436b8f83cf3211602d6537a7e94ff38874a2469c7ca1fc9e9ec5779d19fe",
+  "memctl/analysis/grade51.py": "560846fc912776165d0289f39c35cd136435f722e3d4318504563dcf913c2ab9"
+ },
+ "readings_and_stopping": "fixed in the proposal §6–§7; not restated here"
+}

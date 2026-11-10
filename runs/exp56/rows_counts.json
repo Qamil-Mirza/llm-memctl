@@ -1,0 +1,40 @@
+{
+ "counts": {
+  "A": {
+   "ANS": {
+    "FA": 140,
+    "C": 305,
+    "NM": 3,
+    "W": 2
+   },
+   "UNA-rel": {
+    "TA": 221,
+    "NM": 2,
+    "UA": 2
+   },
+   "UNA-swap": {
+    "TA": 68,
+    "UA": 7
+   }
+  },
+  "B": {
+   "ANS": {
+    "FA": 148,
+    "C": 298,
+    "NM": 4
+   },
+   "UNA-rel": {
+    "PENDING": 225
+   },
+   "UNA-swap": {
+    "PENDING": 75
+   }
+  }
+ },
+ "devb_una_todo": 300,
+ "unk_id": 9788,
+ "C_rows_gold_first_id_eq_generated": [
+  528,
+  603
+ ]
+}

@@ -1,0 +1,39 @@
+{
+ "case_id": "W-DE00_ANSa_H1",
+ "n_tokens": 422,
+ "read_s": 6.73,
+ "save_s": 0.002,
+ "npz_bytes": 1412140,
+ "ablated_gen_s": 8.32,
+ "ablated_gen_tokens": 1,
+ "plain_gen_s": 8.76,
+ "plain_gen_tokens": 1,
+ "peak_rss_gb": 17.71,
+ "load_s": 2.8,
+ "threads": 16,
+ "engine": {
+  "engine": "hf-5.17.0-torch-2.14.0+cpu-cpu-float32-t16",
+  "snapshot": "/home/qamil-mirza/.cache/huggingface/hub/models--Qwen--Qwen2.5-3B-Instruct/snapshots/aa8e72537993ba99e69dfaafa59ed015b17504d1",
+  "revision": "aa8e72537993ba99e69dfaafa59ed015b17504d1",
+  "n_layers": 36,
+  "hidden": 2048
+ },
+ "outputs": "discarded (dummy K; timing only)",
+ "kv_reuse": {
+  "case_id": "W-DE00_ANSa_H0",
+  "n_tokens": 337,
+  "prefill_s": 5.8,
+  "cache_copy_s": 0.014,
+  "step_s": [
+   0.876,
+   0.841,
+   0.838,
+   0.849,
+   0.851,
+   0.87
+  ],
+  "full_prefix_gen_s": 6.87,
+  "full_prefix_gen_tokens": 1,
+  "peak_rss_gb": 17.73
+ }
+}
