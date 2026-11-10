@@ -244,6 +244,22 @@ The S1 selectivity reading would be UNDETERMINED. The design is therefore revise
   - **R1.B2, "a stated rule matches the paper's fix on valid updates":** acc(V0 under S1) − acc(UG under the authors' prompt, Stage 0 held-out rows at cut 0.9), on the same items.
   - The Stage 0 UG count is already known. Only the S1 rows are new.
 
+### Stage 1 v2 dev result (2026-11-09; pod wp1txc49i5wg8r, tables 75d5b28; Advisor ACCEPT)
+
+Qwen3-1.7B, GSM8K dev, cut 0.9, plain payload, 242 items after drops. Acceptance leaves truncated rows out of the
+denominator, as in Stage 0. Tables: `selfdoubt/results/stage1_v2_dev.json`.
+
+| Setting | V0 | VG | ΔV (gate: ≥ 0.15, 95% excludes 0) | I2b | ΔI2b | Selectivity ΔI2b − 0.5·ΔV |
+|---|---|---|---|---|---|---|
+| S1t | 0.672 | 0.831 | +0.162 [+0.104, +0.223] pass | 0.760 | +0.607 [+0.545, +0.674] | +0.527 [+0.458, +0.595] NOT SELECTIVE |
+| S0 | 0.579 | 0.793 | +0.215 [+0.149, +0.285] pass | 0.798 | +0.649 [+0.587, +0.711] | +0.541 [+0.477, +0.607] NOT SELECTIVE |
+
+- Both gates pass, so **S1t is primary** under the rule above. Held-out applies the frozen selectivity reading to S1t.
+- In both settings the forged wrapper (I2b) is accepted about as often as the genuine one (VG). On dev the fix is not
+  selective. Payload sanity passes in both (I1 0.153 / 0.149; I2c 0.723 / 0.694).
+- Caveat (d): the S1t-vs-S0 comparison is dev only. S1t raises V0 by 0.093 over S0 and leaves I2b about the same. No
+  held-out reading touches it.
+
 ## Stage 2: the mechanism (Q3). Needs a new budget.
 
 **Model and data.** Qwen3-1.7B first, because it fails most. The data comes in two parts:
@@ -301,6 +317,30 @@ Setup: Qwen3-1.7B, GSM8K held-out; the same code and configuration as the pilot.
   - attention from the readout to the update vs the old mentions, at L20–24;
   - the templated one-number problems;
   - the E5 prefix edits.
+
+### Stage 2 results (held-out, 2026-11-09; rows c3d849e8; Advisor ACCEPT)
+
+Qwen3-1.7B, GSM8K held-out. Pod wp1txc49i5wg8r; the report was run locally because the on-pod report step lacked a
+dependency (fixed at 86c214d); tables 75d5b28 (`selfdoubt/results/stage2_heldout_report.json`). 160 rows (80 stale +
+80 new); fact margin usable on 79 stale / 75 new, answer margin on 80 / 80. Every reading has ≥ 40 rows per class.
+
+| Reading | Point [interval] | Verdict |
+|---|---|---|
+| R2.1 stale fact margin, k = 0 (> 0, 95%) | +9.36 [+7.57, +11.03] | SHOWN (E1 rejected) |
+| R2.2 stale − new fact margin, k = 32 (< 0, 95%) | −2.73 [−5.36, −0.014] | SHOWN, barely |
+| R2.2 secondary, k = 128 | −4.28 [−6.92, −1.41] | SHOWN |
+| R2.3 stale class, k = 128: fact > 0 and answer < 0 (95%) | fact +5.89 [+3.96, +7.79]; answer −11.17 [−13.42, −9.15] | SHOWN |
+| R2.4 stale − new L½ (±2 layers, 90%) | 22 vs 21: +1 [0, +1] | SHOWN (equivalent) |
+
+**Map:** R2.1, R2.3 and R2.4 are all SHOWN. The failure sits downstream of reading the update (the E2/E5 family),
+not E1.
+
+Caveats:
+- (a) R2.2 barely clears its bar (upper bound −0.014). The k = 128 secondary is firmer.
+- (b) By the end, the fact margin is about 0 in both classes (stale +0.03, new +1.22). The update's value fades on
+  successes too, so "fades" is not a failure-only property. The classes split at k = 32–128 (stale 7.54 / 5.89, new
+  10.27 / 10.16).
+- (c) Descriptive, next to R2.3: the answer margin at k = 128 is −11.17 in the stale class and −1.12 in the new class.
 
 ## Stage 3: a fix that is selective (Q4). Needs a new budget.
 
