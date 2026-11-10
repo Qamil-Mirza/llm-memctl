@@ -125,6 +125,11 @@ def r1b(store: Path, stage0_store: Path, split_name: str, n_boot: int) -> dict:
     ug = {r["item_id"]: r["category"] == "new" for r in R.score_model(s0, items)
           if r["arm"] == "UG" and r["cut"] == cut and ok(r)}
     b2 = {i: by[i]["V0"] - ug[i] for i in by if "V0" in by[i] and i in ug}
+    m = lambda xs: float(np.mean(xs)) if xs else None  # noqa: E731
+    paired_means = {"R1.B1": {"n_items": len(b1), "acc_I2b": m([by[i]["I2b"] for i in b1]),
+                              "acc_VG": m([by[i]["VG"] for i in b1])},
+                    "R1.B2": {"n_items": len(b2), "acc_V0_S1": m([by[i]["V0"] for i in b2]),
+                              "acc_UG_stage0": m([float(ug[i]) for i in b2])}}
     v0 = {i for i in by if "V0" in by[i]}
     out = {"split_name": split_name, "cut": cut, "payload": "plain", "band": EQ_BAND,
            "r1b2_pairing": {"join": "item id", "s1_v0_items_kept": len(v0), "stage0_ug_items_kept": len(ug),
@@ -137,6 +142,7 @@ def r1b(store: Path, stage0_store: Path, split_name: str, n_boot: int) -> dict:
         p["stat"] = what
         p["verdict"] = R.verdict(*p["ci"], EQ_BAND, "within") if p["n_items"] else "UNDETERMINED"
         out[name] = p
+    out["paired_means"] = paired_means  # descriptive: the two sides of each difference, on the paired items
     return out
 
 
@@ -182,9 +188,15 @@ def heldout(store_s1t: Path, store_s1: Path, stage0_store: Path, split_name: str
     if got != {"s1t"}:
         raise SystemExit(f"{store_s1t}: expected sys s1t, found {sorted(got)}")
     rd = S1.readings(S1.score(recs, items), n_boot, payload="plain")
+    recs1 = [r for r in C.Store(store_s1).recs.values() if r["item_id"] in keep]
+    rd1 = S1.readings(S1.score(recs1, items), n_boot, payload="plain")
+    s1_desc = {"note": "descriptive only (S1 is not the primary setting; no gate or selectivity verdict is read on it); "
+                       "same per-arm denominator convention as primary_s1t",
+               **{k: rd1[k] for k in ("n_items", "acceptance") if k in rd1}}
     return {"split_name": split_name, "payload": "plain", "rules": "PROPOSAL c69f28e (frozen); primary setting s1t",
             "primary_s1t": {k: rd[k] for k in ("n_items", "acceptance", "deltas", "gate", "selectivity", "U_lambda1", "U_lambda2") if k in rd},
             "payload_sanity_s1t": S1.payload_sanity({"plain": rd["acceptance"]}),
+            "s1_acceptance": s1_desc,
             "s1_r1b": r1b(store_s1, stage0_store, split_name, n_boot)}
 
 

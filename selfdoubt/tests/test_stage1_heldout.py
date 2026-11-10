@@ -138,6 +138,10 @@ def test_dry_check_on_dev_reproduces_the_dev_numbers(monkeypatch):
     assert abs(b["R1.B1"]["point"] - (-0.0083)) < 1e-3 and b["R1.B1"]["verdict"] == "SHOWN"
     assert abs(b["R1.B2"]["point"] - (-0.0041)) < 1e-3 and b["R1.B2"]["verdict"] == "SHOWN"
     assert b["r1b2_pairing"]["pairs"] == b["R1.B2"]["n_items"] == 241 and not b["r1b2_pairing"]["below_min"]
+    pm = b["paired_means"]                                              # the two sides reproduce each difference
+    assert abs(pm["R1.B1"]["acc_I2b"] - pm["R1.B1"]["acc_VG"] - b["R1.B1"]["point"]) < 1e-12
+    assert abs(pm["R1.B2"]["acc_V0_S1"] - pm["R1.B2"]["acc_UG_stage0"] - b["R1.B2"]["point"]) < 1e-12
+    assert set(out["s1_acceptance"]["acceptance"]) == set(out["primary_s1t"]["acceptance"])
     monkeypatch.setattr(SR, "MIN_B2_PAIRS", 300)                        # fewer pairs than the floor: reported
     b = SR.r1b(DEV_S1, DEV_S0, "dev", 200)
     assert b["r1b2_pairing"]["below_min"] and "241 R1.B2 pairs (< 300)" in b["r1b2_pairing"]["note"]

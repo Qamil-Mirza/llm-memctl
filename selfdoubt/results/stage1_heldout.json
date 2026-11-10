@@ -104,6 +104,21 @@
    }
   }
  },
+ "s1_acceptance": {
+  "note": "descriptive only (S1 is not the primary setting; no gate or selectivity verdict is read on it); same per-arm denominator convention as primary_s1t",
+  "n_items": 235,
+  "acceptance": {
+   "V0": 0.7829787234042553,
+   "VG": 0.8595744680851064,
+   "Vp": 0.8085106382978723,
+   "Vc": 0.8297872340425532,
+   "I1": 0.31063829787234043,
+   "I2a": 0.4425531914893617,
+   "I2d": 0.3717948717948718,
+   "I2b": 0.8212765957446808,
+   "I2c": 0.7872340425531915
+  }
+ },
  "s1_r1b": {
   "split_name": "heldout",
   "cut": 0.9,
@@ -139,6 +154,18 @@
    "level": 0.9,
    "stat": "acc(V0 under S1) - acc(UG, Stage 0, authors' prompt), same items",
    "verdict": "SHOWN"
+  },
+  "paired_means": {
+   "R1.B1": {
+    "n_items": 235,
+    "acc_I2b": 0.8212765957446808,
+    "acc_VG": 0.8595744680851064
+   },
+   "R1.B2": {
+    "n_items": 235,
+    "acc_V0_S1": 0.7829787234042553,
+    "acc_UG_stage0": 0.8382978723404255
+   }
   }
  },
  "provenance": {

@@ -268,6 +268,11 @@ Qwen3-1.7B, GSM8K held-out 250, cut 0.9, plain payload, 10 arms, S1t (primary) t
 | Setting | V0 | VG | ΔV (gate: ≥ 0.15, 95% excludes 0) | I2b | ΔI2b | Selectivity ΔI2b − 0.5·ΔV |
 |---|---|---|---|---|---|---|
 | S1t | 0.767 | 0.835 | +0.068 [+0.017, +0.127] **fails** | 0.775 | +0.525 [+0.458, +0.593] | +0.492 [+0.422, +0.559] UNDETERMINED (gate not passed) |
+| S1 (descriptive; R1.B1/B2 only) | 0.783 | 0.860 | not read | 0.821 | not read | not read |
+
+S1 acceptance, all scored arms (235 items, same convention as S1t; N is the reference): V0 0.783, VG 0.860, Vp 0.809,
+Vc 0.830, I1 0.311, I2a 0.443, I2d 0.372, I2b 0.821, I2c 0.787. The sides of each R1 difference, on the paired items:
+R1.B1 I2b 0.821 vs VG 0.860; R1.B2 V0(S1) 0.783 vs Stage 0 UG 0.838 (235 pairs).
 
 - **Primary (S1t): the gate did not replicate** (+0.068 on held-out vs +0.162 on dev), so the frozen selectivity reading
   is UNDETERMINED. The selectivity point estimate is reported only as a description. It lies on the same side as dev, and
