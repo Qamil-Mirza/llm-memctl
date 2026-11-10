@@ -166,21 +166,26 @@ def answer_str(p) -> str | None:
     return p if NUM_RE.match(p) else None
 
 
-# ---------------------------------------------------------------- select (laptop, dev only)
+# ---------------------------------------------------------------- select (laptop; dev, or held-out on explicit flag)
 
-def select(store: Path, out: Path, cap: int | None, match: str, tok=None) -> dict:
+def select(store: Path, out: Path, cap: int | None, match: str, tok=None, split_name: str = "dev",
+           check_scored: Path | None = None) -> dict:
+    """split_name "heldout" is the held-out replication (PROPOSAL c69f28e): the same rule, seed and cap; the caller must
+    pass --heldout-confirmed. check_scored: the frozen scorer's file for this store (scored_gsm8k_<split>.jsonl); every
+    candidate U0 row's category must match it, or select aborts."""
     from selfdoubt import scoring as S
     from selfdoubt import stage0_report as R
     from selfdoubt.engines import load_tokenizer
     items_all = C.load_items()
     split, sha = C.ensure_split(items_all)
-    dev = set(split["dev"]["gsm8k"])
+    assert split_name in ("dev", "heldout"), split_name
+    dev = set(split[split_name]["gsm8k"])
     items = {int(r["id"]): r for r in items_all}
     recs = list(C.Store(store).recs.values())
-    dev_all = {i for src in C.SOURCES for i in split["dev"][src]}
+    dev_all = {i for src in C.SOURCES for i in split[split_name][src]}
     bad = sorted({r["item_id"] for r in recs if r["item_id"] not in dev_all})
     if bad:
-        raise SystemExit(f"store holds {len(bad)} non-dev items (e.g. {bad[:3]}): dev only")
+        raise SystemExit(f"store holds {len(bad)} items outside split {split_name} (e.g. {bad[:3]})")
     recs = [r for r in recs if r["source"] == "gsm8k"]
     assert all(r["item_id"] in dev for r in recs)
     models = {r["model"] for r in recs}
@@ -191,6 +196,16 @@ def select(store: Path, out: Path, cap: int | None, match: str, tok=None) -> dic
     full = {r["item_id"]: r for r in recs if r["arm"] == "FULL"}
     cand = {c: defaultdict(list) for c in CLASSES}
     skipped = Counter()
+    if check_scored is not None:
+        ref = {}
+        for x in check_scored.read_text().splitlines():
+            if x.strip():
+                q = json.loads(x)
+                ref[(q["item_id"], q["arm"], q["cut"])] = q["category"]
+        mism = [(r["item_id"], r["cut"]) for r in rows if r["arm"] == "U0" and r["cut"] in C.CUTS
+                and ref.get((r["item_id"], "U0", r["cut"])) != r["category"]]
+        if mism:
+            raise SystemExit(f"{len(mism)} U0 rows differ from {check_scored} (e.g. {mism[:3]})")
     for r in rows:
         if r["arm"] != "U0" or r["cut"] not in C.CUTS or r["category"] not in CLASSES:
             continue
@@ -249,7 +264,9 @@ def select(store: Path, out: Path, cap: int | None, match: str, tok=None) -> dic
                       "prompt_sha256": rec["prompt_sha256"]})
     out.write_text("".join(json.dumps(x) + "\n" for x in lines))
     n = Counter(x["cls"] for x in lines)
-    summ = {"store": str(store), "split_sha256": sha, "match": match, "cap": cap, "available": n_avail,
+    summ = {"store": str(store), "split_name": split_name, "split_sha256": sha,
+            "check_scored": str(check_scored) if check_scored else None, "match": match, "cap": cap,
+            "available": n_avail,
             "n_rows": dict(n), "cuts": {c: dict(Counter(f"{x['cut']:.1f}" for x in lines if x["cls"] == c))
                                         for c in CLASSES},
             "n_items": len({x["item_id"] for x in lines}), "skipped": dict(skipped),
@@ -478,7 +495,121 @@ def run(rows_path: Path, out: Path, model: str, path: str | None, device: str, d
 
 # ---------------------------------------------------------------- report (descriptive only; no verdicts)
 
-def report(res_path: Path, n_boot: int = 2000) -> dict:
+R2_MIN_ROWS = 40     # PROPOSAL c69f28e: each reading needs >= 40 usable rows per class, or it is UNDETERMINED
+R2_LHALF_BAND = 2    # R2.4: SHOWN (equivalent) if the 90% interval of stale - new L_half is inside +-2 layers
+
+
+def l_half(curve) -> int | None:
+    """First layer l >= 1 where the class-mean digit-swap effect e[l] = mean(patch_swap[l] - m_base) has fallen below
+    half its L0 value: e[l] / e[0] < 0.5 (so the sign of e[0] does not matter). None if e[0] == 0 or never."""
+    e0 = curve[0]
+    if not e0:
+        return None
+    return next((l for l in range(1, len(curve)) if curve[l] / e0 < 0.5), None)
+
+
+def r2_readings(ok: list[dict], n_boot: int = 2000) -> dict:
+    """PROPOSAL c69f28e, Stage 2 held-out confirmation R2.1-R2.4, computed exactly as frozen. Item bootstrap (2,000,
+    seed 56): resample the item ids present at that target/offset (either class), pool their rows. Usable rows = the
+    rows at that target/offset with a margin (skips excluded); < 40 in either class -> UNDETERMINED."""
+    import numpy as np
+    from selfdoubt.stage0_report import verdict
+
+    def sel(t, k):
+        return [r for r in ok if r["target"] == t and str(r["offset"]) == str(k)]
+
+    def n_rows(rs):
+        return {c: sum(r["cls"] == c for r in rs) for c in CLASSES}
+
+    def boot(rs, stat, level):
+        by = defaultdict(list)
+        for r in rs:
+            by[r["item_id"]].append(r)
+        ids = sorted(by)
+        rng = np.random.default_rng(SEED)
+        v = []
+        for _ in range(n_boot):
+            x = stat([r for i in rng.choice(ids, len(ids)) for r in by[i]])
+            if x is not None:
+                v.append(x)
+        a = (1 - level) / 2
+        return ([float(np.quantile(v, a)), float(np.quantile(v, 1 - a))] if v else [None, None]), len(v)
+
+    def mean_m(rs, c):
+        v = [r["m_base"] for r in rs if r["cls"] == c]
+        return float(np.mean(v)) if v else None
+
+    def diff_m(rs):
+        a, b = mean_m(rs, "stale"), mean_m(rs, "new")
+        return None if a is None or b is None else a - b
+
+    def gate(*rss):
+        ns = [n_rows(rs) for rs in rss]
+        return all(n[c] >= R2_MIN_ROWS for n in ns for c in CLASSES), ns
+
+    out = {"min_rows_per_class": R2_MIN_ROWS, "n_boot": n_boot, "seed": SEED}
+    # R2.1: stale-class fact margin at k = 0 > 0 (95%)
+    rs = sel("fact", 0)
+    g, ns = gate(rs)
+    ci, _ = boot(rs, lambda x: mean_m(x, "stale"), 0.95)
+    out["R2.1"] = {"stat": "stale fact m_base at k=0", "bar": "> 0", "level": 0.95, "n_rows": ns[0],
+                   "point": mean_m(rs, "stale"), "ci": ci, "verdict": verdict(*ci, 0.0, "gt") if g else "UNDETERMINED"}
+    # R2.2: stale - new fact margin at k = 32 < 0 (95%); k = 128 secondary
+    for name, k in (("R2.2", 32), ("R2.2_secondary_k128", 128)):
+        rs = sel("fact", k)
+        g, ns = gate(rs)
+        ci, _ = boot(rs, diff_m, 0.95)
+        out[name] = {"stat": f"stale - new fact m_base at k={k}", "bar": "< 0", "level": 0.95, "n_rows": ns[0],
+                     "point": diff_m(rs), "ci": ci, "verdict": verdict(*ci, 0.0, "lt") if g else "UNDETERMINED"}
+    # R2.3: stale class at k = 128: fact margin > 0 AND answer margin < 0 (95%), within class
+    rf, ra = sel("fact", 128), sel("ans", 128)
+    g, ns = gate(rf, ra)
+    cf, _ = boot(rf, lambda x: mean_m(x, "stale"), 0.95)
+    ca, _ = boot(ra, lambda x: mean_m(x, "stale"), 0.95)
+    if not g or None in cf + ca:
+        v = "UNDETERMINED"
+    elif cf[0] > 0 and ca[1] < 0:
+        v = "SHOWN"
+    elif cf[1] < 0 or ca[0] > 0:
+        v = "NOT SHOWN"
+    else:
+        v = "UNDETERMINED"
+    out["R2.3"] = {"stat": "stale class at k=128: fact m_base > 0 and ans m_base < 0", "level": 0.95,
+                   "n_rows": {"fact": ns[0], "ans": ns[1]},
+                   "fact": {"point": mean_m(rf, "stale"), "ci": cf}, "ans": {"point": mean_m(ra, "stale"), "ci": ca},
+                   "verdict": v}
+    # R2.4: stale - new L_half of the class-mean digit-swap effect on the fact margin at k = 0, 90%, +-2 layers
+    rs = [r for r in sel("fact", 0) if r.get("patch_swap")]
+    g, ns = gate(rs)
+
+    def curve(x, c):
+        v = [np.array(r["patch_swap"], dtype=float) - r["m_base"] for r in x if r["cls"] == c]
+        return np.mean(v, 0).tolist() if v else None
+
+    def lh(x, c):
+        cv = curve(x, c)
+        return None if cv is None else l_half(cv)
+
+    def dl(x):
+        a, b = lh(x, "stale"), lh(x, "new")
+        return None if a is None or b is None else a - b
+
+    layers = rs[0]["layers"] if rs else None
+    assert not rs or all(r["layers"] == layers for r in rs), "rows patched at different layer sets"
+    assert not layers or layers == list(range(len(layers))), f"L_half needs layers 0..n contiguous, got {layers}"
+    ci, n_ok = boot(rs, dl, 0.90)
+    out["R2.4"] = {"stat": "stale - new L_half (first layer where the class-mean swap effect on the fact margin at k=0 "
+                           "falls below half its L0 value)", "band": R2_LHALF_BAND, "level": 0.90, "n_rows": ns[0],
+                   "L_half": {c: lh(rs, c) for c in CLASSES}, "point": dl(rs), "ci": ci,
+                   "boot_defined": n_ok,
+                   "verdict": verdict(*ci, R2_LHALF_BAND, "within") if g and None not in ci else "UNDETERMINED"}
+    sh = {k: out[k]["verdict"] == "SHOWN" for k in ("R2.1", "R2.3", "R2.4")}
+    out["map"] = {"R2.1_R2.3_R2.4_all_shown": all(sh.values()),
+                  "note": "all three SHOWN puts the failure downstream of reading the update (E2/E5 family), not E1"}
+    return out
+
+
+def report(res_path: Path, n_boot: int = 2000, label: str = "dev") -> dict:
     """Descriptive tables per (target, offset, class); no verdicts (the Advisor freezes readings). Skips are counted by
     reason and class. patch_x0 is a secondary control (positions and context differ, not a clean null)."""
     import numpy as np
@@ -536,6 +667,10 @@ def report(res_path: Path, n_boot: int = 2000) -> dict:
     secs = [r["secs"] for r in ok if r["offset"] != "end"]
     out["secs_per_patched_record"] = {"mean": float(np.mean(secs)) if secs else None,
                                       "max": max(secs) if secs else None}
+    out["r2"] = r2_readings(ok, n_boot)
+    out["r2"]["label"] = label
+    if label == "dev":
+        out["r2"]["note"] = "dev pilot rows: a code check of the frozen computation, NOT readings"
     return out
 
 
@@ -566,15 +701,23 @@ def main(argv=None):
     p = sub.add_parser("report")
     p.add_argument("--res", required=True)
     p.add_argument("--n-boot", type=int, default=2000)
+    p.add_argument("--label", choices=["dev", "heldout"], default="dev",
+                   help="which rows res came from; R2.* are readings only for heldout")
+    s.add_argument("--split-name", choices=["dev", "heldout"], default="dev")
+    s.add_argument("--heldout-confirmed", action="store_true", help="required with --split-name heldout")
+    s.add_argument("--check-scored", default=None, help="frozen scorer file for this store; categories must match")
     a = ap.parse_args(argv)
     if a.cmd == "select":
-        print(json.dumps(select(Path(a.store), Path(a.out), a.cap, a.match), indent=1))
+        if a.split_name == "heldout" and not a.heldout_confirmed:
+            raise SystemExit("held-out select needs --heldout-confirmed (readings frozen first: PROPOSAL c69f28e)")
+        print(json.dumps(select(Path(a.store), Path(a.out), a.cap, a.match, split_name=a.split_name,
+                                check_scored=Path(a.check_scored) if a.check_scored else None), indent=1))
     elif a.cmd == "run":
         lay = [int(x) for x in a.layers.split(",")] if a.layers else None
         print(json.dumps(run(Path(a.rows), Path(a.out), a.model, a.snapshot, a.device, a.dtype,
                              parse_offsets(a.offsets), a.deadline_s, a.limit, lay)))
     else:
-        rep = report(Path(a.res), a.n_boot)
+        rep = report(Path(a.res), a.n_boot, a.label)
         Path(a.res).with_suffix(".report.json").write_text(json.dumps(rep, indent=1) + "\n")
         print(json.dumps({k: v for k, v in rep.items() if k != "tables"}, indent=1))
     return 0

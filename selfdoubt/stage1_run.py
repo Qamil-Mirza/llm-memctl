@@ -50,6 +50,8 @@ def main(argv=None, engine=None):
     ap.add_argument("--payload", default="plain,doc",
                     help="comma list; plain = PRIMARY (carries the reading), doc = SECONDARY (descriptive)")
     ap.add_argument("--arms", default=",".join(S1.ARMS))
+    ap.add_argument("--sys", default="s1", help="comma list of system-prompt settings (s1, s1t, s0); one store each, "
+                    "<out-root>/stage1[_<sys>]/<Model>/gen.jsonl")
     a = ap.parse_args(argv)
     if a.split_name == "heldout" and not a.allow_heldout:
         raise SystemExit("held-out generation needs --allow-heldout (only after the dev choices are frozen)")
@@ -57,6 +59,8 @@ def main(argv=None, engine=None):
     payloads = tuple(x for x in a.payload.split(",") if x)
     assert payloads and set(payloads) <= set(S1.PAYLOADS), payloads
     assert set(arms) <= set(S1.ARMS), arms
+    systems = tuple(x for x in a.sys.split(",") if x)
+    assert systems and set(systems) <= set(S1.SYSTEMS) and len(set(systems)) == len(systems), systems
     t0 = time.time()
     deadline = t0 + a.deadline_s if a.deadline_s else None
     out_root = Path(a.out_root)
@@ -65,11 +69,8 @@ def main(argv=None, engine=None):
     sel = C.select_items(items, split, "full", a.split_name, a.limit, sources=(a.source,) if a.source else C.SOURCES)
     tag = C.model_tag(a.model)
     full_store = C.Store(out_root / "full" / tag / "gen.jsonl")
-    md = out_root / "stage1" / tag
-    md.mkdir(parents=True, exist_ok=True)
-    store = C.Store(md / "gen.jsonl")
-    log(f"stage1: {len(sel)} {a.split_name} items, cut {a.cut}, payloads {payloads}, arms {arms}; "
-        f"FULL records {len(full_store.full_by_item(a.model))}; stage1 records {len(store.recs)}")
+    log(f"stage1: {len(sel)} {a.split_name} items, cut {a.cut}, payloads {payloads}, arms {arms}, systems {systems}; "
+        f"FULL records {len(full_store.full_by_item(a.model))}")
     if engine is None:
         if a.engine == "hf":
             engine = E.HFEngine(a.model, a.snapshot, device=a.device)
@@ -77,26 +78,32 @@ def main(argv=None, engine=None):
             engine = E.VLLMEngine(a.model, a.snapshot, max_model_len=a.max_model_len,
                                   gpu_memory_utilization=a.gpu_memory_utilization, max_num_seqs=a.max_num_seqs)
     inv = time.strftime("%Y%m%dT%H%M%S")
-    meta = {"model": a.model, "revision": C.MODELS[a.model], "split_name": a.split_name, "split_sha256": sha,
-            "cut": a.cut, "payloads": list(payloads), "arms": list(arms), "system_prompt": S1.system_prompt_s1(),
-            "item_ids": [int(r["id"]) for r in sel], "max_tokens": a.max_tokens, "sampling": C.SAMPLING,
-            "provenance": C.provenance()}
-    (md / "run_meta.json").write_text(json.dumps(meta, indent=1) + "\n")
     need_full = [r for r in sel if int(r["id"]) not in full_store.full_by_item(a.model)]
     stopped = False
     if need_full:
         stopped = run_phase("FULL", engine, full_store, C.plan_full(a.model, engine.tok, need_full), a.max_tokens,
                             a.chunk, deadline, out_root / "full" / tag, inv)
-    if not (deadline and time.time() > deadline):
+    for sy in systems:                 # one store per system-prompt setting, in the order given
+        md = out_root / S1.store_dir(sy) / tag
+        md.mkdir(parents=True, exist_ok=True)
+        store = C.Store(md / "gen.jsonl")
+        meta = {"model": a.model, "revision": C.MODELS[a.model], "split_name": a.split_name, "split_sha256": sha,
+                "cut": a.cut, "payloads": list(payloads), "arms": list(arms), "sys": sy,
+                "system_prompt": S1.system_prompt_s1(sy), "item_ids": [int(r["id"]) for r in sel],
+                "max_tokens": a.max_tokens, "sampling": C.SAMPLING, "provenance": C.provenance()}
+        (md / "run_meta.json").write_text(json.dumps(meta, indent=1) + "\n")
+        if deadline and time.time() > deadline:
+            stopped = True
+            break
         reqs, seen = [], set()
         for pl in payloads:            # V arms and N are payload-free: planned once
-            for r in S1.plan(a.model, engine.tok, sel, full_store.full_by_item(a.model), a.cut, pl, arms):
+            for r in S1.plan(a.model, engine.tok, sel, full_store.full_by_item(a.model), a.cut, pl, arms, sy):
                 if r.key not in seen:
                     seen.add(r.key)
                     reqs.append(r)
-        stopped = run_phase("S1", engine, store, reqs, a.max_tokens, a.chunk, deadline, md, inv) or stopped
-    else:
-        stopped = True
+        log(f"stage1 {sy}: {len(reqs)} requests; store {md / 'gen.jsonl'} has {len(store.recs)}")
+        stopped = run_phase(f"S1{'' if sy == 's1' else '_' + sy}", engine, store, reqs, a.max_tokens, a.chunk,
+                            deadline, md, inv) or stopped
     log(f"stage1 done in {time.time() - t0:.1f} s; stopped_at_deadline={stopped}")
     return 9 if stopped else 0
 

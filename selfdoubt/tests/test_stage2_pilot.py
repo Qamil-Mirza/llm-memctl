@@ -185,7 +185,7 @@ def test_pod_plan_runs_and_reports(pod):
     run, rep = pod["calls"].read_text().splitlines()
     assert run.startswith("-u selfdoubt/stage2_pilot.py run --rows runs/selfdoubt/s2/rows.jsonl")
     assert "--snapshot PLAN17" in run and "--offsets 0,32,128,end" in run and "--deadline-s" in run
-    assert rep == "-u selfdoubt/stage2_pilot.py report --res runs/selfdoubt/s2_out/res.jsonl"
+    assert rep == "-u selfdoubt/stage2_pilot.py report --res runs/selfdoubt/s2_out/res.jsonl --label dev"
     assert "rows ok: 2 dev GSM8K rows" in (pod["wt"] / "runs/selfdoubt/s2_out/pod.log").read_text()
 
 
@@ -232,3 +232,112 @@ def test_combined_plan_file():
     rows = WT / v["ROWS"]
     if rows.exists():
         assert hashlib.sha256(rows.read_bytes()).hexdigest() == v["ROWS_SHA"]
+
+
+# ---------------------------------------------------------------- held-out replication + R2 (PROPOSAL c69f28e)
+
+def test_l_half():
+    assert P.l_half([-10, -10, -9, -6, -4, -1, 0]) == 4          # -4 / -10 = 0.4 < 0.5
+    assert P.l_half([8, 8, 5, 3, 0]) == 3                         # sign of e[0] does not matter
+    assert P.l_half([0, 0, 0]) is None and P.l_half([-2, -2, -2]) is None
+
+
+def _r2_rows(n=45, shift=0, fact0=10.0, ans128=-8.0, items_per_class=None):
+    """Synthetic usable rows: per class n rows at fact|0, fact|32, fact|128, ans|128."""
+    import random
+    rng = random.Random(1)
+    rows = []
+    for c in P.CLASSES:
+        for j in range(n):
+            iid = (0 if c == "stale" else 1000) + j
+            noise = lambda: rng.gauss(0, 0.5)  # noqa: E731
+            lh = 20 + (shift if c == "stale" else 0)
+            curve = [-12.0 if l < lh else 0.0 for l in range(29)]
+            base = {"item_id": iid, "cls": c, "layers": list(range(29))}
+            m0 = fact0 + noise()
+            rows.append({**base, "target": "fact", "offset": 0, "m_base": m0,
+                         "patch_swap": [m0 + e for e in curve]})
+            rows.append({**base, "target": "fact", "offset": 32, "m_base": (5 if c == "stale" else 9) + noise()})
+            rows.append({**base, "target": "fact", "offset": 128, "m_base": (5 if c == "stale" else 9) + noise()})
+            rows.append({**base, "target": "ans", "offset": 128, "m_base": (ans128 if c == "stale" else 1) + noise()})
+    return rows
+
+
+def test_r2_readings_synthetic():
+    r = P.r2_readings(_r2_rows(), n_boot=200)
+    assert r["R2.1"]["verdict"] == "SHOWN" and r["R2.2"]["verdict"] == "SHOWN" and r["R2.3"]["verdict"] == "SHOWN"
+    assert r["R2.4"]["L_half"] == {"stale": 20, "new": 20} and r["R2.4"]["verdict"] == "SHOWN"
+    assert r["map"]["R2.1_R2.3_R2.4_all_shown"]
+    r = P.r2_readings(_r2_rows(shift=5, fact0=-10.0, ans128=3.0), n_boot=200)
+    assert r["R2.1"]["verdict"] == "NOT SHOWN" and r["R2.3"]["verdict"] == "NOT SHOWN"
+    assert r["R2.4"]["point"] == 5 and r["R2.4"]["verdict"] == "NOT SHOWN"
+    r = P.r2_readings(_r2_rows(n=39), n_boot=50)                   # < 40 usable rows per class
+    assert all(r[k]["verdict"] == "UNDETERMINED" for k in ("R2.1", "R2.2", "R2.3", "R2.4"))
+
+
+def test_select_heldout_needs_confirmation(tmp_path):
+    with pytest.raises(SystemExit, match="heldout-confirmed"):
+        P.main(["select", "--split-name", "heldout", "--store", str(tmp_path / "x.jsonl"),
+                "--out", str(tmp_path / "rows.jsonl")])
+
+
+def test_pod_heldout_mode(pod):
+    split = json.loads((WT / "runs/selfdoubt/split.json").read_text())
+    rows = [{"item_id": split["heldout"]["gsm8k"][0], "row_id": "h"}]
+    p = pod["wt"] / "runs/selfdoubt/s2/rows.jsonl"
+    p.write_text("".join(json.dumps(r) + "\n" for r in rows))
+    e = dict(os.environ, ENGINE="plan", PYTHON=str(pod["runner"]), RUN_S="1000", OUT="runs/selfdoubt/s2_out",
+             ROWS="runs/selfdoubt/s2/rows.jsonl", ROWS_SHA=hashlib.sha256(p.read_bytes()).hexdigest(),
+             SPLIT_NAME="heldout")
+    sh = ["bash", str(pod["wt"] / "selfdoubt/stage2_pilot_pod.sh")]
+    assert subprocess.run(sh, env=e, capture_output=True, timeout=60).returncode == 3     # not confirmed
+    assert not pod["calls"].exists()
+    e["HELDOUT_CONFIRMED"] = "1"
+    r = subprocess.run(sh, env=e, capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert pod["calls"].read_text().splitlines()[1].endswith("--label heldout")
+    p.write_text(json.dumps({"item_id": split["dev"]["gsm8k"][0], "row_id": "d"}) + "\n")   # dev row in heldout mode
+    e["ROWS_SHA"] = hashlib.sha256(p.read_bytes()).hexdigest()
+    pod["calls"].unlink()
+    assert subprocess.run(sh, env=e, capture_output=True, timeout=60).returncode == 3 and not pod["calls"].exists()
+
+
+def test_combined_v2_wiring(pod):
+    split = json.loads((WT / "runs/selfdoubt/split.json").read_text())
+    p = pod["wt"] / "runs/selfdoubt/s2/rows.jsonl"
+    p.write_text(json.dumps({"item_id": split["heldout"]["gsm8k"][0], "row_id": "h"}) + "\n")
+    e = dict(os.environ, ENGINE="plan", PYTHON=str(pod["runner"]), RUN_S="9000", OUT="runs/selfdoubt/c",
+             PILOT_S="3300", ROWS="runs/selfdoubt/s2/rows.jsonl", ROWS_SHA=hashlib.sha256(p.read_bytes()).hexdigest(),
+             S2_SPLIT="heldout", S2_HELDOUT_CONFIRMED="1",
+             S1_STEPS="s1v2_1p7b_gsm8k_dev|17|gsm8k|dev|250|3900", S1_EXTRA="--cut 0.9 --payload plain --sys s1t,s0")
+    sh = ["bash", str(pod["wt"] / "selfdoubt/s1s2_pod.sh")]
+    r = subprocess.run(sh, env=e, capture_output=True, text=True, timeout=60)
+    assert r.returncode == 0, r.stdout + r.stderr
+    calls = pod["calls"].read_text().splitlines()
+    assert calls[1].endswith("--label heldout")
+    assert "--split-name dev" in calls[2] and calls[2].endswith("--cut 0.9 --payload plain --sys s1t,s0")
+    assert "--allow-heldout" not in calls[2]
+    e["S1_EXTRA"] = "--cut 0.9 --payload plain --sys s1t,s0 --split-name heldout"
+    assert subprocess.run(sh, env=e, capture_output=True, timeout=60).returncode == 3
+
+
+def test_v2_plan_file():
+    v = {}
+    for line in (SD / "plans/s1s2_v2.env").read_text().splitlines():
+        if line and not line.startswith("#"):
+            k, x = line.split("=", 1)
+            v[k] = x.strip('"')
+    assert v["KEY_VAR"] == "RUNPOD_API_KEY_2" and v["EXPECT_EMAIL"] == "qamilmirza@gmail.com"
+    assert v["S2_SPLIT"] == "heldout" and v["S2_HELDOUT_CONFIRMED"] == "1"
+    assert v["S1_STEPS"].split("|")[3] == "dev" and "heldout" not in v["S1_EXTRA"]
+    assert "--sys s1t,s0" in v["S1_EXTRA"] and "--payload plain" in v["S1_EXTRA"]
+    assert int(v["COPY_AT"]) == int(v["HARD_S"]) - 240
+    ceiling = 200 + int(v["PILOT_S"]) + int(v["S1_STEPS"].split("|")[-1]) + 400
+    assert int(v["HARD_S"]) >= 1.25 * ceiling - 1
+    for f in v["BUNDLE_EXTRA"].split():
+        assert f.startswith("runs/selfdoubt/")
+    rows = WT / v["ROWS"]
+    if rows.exists():
+        assert hashlib.sha256(rows.read_bytes()).hexdigest() == v["ROWS_SHA"]
+        ho = set(json.loads((WT / "runs/selfdoubt/split.json").read_text())["heldout"]["gsm8k"])
+        assert all(json.loads(x)["item_id"] in ho for x in rows.read_text().splitlines())

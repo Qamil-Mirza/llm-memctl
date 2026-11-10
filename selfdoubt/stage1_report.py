@@ -5,6 +5,11 @@
     .venv/bin/python selfdoubt/stage1_report.py cut --stage0-store runs/selfdoubt/s0c_pod1/dev/full/Qwen3-1.7B/gen.jsonl
     # readings on a Stage 1 store (dev; held-out needs --heldout-confirmed, after the dev choices are frozen)
     .venv/bin/python selfdoubt/stage1_report.py read --store runs/selfdoubt/s1_dev/dev/stage1/Qwen3-1.7B/gen.jsonl
+    # v2 (PROPOSAL c69f28e): plain-payload readings under S1t and S0 and the fixed primary-setting rule
+    .venv/bin/python selfdoubt/stage1_report.py v2 --store-s1t <out>/dev/stage1_s1t/Qwen3-1.7B/gen.jsonl \
+        --store-s0 <out>/dev/stage1_s0/Qwen3-1.7B/gen.jsonl
+    # R1.B1 / R1.B2 for the S1 setting (plain; three-way equivalence within +-0.10 on a 90% interval)
+    .venv/bin/python selfdoubt/stage1_report.py r1b --store <S1 store> --stage0-store <Stage 0 store, same split>
 Prints counts and rates only (no text).
 """
 from __future__ import annotations
@@ -79,6 +84,86 @@ def read(store: Path, split_name: str, n_boot: int) -> dict:
     return out
 
 
+def _paired(diffs: dict, n_boot: int, level: float, seed: int = 56) -> dict:
+    """Mean of per-item differences with an item-bootstrap percentile interval (one value per item)."""
+    ids = sorted(diffs)
+    if not ids:
+        return {"n_items": 0, "point": None, "ci": [None, None], "level": level}
+    rng = np.random.default_rng(seed)
+    bs = [np.mean([diffs[i] for i in rng.choice(ids, len(ids))]) for _ in range(n_boot)]
+    a = (1 - level) / 2
+    return {"n_items": len(ids), "point": float(np.mean([diffs[i] for i in ids])),
+            "ci": [float(np.quantile(bs, a)), float(np.quantile(bs, 1 - a))], "level": level}
+
+
+EQ_BAND = 0.10     # R1.B1 / R1.B2: SHOWN if the 90% interval is inside +-0.10 (inclusive), NOT SHOWN if wholly outside
+
+
+def r1b(store: Path, stage0_store: Path, split_name: str, n_boot: int) -> dict:
+    """PROPOSAL c69f28e, S1 setting, plain payload; three-way on a 90% interval, band +-0.10.
+    R1.B1 = acc(I2b) - acc(VG), paired by item in the S1 store (rows the Stage 1 scorer keeps; truncated excluded).
+    R1.B2 = acc(V0 under S1) - acc(UG under the authors' prompt, Stage 0 rows at the same cut), on the same items
+    (each side kept by its own scorer: not dropped, not truncated)."""
+    from selfdoubt import stage0_report as R
+    keep = split_ids(split_name)
+    items = {int(r["id"]): r for r in C.load_items()}
+    recs = [r for r in C.Store(store).recs.values() if r["item_id"] in keep]
+    systems = {r.get("sys", "s1") for r in recs}
+    if systems != {"s1"}:
+        raise SystemExit(f"R1.B readings are for the S1 store only; this store holds {sorted(systems)}")
+    cuts = {r["cut"] for r in recs}
+    assert len(cuts) == 1, cuts
+    cut = cuts.pop()
+    ok = lambda r: not r["category"].startswith("dropped") and r["category"] != "truncated"  # noqa: E731
+    by = {}
+    for r in S1.score(recs, items):
+        if ok(r) and (not r["arm"].startswith("I") or (r.get("payload") or "plain") == "plain"):
+            by.setdefault(r["item_id"], {})[r["arm"]] = r["accepted"]
+    b1 = {i: d["I2b"] - d["VG"] for i, d in by.items() if "I2b" in d and "VG" in d}
+    s0 = [r for r in C.Store(stage0_store).recs.values() if r["item_id"] in keep and r["item_id"] in by]
+    ug = {r["item_id"]: r["category"] == "new" for r in R.score_model(s0, items)
+          if r["arm"] == "UG" and r["cut"] == cut and ok(r)}
+    b2 = {i: by[i]["V0"] - ug[i] for i in by if "V0" in by[i] and i in ug}
+    out = {"split_name": split_name, "cut": cut, "payload": "plain", "band": EQ_BAND}
+    for name, d, what in (("R1.B1", b1, "acc(I2b) - acc(VG), S1"),
+                          ("R1.B2", b2, "acc(V0 under S1) - acc(UG, Stage 0, authors' prompt), same items")):
+        p = _paired(d, n_boot, 0.90)
+        p["stat"] = what
+        p["verdict"] = R.verdict(*p["ci"], EQ_BAND, "within") if p["n_items"] else "UNDETERMINED"
+        out[name] = p
+    return out
+
+
+def v2(store_s1t: Path, store_s0: Path, split_name: str, n_boot: int) -> dict:
+    """Stage 1 v2 (PROPOSAL c69f28e): plain-payload readings under S1t and S0, then the fixed primary-setting rule:
+    S1t if its gate passes, else S0 if its gate passes, else the 1.7B selectivity reading closes UNDETERMINED."""
+    keep = split_ids(split_name)
+    items = {int(r["id"]): r for r in C.load_items()}
+    out = {"split_name": split_name, "payload": "plain", "by_sys": {}}
+    for sy, path in (("s1t", store_s1t), ("s0", store_s0)):
+        recs = [r for r in C.Store(path).recs.values() if r["item_id"] in keep]
+        got = {r.get("sys", "s1") for r in recs}
+        if got != {sy}:
+            raise SystemExit(f"{path}: expected sys {sy}, found {sorted(got)}")
+        rows = S1.score(recs, items)
+        rd = S1.readings(rows, n_boot, payload="plain")
+        cats = {}
+        for r in rows:
+            if not r["arm"].startswith("I") or (r.get("payload") or "plain") == "plain":
+                cats.setdefault(r["arm"], {}).setdefault(r["category"], 0)
+                cats[r["arm"]][r["category"]] += 1
+        rd["categories"] = cats
+        rd["payload_sanity"] = S1.payload_sanity({"plain": rd["acceptance"]})
+        out["by_sys"][sy] = rd
+    g = {sy: out["by_sys"][sy]["gate"]["pass"] for sy in ("s1t", "s0")}
+    prim = "s1t" if g["s1t"] else ("s0" if g["s0"] else None)
+    out["primary"] = {"setting": prim, "gates": g,
+                      "rule": "S1t if its dev gate passes, else S0 if its gate passes, else closed UNDETERMINED",
+                      "decision": (f"primary setting {prim}" if prim else
+                                   "neither gate passes: the 1.7B selectivity reading closes as UNDETERMINED")}
+    return out
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -90,13 +175,33 @@ def main(argv=None):
     r.add_argument("--split-name", choices=["dev", "heldout"], default="dev")
     r.add_argument("--heldout-confirmed", action="store_true")
     r.add_argument("--n-boot", type=int, default=2000)
+    v = sub.add_parser("v2")
+    v.add_argument("--store-s1t", required=True)
+    v.add_argument("--store-s0", required=True)
+    v.add_argument("--split-name", choices=["dev", "heldout"], default="dev")
+    v.add_argument("--heldout-confirmed", action="store_true")
+    v.add_argument("--n-boot", type=int, default=2000)
+    b = sub.add_parser("r1b")
+    b.add_argument("--store", required=True, help="S1 Stage 1 store")
+    b.add_argument("--stage0-store", required=True, help="Stage 0 store of the same split (UG rows at the same cut)")
+    b.add_argument("--split-name", choices=["dev", "heldout"], default="dev")
+    b.add_argument("--heldout-confirmed", action="store_true")
+    b.add_argument("--n-boot", type=int, default=2000)
     a = ap.parse_args(argv)
     if a.cmd == "cut":
         print(json.dumps(cut_choice(Path(a.stage0_store), a.n_boot), indent=1))
         return 0
     if a.split_name == "heldout" and not a.heldout_confirmed:
         raise SystemExit("held-out readings need --heldout-confirmed (after the dev choices are frozen)")
-    print(json.dumps(read(Path(a.store), a.split_name, a.n_boot), indent=1))
+    if a.cmd == "v2":
+        out = v2(Path(a.store_s1t), Path(a.store_s0), a.split_name, a.n_boot)
+        (Path(a.store_s1t).parent.parent.parent / f"stage1_v2_{a.split_name}.json").write_text(
+            json.dumps(out, indent=1) + "\n")
+    elif a.cmd == "r1b":
+        out = r1b(Path(a.store), Path(a.stage0_store), a.split_name, a.n_boot)
+    else:
+        out = read(Path(a.store), a.split_name, a.n_boot)
+    print(json.dumps(out, indent=1))
     return 0
 
 

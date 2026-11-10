@@ -4,6 +4,7 @@
 # Advisor before any held-out run. The Executor needs the user's own approval line before launch.
 #   RUNPOD_POD_ID=<id> RUN_S=<s> SELF_STOP_S=<s> OUT=<dir> ROWS=<rows.jsonl> ROWS_SHA=<sha256> bash selfdoubt/stage2_pilot_pod.sh
 #   ENGINE=plan PYTHON=<fake> ...    # $0 test: no watchdog/GPU/install/download; the runner gets the run/report args
+#   SPLIT_NAME=heldout HELDOUT_CONFIRMED=1 ...   # held-out replication (PROPOSAL c69f28e); default dev
 # Order: preflight (files, rows sha, dev-only check) -> self-stop watchdog -> GPU -> hub + background download ->
 # transformers install -> run (deadline, resumable) -> report. Output: $OUT/res.jsonl, $OUT/res.report.json.
 set -euo pipefail
@@ -11,13 +12,18 @@ export PIP_BREAK_SYSTEM_PACKAGES=1 HF_HUB_DISABLE_PROGRESS_BARS=1 TOKENIZERS_PAR
 cd "$(dirname "$0")/.."
 ENGINE="${ENGINE:-pilot}"; RUN_S="${RUN_S:-1500}"; SELF_STOP_S="${SELF_STOP_S:-}"
 OUT="${OUT:-runs/selfdoubt/s2_pilot_pod}"; ROWS="${ROWS:-}"; ROWS_SHA="${ROWS_SHA:-}"; PY="${PYTHON:-python}"
-OFFSETS="${OFFSETS:-0,32,128,end}"
+OFFSETS="${OFFSETS:-0,32,128,end}"; SPLIT_NAME="${SPLIT_NAME:-dev}"; HELDOUT_CONFIRMED="${HELDOUT_CONFIRMED:-}"
 mkdir -p "$OUT"; rm -f "$OUT/pod.done"
 T0=$(date +%s); DEADLINE=$(( T0 + RUN_S ))
 trap 'rc=$?; echo "exit=$rc engine=$ENGINE at $(date -u +%FT%TZ) total_s=$(( $(date +%s) - T0 ))" > "$OUT/pod.done"' EXIT
 log() { echo "$(date -u +%T) $*" | tee -a "$OUT/pod.log"; }
 left() { echo $(( DEADLINE - $(date +%s) )); }
-log "selfdoubt stage2 pilot pod; out $OUT; rows $ROWS; offsets $OFFSETS; engine $ENGINE; run budget $RUN_S s; self-stop ${SELF_STOP_S:-none} s"
+log "selfdoubt stage2 pilot pod; out $OUT; rows $ROWS; split $SPLIT_NAME; offsets $OFFSETS; engine $ENGINE; run budget $RUN_S s; self-stop ${SELF_STOP_S:-none} s"
+case "$SPLIT_NAME" in
+  dev) ;;
+  heldout) [ "$HELDOUT_CONFIRMED" = 1 ] || { log "held-out rows need HELDOUT_CONFIRMED=1"; exit 3; } ;;
+  *) log "SPLIT_NAME must be dev or heldout"; exit 3 ;;
+esac
 
 TF_PIN="transformers==4.57.1"; HUB_PIN="huggingface_hub[hf_xet]<1.0"
 M17="${M17:-Qwen/Qwen3-1.7B}"; R17="${R17:-70d244cc86ccca08cf5af4e1e306ecf908b1ad5e}"
@@ -30,14 +36,15 @@ for f in selfdoubt/__init__.py selfdoubt/common.py selfdoubt/engines.py selfdoub
 sha() { sha256sum "$1" | cut -d' ' -f1; }
 [ "$(sha runs/selfdoubt/split.json)" = "$SPLIT_SHA" ] || { log "split.json sha mismatch"; exit 3; }
 [ -n "$ROWS_SHA" ] && [ "$(sha "$ROWS")" = "$ROWS_SHA" ] || { log "rows sha mismatch (or ROWS_SHA unset)"; exit 3; }
-# dev only: every row's item must be in split["dev"]["gsm8k"] (stdlib only, before any install)
-python3 - "$ROWS" <<'PY' | tee -a "$OUT/pod.log" || { log "rows are not all dev GSM8K"; exit 3; }
+# every row's item must be in split[SPLIT_NAME]["gsm8k"] (stdlib only, before any install)
+python3 - "$ROWS" "$SPLIT_NAME" <<'PY' | tee -a "$OUT/pod.log" || { log "rows are not all $SPLIT_NAME GSM8K"; exit 3; }
 import json, sys
-dev = set(json.load(open("runs/selfdoubt/split.json"))["dev"]["gsm8k"])
+name = sys.argv[2]
+ok = set(json.load(open("runs/selfdoubt/split.json"))[name]["gsm8k"])
 rows = [json.loads(x) for x in open(sys.argv[1]) if x.strip()]
-bad = [r["item_id"] for r in rows if r["item_id"] not in dev]
-assert rows and not bad, f"{len(bad)} non-dev rows"
-print(f"rows ok: {len(rows)} dev GSM8K rows, {len({r['item_id'] for r in rows})} items")
+bad = [r["item_id"] for r in rows if r["item_id"] not in ok]
+assert rows and not bad, f"{len(bad)} rows outside {name}"
+print(f"rows ok: {len(rows)} {name} GSM8K rows, {len({r['item_id'] for r in rows})} items")
 PY
 
 if [ "$ENGINE" = plan ]; then
@@ -78,7 +85,7 @@ set +e
 timeout "$guard" $PY -u selfdoubt/stage2_pilot.py run --rows "$ROWS" --out "$OUT/res.jsonl" --model "$M17" \
   --snapshot "$SNAP" --offsets "$OFFSETS" --deadline-s "$(( guard - 120 ))" 2>&1 | tee -a "$OUT/run.log" \
   | grep -vE "^(Loading|\[transformers\])"; rc=${PIPESTATUS[0]}
-$PY -u selfdoubt/stage2_pilot.py report --res "$OUT/res.jsonl" 2>&1 | tee -a "$OUT/pod.log"; rc2=${PIPESTATUS[0]}
+$PY -u selfdoubt/stage2_pilot.py report --res "$OUT/res.jsonl" --label "$SPLIT_NAME" 2>&1 | tee -a "$OUT/pod.log"; rc2=${PIPESTATUS[0]}
 set -e
 log "pod done at +$(( $(date +%s) - T0 )) s (run rc $rc, report rc $rc2): copy back $OUT"
 [ "$rc" = 0 ] && exit "$rc2"; exit "$rc"

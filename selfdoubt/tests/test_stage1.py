@@ -118,3 +118,77 @@ def test_second_payload_reruns_only_tool_arms(tmp_path, tok):
     tool = [a for a in S1.ARMS if a.startswith("I")]
     assert eng.calls - c0 == len(tool) and len(recs) == len(S1.ARMS) + len(tool)
     assert {r["key"].split("|")[-1] for r in recs if r["arm"] in tool} == {"plain", "doc"}
+
+
+# ---------------------------------------------------------------- Stage 1 v2 (PROPOSAL c69f28e)
+
+def test_v2_system_prompts_and_keys(tok):
+    assert S1.system_prompt_s1("s0") == C.system_prompt()
+    assert S1.system_prompt_s1("s1t") == C.system_prompt() + S1.TOOL_RULE
+    assert "Only the user's <update>" not in S1.system_prompt_s1("s1t") and "tool output" in S1.system_prompt_s1("s1t")
+    assert S1.system_prompt_s1() == S1.system_prompt_s1("s1") == C.system_prompt() + S1.RULE
+    # s1 keys/seeds are those of the original dev run; the other settings are tagged and seeded apart
+    assert S1.key("M", 3, "I1", 0.9, "plain") == "S1|M|3|I1|0.90|plain" == S1.key("M", 3, "I1", 0.9, "plain", "s1")
+    assert S1.key("M", 3, "V0", 0.9, "plain", "s0") == "S1|M|3|V0|0.90|sys=s0"
+    assert len({S1.seed("M", 3, "V0", 0.9, "plain", s) for s in S1.SYSTEMS}) == 3
+    assert S1.store_dir("s1") == "stage1" and S1.store_dir("s0") == "stage1_s0"
+    items = C.load_items()
+    split, _ = C.ensure_split(items)
+    it = next(r for r in items if int(r["id"]) == split["dev"]["gsm8k"][0])
+    # S0's FULL prompt is exactly Stage 0's FULL prompt (on-policy prefix)
+    assert S1.full_prompt_s1(tok, "Qwen/Qwen3-1.7B", it["revised_problem"], "s0") == \
+        C.full_prompt(tok, "Qwen/Qwen3-1.7B", it["revised_problem"])
+
+
+def test_v2_runner_two_settings(tmp_path, tok):
+    from selfdoubt import engines as E
+    from selfdoubt import stage1_run as R
+    out = tmp_path / "dev"
+    eng = E.FakeEngine("Qwen/Qwen3-1.7B", tok)
+    args = ["--engine", "fake", "--model", "Qwen/Qwen3-1.7B", "--split-name", "dev", "--source", "gsm8k",
+            "--limit", "2", "--out-root", str(out), "--cut", "0.9", "--payload", "plain", "--sys", "s1t,s0"]
+    assert R.main(args, engine=eng) == 0
+    assert not (out / "stage1").exists()
+    for sy in ("s1t", "s0"):
+        recs = [json.loads(x) for x in (out / f"stage1_{sy}/Qwen3-1.7B/gen.jsonl").read_text().splitlines()]
+        assert len(recs) == 2 * len(S1.ARMS) and {r["sys"] for r in recs} == {sy}
+        assert all(r["key"].endswith(f"|sys={sy}") for r in recs)
+        meta = json.loads((out / f"stage1_{sy}/Qwen3-1.7B/run_meta.json").read_text())
+        assert meta["system_prompt"] == S1.system_prompt_s1(sy) and meta["sys"] == sy
+    with pytest.raises(AssertionError):
+        R.main(args[:-1] + ["s1t,s1t"], engine=eng)
+
+
+def test_v2_primary_rule_and_r1b(tmp_path, monkeypatch):
+    from selfdoubt import stage1_report as RP
+    n = 100
+    good = {"V0": [0] * 60 + [1] * 40, "VG": [1] * 90 + [0] * 10}
+    flat = {"V0": [1] * 80 + [0] * 20, "VG": [1] * 82 + [0] * 18}
+    rest = {a: [0] * n for a in ("Vp", "Vc", "I1", "I2a", "I2d", "I2b", "I2c")}
+    stores = {"s1t": flat, "s0": good}
+    monkeypatch.setattr(RP, "split_ids", lambda name: set(range(n)))
+    monkeypatch.setattr(RP.C, "load_items", lambda: [])
+
+    class St:
+        def __init__(self, path):
+            self.recs = {i: {"item_id": i, "sys": Path(path).name} for i in range(1)}
+    monkeypatch.setattr(RP.C, "Store", St)
+    monkeypatch.setattr(RP.S1, "score", lambda recs, items: rows_for({**rest, **stores[recs[0]["sys"]]}))
+    out = RP.v2(Path("s1t"), Path("s0"), "dev", 200)
+    assert out["primary"]["gates"] == {"s1t": False, "s0": True} and out["primary"]["setting"] == "s0"
+    stores["s1t"] = good
+    assert RP.v2(Path("s1t"), Path("s0"), "dev", 200)["primary"]["setting"] == "s1t"
+    stores["s1t"] = stores["s0"] = flat
+    o = RP.v2(Path("s1t"), Path("s0"), "dev", 200)["primary"]
+    assert o["setting"] is None and "UNDETERMINED" in o["decision"]
+    with pytest.raises(SystemExit):                       # a store must hold the setting it is passed as
+        RP.v2(Path("s0"), Path("s0"), "dev", 200)
+
+
+def test_paired_equivalence():
+    from selfdoubt import stage1_report as RP
+    from selfdoubt.stage0_report import verdict
+    p = RP._paired({i: 0 for i in range(100)}, 200, 0.90)
+    assert p["ci"] == [0.0, 0.0] and verdict(*p["ci"], RP.EQ_BAND, "within") == "SHOWN"
+    p = RP._paired({i: (1 if i < 50 else 0) for i in range(100)}, 200, 0.90)
+    assert verdict(*p["ci"], RP.EQ_BAND, "within") == "NOT SHOWN"
