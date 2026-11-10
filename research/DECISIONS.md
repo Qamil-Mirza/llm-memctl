@@ -360,3 +360,26 @@ the user has made the decision.
 - **Spend.** Pod x75t0k719w43yh, lifetime 3,498 s; billing posted $0.587 (5475d0a). Programme total ≈ $34.34 of $36.
 - **Authority.** The user, Advisor pane, 2026-11-08: "Go on D-82".
 
+
+## D-83 (2026-11-10) — §56 opened: MLP neurons behind false "unknown" at the answer position
+
+- **What.** Proposal `research/proposals/2026-11-10-exp56-answer-neurons.md` (rev 0, 6e6b075). On Qwen 2.5 3B
+  (fp32, laptop CPU, frozen reader prompt P0 7b5fc30, greedy), rank the 396,288 SwiGLU neurons by their direct push
+  toward "unknown" at P_ans (DLA through the final-RMSNorm scale, D = logit("unknown") − logit(t*)), and test whether
+  a small set carries false "unknown" (R1 concentration), whether it is shared with true abstentions (R2 channel
+  type), whether ablating it at P_ans releases false abstentions beyond 20 matched random sets (R3), and whether it is
+  more selective than the B1 logit bias at matched release (R4). Data: W controlled rows (§54 split, seed 55); dev-A =
+  even `base_index` (§54 B0 ANS + §55 P0 UNA), used to choose; dev-B = odd `base_index` (§54 B0 ANS + about 300 new
+  P0 UNA rows), used to test. Readings R1–R4 and the stopping rules are fixed in §6–§7 of the proposal.
+- **Why.** Every fix for false abstention so far behaves like a dial: §53 (F19) found that a plain logit bias matches
+  the best §51 weight edit, and §55 (F22) found that removing the option trades false abstentions for unanswerable
+  rows answered. §51 (F18) located a pathway in attention; MLP neurons at the answer step were never examined.
+  Goodfire's "Neurons as an Interpretable Basis" (Tigges et al., 2026-11-10) argues that MLP neurons are sparse,
+  mostly single-purpose units, which makes a neuron-level test cheap to run and easy to read.
+- **Scope.** Stages 0–3 only: laptop, $0, development data only (W seed 55). Seed 56 stays unused; the seed-57 split
+  of stage 4 is not generated. No pod. Stage 4 (sealed confirmation) needs a separate approval. The stage-0 freeze
+  (row lists, class labels, t* rule, DLA code and its sum test) is committed before any neuron is measured, and the
+  Advisor reviews at each gate. Stopping rule D-45. No change to STATE until results are reviewed and the user says
+  "Go".
+- **Authority.** The user, Advisor pane, 2026-11-10, answering "Do you approve stages 0–3 ($0, practice data
+  only)?": "yes".

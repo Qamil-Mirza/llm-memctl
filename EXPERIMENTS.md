@@ -3413,3 +3413,14 @@ Results: `runs/exp55/freeze.json` (sha256 24ec9eb6…), `rows_W.jsonl` and `rows
 / 244a586. Report `runs/exp55/report.json`, pod logs and launch scripts at f07fbfd. The raw pod records stay local
 (`runs/exp55/pod/run/`). Scripts: `scripts/exp55_prompts.py`, `exp55_freeze.py`, `exp55_run.py`, `exp55_pod.sh`
 and `exp55_report.py`.
+
+## 56. Which MLP neurons carry false "unknown" at the answer position? Direct-push ranking, ablation and the logit-bias dial, Qwen 2.5 3B (2026-11-10, pre-registered rev 0)
+
+**Status: OPENED (D-83). Stages 0–3 approved: laptop, $0, development data only. Not built, not run.**
+- **Question.** Is the push toward "unknown" at P_ans carried by a small set of SwiGLU neurons? Is it the same set for
+  false and true abstentions? Does switching it off release false abstentions more selectively than the logit bias
+  B1?
+- **Design.** Proposal `research/proposals/2026-11-10-exp56-answer-neurons.md` (rev 0, 6e6b075). Dev-A (even
+  `base_index` of the §54 W split, seed 55) chooses the candidate set K; dev-B (odd `base_index`) tests it. Readings
+  R1 (concentration), R2 (channel type), R3 (causal, against 20 matched random sets) and R4 (selectivity against B1
+  at matched release) and the stopping rules are fixed in §6–§7 of the proposal. Seed 56 stays unused.
