@@ -152,6 +152,35 @@ it is wholly short of it, UNDETERMINED otherwise. No reading is taken with fewer
   must sit inside ±0.10. This is an equivalence test using a 90% interval.
 - **R0.4, "the fix removes stale answers":** the stale share in UG minus U0, against a bar of 0.
 
+### Stage 0 results (held-out, 2026-11-09; readings 302308d, scorer 7d09937; Advisor ACCEPT)
+
+The PRIMARY readings are each model's POOLED reading over all its held-out items (GSM8K + MATH-500, item bootstrap
+stratified by source), because the proposal's pool is all held-out items. Per-source readings are secondary.
+R0.3 waits for the doubt coder. Every reading had at least 30 U0 failures. Tables are in
+`selfdoubt/results/stage0_heldout_1p7b_gsm8k.json`, `stage0_heldout_1p7b_math500.json` and `stage0_heldout_8b.json`.
+
+| Model (pool) | U0 failures | R0.1 stale share (> 0.5) | R0.2 cut 0.9 − X0 (> 0) | R0.4 UG − U0 stale (< 0) |
+|---|---|---|---|---|
+| Qwen3-1.7B (250 GSM8K + 250 MATH-500) | 703 | 0.677 [0.632, 0.722] SHOWN | +0.065 [+0.011, +0.121] SHOWN | −0.245 [−0.274, −0.215] SHOWN |
+| Qwen3-8B (250 GSM8K + 100 MATH-500) | 109 | 0.532 [0.414, 0.652] UNDETERMINED | +0.089 [+0.058, +0.119] SHOWN | −0.045 [−0.060, −0.031] SHOWN |
+
+Secondary, per source:
+- 1.7B GSM8K: R0.1 0.525 UNDETERMINED; R0.2 −0.059 UNDETERMINED; R0.4 −0.166 SHOWN.
+- 1.7B MATH-500: R0.1 0.766 SHOWN; R0.2 +0.195 SHOWN; R0.4 −0.326 SHOWN.
+- 8B GSM8K: R0.1 0.367 UNDETERMINED; R0.2 +0.042 SHOWN; R0.4 −0.021 SHOWN.
+- 8B MATH-500 (100 items): R0.1 0.667 SHOWN; R0.2 +0.211 SHOWN; R0.4 −0.109 SHOWN.
+- R0.2 at cut 0.5:
+  - 1.7B pooled +0.039, UNDETERMINED;
+  - 8B pooled +0.071, SHOWN.
+
+Caveats carried with these readings:
+1. The 8B pool has 100 MATH-500 items against 250 for the 1.7B (budget; user decision of 2026-11-09).
+2. 8B MATH-500 R0.1 is not robust to counting truncated rows as failures: 0.635 [0.486, 0.784].
+3. On MATH-500, drop-invalid rows (N or FULL at max tokens: 1.7B 74 records, 8B 44) remove the longest traces, so
+   the MATH pool leans toward shorter traces.
+4. The timeout ledger: 11 rows of the 1.7B MATH store rest on a 5 s timeout, and none moves at 60 s. Every other
+   store has 0.
+
 ## Stage 1: is the fix selective? (Q2). Probably needs a new budget.
 
 **Threat model.** The system prompt says only the user's `<update>` may change the problem. An attacker controls
