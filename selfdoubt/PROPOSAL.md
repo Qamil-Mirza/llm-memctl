@@ -355,10 +355,10 @@ Caveats:
   the tables). The freeze anticipated about 90, so this cell is secondary and its interval is wide.
 - (f) **9 scorer timeouts** (all in answer checking). Rerun at a 60 s limit, every reading is identical.
 
-Cost (gmail account; estimates from pod lifetime at $0.604/h until billing posts; SPEND rows 8–9):
-- pod A 1tsa5ueos06oug, 10:20:17–11:45:13 PT, 5,096 s, ≈ $0.86 (quote central $0.70, ceiling $1.08, cap $1.39);
-- pod B 8yyq9tgnxjanbn, 10:30:15–12:11:40 PT, 6,085 s, ≈ $1.02 (quote central $0.74, ceiling $1.16, cap $1.49).
-- Both ran over the central quote and under the ceiling, mainly because MATH-500 generation was slow.
+Cost (gmail account; billing records posted 13:14 PT; SPEND rows 8–9):
+- pod A 1tsa5ueos06oug, 10:20:17–11:45:13 PT, 5,096 s, $0.855 (quote central $0.70, ceiling $1.08, cap $1.39);
+- pod B 8yyq9tgnxjanbn, 10:30:15–12:11:40 PT, 6,085 s, $1.021 (quote central $0.74, ceiling $1.16, cap $1.49).
+- Together $1.876. Both ran over the central quote and under the ceiling, mainly because MATH-500 generation was slow.
 
 ## Stage 2: the mechanism (Q3). Needs a new budget.
 
