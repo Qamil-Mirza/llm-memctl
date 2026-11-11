@@ -1,0 +1,13 @@
+Loading weights:   0%|          | 0/434 [00:00<?, ?it/s]Loading weights:   0%|          | 1/434 [00:00<04:20,  1.66it/s]Loading weights:  20%|██        | 87/434 [00:00<00:02, 161.66it/s]Loading weights:  30%|███       | 131/434 [00:00<00:01, 204.10it/s]Loading weights:  39%|███▉      | 170/434 [00:01<00:01, 220.73it/s]Loading weights:  47%|████▋     | 204/434 [00:01<00:00, 236.20it/s]Loading weights:  54%|█████▍    | 236/434 [00:01<00:00, 253.41it/s]Loading weights:  62%|██████▏   | 268/434 [00:01<00:00, 254.89it/s]Loading weights:  70%|██████▉   | 303/434 [00:01<00:00, 276.73it/s]Loading weights:  77%|███████▋  | 335/434 [00:01<00:00, 257.48it/s]Loading weights:  84%|████████▍ | 364/434 [00:01<00:00, 226.37it/s]Loading weights:  90%|████████▉ | 389/434 [00:01<00:00, 214.90it/s]Loading weights:  95%|█████████▍| 412/434 [00:02<00:00, 199.18it/s]Loading weights: 100%|██████████| 434/434 [00:02<00:00, 205.89it/s]
+18:49:50 engine hf-5.17.0-torch-2.14.0+cpu-cpu-float32-t16 loaded in 3 s
+18:59:57 W-DE04_ANSb_H2: 44/44 same, max dD 6.48e-05, batched 40 s, batch-1 566 s; changed vs base: 2
+19:07:29 W-DE10_ANSb_H1: 44/44 same, max dD 1.05e-04, batched 44 s, batch-1 407 s; changed vs base: 2
+19:15:18 W-DE20_ANSa_H1: 44/44 same, max dD 6.68e-05, batched 47 s, batch-1 423 s; changed vs base: 1
+19:23:50 W-DE28_ANSa_H1: 44/44 same, max dD 6.10e-05, batched 71 s, batch-1 441 s; changed vs base: 2
+19:34:11 W-DE34_ANSb_H2: 44/44 same, max dD 7.44e-05, batched 49 s, batch-1 572 s; changed vs base: 2
+19:44:06 W-DE44_ANSa_H2: 44/44 same, max dD 8.20e-05, batched 36 s, batch-1 559 s; changed vs base: 3
+19:53:04 W-RC12_ANSa_H1: 44/44 same, max dD 1.24e-04, batched 67 s, batch-1 471 s; changed vs base: 0
+20:03:23 W-RC18_ANSa_H2: 44/44 same, max dD 1.11e-04, batched 32 s, batch-1 587 s; changed vs base: 2
+20:10:54 W-RC36_ANSa_H1: 44/44 same, max dD 1.03e-04, batched 25 s, batch-1 423 s; changed vs base: 2
+20:19:23 W-TU24_ANSb_H1: 44/44 same, max dD 1.01e-04, batched 56 s, batch-1 453 s; changed vs base: 4
+20:19:23 {"n_row_arms": 440, "same_frac": 1.0, "max_dD": 0.0001239776611328125, "PASS": true, "batched_s_per_row": 46.66424543857575, "batch1_s_per_row": 490.261305308342, "n_arms": 44, "outputs_changed_vs_base": 20, "peak_rss_gb": 17.74407958984375}

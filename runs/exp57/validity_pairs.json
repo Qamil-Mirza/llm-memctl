@@ -1,0 +1,3206 @@
+{
+ "P": [
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 35,
+   "neuron": 9475,
+   "dhat": -0.748403787612915,
+   "real": -0.7490386962890625
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 25,
+   "neuron": 2067,
+   "dhat": -0.5225152969360352,
+   "real": -0.4846458435058594
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 22,
+   "neuron": 8156,
+   "dhat": -0.5092841386795044,
+   "real": -0.4862174987792969
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 26,
+   "neuron": 10587,
+   "dhat": 0.4626796841621399,
+   "real": 0.4772911071777344
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 26,
+   "neuron": 3376,
+   "dhat": -0.4321485459804535,
+   "real": -0.39481353759765625
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 31,
+   "neuron": 9306,
+   "dhat": 0.4087616503238678,
+   "real": 0.402252197265625
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 27,
+   "neuron": 4371,
+   "dhat": 0.40486276149749756,
+   "real": 0.4364738464355469
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 33,
+   "neuron": 5667,
+   "dhat": -0.4045020639896393,
+   "real": -0.4030799865722656
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 29,
+   "neuron": 3114,
+   "dhat": -0.37508395314216614,
+   "real": -0.37662506103515625
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 25,
+   "neuron": 359,
+   "dhat": -0.36277416348457336,
+   "real": -0.35533905029296875
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 32,
+   "neuron": 6134,
+   "dhat": -0.3557596504688263,
+   "real": -0.35132598876953125
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 27,
+   "neuron": 2876,
+   "dhat": -0.3503585159778595,
+   "real": -0.3394775390625
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 27,
+   "neuron": 3801,
+   "dhat": -0.3447885811328888,
+   "real": -0.34262847900390625
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 34,
+   "neuron": 9726,
+   "dhat": 0.34032952785491943,
+   "real": 0.3447608947753906
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 24,
+   "neuron": 7227,
+   "dhat": -0.3361660838127136,
+   "real": -0.336944580078125
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 26,
+   "neuron": 7203,
+   "dhat": -0.33366459608078003,
+   "real": -0.3105049133300781
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 22,
+   "neuron": 304,
+   "dhat": -0.33095601201057434,
+   "real": -0.3256492614746094
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 33,
+   "neuron": 8187,
+   "dhat": -0.328412801027298,
+   "real": -0.3297615051269531
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 33,
+   "neuron": 8799,
+   "dhat": 0.32154253125190735,
+   "real": 0.3228874206542969
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 25,
+   "neuron": 9069,
+   "dhat": 0.31858086585998535,
+   "real": 0.3237190246582031
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 29,
+   "neuron": 8197,
+   "dhat": 0.002629480790346861,
+   "real": 0.002620697021484375
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 17,
+   "neuron": 5446,
+   "dhat": -0.00017557639512233436,
+   "real": -0.000179290771484375
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 11,
+   "neuron": 8322,
+   "dhat": -0.00021065415057819337,
+   "real": -0.000202178955078125
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 7,
+   "neuron": 10486,
+   "dhat": 2.966982538055163e-05,
+   "real": 2.288818359375e-05
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 5,
+   "neuron": 1186,
+   "dhat": 0.00017085683066397905,
+   "real": 0.00017547607421875
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 10,
+   "neuron": 9287,
+   "dhat": -4.365450513432734e-05,
+   "real": -5.7220458984375e-05
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 13,
+   "neuron": 2493,
+   "dhat": 0.0014439596561715007,
+   "real": 0.0014495849609375
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 9,
+   "neuron": 7667,
+   "dhat": 3.581182681955397e-05,
+   "real": 3.4332275390625e-05
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 1,
+   "neuron": 9176,
+   "dhat": -3.5050469193720346e-09,
+   "real": 3.814697265625e-06
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 4,
+   "neuron": 7488,
+   "dhat": -1.5096490642463323e-05,
+   "real": -1.52587890625e-05
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 10,
+   "neuron": 7539,
+   "dhat": -0.0004683339793700725,
+   "real": -0.000469207763671875
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 11,
+   "neuron": 3877,
+   "dhat": -0.00023086523287929595,
+   "real": -0.000244140625
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 18,
+   "neuron": 5842,
+   "dhat": 0.005984792951494455,
+   "real": 0.00598907470703125
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 15,
+   "neuron": 8675,
+   "dhat": 0.00014070275938138366,
+   "real": 0.00012969970703125
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 23,
+   "neuron": 4155,
+   "dhat": 0.0003907128411810845,
+   "real": 0.000385284423828125
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 27,
+   "neuron": 10069,
+   "dhat": 0.005839771591126919,
+   "real": 0.005832672119140625
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 2,
+   "neuron": 7188,
+   "dhat": 5.88206432894367e-07,
+   "real": -3.814697265625e-06
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 33,
+   "neuron": 9082,
+   "dhat": -0.0004848235403187573,
+   "real": -0.00048065185546875
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 27,
+   "neuron": 8190,
+   "dhat": 0.001183993648737669,
+   "real": 0.001190185546875
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 20,
+   "neuron": 9117,
+   "dhat": 0.009390821680426598,
+   "real": 0.009410858154296875
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 31,
+   "neuron": 3757,
+   "dhat": 1.5645123720169067,
+   "real": 1.5846729278564453
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 26,
+   "neuron": 252,
+   "dhat": -1.4171115159988403,
+   "real": -1.289346694946289
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 26,
+   "neuron": 10276,
+   "dhat": 1.3616796731948853,
+   "real": 1.356943130493164
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 29,
+   "neuron": 9325,
+   "dhat": -1.3219221830368042,
+   "real": -1.380300521850586
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 26,
+   "neuron": 7203,
+   "dhat": -1.1736234426498413,
+   "real": -1.2167415618896484
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 27,
+   "neuron": 3801,
+   "dhat": -1.0842117071151733,
+   "real": -1.1038436889648438
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 19,
+   "neuron": 5621,
+   "dhat": -1.0713919401168823,
+   "real": -1.101755142211914
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 26,
+   "neuron": 9454,
+   "dhat": 0.9094048142433167,
+   "real": 0.8855781555175781
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 26,
+   "neuron": 3265,
+   "dhat": -0.8699674606323242,
+   "real": -0.8698883056640625
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 25,
+   "neuron": 10599,
+   "dhat": -0.8335139751434326,
+   "real": -0.8433666229248047
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 30,
+   "neuron": 9831,
+   "dhat": -0.8253768086433411,
+   "real": -0.8046379089355469
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 30,
+   "neuron": 9718,
+   "dhat": 0.8013069033622742,
+   "real": 0.8148250579833984
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 30,
+   "neuron": 10752,
+   "dhat": -0.7983075380325317,
+   "real": -0.7647533416748047
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 30,
+   "neuron": 8792,
+   "dhat": 0.7945363521575928,
+   "real": 0.7993450164794922
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 29,
+   "neuron": 3795,
+   "dhat": -0.7943664789199829,
+   "real": -0.7691059112548828
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 25,
+   "neuron": 7622,
+   "dhat": -0.7908374071121216,
+   "real": -0.8299350738525391
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 29,
+   "neuron": 10837,
+   "dhat": 0.7897172570228577,
+   "real": 0.7822322845458984
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 29,
+   "neuron": 2971,
+   "dhat": -0.7256484031677246,
+   "real": -0.7832546234130859
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 31,
+   "neuron": 9306,
+   "dhat": 0.7135738134384155,
+   "real": 0.7271575927734375
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 27,
+   "neuron": 5612,
+   "dhat": -0.6872965097427368,
+   "real": -0.6909599304199219
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 16,
+   "neuron": 1758,
+   "dhat": 0.0005848301807418466,
+   "real": 0.000576019287109375
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 2,
+   "neuron": 963,
+   "dhat": 7.9576057032682e-07,
+   "real": -2.47955322265625e-05
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 33,
+   "neuron": 1801,
+   "dhat": -0.004036423750221729,
+   "real": -0.004039764404296875
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 3,
+   "neuron": 221,
+   "dhat": -2.3540205518202129e-07,
+   "real": 0.0
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 3,
+   "neuron": 821,
+   "dhat": 8.071209833815374e-08,
+   "real": 2.86102294921875e-05
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 16,
+   "neuron": 8704,
+   "dhat": -0.020199254155158997,
+   "real": -0.020215988159179688
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 31,
+   "neuron": 246,
+   "dhat": 0.0010023339418694377,
+   "real": 0.001003265380859375
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 1,
+   "neuron": 2087,
+   "dhat": 0.011962504126131535,
+   "real": 0.01197052001953125
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 19,
+   "neuron": 6624,
+   "dhat": 0.011299410834908485,
+   "real": 0.011270523071289062
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 35,
+   "neuron": 6557,
+   "dhat": 0.0013316848780959845,
+   "real": 0.0013256072998046875
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 18,
+   "neuron": 4337,
+   "dhat": -0.0012778295204043388,
+   "real": -0.0012874603271484375
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 30,
+   "neuron": 6398,
+   "dhat": 0.004543554503470659,
+   "real": 0.004550933837890625
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 17,
+   "neuron": 6452,
+   "dhat": -0.007213073316961527,
+   "real": -0.00716400146484375
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 7,
+   "neuron": 9807,
+   "dhat": -0.0003065683413296938,
+   "real": -0.0002689361572265625
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 11,
+   "neuron": 105,
+   "dhat": -0.003120903391391039,
+   "real": -0.0031280517578125
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 17,
+   "neuron": 10471,
+   "dhat": -0.0008140868158079684,
+   "real": -0.000804901123046875
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 0,
+   "neuron": 9521,
+   "dhat": -7.11570173734799e-05,
+   "real": -8.58306884765625e-05
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 35,
+   "neuron": 6871,
+   "dhat": 0.00012781652912963182,
+   "real": 0.0001239776611328125
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 3,
+   "neuron": 2216,
+   "dhat": 2.1167325030546635e-06,
+   "real": 2.6702880859375e-05
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 31,
+   "neuron": 710,
+   "dhat": -0.00025868628290481865,
+   "real": -0.0002613067626953125
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 35,
+   "neuron": 9475,
+   "dhat": -1.6412094831466675,
+   "real": -1.6455726623535156
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 27,
+   "neuron": 3801,
+   "dhat": -1.518815279006958,
+   "real": -1.6155109405517578
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 28,
+   "neuron": 10271,
+   "dhat": 1.2996165752410889,
+   "real": 1.3223991394042969
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 29,
+   "neuron": 3114,
+   "dhat": -0.8602071404457092,
+   "real": -0.9158287048339844
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 25,
+   "neuron": 5900,
+   "dhat": 0.7228241562843323,
+   "real": 0.7338142395019531
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 35,
+   "neuron": 4153,
+   "dhat": 0.715069055557251,
+   "real": 0.7129249572753906
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 22,
+   "neuron": 3493,
+   "dhat": 0.6655566692352295,
+   "real": 0.6368789672851562
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 27,
+   "neuron": 9112,
+   "dhat": 0.6077325344085693,
+   "real": 0.5682373046875
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 30,
+   "neuron": 9831,
+   "dhat": -0.5751118659973145,
+   "real": -0.5636215209960938
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 24,
+   "neuron": 7341,
+   "dhat": 0.570148766040802,
+   "real": 0.5540714263916016
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 21,
+   "neuron": 3882,
+   "dhat": -0.5573834180831909,
+   "real": -0.5749778747558594
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 21,
+   "neuron": 1587,
+   "dhat": -0.5456517934799194,
+   "real": -0.5504131317138672
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 30,
+   "neuron": 9718,
+   "dhat": 0.5307579636573792,
+   "real": 0.5396556854248047
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 31,
+   "neuron": 9306,
+   "dhat": 0.5302169322967529,
+   "real": 0.5585803985595703
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 21,
+   "neuron": 3013,
+   "dhat": -0.5065094232559204,
+   "real": -0.4919452667236328
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 28,
+   "neuron": 8515,
+   "dhat": 0.5059534311294556,
+   "real": 0.5253887176513672
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 29,
+   "neuron": 3795,
+   "dhat": -0.5002392530441284,
+   "real": -0.48998451232910156
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 29,
+   "neuron": 10837,
+   "dhat": 0.49963849782943726,
+   "real": 0.4949474334716797
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 25,
+   "neuron": 9069,
+   "dhat": 0.49831581115722656,
+   "real": 0.48974037170410156
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 23,
+   "neuron": 6511,
+   "dhat": -0.48636284470558167,
+   "real": -0.49575042724609375
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 4,
+   "neuron": 2068,
+   "dhat": 3.3423467016291397e-07,
+   "real": 1.9073486328125e-05
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 6,
+   "neuron": 2463,
+   "dhat": 4.775576599058695e-05,
+   "real": 7.05718994140625e-05
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 20,
+   "neuron": 7895,
+   "dhat": -0.0002622176252771169,
+   "real": -0.000240325927734375
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 35,
+   "neuron": 8597,
+   "dhat": -0.0013188967714086175,
+   "real": -0.0013179779052734375
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 16,
+   "neuron": 6930,
+   "dhat": 0.006156799383461475,
+   "real": 0.0061664581298828125
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 3,
+   "neuron": 5890,
+   "dhat": -1.3563765605795197e-05,
+   "real": 1.9073486328125e-05
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 4,
+   "neuron": 240,
+   "dhat": -0.0012340531684458256,
+   "real": -0.001178741455078125
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 15,
+   "neuron": 4211,
+   "dhat": -0.0006024124450050294,
+   "real": -0.000579833984375
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 9,
+   "neuron": 7763,
+   "dhat": -0.0012906630290672183,
+   "real": -0.0012607574462890625
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 9,
+   "neuron": 3762,
+   "dhat": 0.00024695752654224634,
+   "real": 0.000286102294921875
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 15,
+   "neuron": 10249,
+   "dhat": -0.0007650324259884655,
+   "real": -0.000766754150390625
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 19,
+   "neuron": 3557,
+   "dhat": -0.0033735851757228374,
+   "real": -0.0033779144287109375
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 0,
+   "neuron": 5154,
+   "dhat": 0.00033005891600623727,
+   "real": 0.0003509521484375
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 5,
+   "neuron": 1162,
+   "dhat": -3.2049440505943494e-06,
+   "real": -1.9073486328125e-06
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 0,
+   "neuron": 2801,
+   "dhat": -0.00019146564591210335,
+   "real": -0.0001506805419921875
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 2,
+   "neuron": 288,
+   "dhat": 2.551536795181164e-07,
+   "real": 2.47955322265625e-05
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 34,
+   "neuron": 8296,
+   "dhat": -0.0008608982316218317,
+   "real": -0.0008716583251953125
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 8,
+   "neuron": 795,
+   "dhat": 0.0006159325712360442,
+   "real": 0.0006465911865234375
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 16,
+   "neuron": 8521,
+   "dhat": 0.00025098136393353343,
+   "real": 0.000274658203125
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 35,
+   "neuron": 4872,
+   "dhat": -0.001489887130446732,
+   "real": -0.001495361328125
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 35,
+   "neuron": 9475,
+   "dhat": -1.2783321142196655,
+   "real": -1.2801494598388672
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 34,
+   "neuron": 813,
+   "dhat": -0.5518317222595215,
+   "real": -0.5492820739746094
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 35,
+   "neuron": 4971,
+   "dhat": 0.493558406829834,
+   "real": 0.4930915832519531
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 26,
+   "neuron": 3376,
+   "dhat": -0.4304119944572449,
+   "real": -0.4019947052001953
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 32,
+   "neuron": 2680,
+   "dhat": -0.42252489924430847,
+   "real": -0.37740516662597656
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 27,
+   "neuron": 2876,
+   "dhat": -0.40821418166160583,
+   "real": -0.3817577362060547
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 29,
+   "neuron": 3114,
+   "dhat": -0.39650869369506836,
+   "real": -0.3700847625732422
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 34,
+   "neuron": 5285,
+   "dhat": -0.39125916361808777,
+   "real": -0.3915271759033203
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 35,
+   "neuron": 4810,
+   "dhat": -0.38799887895584106,
+   "real": -0.38783836364746094
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 26,
+   "neuron": 10587,
+   "dhat": 0.34846749901771545,
+   "real": 0.36090850830078125
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 33,
+   "neuron": 8799,
+   "dhat": -0.32898786664009094,
+   "real": -0.3261280059814453
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 31,
+   "neuron": 9306,
+   "dhat": 0.31604716181755066,
+   "real": 0.31848716735839844
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 26,
+   "neuron": 7203,
+   "dhat": -0.31079742312431335,
+   "real": -0.28261756896972656
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 26,
+   "neuron": 668,
+   "dhat": -0.30926284193992615,
+   "real": -0.2950286865234375
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 25,
+   "neuron": 9069,
+   "dhat": 0.3067340850830078,
+   "real": 0.3135242462158203
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 24,
+   "neuron": 7227,
+   "dhat": -0.2961634695529938,
+   "real": -0.2963237762451172
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 31,
+   "neuron": 3178,
+   "dhat": -0.28360188007354736,
+   "real": -0.28441429138183594
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 27,
+   "neuron": 4371,
+   "dhat": 0.2790825068950653,
+   "real": 0.3008403778076172
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 22,
+   "neuron": 8156,
+   "dhat": -0.2669721841812134,
+   "real": -0.25481224060058594
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 25,
+   "neuron": 2067,
+   "dhat": -0.2647998332977295,
+   "real": -0.24968910217285156
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 16,
+   "neuron": 1371,
+   "dhat": 0.00030927624902687967,
+   "real": 0.0002994537353515625
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 12,
+   "neuron": 5394,
+   "dhat": 0.00039600697346031666,
+   "real": 0.0003948211669921875
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 22,
+   "neuron": 9910,
+   "dhat": 0.0051463209092617035,
+   "real": 0.0051555633544921875
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 4,
+   "neuron": 2679,
+   "dhat": 0.000355185242369771,
+   "real": 0.0003509521484375
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 34,
+   "neuron": 88,
+   "dhat": -0.0008112657815217972,
+   "real": -0.0008106231689453125
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 12,
+   "neuron": 8517,
+   "dhat": 0.0001400165492668748,
+   "real": 0.0001277923583984375
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 12,
+   "neuron": 8234,
+   "dhat": -0.0012656946200877428,
+   "real": -0.0012531280517578125
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 4,
+   "neuron": 8727,
+   "dhat": 2.037026192169833e-08,
+   "real": -1.9073486328125e-06
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 6,
+   "neuron": 8224,
+   "dhat": 2.3644128305022605e-05,
+   "real": 2.09808349609375e-05
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 6,
+   "neuron": 2629,
+   "dhat": 0.0003704068367369473,
+   "real": 0.00035858154296875
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 2,
+   "neuron": 9048,
+   "dhat": 4.71011007974198e-09,
+   "real": 1.1444091796875e-05
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 7,
+   "neuron": 6629,
+   "dhat": -7.73509100326919e-07,
+   "real": -7.62939453125e-06
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 2,
+   "neuron": 9017,
+   "dhat": -1.3549314559213599e-08,
+   "real": 0.0
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 33,
+   "neuron": 7545,
+   "dhat": -0.00028410073718987405,
+   "real": -0.0002880096435546875
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 26,
+   "neuron": 1053,
+   "dhat": -0.0035724781919270754,
+   "real": -0.0035552978515625
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 14,
+   "neuron": 2365,
+   "dhat": 0.0024735338520258665,
+   "real": 0.002475738525390625
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 21,
+   "neuron": 560,
+   "dhat": 0.002405031817033887,
+   "real": 0.0024051666259765625
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 21,
+   "neuron": 9267,
+   "dhat": -0.058765772730112076,
+   "real": -0.05806159973144531
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 15,
+   "neuron": 4532,
+   "dhat": 3.191544601577334e-05,
+   "real": 3.4332275390625e-05
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 28,
+   "neuron": 6294,
+   "dhat": 1.5800078472238965e-05,
+   "real": 9.5367431640625e-06
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 35,
+   "neuron": 9475,
+   "dhat": 2.240063190460205,
+   "real": 2.23394775390625
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 35,
+   "neuron": 6512,
+   "dhat": -1.4349290132522583,
+   "real": -1.4303550720214844
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 33,
+   "neuron": 4730,
+   "dhat": -1.162231206893921,
+   "real": -1.1969871520996094
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 34,
+   "neuron": 5422,
+   "dhat": -0.9313778281211853,
+   "real": -0.9224128723144531
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 34,
+   "neuron": 6366,
+   "dhat": 0.4246375262737274,
+   "real": 0.4221687316894531
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 33,
+   "neuron": 10636,
+   "dhat": -0.4148768484592438,
+   "real": -0.07575225830078125
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 35,
+   "neuron": 9634,
+   "dhat": 0.3832620084285736,
+   "real": 0.38390350341796875
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 21,
+   "neuron": 3013,
+   "dhat": -0.36142176389694214,
+   "real": -0.3614616394042969
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 19,
+   "neuron": 9866,
+   "dhat": 0.31654566526412964,
+   "real": 0.34983062744140625
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 22,
+   "neuron": 3493,
+   "dhat": 0.3075707256793976,
+   "real": 0.31584930419921875
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 28,
+   "neuron": 3743,
+   "dhat": -0.3045654594898224,
+   "real": -0.29831695556640625
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 32,
+   "neuron": 4621,
+   "dhat": -0.28455349802970886,
+   "real": -0.18042755126953125
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 29,
+   "neuron": 3795,
+   "dhat": -0.27779099345207214,
+   "real": -0.26250457763671875
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 28,
+   "neuron": 8515,
+   "dhat": -0.27751946449279785,
+   "real": -0.2572975158691406
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 19,
+   "neuron": 5621,
+   "dhat": -0.27624937891960144,
+   "real": -0.27448272705078125
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 35,
+   "neuron": 2527,
+   "dhat": 0.27257972955703735,
+   "real": 0.2730216979980469
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 27,
+   "neuron": 6866,
+   "dhat": -0.25684887170791626,
+   "real": -0.24732589721679688
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 22,
+   "neuron": 5514,
+   "dhat": -0.256152480840683,
+   "real": -0.25107574462890625
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 30,
+   "neuron": 7224,
+   "dhat": -0.25601330399513245,
+   "real": -0.24691390991210938
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 21,
+   "neuron": 5047,
+   "dhat": -0.2539055049419403,
+   "real": -0.24678802490234375
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 18,
+   "neuron": 7168,
+   "dhat": -0.0058215525932610035,
+   "real": -0.005794525146484375
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 14,
+   "neuron": 5439,
+   "dhat": -0.0015605882508680224,
+   "real": -0.0015716552734375
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 6,
+   "neuron": 4049,
+   "dhat": 9.034866525325924e-05,
+   "real": 0.0001068115234375
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 35,
+   "neuron": 5517,
+   "dhat": 0.001338454894721508,
+   "real": 0.00133514404296875
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 32,
+   "neuron": 2485,
+   "dhat": -4.923945743939839e-05,
+   "real": -4.9591064453125e-05
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 0,
+   "neuron": 3379,
+   "dhat": -9.037490235641599e-05,
+   "real": -8.392333984375e-05
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 30,
+   "neuron": 8139,
+   "dhat": -0.0006960728205740452,
+   "real": -0.0006866455078125
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 12,
+   "neuron": 4536,
+   "dhat": -0.0011996610555797815,
+   "real": -0.00121307373046875
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 16,
+   "neuron": 2219,
+   "dhat": 0.0006379876285791397,
+   "real": 0.000640869140625
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 15,
+   "neuron": 7626,
+   "dhat": 0.008432422764599323,
+   "real": 0.0084075927734375
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 16,
+   "neuron": 3398,
+   "dhat": 0.0005143445450812578,
+   "real": 0.000518798828125
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 9,
+   "neuron": 3220,
+   "dhat": 0.00042817374924197793,
+   "real": 0.000431060791015625
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 10,
+   "neuron": 2510,
+   "dhat": 7.363496843026951e-05,
+   "real": 8.0108642578125e-05
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 16,
+   "neuron": 7755,
+   "dhat": -0.0017091071931645274,
+   "real": -0.001705169677734375
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 22,
+   "neuron": 9576,
+   "dhat": 0.0009081682073883712,
+   "real": 0.000904083251953125
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 15,
+   "neuron": 5467,
+   "dhat": 0.0010489047272130847,
+   "real": 0.001064300537109375
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 3,
+   "neuron": 4812,
+   "dhat": -0.0003655130276456475,
+   "real": -0.00035858154296875
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 5,
+   "neuron": 2656,
+   "dhat": -2.1061121060483856e-06,
+   "real": 7.62939453125e-06
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 25,
+   "neuron": 4480,
+   "dhat": -0.009374628774821758,
+   "real": -0.00934600830078125
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 5,
+   "neuron": 3530,
+   "dhat": -6.488965300377458e-05,
+   "real": -5.7220458984375e-05
+  }
+ ],
+ "N": [
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 21,
+   "neuron": 6256,
+   "dhat": 1.9069534540176392,
+   "real": 3.5785083770751953
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 12,
+   "neuron": 3102,
+   "dhat": 1.148569941520691,
+   "real": -0.7848854064941406
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 22,
+   "neuron": 8156,
+   "dhat": -1.126965045928955,
+   "real": -1.02935791015625
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 4267,
+   "dhat": -1.0179256200790405,
+   "real": -1.073007583618164
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 6754,
+   "dhat": -0.9907944202423096,
+   "real": -0.892425537109375
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 4713,
+   "dhat": 0.961822509765625,
+   "real": 0.9801921844482422
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 17,
+   "neuron": 789,
+   "dhat": -0.8269681930541992,
+   "real": -0.5294075012207031
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 19,
+   "neuron": 9420,
+   "dhat": 0.7620595693588257,
+   "real": 0.7896404266357422
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 19,
+   "neuron": 9866,
+   "dhat": 0.7061976194381714,
+   "real": 0.7479057312011719
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 26,
+   "neuron": 10161,
+   "dhat": -0.6942616105079651,
+   "real": -0.6696128845214844
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 21,
+   "neuron": 225,
+   "dhat": 0.6901224255561829,
+   "real": 0.9137420654296875
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 22,
+   "neuron": 10453,
+   "dhat": 0.6403229236602783,
+   "real": 0.6752376556396484
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 31,
+   "neuron": 8783,
+   "dhat": -0.639941930770874,
+   "real": -0.4683189392089844
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 0,
+   "neuron": 1661,
+   "dhat": 0.6395455002784729,
+   "real": -0.014892578125
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 23,
+   "neuron": 1797,
+   "dhat": -0.6274702548980713,
+   "real": -0.5955848693847656
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 2221,
+   "dhat": -0.614849865436554,
+   "real": -0.5253181457519531
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 32,
+   "dhat": 0.5852217674255371,
+   "real": 0.5751895904541016
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 22,
+   "neuron": 4399,
+   "dhat": 0.5732930898666382,
+   "real": 0.5675201416015625
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 10,
+   "neuron": 4233,
+   "dhat": -0.5557965636253357,
+   "real": -0.5582046508789062
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "top",
+   "layer": 27,
+   "neuron": 9674,
+   "dhat": 0.5469332933425903,
+   "real": 0.5959587097167969
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 23,
+   "neuron": 7834,
+   "dhat": 0.016613395884633064,
+   "real": 0.0166168212890625
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 17,
+   "neuron": 1015,
+   "dhat": 0.021246101707220078,
+   "real": 0.021259307861328125
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 11,
+   "neuron": 5137,
+   "dhat": -0.0018171119736507535,
+   "real": -0.001842498779296875
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 17,
+   "neuron": 3797,
+   "dhat": -0.009524856694042683,
+   "real": -0.009418487548828125
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 28,
+   "neuron": 2971,
+   "dhat": -0.0006029916112311184,
+   "real": -0.000598907470703125
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 7,
+   "neuron": 10941,
+   "dhat": -0.004556106869131327,
+   "real": -0.0045166015625
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 4,
+   "neuron": 8574,
+   "dhat": 3.107315649231168e-07,
+   "real": -3.0517578125e-05
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 32,
+   "neuron": 4736,
+   "dhat": 0.00044538232032209635,
+   "real": 0.000446319580078125
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 6,
+   "neuron": 2283,
+   "dhat": -0.004737982992082834,
+   "real": -0.004512786865234375
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 4,
+   "neuron": 10716,
+   "dhat": 4.80373728350969e-06,
+   "real": 0.0
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 13,
+   "neuron": 1493,
+   "dhat": -0.00198146840557456,
+   "real": -0.0019683837890625
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 30,
+   "neuron": 883,
+   "dhat": -0.005575879476964474,
+   "real": -0.005573272705078125
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 5,
+   "neuron": 7279,
+   "dhat": -0.0004448129329830408,
+   "real": -0.0005035400390625
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 34,
+   "neuron": 2224,
+   "dhat": -9.398527254234068e-06,
+   "real": -7.62939453125e-06
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 22,
+   "neuron": 2110,
+   "dhat": -0.005377617198973894,
+   "real": -0.005397796630859375
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 35,
+   "neuron": 5282,
+   "dhat": 0.0,
+   "real": 0.0
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 29,
+   "neuron": 7941,
+   "dhat": 0.0005263708881102502,
+   "real": 0.00049591064453125
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 30,
+   "neuron": 3008,
+   "dhat": 0.0007655954686924815,
+   "real": 0.00075531005859375
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 23,
+   "neuron": 6956,
+   "dhat": 0.02250642143189907,
+   "real": 0.022296905517578125
+  },
+  {
+   "case_id": "W-DE00_ANSa_H0",
+   "kind": "rand",
+   "layer": 16,
+   "neuron": 3669,
+   "dhat": -0.006475929170846939,
+   "real": -0.00652313232421875
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 19,
+   "neuron": 9866,
+   "dhat": 2.549940586090088,
+   "real": 3.1092052459716797
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 6754,
+   "dhat": -2.182318687438965,
+   "real": -1.926025390625
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 21,
+   "neuron": 6256,
+   "dhat": -1.7285490036010742,
+   "real": -1.5118827819824219
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 0,
+   "neuron": 1661,
+   "dhat": 1.5164328813552856,
+   "real": 0.5757331848144531
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 18,
+   "neuron": 2735,
+   "dhat": -1.2322596311569214,
+   "real": -1.5439167022705078
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 19,
+   "neuron": 8282,
+   "dhat": -1.2100175619125366,
+   "real": -1.2828788757324219
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 19,
+   "neuron": 10299,
+   "dhat": 1.1875680685043335,
+   "real": 1.1820030212402344
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 10,
+   "neuron": 4565,
+   "dhat": 1.0789982080459595,
+   "real": 0.9840412139892578
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 32,
+   "dhat": 1.062260389328003,
+   "real": 1.151010513305664
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 4267,
+   "dhat": -1.0280661582946777,
+   "real": -0.8451061248779297
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 9392,
+   "dhat": -0.8710839748382568,
+   "real": -0.8228549957275391
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 27,
+   "neuron": 10724,
+   "dhat": 0.8605707883834839,
+   "real": 0.8653488159179688
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 4713,
+   "dhat": 0.831025242805481,
+   "real": 0.8332843780517578
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 5585,
+   "dhat": 0.80729079246521,
+   "real": 0.9352264404296875
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 1833,
+   "dhat": -0.7912895679473877,
+   "real": -0.8072414398193359
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 21,
+   "neuron": 3291,
+   "dhat": -0.7594752311706543,
+   "real": -0.5636615753173828
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 22,
+   "neuron": 3041,
+   "dhat": -0.7489880323410034,
+   "real": -0.7358112335205078
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 21,
+   "neuron": 8013,
+   "dhat": -0.74715656042099,
+   "real": -0.7655754089355469
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 25,
+   "neuron": 125,
+   "dhat": -0.7013207674026489,
+   "real": -0.7404098510742188
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "top",
+   "layer": 21,
+   "neuron": 7023,
+   "dhat": -0.6885779500007629,
+   "real": -0.6966934204101562
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 18,
+   "neuron": 5568,
+   "dhat": 0.0346338152885437,
+   "real": 0.03468894958496094
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 20,
+   "neuron": 2238,
+   "dhat": -0.013318582437932491,
+   "real": -0.013071060180664062
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 33,
+   "neuron": 1058,
+   "dhat": 0.00034925714135169983,
+   "real": 0.0003509521484375
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 7,
+   "neuron": 3099,
+   "dhat": -0.0030341926030814648,
+   "real": -0.0030765533447265625
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 31,
+   "neuron": 9944,
+   "dhat": 0.00042453091009519994,
+   "real": 0.00042724609375
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 18,
+   "neuron": 10569,
+   "dhat": -0.013606462627649307,
+   "real": -0.013555526733398438
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 34,
+   "neuron": 2556,
+   "dhat": -0.0003005127946380526,
+   "real": -0.000301361083984375
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 15,
+   "neuron": 1669,
+   "dhat": 0.016786279156804085,
+   "real": 0.01668548583984375
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 29,
+   "neuron": 7767,
+   "dhat": -0.00044041225919499993,
+   "real": -0.0004291534423828125
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 31,
+   "neuron": 3576,
+   "dhat": -0.00038611836498603225,
+   "real": -0.00038909912109375
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 28,
+   "neuron": 2294,
+   "dhat": -0.0009786791633814573,
+   "real": -0.001056671142578125
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 28,
+   "neuron": 4211,
+   "dhat": 0.000467973091872409,
+   "real": 0.0004405975341796875
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 1,
+   "neuron": 2551,
+   "dhat": -1.1338335070831818e-06,
+   "real": 3.24249267578125e-05
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 26,
+   "neuron": 3250,
+   "dhat": -0.0017437873175367713,
+   "real": -0.001781463623046875
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 31,
+   "neuron": 8675,
+   "dhat": -0.00032887732959352434,
+   "real": -0.000324249267578125
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 20,
+   "neuron": 8753,
+   "dhat": 0.035448141396045685,
+   "real": 0.03489875793457031
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 18,
+   "neuron": 2301,
+   "dhat": 0.006461510434746742,
+   "real": 0.00646209716796875
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 6,
+   "neuron": 8047,
+   "dhat": 2.317475082236342e-05,
+   "real": 3.62396240234375e-05
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 19,
+   "neuron": 1472,
+   "dhat": -0.008008390665054321,
+   "real": 0.22974777221679688
+  },
+  {
+   "case_id": "W-DE16_ANSb_H1",
+   "kind": "rand",
+   "layer": 25,
+   "neuron": 4845,
+   "dhat": 0.004180283285677433,
+   "real": 0.004161834716796875
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 0,
+   "neuron": 1661,
+   "dhat": 1.1718817949295044,
+   "real": 0.154052734375
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 22,
+   "neuron": 8156,
+   "dhat": -0.9470030665397644,
+   "real": -0.9460105895996094
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 4713,
+   "dhat": 0.8767988085746765,
+   "real": 0.8773937225341797
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 6754,
+   "dhat": -0.8680340051651001,
+   "real": -0.7699832916259766
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 19,
+   "neuron": 10299,
+   "dhat": 0.8405430912971497,
+   "real": 0.8608837127685547
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 18,
+   "neuron": 2735,
+   "dhat": -0.6847358345985413,
+   "real": -0.9319801330566406
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 21,
+   "neuron": 8013,
+   "dhat": -0.669520378112793,
+   "real": -0.7172203063964844
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 10,
+   "neuron": 895,
+   "dhat": 0.6425368785858154,
+   "real": 0.6624240875244141
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 10,
+   "neuron": 4565,
+   "dhat": 0.6176029443740845,
+   "real": 0.5828056335449219
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 17,
+   "neuron": 789,
+   "dhat": 0.610012948513031,
+   "real": 0.5009536743164062
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 17,
+   "neuron": 390,
+   "dhat": -0.6048825979232788,
+   "real": -0.6657428741455078
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 26,
+   "neuron": 8761,
+   "dhat": -0.5893478989601135,
+   "real": -0.5881996154785156
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 26,
+   "neuron": 10161,
+   "dhat": -0.5773704648017883,
+   "real": -0.5689868927001953
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 23,
+   "neuron": 1797,
+   "dhat": -0.5725660920143127,
+   "real": -0.5851402282714844
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 27,
+   "neuron": 10724,
+   "dhat": 0.5216813087463379,
+   "real": 0.5337333679199219
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 5585,
+   "dhat": 0.5170877575874329,
+   "real": 0.5935821533203125
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 19,
+   "neuron": 9866,
+   "dhat": 0.5049483180046082,
+   "real": 0.5784759521484375
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 1487,
+   "dhat": -0.4908091425895691,
+   "real": -0.4607887268066406
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 24,
+   "neuron": 5988,
+   "dhat": 0.47121766209602356,
+   "real": 0.4944171905517578
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "top",
+   "layer": 19,
+   "neuron": 9420,
+   "dhat": 0.4657449722290039,
+   "real": 0.4800758361816406
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 0,
+   "neuron": 3394,
+   "dhat": 0.003692451398819685,
+   "real": 0.003711700439453125
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 1,
+   "neuron": 946,
+   "dhat": -0.00015407917089760303,
+   "real": -0.000164031982421875
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 29,
+   "neuron": 8255,
+   "dhat": 0.001222642487846315,
+   "real": 0.0011653900146484375
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 27,
+   "neuron": 6547,
+   "dhat": -0.004137578420341015,
+   "real": -0.0041656494140625
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 29,
+   "neuron": 7689,
+   "dhat": 0.0010675056837499142,
+   "real": 0.001049041748046875
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 6,
+   "neuron": 8954,
+   "dhat": 7.470523996744305e-06,
+   "real": 5.7220458984375e-05
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 27,
+   "neuron": 7931,
+   "dhat": -0.009335336275398731,
+   "real": -0.00934600830078125
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 8,
+   "neuron": 5749,
+   "dhat": 7.663658470846713e-05,
+   "real": 5.91278076171875e-05
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 17,
+   "neuron": 605,
+   "dhat": 0.005405650939792395,
+   "real": 0.0070476531982421875
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 15,
+   "neuron": 5944,
+   "dhat": 0.005057819653302431,
+   "real": 0.005062103271484375
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 33,
+   "neuron": 6992,
+   "dhat": -0.00016263325233012438,
+   "real": -0.000156402587890625
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 7,
+   "neuron": 9304,
+   "dhat": 0.0031039509922266006,
+   "real": 0.0031261444091796875
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 1,
+   "neuron": 7297,
+   "dhat": -9.269759289054491e-07,
+   "real": -1.52587890625e-05
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 17,
+   "neuron": 7150,
+   "dhat": -0.006756088696420193,
+   "real": -0.0067729949951171875
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 27,
+   "neuron": 5147,
+   "dhat": -0.014369843527674675,
+   "real": -0.014421463012695312
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 29,
+   "neuron": 669,
+   "dhat": -0.0020292559638619423,
+   "real": -0.002040863037109375
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 18,
+   "neuron": 7468,
+   "dhat": 0.007442052476108074,
+   "real": 0.0075969696044921875
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 11,
+   "neuron": 3507,
+   "dhat": -0.002930040704086423,
+   "real": -0.0029506683349609375
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 19,
+   "neuron": 9667,
+   "dhat": -0.0104018934071064,
+   "real": -0.010339736938476562
+  },
+  {
+   "case_id": "W-DE32_ANSb_H0",
+   "kind": "rand",
+   "layer": 5,
+   "neuron": 3738,
+   "dhat": -0.0012736122589558363,
+   "real": -0.001277923583984375
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 21,
+   "neuron": 6256,
+   "dhat": 1.3672235012054443,
+   "real": 2.5953598022460938
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 6754,
+   "dhat": -1.0135486125946045,
+   "real": -0.8366279602050781
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 12,
+   "neuron": 3102,
+   "dhat": -0.894514799118042,
+   "real": -0.1437702178955078
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 13,
+   "neuron": 2666,
+   "dhat": 0.893734335899353,
+   "real": 0.6592617034912109
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 4713,
+   "dhat": 0.8930463194847107,
+   "real": 1.0031852722167969
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 19,
+   "neuron": 9866,
+   "dhat": 0.7712922096252441,
+   "real": 0.9429950714111328
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 19,
+   "neuron": 9420,
+   "dhat": 0.6845324635505676,
+   "real": 0.796417236328125
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 22,
+   "neuron": 8156,
+   "dhat": -0.678263783454895,
+   "real": -0.6249427795410156
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 14,
+   "neuron": 3525,
+   "dhat": -0.6196463704109192,
+   "real": -0.39644622802734375
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 22,
+   "neuron": 10453,
+   "dhat": 0.5790804624557495,
+   "real": 0.6241207122802734
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 4267,
+   "dhat": -0.5768203735351562,
+   "real": -0.5411167144775391
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 32,
+   "dhat": 0.5724071860313416,
+   "real": 0.6318130493164062
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 0,
+   "neuron": 1661,
+   "dhat": 0.515079140663147,
+   "real": 0.10164833068847656
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 17,
+   "neuron": 7126,
+   "dhat": 0.4967822730541229,
+   "real": 0.47301483154296875
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 26,
+   "neuron": 10161,
+   "dhat": -0.49579450488090515,
+   "real": -0.4637908935546875
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 2221,
+   "dhat": -0.48180076479911804,
+   "real": -0.3772087097167969
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 23,
+   "neuron": 1797,
+   "dhat": -0.46886613965034485,
+   "real": -0.44094085693359375
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 22,
+   "neuron": 5688,
+   "dhat": 0.4688040316104889,
+   "real": 0.4692420959472656
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 22,
+   "neuron": 4399,
+   "dhat": 0.4578491151332855,
+   "real": 0.4948616027832031
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "top",
+   "layer": 7,
+   "neuron": 7858,
+   "dhat": -0.457047700881958,
+   "real": -0.43656158447265625
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 17,
+   "neuron": 4770,
+   "dhat": 0.004596903454512358,
+   "real": 0.004627227783203125
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 2,
+   "neuron": 8610,
+   "dhat": 8.072169777051386e-08,
+   "real": 1.52587890625e-05
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 30,
+   "neuron": 3517,
+   "dhat": -0.00036093054222874343,
+   "real": -0.00037384033203125
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 10,
+   "neuron": 10660,
+   "dhat": -0.0025876685976982117,
+   "real": -0.002521514892578125
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 29,
+   "neuron": 7731,
+   "dhat": 0.00047721146256662905,
+   "real": 0.0004634857177734375
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 8,
+   "neuron": 9651,
+   "dhat": 0.0035399491898715496,
+   "real": 0.00357818603515625
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 31,
+   "neuron": 3340,
+   "dhat": 5.5608390539418906e-05,
+   "real": 6.103515625e-05
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 33,
+   "neuron": 5739,
+   "dhat": -0.0007669004844501615,
+   "real": -0.000782012939453125
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 18,
+   "neuron": 2062,
+   "dhat": -0.0066487607546150684,
+   "real": -0.006656646728515625
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 23,
+   "neuron": 7785,
+   "dhat": 0.0072260405868291855,
+   "real": 0.0072956085205078125
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 28,
+   "neuron": 2092,
+   "dhat": 0.0033892584033310413,
+   "real": 0.0034580230712890625
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 4,
+   "neuron": 6558,
+   "dhat": -5.79884044782375e-07,
+   "real": 1.52587890625e-05
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 20,
+   "neuron": 5649,
+   "dhat": 0.00725509412586689,
+   "real": 0.00724029541015625
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 34,
+   "neuron": 6789,
+   "dhat": -0.001733211800456047,
+   "real": -0.0017375946044921875
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 25,
+   "neuron": 3707,
+   "dhat": -0.001664442359469831,
+   "real": -0.0016632080078125
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 12,
+   "neuron": 7700,
+   "dhat": 0.0040206387639045715,
+   "real": 0.004058837890625
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 18,
+   "neuron": 7491,
+   "dhat": -0.004102658946067095,
+   "real": -0.0040454864501953125
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 2,
+   "neuron": 1812,
+   "dhat": -6.462488090619445e-05,
+   "real": -3.4332275390625e-05
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 27,
+   "neuron": 4397,
+   "dhat": 0.000647505687084049,
+   "real": 0.000652313232421875
+  },
+  {
+   "case_id": "W-DE48_ANSb_H0",
+   "kind": "rand",
+   "layer": 33,
+   "neuron": 10590,
+   "dhat": 0.00023069081362336874,
+   "real": 0.0002231597900390625
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 0,
+   "neuron": 1661,
+   "dhat": 0.8681373000144958,
+   "real": 0.5510406494140625
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 17,
+   "neuron": 789,
+   "dhat": -0.7100682854652405,
+   "real": -0.64447021484375
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 31,
+   "neuron": 10316,
+   "dhat": -0.6385602355003357,
+   "real": -0.4694976806640625
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 7,
+   "neuron": 2199,
+   "dhat": 0.6032072901725769,
+   "real": 0.6782779693603516
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 8,
+   "neuron": 7057,
+   "dhat": 0.5149911046028137,
+   "real": 0.694427490234375
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 6370,
+   "dhat": -0.5006445050239563,
+   "real": -0.3563346862792969
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 21,
+   "neuron": 8814,
+   "dhat": 0.4548247158527374,
+   "real": 0.3422203063964844
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 28,
+   "neuron": 5260,
+   "dhat": -0.40143507719039917,
+   "real": -0.3317222595214844
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 22,
+   "neuron": 2358,
+   "dhat": 0.38338497281074524,
+   "real": 0.3988380432128906
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 10,
+   "neuron": 4565,
+   "dhat": 0.3460344672203064,
+   "real": 0.3378009796142578
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 25,
+   "neuron": 9265,
+   "dhat": 0.34295666217803955,
+   "real": 0.33847618103027344
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 2908,
+   "dhat": -0.3259154260158539,
+   "real": -0.2202606201171875
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 22,
+   "neuron": 10453,
+   "dhat": 0.31770896911621094,
+   "real": 0.3485145568847656
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 21,
+   "neuron": 6256,
+   "dhat": 0.3113536238670349,
+   "real": 0.3440666198730469
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 26,
+   "neuron": 7131,
+   "dhat": -0.30593743920326233,
+   "real": -0.23962020874023438
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 22,
+   "neuron": 8162,
+   "dhat": -0.30275052785873413,
+   "real": -0.3013954162597656
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 1197,
+   "dhat": 0.2931796610355377,
+   "real": 0.21570587158203125
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 20,
+   "neuron": 5585,
+   "dhat": 0.292919784784317,
+   "real": 0.34487152099609375
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 26,
+   "neuron": 1857,
+   "dhat": -0.283571720123291,
+   "real": -0.2583770751953125
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "top",
+   "layer": 10,
+   "neuron": 3335,
+   "dhat": 0.2835695445537567,
+   "real": 0.29265594482421875
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 21,
+   "neuron": 5299,
+   "dhat": -0.0025433460250496864,
+   "real": -0.002529144287109375
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 26,
+   "neuron": 3894,
+   "dhat": -0.00566643662750721,
+   "real": -0.005702972412109375
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 21,
+   "neuron": 7906,
+   "dhat": -0.0037461223546415567,
+   "real": -0.003765106201171875
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 27,
+   "neuron": 7114,
+   "dhat": 0.0025312183424830437,
+   "real": 0.00270843505859375
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 18,
+   "neuron": 1567,
+   "dhat": -0.0009804300498217344,
+   "real": -0.000972747802734375
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 28,
+   "neuron": 10584,
+   "dhat": 1.1202340829186141e-05,
+   "real": 2.288818359375e-05
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 26,
+   "neuron": 10419,
+   "dhat": -0.0019452886190265417,
+   "real": -0.001941680908203125
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 24,
+   "neuron": 5231,
+   "dhat": -0.005778692662715912,
+   "real": -0.00576019287109375
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 1,
+   "neuron": 4991,
+   "dhat": -1.3083860039841966e-07,
+   "real": 2.6702880859375e-05
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 19,
+   "neuron": 7772,
+   "dhat": -0.0004612969933077693,
+   "real": -0.000423431396484375
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 34,
+   "neuron": 175,
+   "dhat": 0.00016682734712958336,
+   "real": 0.000171661376953125
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 27,
+   "neuron": 2416,
+   "dhat": 0.0004525373224169016,
+   "real": 0.00046539306640625
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 14,
+   "neuron": 1237,
+   "dhat": 0.003052273066714406,
+   "real": 0.003040313720703125
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 25,
+   "neuron": 1107,
+   "dhat": 0.00017127534374594688,
+   "real": 0.000156402587890625
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 31,
+   "neuron": 9488,
+   "dhat": 0.0008252848638221622,
+   "real": 0.000827789306640625
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 21,
+   "neuron": 9075,
+   "dhat": 0.0008287467062473297,
+   "real": 0.00086212158203125
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 4,
+   "neuron": 9787,
+   "dhat": 0.0007213807548396289,
+   "real": 0.00075531005859375
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 18,
+   "neuron": 1116,
+   "dhat": -0.0032265710178762674,
+   "real": -0.003170013427734375
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 35,
+   "neuron": 10777,
+   "dhat": 0.0,
+   "real": 0.0
+  },
+  {
+   "case_id": "W-RC26_ANSa_H1",
+   "kind": "rand",
+   "layer": 18,
+   "neuron": 5817,
+   "dhat": 0.0010685098823159933,
+   "real": 0.0010986328125
+  }
+ ]
+}
