@@ -10,7 +10,9 @@ Finished rows keep being fed; each output is cut at its own stop.
 `reference` is batch 1 with a full prefill per arm (no KV reuse): the comparison path for the stage-0 equality test
 (proposal §5 stage 0 item 4: identical greedy outputs on >= 99% of row-arms, |ΔD| <= 1e-3 at P_ans).
 
-Arm: {"name", "reset_N": [(layer, idx, vals), ...] | None, "reset_P": [...] | None, "bias": {"ids", "value"} | None}.
+Arm: {"name", "reset_N": [(layer, idx, vals), ...] | None, "reset_P": [...] | None, "bias": {"ids", "value"} | None,
+"reset_at": [(lo, hi, layer, idx, vals), ...] | None}. reset_at (rev 0b, K_N@marker) resets on absolute positions
+[lo, hi) inside [n0, p + 1); several entries may target one layer at different positions.
 D0 = logit[unk] − logit[t*] at P_ans before the bias.
 """
 from __future__ import annotations
@@ -38,6 +40,10 @@ def _hooks(e, state, arms, n0, p):
             for l, idx, vals in (s.get(key) or []):
                 per_l.setdefault(int(l), []).append((b, plo, phi, torch.as_tensor(np.asarray(idx), dtype=torch.long),
                                                      torch.as_tensor(np.asarray(vals, np.float32))))
+        for plo, phi, l, idx, vals in (s.get("reset_at") or []):          # rev 0b: explicit absolute positions
+            assert n0 <= plo < phi <= p + 1, (plo, phi, n0, p)
+            per_l.setdefault(int(l), []).append((b, int(plo), int(phi), torch.as_tensor(np.asarray(idx), dtype=torch.long),
+                                                 torch.as_tensor(np.asarray(vals, np.float32))))
     hs = []
     for l, items in per_l.items():
         def fn(module, args, items=items):
@@ -67,8 +73,11 @@ def _done(e, gen):
     return "\n" in t and bool(t.strip())
 
 
-def run_arms(e, rec, arms, unk_id, t_star, cache_prompt=None, max_new=EN.MAX_NEW_RELEASE):
+def run_arms(e, rec, arms, unk_id, t_star, cache_prompt=None, max_new=EN.MAX_NEW_RELEASE, cand_ids=None):
+    """t_star None: t* = the best of cand_ids at P_ans in arm 0, which must be the unpatched base arm."""
     torch = e.torch
+    if t_star is None:
+        assert cand_ids and not any(arms[0].get(k) for k in ("reset_N", "reset_P", "reset_at", "bias")), arms[0]
     ids = CM.prefix_ids(rec)
     n0, p, _ = X.regions(rec)
     B = len(arms)
@@ -92,6 +101,8 @@ def run_arms(e, rec, arms, unk_id, t_star, cache_prompt=None, max_new=EN.MAX_NEW
                 c = out.past_key_values
                 lg = out.logits[:, -1].clone()
                 if step == 0:
+                    if t_star is None:
+                        t_star = int(cand_ids[int(torch.argmax(lg[0, list(cand_ids)]))])
                     D0 = (lg[:, unk_id] - lg[:, t_star]).tolist()
                     lg = _bias(lg, arms)
                 nxt = lg.argmax(-1).tolist()
@@ -110,8 +121,23 @@ def run_arms(e, rec, arms, unk_id, t_star, cache_prompt=None, max_new=EN.MAX_NEW
     finally:
         for h in hs:
             h.remove()
-    return [{"name": s["name"], "gen_ids": g, "text": e.decode(g), "stop": st, "D0": d}
+    return [{"name": s["name"], "gen_ids": g, "text": e.decode(g), "stop": st, "D0": d, "t_star": t_star}
             for s, g, st, d in zip(arms, gens, stops, D0)]
+
+
+def run_arms_chunked(e, rec, arms, unk_id, t_star, chunk=40, max_new=EN.MAX_NEW_RELEASE, cand_ids=None):
+    """run_arms over chunks of at most `chunk` arms (memory), sharing one prompt prefill. t_star None: resolved in the
+    first chunk (arm 0 = base) and reused for the rest."""
+    torch = e.torch
+    ids = CM.prefix_ids(rec)
+    n0, _, _ = X.regions(rec)
+    with torch.no_grad():
+        cache = e.net(input_ids=torch.tensor([ids[:n0]]), use_cache=True, logits_to_keep=1).past_key_values
+    out = []
+    for i in range(0, len(arms), chunk):
+        out += run_arms(e, rec, arms[i:i + chunk], unk_id, t_star, cache_prompt=cache, max_new=max_new, cand_ids=cand_ids)
+        t_star = out[0]["t_star"]
+    return out
 
 
 def reference(e, rec, arm, unk_id, t_star, max_new=EN.MAX_NEW_RELEASE):
@@ -149,9 +175,9 @@ def reference(e, rec, arm, unk_id, t_star, max_new=EN.MAX_NEW_RELEASE):
     return {"name": arm["name"], "gen_ids": gen, "text": e.decode(gen), "stop": stop, "D0": D0}
 
 
-def compare(e, rec, arms, unk_id, t_star):
+def compare(e, rec, arms, unk_id, t_star, chunk=None):
     t0 = time.time()
-    bat = run_arms(e, rec, arms, unk_id, t_star)
+    bat = run_arms(e, rec, arms, unk_id, t_star) if chunk is None else run_arms_chunked(e, rec, arms, unk_id, t_star, chunk)
     tb = time.time() - t0
     t1 = time.time()
     ref = [reference(e, rec, a, unk_id, t_star) for a in arms]

@@ -92,3 +92,43 @@ def test_batched_arms_equal_batch1(eng):
     assert any(abs(out[f"N{k}"]["D0"] - out["base"]["D0"]) > 1e-6 for k in range(3))
     assert any(abs(out[f"P{k}"]["D0"] - out["base"]["D0"]) > 1e-6 for k in range(3))
     assert abs(out["bias"]["D0"] - out["base"]["D0"]) < 1e-5 and ref
+
+
+def test_reset_at_and_chunked_equal_batch1(eng):
+    """rev 0b: position-specific resets (K_N@marker) and the chunked runner match batch 1; reset_at over the whole
+    region N equals reset_N."""
+    import exp57_arms as A
+    rec = fake_rec(eng)
+    n0, p, _ = X.regions(rec)
+    rng = np.random.default_rng(2)
+    I = eng.layers[0].mlp.down_proj.weight.shape[1]
+    unk = eng.encode(" unknown")[0]; ts = eng.encode(" Leeds")[0]
+    l, idx = 1, rng.choice(I, 5, replace=False)
+    v1, v2 = rng.normal(0, 3, 5), rng.normal(0, 3, 5)
+    arms = [{"name": "base"},
+            {"name": "at_last", "reset_at": [(p - 1, p, l, idx, v1)]},
+            {"name": "at_two", "reset_at": [(p - 2, p - 1, l, idx, v2), (p - 1, p, l, idx, v1)]},
+            {"name": "at_all", "reset_at": [(n0, p, l, idx, v1)]},
+            {"name": "N_all", "reset_N": [(l, idx, v1)]},
+            {"name": "bias", "bias": {"ids": [unk], "value": -4.0}}]
+    rows, _, _ = A.compare(eng, rec, arms, unk, ts, chunk=2)
+    assert all(r["same"] for r in rows), rows
+    assert max(r["dD"] for r in rows) <= 1e-3
+    out = {x["name"]: x for x in A.run_arms_chunked(eng, rec, arms, unk, ts, chunk=4)}
+    assert abs(out["at_all"]["D0"] - out["N_all"]["D0"]) < 1e-5
+    assert abs(out["at_last"]["D0"] - out["base"]["D0"]) > 1e-6
+
+
+def test_t_star_resolved_from_base(eng):
+    import exp57_arms as A
+    rec = fake_rec(eng)
+    unk = eng.encode(" unknown")[0]
+    cities = [eng.encode(" Leeds")[0], eng.encode(" York")[0]]
+    arms = [{"name": "base"}, {"name": "bias", "bias": {"ids": [unk], "value": -3.0}},
+            {"name": "N", "reset_N": [(1, [0, 1], [0.5, -0.5])]}]
+    got = A.run_arms_chunked(eng, rec, arms, unk, None, chunk=2, cand_ids=cities)
+    ts = got[0]["t_star"]
+    assert ts in cities and all(x["t_star"] == ts for x in got)
+    ref = A.run_arms(eng, rec, arms, unk, ts)
+    assert [x["gen_ids"] for x in got] == [x["gen_ids"] for x in ref]
+    assert max(abs(a["D0"] - b["D0"]) for a, b in zip(got, ref)) < 1e-4
