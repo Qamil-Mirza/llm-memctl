@@ -1,0 +1,13 @@
+Loading weights:   0%|          | 0/434 [00:00<?, ?it/s]Loading weights:   0%|          | 1/434 [00:00<04:29,  1.61it/s]Loading weights:  20%|██        | 87/434 [00:00<00:02, 155.02it/s]Loading weights:  29%|██▉       | 128/434 [00:00<00:01, 165.27it/s]Loading weights:  37%|███▋      | 159/434 [00:01<00:01, 161.38it/s]Loading weights:  42%|████▏     | 184/434 [00:01<00:01, 162.06it/s]Loading weights:  48%|████▊     | 207/434 [00:01<00:01, 169.03it/s]Loading weights:  53%|█████▎    | 231/434 [00:01<00:01, 169.81it/s]Loading weights:  59%|█████▉    | 255/434 [00:01<00:01, 171.52it/s]Loading weights:  64%|██████▍   | 279/434 [00:01<00:00, 174.83it/s]Loading weights:  70%|██████▉   | 303/434 [00:01<00:00, 175.44it/s]Loading weights:  75%|███████▌  | 327/434 [00:02<00:00, 177.19it/s]Loading weights:  81%|████████  | 351/434 [00:02<00:00, 177.06it/s]Loading weights:  85%|████████▌ | 370/434 [00:02<00:00, 179.42it/s]Loading weights:  90%|████████▉ | 389/434 [00:02<00:00, 177.73it/s]Loading weights:  95%|█████████▍| 411/434 [00:02<00:00, 181.50it/s]Loading weights: 100%|██████████| 434/434 [00:02<00:00, 164.14it/s]
+03:49:52 engine hf-5.17.0-torch-2.14.0+cpu-cpu-float32-t16 loaded in 3 s
+03:57:11 marker C: 50/305, 8.8 s/row, peak RSS 17.7 GB
+04:04:38 marker C: 100/305, 8.9 s/row, peak RSS 17.7 GB
+04:12:17 marker C: 150/305, 9.0 s/row, peak RSS 17.7 GB
+04:20:18 marker C: 200/305, 9.1 s/row, peak RSS 17.7 GB
+04:28:14 marker C: 250/305, 9.2 s/row, peak RSS 17.7 GB
+04:36:25 marker C: 300/305, 9.3 s/row, peak RSS 17.7 GB
+04:37:11 marker C: 305/305, 9.3 s/row, peak RSS 17.7 GB
+04:44:40 marker FA: 50/140, 9.0 s/row, peak RSS 17.7 GB
+04:52:36 marker FA: 100/140, 9.3 s/row, peak RSS 17.7 GB
+05:00:05 marker FA: 140/140, 9.8 s/row, peak RSS 17.7 GB
+05:00:05 {"main_token": 16141, "main_token_text": "Answer", "C_positions_by_token": {"Answer": 305, "\n": 10}, "FA_positions_by_token": {"Answer": 140, "\n": 4}, "C_marker_len_rows": {"1": 295, "2": 10}, "FA_marker_len_rows": {"1": 136, "2": 4}, "kept_tokens": ["\n", "Answer"], "mark_min": 10, "npz_sha256": "6fa79db1cd7fe770347d69a86dd590445c6d882d74be2345e141de7f364f43ca", "K_N_descriptive": {"median_abs_z_reset_vs_C": 5.720084675587359, "share_abs_z_reset_gt_2": 1.0, "median_abs_z_FA_vs_C": 0.1898167501420497, "share_abs_z_FA_gt_2": 0.0, "note": "z in units of the C-row SD at the main marker token; reset_N = frozen note-mean"}}
