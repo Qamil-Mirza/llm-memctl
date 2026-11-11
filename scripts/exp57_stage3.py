@@ -38,6 +38,10 @@ Fixed here, before any stage-3 output exists:
   interval: 2,000 base-clustered draws over dev-B bases (seed 56, resampling only), recomputing Rel(set) and the
   curve; draws where Rel(set) falls outside the curve are dropped and counted. Verdict per §6.
 - R4 dev-A-calibrated (reported beside): Uns(set) − Uns(B1_cal), with Rel − Rel(B1_cal) and Dam, same bootstrap.
+- Advisor rulings (2026-11-11, before the run): if more than 20% of R4-matched draws are dropped, R4 matched is NOT READ
+  (fragile) for that set; b_cal reports whether the ladder is monotone in Rel up to the bracket; Dam is split into
+  "unknown" vs wrong city vs other (descriptive); R2' (rev 0b) = the real-effect ratio Uns/Rel on dev-B for each set,
+  with B1's ratio at the grid point nearest in Rel beside it (no new backward pass).
 """
 from __future__ import annotations
 
@@ -375,7 +379,10 @@ def stage_calib(e):
     bs = [0] + list(LADDER)
     curve = [rel("base")] + [rel(f"L{b}") for b in LADDER]
     b_cal, matched = interp_b(bs, curve, rel(target_arm))
-    out = {"b_cal": b_cal, "matched": matched, "target_arm": target_arm, "target_rel": rel(target_arm),
+    i = next((k for k in range(len(curve)) if curve[k] >= rel(target_arm)), len(curve) - 1)
+    monotone = all(curve[k] <= curve[k + 1] for k in range(len(curve) - 1))
+    out = {"b_cal": b_cal, "matched": matched, "ladder_monotone": monotone,
+           "ladder_monotone_up_to_bracket": all(curve[k] <= curve[k + 1] for k in range(max(i, 1))), "target_arm": target_arm, "target_rel": rel(target_arm),
            "rel_K_P": rel("K_P"), "rel_K_N": rel("K_N"), "ladder": dict(zip(map(str, bs), curve)), "n_rows": len(res)}
     (OUT / "b_cal.json").write_text(json.dumps(out, indent=1))
     log(json.dumps(out))
@@ -464,6 +471,12 @@ def stage_report():
         m = GR.base_mixture(rows, 1.0)
         return float(np.mean(list(m.values()))) if m else None
 
+    def dam_split(arm):
+        c = Counter(r["arms"][arm]["cls"] for r in res["C"] if r["arms"][arm]["cls"] != "gold")
+        n = len(res["C"])
+        return {"abstention": c.get("abstention", 0) / n, "wrong_city": c.get("wrong", 0) / n,
+                "other": sum(v for k, v in c.items() if k not in ("abstention", "wrong")) / n, "counts": dict(c)}
+
     rng = np.random.default_rng(SEED_BOOT)
     W = [np.bincount(rng.choice(len(bases), len(bases)), minlength=len(bases)).astype(float) for _ in range(N_BOOT)]
     rep = {"n": {k: len(v) for k, v in res.items()}, "n_bases": len(bases),
@@ -489,10 +502,13 @@ def stage_report():
                 if u is None:
                     drop += 1; continue
                 st.append(rate(UNS[name], w) - u)
-            lo, hi = np.percentile(st, [2.5, 97.5])
+            lo, hi = np.percentile(st, [2.5, 97.5]) if st else (np.nan, np.nan)
+            frac = drop / N_BOOT
+            v = ("NOT READ (fragile)" if frac > 0.20 else
+                 "BETTER THAN THE DIAL" if hi < 0 else "WORSE" if lo > 0 else "NO DIFFERENCE SHOWN")
             s["R4_matched"] = {"stat": s["Uns"] - uref, "Uns_B1_at_Rel": uref, "ci95": [float(lo), float(hi)],
-                               "draws_dropped": drop,
-                               "verdict": "BETTER THAN THE DIAL" if hi < 0 else "WORSE" if lo > 0 else "NO DIFFERENCE SHOWN"}
+                               "draws_dropped": drop, "draws_dropped_frac": frac, "fragile_rule": "> 0.20 dropped",
+                               "verdict": v}
         # R4 dev-A-calibrated (beside)
         d_u = [rate(UNS[name], w) - rate(UNS["B1_cal"], w) for w in W]
         d_r = [rate(REL[name], w) - rate(REL["B1_cal"], w) for w in W]
@@ -502,9 +518,16 @@ def stage_report():
                                    "Rel_ci95": np.percentile(d_r, [2.5, 97.5]).tolist(),
                                    "verdict": "BETTER THAN THE DIAL" if hi < 0 else "WORSE" if lo > 0 else "NO DIFFERENCE SHOWN"}
         s["R4_read"] = s["R3"] == "SHOWN"
+        s["Dam_split"] = dam_split(name)
+        rb, ub = curve(ones)
+        g = int(np.argmin([abs(x - rel) for x in rb]))
+        s["R2_prime"] = {"Uns_over_Rel": s["Uns"] / rel if rel > 0 else None,
+                         "B1_nearest_grid": {"b": GRID[g], "Rel": rb[g], "Uns": ub[g],
+                                             "Uns_over_Rel": ub[g] / rb[g] if rb[g] > 0 else None},
+                         "note": "rev 0b R2' = real-effect ratio on dev-B (descriptive); B1 at the grid point nearest in Rel"}
         rep["sets"][name] = s
     rep["B1_cal"] = {"Rel": rate(REL["B1_cal"], ones), "Uns": rate(UNS["B1_cal"], ones), "Dam": rate(DAM["B1_cal"], ones),
-                     "U_lambda1": U("B1_cal")}
+                     "Dam_split": dam_split("B1_cal"), "U_lambda1": U("B1_cal")}
     rep["base"] = {"Rel": rate(REL["base"], ones), "Uns": rate(UNS["base"], ones), "Dam": rate(DAM["base"], ones),
                    "U_lambda1": U("base")}
     p = OUT / "stage3_dhat_rows.json"
