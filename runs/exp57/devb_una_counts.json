@@ -1,0 +1,11 @@
+{
+ "UNA-rel|NM": 3,
+ "UNA-rel|TA": 222,
+ "UNA-swap|TA": 69,
+ "UNA-swap|UA": 6,
+ "total_by_class": {
+  "TA": 291,
+  "NM": 3,
+  "UA": 6
+ }
+}
