@@ -73,3 +73,20 @@ def test_city_ids_single_token_main_pool():
     ids = X.city_ids(enc, {"city_pool": "main"})
     assert len(ids) == len(set(ids)) == 12 and X.Reader.__init__ is not None
     assert enc(" Leeds")[0] in ids
+
+
+def test_batched_arms_equal_batch1(eng):
+    import exp56_arms as A
+    rec = fake_rec(eng)
+    rng = np.random.default_rng(0)
+    inter = eng.layers[0].mlp.down_proj.weight.shape[1]
+    unk = eng.encode(" unknown")[0]; ts = eng.encode(" Leeds")[0]
+    specs = [{"name": "base", "ablate": None, "bias": None}]
+    for k in range(4):
+        l = int(rng.integers(0, eng.n_layers))
+        idx = rng.choice(inter, 6, replace=False)
+        specs.append({"name": f"r{k}", "ablate": {l: (idx, rng.normal(0, 3, 6).astype(np.float32))}, "bias": None})
+    specs.append({"name": "bias", "ablate": None, "bias": {"ids": [unk], "value": -8.0}})
+    rows, _, _ = A.compare(eng, rec, specs, unk, ts)
+    assert all(r["same"] for r in rows), rows
+    assert max(r["dD"] for r in rows) <= 1e-3

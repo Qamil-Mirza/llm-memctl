@@ -1,0 +1,48 @@
+{
+ "n_rows": {
+  "FA": 140,
+  "C": 305,
+  "TA": 289,
+  "UA": 9
+ },
+ "sanity": {
+  "max_layer_sum_err": 1.565349372256719e-05,
+  "max_decomp_err": 5.239620804786682e-06,
+  "max_D_vs_D_lin": 1.33514404296875e-05
+ },
+ "R1": {
+  "K50": 14966,
+  "ci95": [
+   14899.0,
+   15130.025
+  ],
+  "verdict": "DISTRIBUTED",
+  "total_positive_push": 270.76878170576504,
+  "n_positive_neurons": 191604,
+  "net_mean_mlp_push_FA": -7.675028533340546,
+  "top_k_share": {
+   "10": 0.011841094125010438,
+   "50": 0.031226865970441695,
+   "100": 0.044458376381277885,
+   "500": 0.09812389416846548,
+   "1000": 0.13668751016994413,
+   "5000": 0.29665328025281845
+  },
+  "bootstrap": "2,000 draws, seed 56, over bases with >= 1 FA row, clustered by base"
+ },
+ "R2": {
+  "ratio": 1.1893178329535787,
+  "ci95": [
+   1.1234808444572346,
+   1.26783723610644
+  ],
+  "verdict": "SHARED CHANNEL",
+  "sum_K_mean_dla": {
+   "FA": 8.45526045530571,
+   "TA": 10.055992041762277,
+   "C": 7.777625710457026,
+   "UA": 9.963349273502395
+  },
+  "bootstrap": "2,000 draws, seed 56, over all 75 dev-A bases (FA and TA rows of a base together), K fixed"
+ }
+}
