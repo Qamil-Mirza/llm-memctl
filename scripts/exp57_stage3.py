@@ -42,6 +42,8 @@ Fixed here, before any stage-3 output exists:
   (fragile) for that set; b_cal reports whether the ladder is monotone in Rel up to the bracket; Dam is split into
   "unknown" vs wrong city vs other (descriptive); R2' (rev 0b) = the real-effect ratio Uns/Rel on dev-B for each set,
   with B1's ratio at the grid point nearest in Rel beside it (no new backward pass).
+- Label fix (Advisor, after the run, 13:31 PT): when b_cal is unmatched (the dev-A ladder saturates below the target
+  Rel), R4 dev-A-calibrated compares at unequal release and is labelled NOT READ; the raw verdict is kept as verdict_raw.
 """
 from __future__ import annotations
 
@@ -517,6 +519,9 @@ def stage_report():
                                    "Rel_minus_B1cal": rel - rate(REL["B1_cal"], ones),
                                    "Rel_ci95": np.percentile(d_r, [2.5, 97.5]).tolist(),
                                    "verdict": "BETTER THAN THE DIAL" if hi < 0 else "WORSE" if lo > 0 else "NO DIFFERENCE SHOWN"}
+        if not rep["b_cal"]["matched"]:                                  # Advisor label fix, 2026-11-11 13:31 PT
+            s["R4_devA_calibrated"]["verdict_raw"] = s["R4_devA_calibrated"]["verdict"]
+            s["R4_devA_calibrated"]["verdict"] = "NOT READ: b_cal unmatched (ladder saturated)"
         s["R4_read"] = s["R3"] == "SHOWN"
         s["Dam_split"] = dam_split(name)
         rb, ub = curve(ones)
