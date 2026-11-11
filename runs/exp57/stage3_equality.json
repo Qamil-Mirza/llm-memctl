@@ -1,0 +1,57 @@
+{
+ "n_row_arms": 162,
+ "same_frac": 1.0,
+ "max_dD": 0.0001068115234375,
+ "PASS": true,
+ "outputs_changed_vs_base": {
+  "W-DE04_ANSb_H2": 12,
+  "W-DE10_ANSb_H1": 7,
+  "W-DE00_UNArel_H0": 0
+ },
+ "differences": [],
+ "times": [
+  {
+   "case_id": "W-DE04_ANSb_H2",
+   "kind": "FA",
+   "n_arms": 74,
+   "n_ids": 612,
+   "batched_s": 59.299915075302124,
+   "batched_s_in_compare": 58.36829972267151,
+   "batch1_s": 1028.8646409511566
+  },
+  {
+   "case_id": "W-DE10_ANSb_H1",
+   "kind": "FA",
+   "n_arms": 74,
+   "n_ids": 399,
+   "batched_s": 45.13104701042175,
+   "batched_s_in_compare": 46.68636465072632,
+   "batch1_s": 777.4662592411041
+  },
+  {
+   "case_id": "W-DE00_UNArel_H0",
+   "kind": "TA",
+   "n_arms": 14,
+   "n_ids": 323,
+   "batched_s": 19.446792602539062,
+   "batched_s_in_compare": 20.3658766746521,
+   "batch1_s": 119.0145013332367
+  }
+ ],
+ "per_arm_s": 0.7646774980756972,
+ "n_rows": {
+  "cal": 140,
+  "FA": 148,
+  "TA": 291,
+  "C": 298
+ },
+ "eta": {
+  "calib_h": 0.5650117069114874,
+  "FA_h": 2.146636442873213,
+  "TA_h": 1.5719490687052409,
+  "C_h": 0.3164915200368858,
+  "dhat_h": 0.7852222222222223,
+  "total_h": 5.38531096074905
+ },
+ "peak_rss_gb": 17.744728088378906
+}

@@ -1,0 +1,1298 @@
+[
+ {
+  "arm": "base",
+  "same": true,
+  "dD": 3.814697265625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "K_P",
+  "same": true,
+  "dD": 0.0,
+  "batched": " Brighton",
+  "ref": " Brighton",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "K_N",
+  "same": true,
+  "dD": 2.09808349609375e-05,
+  "batched": " Brighton",
+  "ref": " Brighton",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "K_N@m",
+  "same": true,
+  "dD": 3.0517578125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P00",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P01",
+  "same": true,
+  "dD": 1.52587890625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P02",
+  "same": true,
+  "dD": 1.52587890625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P03",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P04",
+  "same": true,
+  "dD": 3.4332275390625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P05",
+  "same": true,
+  "dD": 3.814697265625e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P06",
+  "same": true,
+  "dD": 0.0,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P07",
+  "same": true,
+  "dD": 3.814697265625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P08",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P09",
+  "same": true,
+  "dD": 2.288818359375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P10",
+  "same": true,
+  "dD": 3.4332275390625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P11",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P12",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P13",
+  "same": true,
+  "dD": 4.57763671875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P14",
+  "same": true,
+  "dD": 1.1444091796875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P15",
+  "same": true,
+  "dD": 1.9073486328125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P16",
+  "same": true,
+  "dD": 3.814697265625e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P17",
+  "same": true,
+  "dD": 1.52587890625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P18",
+  "same": true,
+  "dD": 1.9073486328125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_P19",
+  "same": true,
+  "dD": 1.9073486328125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N00",
+  "same": true,
+  "dD": 4.1961669921875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N01",
+  "same": true,
+  "dD": 7.2479248046875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N02",
+  "same": true,
+  "dD": 4.1961669921875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N03",
+  "same": true,
+  "dD": 2.6702880859375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N04",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N05",
+  "same": true,
+  "dD": 9.918212890625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N06",
+  "same": true,
+  "dD": 2.6702880859375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N07",
+  "same": true,
+  "dD": 1.1444091796875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N08",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N09",
+  "same": true,
+  "dD": 3.814697265625e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N10",
+  "same": true,
+  "dD": 3.814697265625e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N11",
+  "same": true,
+  "dD": 1.9073486328125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N12",
+  "same": true,
+  "dD": 1.1444091796875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N13",
+  "same": true,
+  "dD": 3.4332275390625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N14",
+  "same": true,
+  "dD": 4.9591064453125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N15",
+  "same": true,
+  "dD": 3.814697265625e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N16",
+  "same": true,
+  "dD": 1.1444091796875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N17",
+  "same": true,
+  "dD": 6.103515625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N18",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N19",
+  "same": true,
+  "dD": 2.6702880859375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m00",
+  "same": true,
+  "dD": 2.288818359375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m01",
+  "same": true,
+  "dD": 2.288818359375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m02",
+  "same": true,
+  "dD": 3.4332275390625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m03",
+  "same": true,
+  "dD": 3.4332275390625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m04",
+  "same": true,
+  "dD": 8.7738037109375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m05",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m06",
+  "same": true,
+  "dD": 1.9073486328125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m07",
+  "same": true,
+  "dD": 3.4332275390625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m08",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m09",
+  "same": true,
+  "dD": 1.1444091796875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m10",
+  "same": true,
+  "dD": 3.0517578125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m11",
+  "same": true,
+  "dD": 3.814697265625e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m12",
+  "same": true,
+  "dD": 0.0,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m13",
+  "same": true,
+  "dD": 1.9073486328125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m14",
+  "same": true,
+  "dD": 3.814697265625e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m15",
+  "same": true,
+  "dD": 2.6702880859375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m16",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m17",
+  "same": true,
+  "dD": 4.57763671875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m18",
+  "same": true,
+  "dD": 3.0517578125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "R_N@m19",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "B1_cal",
+  "same": true,
+  "dD": 3.0517578125e-05,
+  "batched": " Brighton",
+  "ref": " Brighton",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "G1",
+  "same": true,
+  "dD": 2.6702880859375e-05,
+  "batched": " Brighton",
+  "ref": " Brighton",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "G2",
+  "same": true,
+  "dD": 4.9591064453125e-05,
+  "batched": " Brighton",
+  "ref": " Brighton",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "G3",
+  "same": true,
+  "dD": 4.9591064453125e-05,
+  "batched": " Brighton",
+  "ref": " Brighton",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "G4",
+  "same": true,
+  "dD": 3.814697265625e-05,
+  "batched": " Brighton",
+  "ref": " Brighton",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "G5",
+  "same": true,
+  "dD": 4.9591064453125e-05,
+  "batched": " Brighton",
+  "ref": " Brighton",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "G6",
+  "same": true,
+  "dD": 4.9591064453125e-05,
+  "batched": " Brighton",
+  "ref": " Brighton",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "G8",
+  "same": true,
+  "dD": 5.340576171875e-05,
+  "batched": " Brighton",
+  "ref": " Brighton",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "G10",
+  "same": true,
+  "dD": 4.9591064453125e-05,
+  "batched": " Brighton",
+  "ref": " Brighton",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "G12",
+  "same": true,
+  "dD": 3.4332275390625e-05,
+  "batched": " Brighton",
+  "ref": " Brighton",
+  "case_id": "W-DE04_ANSb_H2"
+ },
+ {
+  "arm": "base",
+  "same": true,
+  "dD": 6.4849853515625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "K_P",
+  "same": true,
+  "dD": 2.86102294921875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "K_N",
+  "same": true,
+  "dD": 4.9591064453125e-05,
+  "batched": " Kate lives in Manchester.",
+  "ref": " Kate lives in Manchester.",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "K_N@m",
+  "same": true,
+  "dD": 7.2479248046875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P00",
+  "same": true,
+  "dD": 5.7220458984375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P01",
+  "same": true,
+  "dD": 2.6702880859375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P02",
+  "same": true,
+  "dD": 5.340576171875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P03",
+  "same": true,
+  "dD": 3.814697265625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P04",
+  "same": true,
+  "dD": 3.0517578125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P05",
+  "same": true,
+  "dD": 2.6702880859375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P06",
+  "same": true,
+  "dD": 4.00543212890625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P07",
+  "same": true,
+  "dD": 4.1961669921875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P08",
+  "same": true,
+  "dD": 2.47955322265625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P09",
+  "same": true,
+  "dD": 4.00543212890625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P10",
+  "same": true,
+  "dD": 4.38690185546875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P11",
+  "same": true,
+  "dD": 3.0517578125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P12",
+  "same": true,
+  "dD": 4.9591064453125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P13",
+  "same": true,
+  "dD": 6.4849853515625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P14",
+  "same": true,
+  "dD": 5.14984130859375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P15",
+  "same": true,
+  "dD": 5.14984130859375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P16",
+  "same": true,
+  "dD": 3.0517578125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P17",
+  "same": true,
+  "dD": 5.7220458984375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P18",
+  "same": true,
+  "dD": 4.00543212890625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_P19",
+  "same": true,
+  "dD": 3.0517578125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N00",
+  "same": true,
+  "dD": 2.09808349609375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N01",
+  "same": true,
+  "dD": 8.0108642578125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N02",
+  "same": true,
+  "dD": 2.6702880859375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N03",
+  "same": true,
+  "dD": 3.814697265625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N04",
+  "same": true,
+  "dD": 7.43865966796875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N05",
+  "same": true,
+  "dD": 4.1961669921875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N06",
+  "same": true,
+  "dD": 5.340576171875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N07",
+  "same": true,
+  "dD": 2.6702880859375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N08",
+  "same": true,
+  "dD": 4.38690185546875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N09",
+  "same": true,
+  "dD": 5.14984130859375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N10",
+  "same": true,
+  "dD": 3.814697265625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N11",
+  "same": true,
+  "dD": 2.47955322265625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N12",
+  "same": true,
+  "dD": 8.7738037109375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N13",
+  "same": true,
+  "dD": 6.103515625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N14",
+  "same": true,
+  "dD": 4.38690185546875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N15",
+  "same": true,
+  "dD": 8.0108642578125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N16",
+  "same": true,
+  "dD": 1.71661376953125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N17",
+  "same": true,
+  "dD": 8.392333984375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N18",
+  "same": true,
+  "dD": 3.4332275390625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N19",
+  "same": true,
+  "dD": 4.1961669921875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m00",
+  "same": true,
+  "dD": 6.866455078125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m01",
+  "same": true,
+  "dD": 7.05718994140625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m02",
+  "same": true,
+  "dD": 9.1552734375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m03",
+  "same": true,
+  "dD": 5.7220458984375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m04",
+  "same": true,
+  "dD": 3.0517578125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m05",
+  "same": true,
+  "dD": 0.0001068115234375,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m06",
+  "same": true,
+  "dD": 5.340576171875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m07",
+  "same": true,
+  "dD": 4.76837158203125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m08",
+  "same": true,
+  "dD": 0.0,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m09",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m10",
+  "same": true,
+  "dD": 4.9591064453125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m11",
+  "same": true,
+  "dD": 2.6702880859375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m12",
+  "same": true,
+  "dD": 8.392333984375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m13",
+  "same": true,
+  "dD": 1.1444091796875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m14",
+  "same": true,
+  "dD": 5.7220458984375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m15",
+  "same": true,
+  "dD": 6.4849853515625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m16",
+  "same": true,
+  "dD": 6.866455078125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m17",
+  "same": true,
+  "dD": 6.4849853515625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m18",
+  "same": true,
+  "dD": 9.5367431640625e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "R_N@m19",
+  "same": true,
+  "dD": 4.1961669921875e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "B1_cal",
+  "same": true,
+  "dD": 9.1552734375e-05,
+  "batched": " Kate lives in Manchester.",
+  "ref": " Kate lives in Manchester.",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "G1",
+  "same": true,
+  "dD": 7.82012939453125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "G2",
+  "same": true,
+  "dD": 6.29425048828125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "G3",
+  "same": true,
+  "dD": 6.29425048828125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "G4",
+  "same": true,
+  "dD": 9.1552734375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "G5",
+  "same": true,
+  "dD": 6.29425048828125e-05,
+  "batched": " Kate lives in Manchester.",
+  "ref": " Kate lives in Manchester.",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "G6",
+  "same": true,
+  "dD": 6.29425048828125e-05,
+  "batched": " Kate lives in Manchester.",
+  "ref": " Kate lives in Manchester.",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "G8",
+  "same": true,
+  "dD": 5.14984130859375e-05,
+  "batched": " Kate lives in Manchester.",
+  "ref": " Kate lives in Manchester.",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "G10",
+  "same": true,
+  "dD": 6.29425048828125e-05,
+  "batched": " Kate lives in Manchester.",
+  "ref": " Kate lives in Manchester.",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "G12",
+  "same": true,
+  "dD": 6.866455078125e-05,
+  "batched": " Kate lives in Manchester.",
+  "ref": " Kate lives in Manchester.",
+  "case_id": "W-DE10_ANSb_H1"
+ },
+ {
+  "arm": "base",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE00_UNArel_H0"
+ },
+ {
+  "arm": "K_P",
+  "same": true,
+  "dD": 1.9073486328125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE00_UNArel_H0"
+ },
+ {
+  "arm": "K_N",
+  "same": true,
+  "dD": 1.9073486328125e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE00_UNArel_H0"
+ },
+ {
+  "arm": "K_N@m",
+  "same": true,
+  "dD": 2.6702880859375e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE00_UNArel_H0"
+ },
+ {
+  "arm": "B1_cal",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE00_UNArel_H0"
+ },
+ {
+  "arm": "G1",
+  "same": true,
+  "dD": 1.52587890625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE00_UNArel_H0"
+ },
+ {
+  "arm": "G2",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE00_UNArel_H0"
+ },
+ {
+  "arm": "G3",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE00_UNArel_H0"
+ },
+ {
+  "arm": "G4",
+  "same": true,
+  "dD": 1.52587890625e-05,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE00_UNArel_H0"
+ },
+ {
+  "arm": "G5",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE00_UNArel_H0"
+ },
+ {
+  "arm": "G6",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE00_UNArel_H0"
+ },
+ {
+  "arm": "G8",
+  "same": true,
+  "dD": 0.0,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE00_UNArel_H0"
+ },
+ {
+  "arm": "G10",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE00_UNArel_H0"
+ },
+ {
+  "arm": "G12",
+  "same": true,
+  "dD": 7.62939453125e-06,
+  "batched": " unknown",
+  "ref": " unknown",
+  "case_id": "W-DE00_UNArel_H0"
+ }
+]
