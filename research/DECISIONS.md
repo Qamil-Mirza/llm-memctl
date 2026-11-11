@@ -383,3 +383,31 @@ the user has made the decision.
   "Go".
 - **Authority.** The user, Advisor pane, 2026-11-10, answering "Do you approve stages 0–3 ($0, practice data
   only)?": "yes".
+
+## D-84 (2026-11-10) — §56 closed at its stage-1 gate: the push toward "unknown" at P_ans is distributed over MLP neurons; STATE F23 added
+
+- **What.** §56 stage 1 (rev 0 + 0a) read 743 dev-A rows of the W split (seed 55) on Qwen 2.5 3B and ranked all
+  396,288 SwiGLU neurons by their mean direct push toward "unknown" at P_ans on false abstentions (DLA through the
+  final-RMSNorm scale, t* = the best city token).
+- **Reading, as frozen.**
+  - **R1 = DISTRIBUTED.** K50 = 14,966 neurons, 95% CI [14,899, 15,130], against a bar of 500.
+  - The top 50 neurons hold 3.1% of the positive push and the top 500 hold 9.8%. The push is spread over layers 6–35,
+    and no layer holds more than 5.8% of it.
+  - Under §7 and D-45 it stops: no ablation, no stage 2–4, no dev-B UNA generation. Seed 57 is not generated.
+- **Descriptives after the stop (no reading).**
+  - The top-50 set pushes "unknown" on every class. On it, TA/FA = 1.189 [1.123, 1.268] and C/FA = 0.920, so it is
+    not specific to abstention.
+  - On the direct path the net push to "unknown" comes through attention (FA +14.5, C +3.8, TA +32.3). Summed MLP
+    DLA is negative (FA −7.7), mostly from layer 35 (−12.3).
+  - DLA is a direct-path measure, so attention's share includes what upstream MLPs write and attention moves. This
+    is not a finding about where the decision is made.
+- **Record.** EXPERIMENTS §56 (061b257); stage-1 results and frozen K at 7d78ee0; freeze 55d3d87b at 3690b0f (amends
+  98d96e7); proposal rev 0 6e6b075, rev 0a df5d028. STATE F23.
+- **Disclosed.** A class-unpack bug in the first report run (TA and C swapped in the point R2, the ablation values
+  and the labels; the bootstrap and R1 were unaffected) was fixed before any verdict. Cross-process noise on D is
+  about 8e-5.
+- **Not done.** No attention-head analysis, no §9 ablation-ranking threat check, and no 3B run of the stage-2
+  batched-arm engine (`scripts/exp56_arms.py`, dummy-tested only). Any follow-up on the attention pathway, and the
+  user's planned step 2 (the same method on self-doubt), is new scope and needs a new proposal.
+- **Spend.** $0 (laptop). RunPod programme total unchanged.
+- **Authority.** The user, Advisor pane, 2026-11-10: "Go".
