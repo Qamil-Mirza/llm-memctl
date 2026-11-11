@@ -4,6 +4,27 @@
 $0, and use development data only. A sealed confirmation (stage 5) needs a separate approval. The section number and
 D-85 are provisional (D-84, the §56 close, waits for the user's "Go").
 
+**Rev 0a (Advisor, at the stage-0 gate, 2026-11-10 ~20:30 PT; before stage 2, before K_P/K_N exist, before any
+dev-B row is touched).** Stage 0 passed (3501a72): memory fits at all 36 layers; validity P Spearman 0.998, N 0.950;
+sets 10/10 sign; equality 440/440. One change, to R4 only, and it makes R4 harder for the sets:
+- **Why.** Each set is chosen on dev-A FA rows, so its dev-A release is in-sample and will tend to exceed its dev-B
+  release. A b calibrated to the dev-A release then overshoots on dev-B, which raises Uns(B1) and biases R4 toward
+  BETTER THAN THE DIAL.
+- **R4, primary from now on: matched release on dev-B.** Run B1 on dev-B FA and TA rows at the frozen grid
+  b ∈ {0, 1, 2, 3, 4, 5, 6, 8, 10, 12}. Linearly interpolate Uns(B1) at the set's own dev-B Rel between the two
+  bracketing grid values. Statistic: Uns(set) − Uns_B1@Rel(set). 95% interval: base-clustered bootstrap (2,000 draws),
+  recomputing both Rel(set) and the B1 curve in each draw. Verdicts as in §6. If Rel(set) falls outside the grid's
+  release range, R4 is NOT READ for that set.
+- The original R4 (b calibrated on dev-A, §5 stage 3 step 3) is still run and reported beside it, labelled
+  "dev-A-calibrated".
+- **Disclosure.** This was written after the Executor reported, incidentally, that in the stage-0 equality test (all
+  dev-A; stand-in sets from 5 dev-A rows) the stand-in N set changed 9 of 10 FA outputs and random sets 2 of 400.
+  No stage-2 or dev-B quantity existed. The change can only make a set's R4 harder to pass.
+- ā^C_N was built in stage 0 rather than stage 2 because the validity gate needed it; it is a fixed function of dev-A
+  C rows and is frozen in 3501a72. Accepted.
+- **Order.** Stage 2 and the dev-B UNA generation may run back to back (the generation does not depend on the sets).
+  The Executor stops after both, before stage 3, for the stage-2 review.
+
 **Authority.** The user, Advisor pane, 2026-11-10, after the plan was described to them (find neurons that differ
 between false-"unknown" and correct rows at the note and the answer; rank by total effect with gradient attribution;
 reset the top set against random sets and the dial; describe what survives): "Go for, it's free right". This covers
