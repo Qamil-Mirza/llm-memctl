@@ -3414,13 +3414,112 @@ Results: `runs/exp55/freeze.json` (sha256 24ec9eb6…), `rows_W.jsonl` and `rows
 (`runs/exp55/pod/run/`). Scripts: `scripts/exp55_prompts.py`, `exp55_freeze.py`, `exp55_run.py`, `exp55_pod.sh`
 and `exp55_report.py`.
 
-## 56. Which MLP neurons carry false "unknown" at the answer position? Direct-push ranking, ablation and the logit-bias dial, Qwen 2.5 3B (2026-11-10, pre-registered rev 0)
+## 56. Which MLP neurons carry false "unknown" at the answer position? Direct-push ranking, ablation and the logit-bias dial, Qwen 2.5 3B (2026-11-10, pre-registered rev 0 + 0a; laptop stage 1 2026-11-10)
 
-**Status: OPENED (D-83). Stages 0–3 approved: laptop, $0, development data only. Not built, not run.**
-- **Question.** Is the push toward "unknown" at P_ans carried by a small set of SwiGLU neurons? Is it the same set for
-  false and true abstentions? Does switching it off release false abstentions more selectively than the logit bias
-  B1?
-- **Design.** Proposal `research/proposals/2026-11-10-exp56-answer-neurons.md` (rev 0, 6e6b075). Dev-A (even
-  `base_index` of the §54 W split, seed 55) chooses the candidate set K; dev-B (odd `base_index`) tests it. Readings
-  R1 (concentration), R2 (channel type), R3 (causal, against 20 matched random sets) and R4 (selectivity against B1
-  at matched release) and the stopping rules are fixed in §6–§7 of the proposal. Seed 56 stays unused.
+**Status: STOPPED at the stage-1 gate (proposal §7 / D-45). R1 = DISTRIBUTED: K50 = 14,966 neurons (95% CI 14,899–15,130),
+against a bar of 500. Nothing was ablated.**
+- **Question.** Is the push toward "unknown" at P_ans (the ':' of the answer marker) carried by a small set of SwiGLU
+  neurons? Is it the same set for false and true abstentions? Does switching it off release false abstentions more
+  selectively than the logit bias B1?
+- **Design.**
+  - Rows come from the §54 W split (seed 55). Dev-A (even `base_index`) chooses the candidate set K; dev-B (odd
+    `base_index`) was to test it.
+  - Classes at P_ans: FA (ANS row, "unknown"), C (ANS row, gold), TA (UNA row, "unknown"), UA (UNA row, other). NM
+    (no usable P_ans) and W (ANS row, wrong answer) are excluded.
+  - ANS records come from §54 B0. Dev-A UNA records come from the §55 pod P0 run (HF fp32, no TF32; 20 of 20 matched
+    the laptop byte for byte at §55 check20).
+  - The measure is direct logit attribution (DLA) per neuron at P_ans, through the final RMSNorm scale.
+    - v = g ⊙ (u_unknown − u_t*) / σ, where g is the final-norm weight, u are unembedding rows, and σ is the RMS of
+      the final-norm input.
+    - Neuron i of layer l contributes a_i · ⟨W_down[:, i], v⟩, where a_i is the down_proj input.
+    - D = logit[" unknown"] − logit[t*].
+  - Rev 0a (df5d028): t* is the highest-logit first token among the row's 12 city names (all single tokens) on every
+    class. All 36 layers are stored. The rev-0 rule (top token outside the B1 "unknown" set) is kept as a
+    descriptive only. On TA rows it returned "未知" ("unknown" in Chinese) on 142 of 289.
+  - Readings R1–R4 and the stopping rules are fixed in §6–§7 of the proposal. Seed 56 stays unused for data; it
+    seeds the bootstraps only.
+- **Stage 0 (freeze).**
+  - Dev-A counts: FA 140, C 305, TA 289, UA 9. Out: NM 5, W 2.
+  - Dev-B counts: ANS FA 148, C 298, NM 4. The 300 dev-B UNA rows were listed but never generated.
+  - Two-row layer-sum check: PASS (max error 8.3e-6 after rev 0a).
+  - Timing: read 6.7 s per row; ablated prefix generation 8.3 s; peak RSS 17.7 GB.
+- **Stage 1 run.** 743 dev-A reads, 14:01–15:57 PT (22:01–23:57 UTC), 9.3 s per row, peak RSS 17.7 GB, no errors.
+  Checks on all rows:
+  - per-layer neuron DLA sums to the layer's MLP DLA (max error 1.6e-5);
+  - embedding + attention + MLP DLA equals the linear D (max error 5.2e-6);
+  - |D − linear D| ≤ 1.3e-5.
+- **R1 (concentration; the reading that decides).**
+  - Mean DLA over the 140 FA rows, 396,288 neurons; 191,604 have a positive mean.
+  - K50 (smallest top-k holding half the positive push) = **14,966**. 95% CI [14,899, 15,130]: 2,000 draws, clustered
+    by base over the 52 bases with an FA row. K50 > 500 → **DISTRIBUTED**.
+  - Share of the positive push held by the top-k neurons:
+
+    | k | 10 | 50 | 100 | 500 | 1,000 | 5,000 |
+    |---|---|---|---|---|---|---|
+    | share | 1.2% | 3.1% | 4.4% | 9.8% | 13.7% | 29.7% |
+
+- **Layer profile (required by the stop rule).**
+  - The positive-push share rises gently with depth: at most 1.3% per layer in layers 0–5, about 2.5% in 11–21,
+    3.4–4.3% in 22–29, and 4.6–5.8% in 30–35. No layer holds more than 5.8%.
+  - The top-K50 neurons sit in all 36 layers, from 4 in layer 1 to 970 in layer 31.
+  - Net mean MLP DLA on FA rows by layer is small (|net| < 2) in every layer except layer 35, which is −12.3.
+- **At neuron resolution the push is distributed.** Under §7 and D-45 the experiment stops:
+  - no stage 2, 3 or 4;
+  - no dev-B UNA generation;
+  - K is frozen but unused.
+- **Descriptives after the stop (no reading).**
+  - Frozen K = the top 50 by mean FA DLA, with dev-A C-row mean activations as ablation values (`runs/exp56/K.json`,
+    sha256 78a258be…). Layers: 22:1, 25:1, 27:1, 28:5, 29:2, 30:4, 31:3, 32:2, 33:10, 34:7, 35:14.
+  - Σ over K of mean DLA by class: FA 8.46, TA 10.06, C 7.78, UA 9.96.
+    - TA/FA = 1.189, CI [1.123, 1.268] (all 75 bases, K held fixed). R2 would read SHARED CHANNEL.
+    - C/FA = 0.920: the top FA neurons push nearly as hard on rows the model answers correctly.
+  - K50 on the other classes is just as spread: TA 13,931, C 14,743, UA 14,402. Top-50 overlap: FA∩TA 29, FA∩C 37.
+  - D by class (mean / median / fraction > 0):
+
+    | Class | Mean | Median | Fraction > 0 |
+    |---|---|---|---|
+    | FA | +6.93 | +4.08 | 1.00 |
+    | TA | +27.5 | +30.4 | 1.00 |
+    | C | −2.74 | −3.25 | 0.10 |
+    | UA | −2.29 | −1.79 | 0.00 |
+
+  - Direct-path split by component (summed over layers). Attention DLA: FA +14.50, C +3.81, TA +32.28. MLP DLA: FA
+    −7.68, C −6.65, TA −4.87.
+    - Layer-35 MLP pushes against "unknown" in every class (FA −12.3, TA −12.7, C −9.9).
+    - This is a direct-path measure. Attention's share includes whatever upstream MLPs write that attention then
+      moves to P_ans. It does not show that the decision is made in attention.
+  - Write vectors of K (down_proj column × the sign of the mean FA activation), mean |cosine|:
+    - with the §51 rank-1 edit U (8364bf13): 0.087 against 0.017 for random same-layer neurons. Ranks 15 and 16 reach
+      −0.51 and −0.48; the sign is negative, as expected, because U is anti-"unknown";
+    - with the §38 v_29: 0.036 against 0.017.
+  - City t* equals the gold first token on FA 129 of 140 and on C 305 of 305.
+- **Report bug, found before any verdict was written and fixed.**
+  - The first report run unpacked the class index arrays in `X.CLASSES` order (FA, C, TA, UA) into variables named
+    `fa, ta, cc, ua`. TA and C were therefore swapped in the R2 point estimate, the ablation values and the per-class
+    labels.
+  - The R2 point estimate printed 0.920 (actually C/FA), outside its own interval. The bootstrap selected rows by
+    class name, so its interval was right.
+  - Fix: unpack by name. R1 and the choice of K used only the FA rows, which were always correct.
+  - The stop rule's layer profile was added in the same rerun. The Advisor recomputed all headline numbers
+    independently from the stored reads.
+- **Numerical noise.** The stage-0 FA check row gave D = 0.482948 in one process and 0.482868 in another (about 8e-5).
+  Repeats within one process were identical. This is far below every threshold.
+
+Pre-registration `research/proposals/2026-11-10-exp56-answer-neurons.md`: rev 0 (D-83, 6e6b075); rev 0a at df5d028
+(stage-0 gate: city t* on every class, all 36 layers stored, stage 1 first, batched-arm stage 2 gated on a batch-1
+equality test).
+
+Freeze: `runs/exp56/freeze.json`, sha256 55d3d87b…44c2, committed at 3690b0f before any neuron was ranked (amends
+98d96e7). Rows: `runs/exp56/rows.jsonl`, sha256 d833da43….
+
+Spend: $0 (laptop). RunPod programme total unchanged.
+
+Review: Advisor stage-1 ruling ACCEPT, 2026-11-10 (stop rule fires; numbers recomputed independently).
+
+Code: `scripts/exp56_common.py`, `exp56_stage0.py`, `exp56_stage1.py`, `exp56_stage1_report.py`;
+`tests/test_exp56.py` (dummy model). The stage-2 engine `scripts/exp56_arms.py` (one prefill per row, arms batched)
+passes a batch-1 equality test on the dummy model only; it was never run on the 3B.
+
+Results: `runs/exp56/stage1_report.json` (sha256 03802d97…), `K.json`, `c_mean_act.npy`, `rows_counts.json`,
+`dla_test.json`, `timing.json` and the logs, at 98d96e7, 3690b0f and 7d78ee0. The 743 per-row reads (about 3.1 MB
+each) stay local (`runs/exp56/run/stage1/`).
