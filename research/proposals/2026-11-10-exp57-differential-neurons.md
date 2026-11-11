@@ -25,6 +25,28 @@ sets 10/10 sign; equality 440/440. One change, to R4 only, and it makes R4 harde
 - **Order.** Stage 2 and the dev-B UNA generation may run back to back (the generation does not depend on the sets).
   The Executor stops after both, before stage 3, for the stage-2 review.
 
+**Rev 0b (Advisor, at the stage-2 gate, 2026-11-11 ~01:40 PT; K_P/K_N frozen at b284ce2; before any dev-B row,
+B1 calibration or stage-3 arm exists).** Stage 2 passed its gate: R1 DISTRIBUTED in both regions (no stop, §7);
+R2 P 1.136 SHARED, N 0.330 FA-SPECIFIC. One addition, secondary only:
+- **Why.** The stage-2 token breakdown shows K_N's push sits at the "\nAnswer" marker (0.90 of the K_N push on FA
+  rows; top token on 140/140), not on the note's content. The frozen N reset is the mean over all note positions of
+  C rows, mostly content tokens, so at the marker it may sit far from where those neurons normally are on C rows. A
+  K_N release could then come from an off-distribution push rather than from restoring the C-row state. The primary
+  arm is kept as frozen; R_N random sets get the same reset, so R3 still compares like with like.
+- **Secondary arm, K_N@marker.** Reset K_N at the marker position(s) only, to the mean of those neurons at the marker
+  over dev-A C rows (position-matched). 20 random R_N sets (the same per-layer matched draws) under the same reset.
+  Same measures as the primary arm on dev-B (Rel, Uns, Dam; random sets on FA rows only). Reported beside the primary
+  K_N reading as R3′/R2′, labelled secondary; it cannot change any primary verdict. The marker C means are computed
+  from dev-A C rows and frozen by commit before any dev-B row is read.
+- **Reading, fixed now.** If the primary K_N arm is SHOWN and K_N@marker also ranks 1/21 with Rel ≥ 0.20, K_N's effect
+  is described as restoring the C-row state at the marker. If the primary is SHOWN and K_N@marker is not, it is
+  described as an off-distribution push at the marker, and no "these neurons cause false abstention" sentence is
+  written.
+- **Descriptive, before stage 3:** the Executor's offered check (K_N activations at the marker on C rows vs the frozen
+  N reset value, per neuron), reported in the stage-3 report.
+- **Disclosure.** Written after reading stage-2 dev-A quantities only (K sets, R1, R2, token breakdown). No dev-B
+  quantity exists.
+
 **Authority.** The user, Advisor pane, 2026-11-10, after the plan was described to them (find neurons that differ
 between false-"unknown" and correct rows at the note and the answer; rank by total effect with gradient attribution;
 reset the top set against random sets and the dial; describe what survives): "Go for, it's free right". This covers
