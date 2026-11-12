@@ -3523,3 +3523,82 @@ passes a batch-1 equality test on the dummy model only; it was never run on the 
 Results: `runs/exp56/stage1_report.json` (sha256 03802d97…), `K.json`, `c_mean_act.npy`, `rows_counts.json`,
 `dla_test.json`, `timing.json` and the logs, at 98d96e7, 3690b0f and 7d78ee0. The 743 per-row reads (about 3.1 MB
 each) stay local (`runs/exp56/run/stage1/`).
+
+## 57. Which neurons differ on false "unknown", and does resetting them fix it? Total-effect ranking at the answer and over the note, random sets and the logit-bias dial, Qwen 2.5 3B (2026-11-10/11, pre-registered rev 0 + 0a + 0b; laptop stages 0–3, $0)
+
+**Status: CLOSED after stage 3 (dev only). Selected neurons beat random sets by a wide margin, but no neuron set beats
+a plain logit bias. The answer-position set K_P is WORSE than the bias at matched release (more answered-unanswerable
+rows, plus damage to correct rows). The note/marker set K_N ties it (NO DIFFERENCE SHOWN), and its release almost
+vanishes when the reset stays in distribution at the marker (R3′ NOT SHOWN), so it is read as an off-distribution
+push. No causal sentence is written about K_N.**
+- **Question.** §56 found the direct push toward "unknown" spread over ~15,000 MLP neurons. Does a total-effect
+  ranking (attribution patching) find a small set whose reset to correct-row values releases false abstentions,
+  beyond random sets of the same shape, and more selectively than the logit bias B1?
+- **Design.**
+  - Rows, classes and D as in §56 (W split, seed 55; t* = the best city first token of the row's pool). Dev-A chooses
+    everything; dev-B tests. No held-out split was read; seed 57 was not generated.
+  - Two regions: P = P_ans alone; N = the forced note and the "Answer" marker before P_ans.
+  - Reset values: the dev-A C-row mean at P_ans (P, `c_mean_act.npy`) and the token-weighted dev-A C-row mean over
+    all note positions (N, `c_mean_note.npy`, 305 rows, 7,768 positions).
+  - Predicted effect Δ̂_i = Σ_{t∈R} (ā^C_i − a_i(t)) · ∂D/∂a_i(t), from one forward and one backward pass. Score
+    S^R_i = mean over dev-A FA rows of −Δ̂_i. K_P and K_N = the top 50 by S^P and S^N.
+  - Stage 3 (dev-B): each set reset at its region; 20 random per-layer-matched sets per region (seed 5701); B1 =
+    −b on " unknown" at P_ans. Grading: §51 grader, head + tail.
+  - Readings R1–R4 fixed in proposal §6; rev 0a (476a580) made R4 a matched-release comparison on dev-B over a frozen
+    B1 grid; rev 0b (02c7cab, at the stage-2 gate) added a secondary arm K_N@marker.
+- **Stage 0 (3501a72): both gates PASS.**
+  - Memory: forward + backward at all 36 layers fits (peak RSS 17.3 GB on a 721-token row, 25.7 s).
+  - Validity (Δ̂ vs real single-neuron patches, dev-A): Spearman P 0.998, N 0.950. Set-level sign 10/10; for 50-neuron
+    sets the real effect was 0.51–0.87 of Δ̂.
+  - Equality: the batched arm engine matched batch 1 on 440/440 row-arms (max |ΔD| 1.2e-4), 10.5× faster.
+- **Stage 1 (descriptive, stored §56 reads).** 6,240 neurons differ between FA and C at |d| ≥ 1.0, all in layers
+  21–35; strongly firing neurons are not enriched for the push (neuron-level p97 holds 7.4% of it).
+- **Stage 2 (b284ce2; 743 dev-A rows, 19.1 s/row).**
+  - **R1 = DISTRIBUTED in both regions.** P: K50 13,640 [13,065, 14,516]; N: K50 14,912 [14,903, 15,424]. Top-50
+    share P 2.7%, N 1.9%. The percentile CI leans upward: on random halves of the FA bases K50 rose above the full
+    value in 50/50 halves at N and 35/50 at P (6584388). R1 never stops stage 2 (§7).
+  - **R2 (TA/FA over K):** P 1.136 [1.02, 1.26] SHARED; N 0.330 [0.27, 0.40] FA-SPECIFIC. C/FA (P 0.102, N 0.563) is
+    not comparable across regions: the P reset is the C mean at P_ans, so C rows have Δ̂ ≈ 0 there by construction.
+    At P, R2 ≈ 1 means K_P is "unknown"-output machinery shared by true and false abstentions, consistent with §56;
+    it is not evidence about why FA happens.
+  - K_P sits in layers 21–35 (mostly 26–31); K_N in layers 6 and 17–27 (mostly 19–22). K_P ∩ K_N = 0; K_N shares no
+    neuron with §56's K or with the stage-1 top-1,000 by |d|.
+  - **Where K_N acts:** the "\nAnswer" marker carries 0.90 of the K_N push on FA rows (3.7% of note positions; top
+    token on 140/140 rows). The gold-city mention carries −0.002 and hedge words ~0.
+- **Rev 0b check (250f548, dev-A).** At the marker, FA rows already sit at the C distribution for K_N (median |z|
+  0.19, none above 2, in C-row SDs). The frozen note-mean reset sits 5.7 SD from C (median) and above 2 SD for all
+  50 neurons. The primary K_N arm therefore pushes the marker far out of distribution.
+- **Stage 3 (dev-B; FA 148, TA 291, C 298; 75 bases; 05:37–13:31 PT, 29 s/row; equality re-run with all 74 arms
+  PASS 162/162, 1e147dd).**
+  - Dev-B UNA generation (5800ebd): 300 rows under P0 → TA 291, UA 6, NM 3.
+  - b_cal (1c1ad9b): the dev-A ladder rises monotonically but saturates at Rel 0.85 (b ≥ 13), below K_N's dev-A Rel
+    0.871, so b_cal = 16 is **unmatched**.
+  - B1 grid on dev-B (Rel / Uns): b 1 0.236/0.003; 2 0.466/0.007; 3 0.561/0.021; 4 0.649/0.024; 5 0.716/0.027;
+    6 0.750/0.041; 8 0.804/0.076; 10 0.831/0.089; 12 0.858/0.127.
+
+    | Arm | Rel (FA → gold) | Random sets: max / median | R3 | Uns (TA answered) | Dam (C rows) | R4 matched (Uns − B1 at equal Rel) | R2′ = Uns/Rel (B1 at nearest grid point) |
+    |---|---|---|---|---|---|---|---|
+    | K_P | 0.581 | 0.014 / 0.000 | **SHOWN** (1/21) | 0.052 | 7/298 → "unknown" | +0.030 [0.012, 0.057] **WORSE** | 0.089 (B1 b=3: 0.037) |
+    | K_N | 0.831 | 0.034 / 0.007 | **SHOWN** (1/21) | 0.093 | 0 | +0.003 [−0.031, 0.025] **NO DIFFERENCE SHOWN** (5.8% draws dropped) | 0.112 (B1 b=10: 0.108) |
+    | K_N@m (secondary) | 0.088 | 0.007 / 0.000 | **NOT SHOWN** (1/21 but Rel < 0.20) | 0.000 | 3/298 → "unknown" | not read (R3 NOT SHOWN) | — |
+    | B1 (any b) | grid above | — | — | grid above | 0 by construction (step-0 bias against "unknown" cannot flip a gold answer) | — | — |
+
+  - **R4 dev-A-calibrated: NOT READ for every set.** b_cal is unmatched, so the comparison is at unequal release
+    (Rel − Rel(B1_cal) is negative for every arm), and lower Uns then follows from less release. The raw verdict is
+    kept in the report as `verdict_raw` and is not a result.
+  - **Rev 0b reading (fixed before the run).** The primary K_N arm is SHOWN and K_N@marker is not, so K_N's release
+    is described as an off-distribution push at the marker. Δ̂ agrees: on dev-B FA rows the predicted ΔD tracks the
+    real one for K_P (Spearman 0.96; mean −7.96 predicted vs −5.64 real) but not for K_N (Spearman 0.23; mean −16.7
+    vs −7.9).
+  - U(λ = 1), descriptive: base 0.332, K_P 0.396, K_N 0.422, K_N@m 0.344, B1 at b = 16 0.394. No U was computed for B1
+    at the matched grid points (grid arms ran on FA and TA rows only).
+- **Reading.** Resetting a frozen 50-neuron set releases far more false abstentions than random sets of the same
+  shape, in both regions. Neither set does so more selectively than lowering the "unknown" logit: the answer-position
+  set answers more unanswerable rows at equal release and turns 7 correct answers into "unknown" (it is shared "unknown"
+  output machinery, R2 1.136, so releasing it also releases true abstentions); the note set ties
+  the bias, and its effect depends on pushing the marker state 5.7 SD outside where correct rows sit. Kept in
+  distribution, the same neurons release 0.088.
+- **Not done.** Stage 4 (what the survivors are) is not proposed: K_P loses to B1 and K_N's effect is not
+  in-distribution. No stage 5 (seed 57). No attention-head analysis (the §7 next unit if R3 had failed; it is still
+  the open thread from §56's direct-path split).
+- **Spend.** $0 (laptop). RunPod programme total unchanged.
