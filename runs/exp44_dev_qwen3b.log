@@ -1,131 +1,0 @@
-Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
-Loading weights:   0%|          | 0/434 [00:00<?, ?it/s]Loading weights:   0%|          | 1/434 [00:00<06:03,  1.19it/s]Loading weights:  26%|██▌       | 111/434 [00:00<00:02, 157.86it/s]Loading weights:  39%|███▊      | 168/434 [00:01<00:01, 171.38it/s]Loading weights:  48%|████▊     | 208/434 [00:01<00:01, 157.11it/s]Loading weights:  55%|█████▍    | 238/434 [00:01<00:01, 167.68it/s]Loading weights:  61%|██████    | 265/434 [00:01<00:00, 174.35it/s]Loading weights:  67%|██████▋   | 290/434 [00:02<00:00, 159.90it/s]Loading weights:  73%|███████▎  | 315/434 [00:02<00:00, 157.13it/s]Loading weights:  78%|███████▊  | 339/434 [00:02<00:00, 163.85it/s]Loading weights:  84%|████████▎ | 363/434 [00:02<00:00, 165.27it/s]Loading weights:  89%|████████▉ | 387/434 [00:02<00:00, 167.75it/s]Loading weights:  95%|█████████▍| 411/434 [00:02<00:00, 176.69it/s]Loading weights: 100%|██████████| 434/434 [00:02<00:00, 156.02it/s]
-loaded qwen3b (hf-transformers-5.17.0-cpu-float32) in 7s, peak RSS 18174 MB, 126 rows
-[1/126] 00ca467f f0 47.9s tok=908/645 rank clean=3 corrupt=4 lp -3.55/-6.24 R(0)=0.0007715399072829096 R(L-1)=1.0 d_c=0.5833333333333334 sanity=PASS
-[2/126] 06db6396 f0 49.8s tok=912/749 rank clean=1 corrupt=2 lp -0.00/-14.57 R(0)=0.0002435066734195355 R(L-1)=1.0 d_c=0.7222222222222222 sanity=PASS (not asserted)
-[3/126] 0bb5a684 f0 57.7s tok=1127/937 rank clean=2 corrupt=3 lp -4.35/-4.23 R(0)=0.18006933216585905 R(L-1)=1.0 d_c=0.5 sanity=FAIL (not asserted)
-[4/126] 0db4c65d f0 54.6s tok=1003/847 rank clean=6 corrupt=1 lp -3.17/-1.54 R(0)=0.0004563664772491783 R(L-1)=1.0 d_c=0.75 sanity=PASS (not asserted)
-[5/126] 15745da0 f0 51.5s tok=836/772 rank clean=701 corrupt=4308 lp -21.94/-31.80 R(0)=-0.0004016095527764328 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS (not asserted)
-[6/126] 1b9b7252 f0 71.8s tok=1550/1355 rank clean=4 corrupt=727 lp -2.23/-28.91 R(0)=0.002340931450474703 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS
-[7/126] 21d02d0d f0 57.7s tok=1081/851 rank clean=2 corrupt=5 lp -6.71/-8.71 R(0)=-0.0038779794865935495 R(L-1)=1.0 d_c=0.5833333333333334 sanity=PASS
-[8/126] 22d2cb42 f0 52.3s tok=1296/354 rank clean=36 corrupt=12 lp -11.70/-12.69 R(0)=-0.05605903608434234 R(L-1)=1.0 d_c=0.7777777777777778 sanity=FAIL (not asserted)
-[9/126] 2698e78f f0 52.1s tok=927/726 rank clean=4 corrupt=23 lp -3.96/-13.54 R(0)=0.00033787014742384916 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS
-[10/126] 28dc39ac f0 54.0s tok=1059/689 rank clean=1 corrupt=5 lp -0.36/-7.27 R(0)=-0.0008709678361768505 R(L-1)=1.0 d_c=0.6111111111111112 sanity=PASS
-[11/126] 37f165cf f0 53.3s tok=916/736 rank clean=12 corrupt=26 lp -9.99/-14.38 R(0)=-0.00034242564459545486 R(L-1)=1.0 d_c=0.4444444444444444 sanity=PASS (not asserted)
-[12/126] 3fe836c9 f0 53.5s tok=899/736 rank clean=73 corrupt=401 lp -24.04/-29.83 R(0)=-0.002006926568312877 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS (not asserted)
-[13/126] 4100d0a0 f0 55.8s tok=888/800 rank clean=59 corrupt=64 lp -21.82/-25.52 R(0)=0.0036063619080695824 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS (not asserted)
-[14/126] 41275add f0 61.0s tok=1101/845 rank clean=5 corrupt=27 lp -8.87/-20.54 R(0)=-0.0014130310400066878 R(L-1)=1.0 d_c=0.75 sanity=PASS
-[15/126] 4adc0475 f0 51.3s tok=799/661 rank clean=1 corrupt=13 lp -0.00/-8.60 R(0)=-0.0019112456186973282 R(L-1)=1.0 d_c=0.7222222222222222 sanity=PASS
-[16/126] 4d6b87c8 f0 62.9s tok=1137/955 rank clean=1 corrupt=1 lp -0.00/-0.00 R(0)=0.0007889474794444928 R(L-1)=1.0 d_c=0.6111111111111112 sanity=PASS (not asserted)
-[17/126] 4f54b7c9 f0 57.3s tok=1010/822 rank clean=2 corrupt=4 lp -0.90/-8.70 R(0)=3.183554118195287e-05 R(L-1)=1.0 d_c=0.5833333333333334 sanity=PASS
-[18/126] 58470ed2 f0 84.6s tok=2154/1354 rank clean=25 corrupt=272 lp -18.94/-26.51 R(0)=-0.009098777943105247 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS (not asserted)
-[19/126] 59524333 f0 59.4s tok=1023/868 rank clean=2 corrupt=15 lp -0.84/-9.94 R(0)=0.00011813881339284426 R(L-1)=1.0 d_c=0.8611111111111112 sanity=PASS
-[20/126] 5d3d2817 f0 57.3s tok=901/817 rank clean=21 corrupt=180 lp -11.18/-19.63 R(0)=0.0057184787200936695 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS (not asserted)
-[21/126] 60bf93ed f0 60.0s tok=998/764 rank clean=1 corrupt=20 lp -0.00/-6.36 R(0)=-0.002439698250905911 R(L-1)=1.0 d_c=0.75 sanity=PASS
-[22/126] 60d45044 f0 135.5s tok=3197/3136 rank clean=1918 corrupt=16086 lp -28.03/-35.96 R(0)=0.0001744920862704428 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS (not asserted)
-[23/126] 69fee5aa f0 53.6s tok=899/722 rank clean=1 corrupt=14 lp -0.00/-8.00 R(0)=-0.001027282697572195 R(L-1)=1.0 d_c=0.75 sanity=PASS
-[24/126] 6a27ffc2 f0 54.4s tok=908/739 rank clean=1 corrupt=1 lp -0.00/-0.00 R(0)=-3.392062659138148e-06 R(L-1)=1.0 d_c=0.6944444444444444 sanity=PASS (not asserted)
-[25/126] 71017276 f0 59.0s tok=938/811 rank clean=5 corrupt=4 lp -3.32/-2.51 R(0)=-0.00041921510351203257 R(L-1)=1.0 d_c=0.5833333333333334 sanity=PASS
-[26/126] 71a3fd6b f0 56.3s tok=842/737 rank clean=3 corrupt=579 lp -5.03/-27.98 R(0)=-0.0005802317777707062 R(L-1)=1.0 d_c=0.8611111111111112 sanity=PASS
-[27/126] 75832dbd f0 55.5s tok=878/823 rank clean=34 corrupt=31 lp -19.98/-19.86 R(0)=-0.09209953098288455 R(L-1)=1.0 d_c=0.1111111111111111 sanity=FAIL (not asserted)
-[28/126] 76d63226 f0 63.1s tok=1064/960 rank clean=1 corrupt=9 lp -0.00/-7.66 R(0)=-0.00040832084142976207 R(L-1)=1.0 d_c=0.6944444444444444 sanity=PASS
-[29/126] 7e00a6cb f0 57.6s tok=1058/811 rank clean=494 corrupt=30496 lp -16.51/-34.24 R(0)=0.003904174922291127 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS (not asserted)
-[30/126] 94f70d80 f0 70.3s tok=1296/1206 rank clean=1 corrupt=6 lp -0.00/-7.90 R(0)=-3.995287069220527e-05 R(L-1)=1.0 d_c=0.75 sanity=PASS
-[31/126] 95bcc1c8 f0 60.9s tok=1003/900 rank clean=1 corrupt=5 lp -0.00/-4.09 R(0)=-0.0007712830777904875 R(L-1)=1.0 d_c=0.75 sanity=PASS
-[32/126] 982b5123 f0 72.3s tok=1434/1257 rank clean=2434 corrupt=19304 lp -28.10/-36.30 R(0)=0.0003938184712601889 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS (not asserted)
-[33/126] 9ea5eabc f0 55.2s tok=924/795 rank clean=1602 corrupt=833 lp -23.38/-29.51 R(0)=0.003962641597487471 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS (not asserted)
-[34/126] 9ee3ecd6 f0 70.8s tok=1420/1244 rank clean=3 corrupt=3 lp -6.30/-3.23 R(0)=-0.007656707023042811 R(L-1)=1.0 d_c=0.6111111111111112 sanity=PASS (not asserted)
-[35/126] a4996e51 f0 84.0s tok=1830/1614 rank clean=1 corrupt=1 lp -0.01/-0.00 R(0)=-0.008052592517365302 R(L-1)=1.0 d_c=0.3888888888888889 sanity=PASS (not asserted)
-[36/126] ac031881 f0 55.8s tok=930/823 rank clean=10 corrupt=10 lp -10.51/-9.33 R(0)=-0.008517683468781031 R(L-1)=1.0 d_c=0.7222222222222222 sanity=PASS
-[37/126] b320f3f8 f0 54.2s tok=873/774 rank clean=17 corrupt=270 lp -16.04/-29.90 R(0)=0.0009182203631469565 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS (not asserted)
-[38/126] b86304ba f0 58.3s tok=985/929 rank clean=48 corrupt=57 lp -23.22/-24.57 R(0)=-0.013245963774943895 R(L-1)=1.0 d_c=0.4444444444444444 sanity=PASS (not asserted)
-[39/126] ba61f0b9 f0 79.0s tok=1595/1386 rank clean=2 corrupt=7 lp -3.34/-15.43 R(0)=0.00041564416619979043 R(L-1)=1.0 d_c=0.8888888888888888 sanity=PASS
-[40/126] bbf86515 f0 64.1s tok=1161/950 rank clean=5 corrupt=5 lp -4.39/-3.29 R(0)=-0.001956487570617976 R(L-1)=1.0 d_c=0.75 sanity=PASS
-[41/126] c14c00dd f0 58.2s tok=968/899 rank clean=167 corrupt=16032 lp -18.01/-37.24 R(0)=0.0007065178025229236 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS (not asserted)
-[42/126] c5e8278d f0 57.7s tok=908/819 rank clean=2 corrupt=1518 lp -1.78/-28.20 R(0)=-0.00020781336872594233 R(L-1)=1.0 d_c=0.8611111111111112 sanity=PASS
-[43/126] c7cf7dfd f0 63.3s tok=1225/940 rank clean=1 corrupt=25 lp -0.01/-22.25 R(0)=0.00036882942574594397 R(L-1)=1.0 d_c=0.8611111111111112 sanity=PASS
-[44/126] c8c3f81d f0 72.8s tok=1421/1345 rank clean=2 corrupt=2 lp -0.88/-8.48 R(0)=-0.0005385639177792544 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS (not asserted)
-[45/126] d6062bb9 f0 54.5s tok=933/733 rank clean=3 corrupt=6 lp -2.41/-7.41 R(0)=-0.0025490980323845214 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS
-[46/126] e493bb7c f0 61.5s tok=1095/840 rank clean=36 corrupt=141 lp -12.17/-23.64 R(0)=-0.00040766065146769095 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS (not asserted)
-[47/126] e4e14d04 f0 59.8s tok=1062/892 rank clean=4667 corrupt=24296 lp -29.11/-37.90 R(0)=0.0007703211357599616 R(L-1)=1.0 d_c=0.6944444444444444 sanity=PASS (not asserted)
-[48/126] e66b632c f0 60.7s tok=1164/875 rank clean=1 corrupt=1 lp -0.00/-1.08 R(0)=-0.00077186930059466 R(L-1)=1.0 d_c=0.6388888888888888 sanity=PASS (not asserted)
-[49/126] fca70973 f0 55.9s tok=878/801 rank clean=105 corrupt=54 lp -22.91/-22.55 R(0)=-0.31586815393562556 R(L-1)=1.0 d_c=0.4444444444444444 sanity=FAIL (not asserted)
-[50/126] fca762bc f0 63.1s tok=1160/967 rank clean=15 corrupt=4183 lp -12.38/-26.87 R(0)=-0.0008730166759041339 R(L-1)=1.0 d_c=0.8888888888888888 sanity=PASS (not asserted)
-[51/126] fea54f57 f0 61.6s tok=1103/822 rank clean=11 corrupt=21381 lp -9.95/-30.96 R(0)=0.00047616345756796257 R(L-1)=1.0 d_c=0.8888888888888888 sanity=PASS (not asserted)
-[52/126] gpt4_18c2b244 f0 63.8s tok=1179/930 rank clean=588 corrupt=30901 lp -21.90/-40.82 R(0)=-0.0004495865494345297 R(L-1)=1.0 d_c=0.7222222222222222 sanity=PASS (not asserted)
-[53/126] gpt4_213fd887 f0 62.4s tok=1091/895 rank clean=418 corrupt=16 lp -21.29/-17.83 R(0)=-0.0026837119134457007 R(L-1)=1.0 d_c=0.6111111111111112 sanity=PASS (not asserted)
-[54/126] gpt4_4929293a f0 56.1s tok=911/743 rank clean=10 corrupt=1047 lp -17.46/-33.22 R(0)=-0.0009054488122628335 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS
-[55/126] gpt4_4ef30696 f0 52.6s tok=821/675 rank clean=2 corrupt=1 lp -1.84/-1.74 R(0)=-0.023436078377119966 R(L-1)=1.0 d_c=0.2777777777777778 sanity=PASS (not asserted)
-[56/126] gpt4_70e84552 f0 72.6s tok=1388/1176 rank clean=345 corrupt=542 lp -26.67/-28.75 R(0)=-0.01140635718619683 R(L-1)=1.0 d_c=0.9166666666666666 sanity=PASS (not asserted)
-[57/126] gpt4_7bc6cf22 f0 59.6s tok=990/917 rank clean=1 corrupt=4 lp -0.52/-2.18 R(0)=-0.0005916216317783154 R(L-1)=1.0 d_c=0.75 sanity=PASS
-[58/126] gpt4_85da3956 f0 62.3s tok=1073/976 rank clean=1 corrupt=1 lp -0.35/-0.37 R(0)=0.014731542472614732 R(L-1)=1.0 d_c=0.3333333333333333 sanity=PASS (not asserted)
-[59/126] gpt4_88806d6e f0 55.6s tok=914/756 rank clean=2 corrupt=86 lp -1.15/-27.64 R(0)=0.00021496362922844654 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS
-[60/126] gpt4_8e165409 f0 68.0s tok=1180/995 rank clean=3 corrupt=8 lp -5.84/-7.19 R(0)=-0.002640402160325086 R(L-1)=1.0 d_c=0.4722222222222222 sanity=PASS
-[61/126] gpt4_98f46fc6 f0 90.9s tok=1977/1821 rank clean=1269 corrupt=774 lp -31.91/-30.65 R(0)=0.010277058325320786 R(L-1)=1.0 d_c=0.6111111111111112 sanity=PASS (not asserted)
-[62/126] 07741c44 f1 61.9s tok=1133/963 rank clean=3 corrupt=102 lp -4.68/-13.85 R(0)=0.001146139611912986 R(L-1)=1.0 d_c=0.8888888888888888 sanity=PASS
-[63/126] 0862e8bf f1 57.7s tok=964/895 rank clean=2 corrupt=4454 lp -6.22/-31.88 R(0)=0.0007539830272739454 R(L-1)=1.0 d_c=0.8611111111111112 sanity=PASS
-[64/126] 08f4fc43 f1 58.8s tok=1050/873 rank clean=1 corrupt=6 lp -0.43/-3.17 R(0)=0.0002417441185389584 R(L-1)=1.0 d_c=0.6944444444444444 sanity=PASS
-[65/126] 0ddfec37 f1 57.2s tok=1002/809 rank clean=1 corrupt=5 lp -0.16/-5.88 R(0)=-0.0020861599536201145 R(L-1)=1.0 d_c=0.75 sanity=PASS
-[66/126] 0e4e4c46 f1 76.5s tok=1600/1405 rank clean=1 corrupt=1 lp -0.00/-1.11 R(0)=-0.013256269104238102 R(L-1)=1.0 d_c=0.5277777777777778 sanity=PASS (not asserted)
-[67/126] 0f05491a f1 53.9s tok=913/748 rank clean=1 corrupt=4 lp -0.00/-18.26 R(0)=2.6227098741077338e-05 R(L-1)=1.0 d_c=0.8611111111111112 sanity=PASS
-[68/126] 118b2229 f1 51.8s tok=785/740 rank clean=1 corrupt=10 lp -0.13/-8.95 R(0)=7.075497256490356e-05 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS
-[69/126] 19b5f2b3 f1 57.5s tok=954/881 rank clean=415 corrupt=1284 lp -22.16/-28.22 R(0)=-0.0011752608701940473 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS (not asserted)
-[70/126] 1c549ce4 f1 67.7s tok=1291/1131 rank clean=19 corrupt=138 lp -19.48/-27.12 R(0)=-0.00260854467350967 R(L-1)=1.0 d_c=0.6944444444444444 sanity=PASS (not asserted)
-[71/126] 2133c1b5 f1 58.6s tok=1034/862 rank clean=1 corrupt=30 lp -0.00/-11.50 R(0)=0.0010555329015094342 R(L-1)=1.0 d_c=0.5555555555555556 sanity=PASS
-[72/126] 28bcfaac f1 59.9s tok=1106/876 rank clean=2 corrupt=2 lp -3.86/-4.74 R(0)=-0.002939140422881889 R(L-1)=1.0 d_c=0.6388888888888888 sanity=PASS (not asserted)
-[73/126] 29f2956b f1 57.3s tok=955/877 rank clean=1 corrupt=18 lp -0.00/-11.42 R(0)=0.0004339946886928642 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS
-[74/126] 2bf43736 f1 95.1s tok=2085/1937 rank clean=1 corrupt=1 lp -0.02/-0.54 R(0)=-0.021513652953252485 R(L-1)=1.0 d_c=0.3333333333333333 sanity=PASS (not asserted)
-[75/126] 2ebe6c90 f1 58.9s tok=1034/890 rank clean=3 corrupt=3 lp -1.69/-2.77 R(0)=-0.007452127240972257 R(L-1)=1.0 d_c=0.5277777777777778 sanity=PASS (not asserted)
-[76/126] 36580ce8 f1 51.9s tok=813/737 rank clean=78 corrupt=5442 lp -19.71/-35.99 R(0)=-0.00021580969918771903 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS (not asserted)
-[77/126] 3ba21379 f1 80.9s tok=1675/1537 rank clean=2 corrupt=140 lp -2.04/-28.39 R(0)=0.00044814805520468267 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS
-[78/126] 3f1e9474 f1 67.1s tok=1262/1145 rank clean=1 corrupt=4 lp -0.21/-7.01 R(0)=0.0006361153573467848 R(L-1)=1.0 d_c=0.6388888888888888 sanity=PASS
-[79/126] 3fdac837 f1 63.8s tok=1161/1040 rank clean=4 corrupt=2 lp -7.94/-1.93 R(0)=-0.0036395072677405443 R(L-1)=1.0 d_c=0.75 sanity=PASS (not asserted)
-[80/126] 42ec0761 f1 69.2s tok=1343/1171 rank clean=5 corrupt=24 lp -8.46/-16.00 R(0)=-0.001241225559837607 R(L-1)=1.0 d_c=0.7222222222222222 sanity=PASS
-[81/126] 4388e9dd f1 65.5s tok=1374/970 rank clean=3 corrupt=87 lp -13.73/-25.95 R(0)=0.0027262221017166294 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS
-[82/126] 4bc144e2 f1 64.1s tok=1226/1024 rank clean=1 corrupt=20 lp -0.21/-19.84 R(0)=0.0004121870261083713 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS
-[83/126] 51b23612 f1 57.7s tok=1136/752 rank clean=416 corrupt=9957 lp -19.36/-33.52 R(0)=-0.0023814831121679253 R(L-1)=1.0 d_c=0.9166666666666666 sanity=PASS (not asserted)
-[84/126] 5831f84d f1 57.9s tok=1022/861 rank clean=1 corrupt=3 lp -0.00/-1.70 R(0)=1.529489604688089e-05 R(L-1)=1.0 d_c=0.5 sanity=PASS (not asserted)
-[85/126] 618f13b2 f1 64.0s tok=1223/1014 rank clean=25 corrupt=438 lp -20.53/-28.60 R(0)=0.0012459756453366325 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS (not asserted)
-[86/126] 66f24dbb f1 61.0s tok=1037/994 rank clean=3 corrupt=3 lp -3.76/-3.83 R(0)=0.017289364138795536 R(L-1)=1.0 d_c=0.1388888888888889 sanity=PASS (not asserted)
-[87/126] 6a1eabeb f1 97.1s tok=2161/1990 rank clean=1 corrupt=1 lp -0.00/-0.02 R(0)=0.01384678549745186 R(L-1)=1.0 d_c=0.4722222222222222 sanity=PASS (not asserted)
-[88/126] 6ade9755 f1 75.3s tok=1489/1427 rank clean=3 corrupt=40 lp -9.17/-19.17 R(0)=-0.0002887395159476134 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS
-[89/126] 7401057b f1 81.3s tok=1696/1542 rank clean=253 corrupt=11975 lp -20.63/-31.44 R(0)=-0.0007322339348985231 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS (not asserted)
-[90/126] 7527f7e2 f1 58.0s tok=957/867 rank clean=2 corrupt=556 lp -8.68/-32.86 R(0)=-0.00013086345160523826 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS
-[91/126] 7a8d0b71 f1 69.4s tok=1542/988 rank clean=2 corrupt=588 lp -1.47/-32.94 R(0)=0.0010811961412302599 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS
-[92/126] 85fa3a3f f1 56.5s tok=1034/763 rank clean=1 corrupt=20 lp -0.70/-20.57 R(0)=-0.00028452483414652044 R(L-1)=1.0 d_c=0.7222222222222222 sanity=PASS
-[93/126] 86f00804 f1 56.4s tok=919/837 rank clean=2 corrupt=37 lp -4.52/-22.90 R(0)=-0.0004738846195818062 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS
-[94/126] 89527b6b f1 96.7s tok=2350/1750 rank clean=5 corrupt=7 lp -5.24/-16.81 R(0)=-0.0021695396786329275 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS
-[95/126] 8979f9ec f1 72.2s tok=1449/1265 rank clean=1 corrupt=7 lp -0.01/-6.12 R(0)=-0.003199870327516741 R(L-1)=1.0 d_c=0.75 sanity=PASS
-[96/126] 89941a94 f1 71.0s tok=1417/1208 rank clean=67 corrupt=97 lp -20.87/-22.72 R(0)=-0.06790872966010159 R(L-1)=1.0 d_c=0.4444444444444444 sanity=FAIL (not asserted)
-[97/126] 8cf51dda f1 66.6s tok=1381/991 rank clean=4 corrupt=13 lp -5.93/-16.75 R(0)=0.0009310510621974129 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS
-[98/126] 8ebdbe50 f1 57.2s tok=930/874 rank clean=2 corrupt=2 lp -3.27/-5.40 R(0)=0.007738451703070486 R(L-1)=1.0 d_c=0.9166666666666666 sanity=PASS (not asserted)
-[99/126] 993da5e2 f1 63.6s tok=1191/1006 rank clean=7829 corrupt=11422 lp -31.60/-34.25 R(0)=0.0023260553263198275 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS (not asserted)
-[100/126] b3c15d39 f1 64.3s tok=1228/1009 rank clean=2 corrupt=5 lp -1.55/-4.49 R(0)=0.0006165061954672737 R(L-1)=1.0 d_c=0.75 sanity=PASS
-[101/126] b6019101 f1 53.1s tok=888/714 rank clean=1 corrupt=9 lp -0.00/-4.09 R(0)=-0.0015909845492373036 R(L-1)=1.0 d_c=0.6388888888888888 sanity=PASS
-[102/126] b6025781 f1 54.6s tok=841/792 rank clean=27 corrupt=17 lp -17.65/-15.32 R(0)=-0.011697938394655476 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS (not asserted)
-[103/126] b9cfe692 f1 52.5s tok=935/607 rank clean=1 corrupt=2 lp -0.90/-1.46 R(0)=-0.03379593964162447 R(L-1)=1.0 d_c=0.4444444444444444 sanity=PASS (not asserted)
-[104/126] bb7c3b45 f1 65.9s tok=1251/1085 rank clean=66 corrupt=285 lp -25.02/-28.77 R(0)=0.001759009097454747 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS (not asserted)
-[105/126] c2ac3c61 f1 71.6s tok=1397/1248 rank clean=1 corrupt=6 lp -0.00/-12.17 R(0)=-7.402655093000515e-06 R(L-1)=1.0 d_c=0.6944444444444444 sanity=PASS
-[106/126] c9f37c46 f1 58.1s tok=1030/858 rank clean=2 corrupt=2 lp -4.50/-1.27 R(0)=0.001450506989091557 R(L-1)=1.0 d_c=0.8888888888888888 sanity=PASS (not asserted)
-[107/126] caf03d32 f1 51.8s tok=807/714 rank clean=18 corrupt=46 lp -13.69/-18.40 R(0)=0.005334266389834611 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS (not asserted)
-[108/126] cc539528 f1 61.8s tok=1173/897 rank clean=330 corrupt=158 lp -17.00/-21.11 R(0)=0.0003201871322576702 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS (not asserted)
-[109/126] cc6d1ec1 f1 56.9s tok=962/787 rank clean=9278 corrupt=59030 lp -30.00/-41.85 R(0)=-0.0017707849805790534 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS (not asserted)
-[110/126] d52b4f67 f1 67.5s tok=1223/1148 rank clean=3 corrupt=38 lp -6.32/-21.13 R(0)=-0.00028431079732387415 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS
-[111/126] d7c942c3 f1 54.2s tok=932/738 rank clean=6 corrupt=1539 lp -11.74/-30.53 R(0)=0.0016701161935427622 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS
-[112/126] d905b33f f1 58.4s tok=1033/852 rank clean=1 corrupt=1 lp -0.19/-0.01 R(0)=0.0014710984693114772 R(L-1)=1.0 d_c=0.6388888888888888 sanity=PASS (not asserted)
-[113/126] e01b8e2f f1 83.6s tok=1711/1647 rank clean=2 corrupt=3208 lp -2.85/-28.92 R(0)=0.0003260932890254015 R(L-1)=1.0 d_c=0.8611111111111112 sanity=PASS
-[114/126] e48988bc f1 68.4s tok=1384/1103 rank clean=1 corrupt=2 lp -0.06/-5.91 R(0)=0.00021351429556167742 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS (not asserted)
-[115/126] f0e564bc f1 56.9s tok=969/813 rank clean=18 corrupt=132 lp -16.25/-23.12 R(0)=-0.00019608856459244685 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS (not asserted)
-[116/126] gpt4_1d80365e f1 54.0s tok=903/736 rank clean=2 corrupt=2 lp -6.21/-1.80 R(0)=0.0007635130501651458 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS (not asserted)
-[117/126] gpt4_1e4a8aeb f1 54.7s tok=924/750 rank clean=2 corrupt=9 lp -8.09/-4.18 R(0)=0.00021293089989122508 R(L-1)=1.0 d_c=0.7222222222222222 sanity=PASS
-[118/126] gpt4_468eb064 f1 72.2s tok=1394/1290 rank clean=1 corrupt=1226 lp -0.19/-33.41 R(0)=0.0006112906877910165 R(L-1)=1.0 d_c=0.8055555555555556 sanity=PASS
-[119/126] gpt4_4cd9eba1 f1 59.5s tok=1069/872 rank clean=85 corrupt=1797 lp -20.04/-34.06 R(0)=0.00014879991596536722 R(L-1)=1.0 d_c=0.7777777777777778 sanity=PASS (not asserted)
-[120/126] gpt4_5438fa52 f1 85.1s tok=1796/1646 rank clean=385 corrupt=432 lp -22.49/-25.15 R(0)=-0.006106739073686796 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS (not asserted)
-[121/126] gpt4_74aed68e f1 54.3s tok=929/734 rank clean=2 corrupt=3 lp -1.35/-1.86 R(0)=0.0032506015152235545 R(L-1)=1.0 d_c=0.5833333333333334 sanity=PASS (not asserted)
-[122/126] gpt4_78cf46a3 f1 69.3s tok=1329/1203 rank clean=2803 corrupt=8229 lp -27.46/-36.07 R(0)=-0.0017130654991077856 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS (not asserted)
-[123/126] gpt4_a1b77f9c f1 50.9s tok=990/476 rank clean=7 corrupt=4 lp -2.63/-4.02 R(0)=0.0018935025371007719 R(L-1)=1.0 d_c=0.5833333333333334 sanity=PASS
-[124/126] gpt4_af6db32f f1 57.2s tok=944/848 rank clean=2 corrupt=2 lp -0.90/-1.47 R(0)=-0.0035310230089717538 R(L-1)=1.0 d_c=0.6666666666666666 sanity=PASS (not asserted)
-[125/126] gpt4_b0863698 f1 82.8s tok=1691/1604 rank clean=7 corrupt=4 lp -3.64/-3.35 R(0)=-0.029493635904513888 R(L-1)=1.0 d_c=0.4722222222222222 sanity=PASS
-[126/126] gpt4_b5700ca9 f1 68.6s tok=1281/1188 rank clean=1 corrupt=1 lp -0.15/-0.52 R(0)=0.002015062368639088 R(L-1)=1.0 d_c=0.7222222222222222 sanity=PASS (not asserted)
-{"model": "qwen3b", "model_id": "Qwen/Qwen2.5-3B-Instruct", "engine": "hf-transformers-5.17.0-cpu-float32", "threads": 8, "folds": [0, 1], "rows": 126, "patch_all": true, "seconds_per_row": 63.20496329461734, "load_s": 6.84601225098595, "wall_s": 7966.192190106958, "peak_rss_mb_after_load": 18173.921875, "peak_rss_mb": 18173.921875, "projected_h_330_rows_all_patched": 5.79378830200659, "method_sha256": "456cc2025583718a62e64e323d3f8115714ba20f5fc0efa216d6fdd0290714d7"}
-3b exit 0

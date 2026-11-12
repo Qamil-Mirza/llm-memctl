@@ -1,0 +1,1169 @@
+{
+ "rules": "PROPOSAL 362b16c (frozen); conventions c69f28e",
+ "cut": 0.9,
+ "payload": "plain",
+ "setting": "s1",
+ "arms": [
+  "N",
+  "V0",
+  "VG",
+  "I1",
+  "I2b"
+ ],
+ "band": 0.1,
+ "level": 0.9,
+ "n_boot": 2000,
+ "seed": 56,
+ "per_cell": {
+  "1.7B|gsm8k": {
+   "model": "Qwen/Qwen3-1.7B",
+   "source": "gsm8k",
+   "n_items_in_store": 250,
+   "arms_in_store": [
+    "I1",
+    "I2a",
+    "I2b",
+    "I2c",
+    "I2d",
+    "N",
+    "V0",
+    "VG",
+    "Vc",
+    "Vp"
+   ],
+   "n_items_not_dropped": 235,
+   "acceptance": {
+    "V0": 0.7829787234042553,
+    "VG": 0.8595744680851064,
+    "I1": 0.31063829787234043,
+    "I2b": 0.8212765957446808
+   },
+   "categories": {
+    "I2d": {
+     "new": 87,
+     "stale": 124,
+     "dropped_ref_is_gold": 15,
+     "other": 23,
+     "truncated": 1
+    },
+    "I2c": {
+     "new": 185,
+     "stale": 13,
+     "other": 37,
+     "dropped_ref_is_gold": 15
+    },
+    "VG": {
+     "new": 202,
+     "dropped_ref_is_gold": 15,
+     "other": 29,
+     "stale": 4
+    },
+    "Vc": {
+     "new": 195,
+     "other": 30,
+     "dropped_ref_is_gold": 15,
+     "stale": 10
+    },
+    "I2b": {
+     "stale": 12,
+     "new": 193,
+     "other": 30,
+     "dropped_ref_is_gold": 15
+    },
+    "I1": {
+     "stale": 148,
+     "new": 73,
+     "dropped_ref_is_gold": 15,
+     "other": 14
+    },
+    "V0": {
+     "new": 184,
+     "other": 30,
+     "stale": 21,
+     "dropped_ref_is_gold": 15
+    },
+    "Vp": {
+     "new": 190,
+     "other": 29,
+     "stale": 16,
+     "dropped_ref_is_gold": 15
+    },
+    "I2a": {
+     "stale": 108,
+     "new": 104,
+     "other": 23,
+     "dropped_ref_is_gold": 15
+    }
+   },
+   "r1b2_pairing": {
+    "join": "item id",
+    "s1_v0_items_kept": 235,
+    "stage0_ug_items_kept": 235,
+    "pairs": 235,
+    "min_pairs": 200,
+    "below_min": false
+   },
+   "paired_means": {
+    "R1.B1": {
+     "acc_I2b": 0.8212765957446808,
+     "acc_VG": 0.8595744680851064
+    },
+    "R1.B2": {
+     "acc_V0_S1": 0.7829787234042553,
+     "acc_UG_stage0": 0.8382978723404255
+    }
+   },
+   "payload_sanity": {
+    "pass": true,
+    "rule": "I1 or I2b acceptance > 0 (PROPOSAL 362b16c), else payload failure: not read",
+    "I1": 0.31063829787234043,
+    "I2b": 0.8212765957446808
+   },
+   "wrapper_lift_descriptive": {
+    "stat": "acc(I2b) - acc(I1), S1 (descriptive only)",
+    "n_items": 235,
+    "point": 0.5106382978723404,
+    "ci": [
+     0.4425531914893617,
+     0.5787234042553191
+    ],
+    "level": 0.95
+   },
+   "R1.B1": {
+    "n_items": 235,
+    "point": -0.03829787234042553,
+    "ci": [
+     -0.06808510638297872,
+     -0.00851063829787234
+    ],
+    "level": 0.9,
+    "stat": "acc(I2b) - acc(VG), S1",
+    "verdict": "SHOWN"
+   },
+   "R1.B2": {
+    "n_items": 235,
+    "point": -0.05531914893617021,
+    "ci": [
+     -0.09361702127659574,
+     -0.01702127659574468
+    ],
+    "level": 0.9,
+    "stat": "acc(V0 | S1) - acc(UG | Stage 0, cut 0.9), same items",
+    "verdict": "SHOWN"
+   }
+  },
+  "1.7B|math500": {
+   "model": "Qwen/Qwen3-1.7B",
+   "source": "math500",
+   "n_items_in_store": 250,
+   "arms_in_store": [
+    "I1",
+    "I2b",
+    "N",
+    "V0",
+    "VG"
+   ],
+   "n_items_not_dropped": 234,
+   "acceptance": {
+    "V0": 0.47863247863247865,
+    "VG": 0.6794871794871795,
+    "I1": 0.12393162393162394,
+    "I2b": 0.6025641025641025
+   },
+   "categories": {
+    "VG": {
+     "new": 159,
+     "stale": 31,
+     "dropped_ref_is_gold": 13,
+     "other": 44,
+     "dropped_ref_invalid": 3
+    },
+    "I1": {
+     "stale": 180,
+     "dropped_ref_is_gold": 13,
+     "new": 29,
+     "other": 25,
+     "dropped_ref_invalid": 3
+    },
+    "I2b": {
+     "new": 141,
+     "stale": 48,
+     "dropped_ref_is_gold": 13,
+     "other": 45,
+     "dropped_ref_invalid": 3
+    },
+    "V0": {
+     "new": 112,
+     "stale": 88,
+     "dropped_ref_is_gold": 13,
+     "other": 34,
+     "dropped_ref_invalid": 3
+    }
+   },
+   "r1b2_pairing": {
+    "join": "item id",
+    "s1_v0_items_kept": 234,
+    "stage0_ug_items_kept": 229,
+    "pairs": 229,
+    "min_pairs": 200,
+    "below_min": false
+   },
+   "paired_means": {
+    "R1.B1": {
+     "acc_I2b": 0.6025641025641025,
+     "acc_VG": 0.6794871794871795
+    },
+    "R1.B2": {
+     "acc_V0_S1": 0.48034934497816595,
+     "acc_UG_stage0": 0.5982532751091703
+    }
+   },
+   "payload_sanity": {
+    "pass": true,
+    "rule": "I1 or I2b acceptance > 0 (PROPOSAL 362b16c), else payload failure: not read",
+    "I1": 0.12393162393162394,
+    "I2b": 0.6025641025641025
+   },
+   "wrapper_lift_descriptive": {
+    "stat": "acc(I2b) - acc(I1), S1 (descriptive only)",
+    "n_items": 234,
+    "point": 0.47863247863247865,
+    "ci": [
+     0.405982905982906,
+     0.5512820512820513
+    ],
+    "level": 0.95
+   },
+   "R1.B1": {
+    "n_items": 234,
+    "point": -0.07692307692307693,
+    "ci": [
+     -0.12393162393162394,
+     -0.029914529914529916
+    ],
+    "level": 0.9,
+    "stat": "acc(I2b) - acc(VG), S1",
+    "verdict": "UNDETERMINED"
+   },
+   "R1.B2": {
+    "n_items": 229,
+    "point": -0.11790393013100436,
+    "ci": [
+     -0.1615720524017467,
+     -0.07423580786026202
+    ],
+    "level": 0.9,
+    "stat": "acc(V0 | S1) - acc(UG | Stage 0, cut 0.9), same items",
+    "verdict": "UNDETERMINED"
+   }
+  },
+  "8B|gsm8k": {
+   "model": "Qwen/Qwen3-8B",
+   "source": "gsm8k",
+   "n_items_in_store": 250,
+   "arms_in_store": [
+    "I1",
+    "I2b",
+    "N",
+    "V0",
+    "VG"
+   ],
+   "n_items_not_dropped": 237,
+   "acceptance": {
+    "V0": 0.9409282700421941,
+    "VG": 0.9367088607594937,
+    "I1": 0.8860759493670886,
+    "I2b": 0.9578059071729957
+   },
+   "categories": {
+    "I2b": {
+     "new": 227,
+     "other": 9,
+     "dropped_ref_is_gold": 13,
+     "stale": 1
+    },
+    "V0": {
+     "new": 223,
+     "dropped_ref_is_gold": 13,
+     "other": 13,
+     "stale": 1
+    },
+    "VG": {
+     "new": 222,
+     "dropped_ref_is_gold": 13,
+     "other": 13,
+     "stale": 2
+    },
+    "I1": {
+     "new": 210,
+     "other": 14,
+     "stale": 13,
+     "dropped_ref_is_gold": 13
+    }
+   },
+   "r1b2_pairing": {
+    "join": "item id",
+    "s1_v0_items_kept": 237,
+    "stage0_ug_items_kept": 237,
+    "pairs": 237,
+    "min_pairs": 200,
+    "below_min": false
+   },
+   "paired_means": {
+    "R1.B1": {
+     "acc_I2b": 0.9578059071729957,
+     "acc_VG": 0.9367088607594937
+    },
+    "R1.B2": {
+     "acc_V0_S1": 0.9409282700421941,
+     "acc_UG_stage0": 0.9578059071729957
+    }
+   },
+   "payload_sanity": {
+    "pass": true,
+    "rule": "I1 or I2b acceptance > 0 (PROPOSAL 362b16c), else payload failure: not read",
+    "I1": 0.8860759493670886,
+    "I2b": 0.9578059071729957
+   },
+   "wrapper_lift_descriptive": {
+    "stat": "acc(I2b) - acc(I1), S1 (descriptive only)",
+    "n_items": 237,
+    "point": 0.07172995780590717,
+    "ci": [
+     0.04208860759493689,
+     0.10970464135021098
+    ],
+    "level": 0.95
+   },
+   "R1.B1": {
+    "n_items": 237,
+    "point": 0.02109704641350211,
+    "ci": [
+     0.004219409282700422,
+     0.04219409282700422
+    ],
+    "level": 0.9,
+    "stat": "acc(I2b) - acc(VG), S1",
+    "verdict": "SHOWN"
+   },
+   "R1.B2": {
+    "n_items": 237,
+    "point": -0.016877637130801686,
+    "ci": [
+     -0.03375527426160337,
+     0.0
+    ],
+    "level": 0.9,
+    "stat": "acc(V0 | S1) - acc(UG | Stage 0, cut 0.9), same items",
+    "verdict": "SHOWN"
+   }
+  },
+  "8B|math500": {
+   "model": "Qwen/Qwen3-8B",
+   "source": "math500",
+   "n_items_in_store": 100,
+   "arms_in_store": [
+    "I1",
+    "I2b",
+    "N",
+    "V0",
+    "VG"
+   ],
+   "n_items_not_dropped": 94,
+   "acceptance": {
+    "V0": 0.8351648351648352,
+    "VG": 0.9032258064516129,
+    "I1": 0.6170212765957447,
+    "I2b": 0.8191489361702128
+   },
+   "categories": {
+    "I2b": {
+     "new": 77,
+     "dropped_ref_is_gold": 5,
+     "other": 13,
+     "stale": 4,
+     "dropped_ref_invalid": 1
+    },
+    "I1": {
+     "stale": 25,
+     "dropped_ref_is_gold": 5,
+     "new": 58,
+     "other": 11,
+     "dropped_ref_invalid": 1
+    },
+    "VG": {
+     "new": 84,
+     "dropped_ref_is_gold": 5,
+     "other": 8,
+     "dropped_ref_invalid": 1,
+     "truncated": 1,
+     "stale": 1
+    },
+    "V0": {
+     "new": 76,
+     "dropped_ref_is_gold": 5,
+     "other": 10,
+     "dropped_ref_invalid": 1,
+     "truncated": 3,
+     "stale": 5
+    }
+   },
+   "r1b2_pairing": {
+    "join": "item id",
+    "s1_v0_items_kept": 91,
+    "stage0_ug_items_kept": 92,
+    "pairs": 89,
+    "min_pairs": 200,
+    "below_min": true
+   },
+   "paired_means": {
+    "R1.B1": {
+     "acc_I2b": 0.8172043010752689,
+     "acc_VG": 0.9032258064516129
+    },
+    "R1.B2": {
+     "acc_V0_S1": 0.8314606741573034,
+     "acc_UG_stage0": 0.8764044943820225
+    }
+   },
+   "payload_sanity": {
+    "pass": true,
+    "rule": "I1 or I2b acceptance > 0 (PROPOSAL 362b16c), else payload failure: not read",
+    "I1": 0.6170212765957447,
+    "I2b": 0.8191489361702128
+   },
+   "wrapper_lift_descriptive": {
+    "stat": "acc(I2b) - acc(I1), S1 (descriptive only)",
+    "n_items": 94,
+    "point": 0.20212765957446807,
+    "ci": [
+     0.11702127659574468,
+     0.2978723404255319
+    ],
+    "level": 0.95
+   },
+   "R1.B1": {
+    "n_items": 93,
+    "point": -0.08602150537634409,
+    "ci": [
+     -0.1510752688172046,
+     -0.021505376344086023
+    ],
+    "level": 0.9,
+    "stat": "acc(I2b) - acc(VG), S1",
+    "verdict": "UNDETERMINED"
+   },
+   "R1.B2": {
+    "n_items": 89,
+    "point": -0.0449438202247191,
+    "ci": [
+     -0.11235955056179775,
+     0.011235955056179775
+    ],
+    "level": 0.9,
+    "stat": "acc(V0 | S1) - acc(UG | Stage 0, cut 0.9), same items",
+    "verdict": "UNDETERMINED"
+   }
+  }
+ },
+ "pooled": {
+  "1.7B": {
+   "model": "Qwen/Qwen3-1.7B",
+   "sources_planned": [
+    "gsm8k",
+    "math500"
+   ],
+   "sources_read": [
+    "gsm8k",
+    "math500"
+   ],
+   "bootstrap": "item bootstrap stratified by source",
+   "R1.B1": {
+    "n_items": 469,
+    "n_by_source": {
+     "gsm8k": 235,
+     "math500": 234
+    },
+    "point": -0.057569296375266525,
+    "ci": [
+     -0.08528784648187633,
+     -0.02771855010660981
+    ],
+    "level": 0.9,
+    "stat": "acc(I2b) - acc(VG), S1",
+    "verdict": "SHOWN"
+   },
+   "R1.B2": {
+    "n_items": 464,
+    "n_by_source": {
+     "gsm8k": 235,
+     "math500": 229
+    },
+    "point": -0.08620689655172414,
+    "ci": [
+     -0.11422413793103449,
+     -0.05603448275862069
+    ],
+    "level": 0.9,
+    "stat": "acc(V0 | S1) - acc(UG | Stage 0, cut 0.9), same items",
+    "verdict": "UNDETERMINED"
+   },
+   "wrapper_lift_descriptive": {
+    "n_items": 469,
+    "n_by_source": {
+     "gsm8k": 235,
+     "math500": 234
+    },
+    "point": 0.4946695095948827,
+    "ci": [
+     0.44562899786780386,
+     0.5437100213219617
+    ],
+    "level": 0.95
+   }
+  },
+  "8B": {
+   "model": "Qwen/Qwen3-8B",
+   "sources_planned": [
+    "gsm8k",
+    "math500"
+   ],
+   "sources_read": [
+    "gsm8k",
+    "math500"
+   ],
+   "bootstrap": "item bootstrap stratified by source",
+   "R1.B1": {
+    "n_items": 330,
+    "n_by_source": {
+     "gsm8k": 237,
+     "math500": 93
+    },
+    "point": -0.00909090909090909,
+    "ci": [
+     -0.03333333333333333,
+     0.012121212121212121
+    ],
+    "level": 0.9,
+    "stat": "acc(I2b) - acc(VG), S1",
+    "verdict": "SHOWN"
+   },
+   "R1.B2": {
+    "n_items": 326,
+    "n_by_source": {
+     "gsm8k": 237,
+     "math500": 89
+    },
+    "point": -0.024539877300613498,
+    "ci": [
+     -0.046012269938650305,
+     -0.006134969325153374
+    ],
+    "level": 0.9,
+    "stat": "acc(V0 | S1) - acc(UG | Stage 0, cut 0.9), same items",
+    "verdict": "SHOWN"
+   },
+   "wrapper_lift_descriptive": {
+    "n_items": 331,
+    "n_by_source": {
+     "gsm8k": 237,
+     "math500": 94
+    },
+    "point": 0.10876132930513595,
+    "ci": [
+     0.07250755287009064,
+     0.14501510574018128
+    ],
+    "level": 0.95
+   }
+  }
+ },
+ "timeout_ledger": {
+  "n_calls_timed_out": 9,
+  "calls_by_fn": {
+   "_correct": 9
+  },
+  "n_calls_timed_out_sensitivity": 9
+ },
+ "readings_sensitivity_60s": {
+  "rules": "PROPOSAL 362b16c (frozen); conventions c69f28e",
+  "cut": 0.9,
+  "payload": "plain",
+  "setting": "s1",
+  "arms": [
+   "N",
+   "V0",
+   "VG",
+   "I1",
+   "I2b"
+  ],
+  "band": 0.1,
+  "level": 0.9,
+  "n_boot": 2000,
+  "seed": 56,
+  "per_cell": {
+   "1.7B|gsm8k": {
+    "model": "Qwen/Qwen3-1.7B",
+    "source": "gsm8k",
+    "n_items_in_store": 250,
+    "arms_in_store": [
+     "I1",
+     "I2a",
+     "I2b",
+     "I2c",
+     "I2d",
+     "N",
+     "V0",
+     "VG",
+     "Vc",
+     "Vp"
+    ],
+    "n_items_not_dropped": 235,
+    "acceptance": {
+     "V0": 0.7829787234042553,
+     "VG": 0.8595744680851064,
+     "I1": 0.31063829787234043,
+     "I2b": 0.8212765957446808
+    },
+    "categories": {
+     "I2d": {
+      "new": 87,
+      "stale": 124,
+      "dropped_ref_is_gold": 15,
+      "other": 23,
+      "truncated": 1
+     },
+     "I2c": {
+      "new": 185,
+      "stale": 13,
+      "other": 37,
+      "dropped_ref_is_gold": 15
+     },
+     "VG": {
+      "new": 202,
+      "dropped_ref_is_gold": 15,
+      "other": 29,
+      "stale": 4
+     },
+     "Vc": {
+      "new": 195,
+      "other": 30,
+      "dropped_ref_is_gold": 15,
+      "stale": 10
+     },
+     "I2b": {
+      "stale": 12,
+      "new": 193,
+      "other": 30,
+      "dropped_ref_is_gold": 15
+     },
+     "I1": {
+      "stale": 148,
+      "new": 73,
+      "dropped_ref_is_gold": 15,
+      "other": 14
+     },
+     "V0": {
+      "new": 184,
+      "other": 30,
+      "stale": 21,
+      "dropped_ref_is_gold": 15
+     },
+     "Vp": {
+      "new": 190,
+      "other": 29,
+      "stale": 16,
+      "dropped_ref_is_gold": 15
+     },
+     "I2a": {
+      "stale": 108,
+      "new": 104,
+      "other": 23,
+      "dropped_ref_is_gold": 15
+     }
+    },
+    "r1b2_pairing": {
+     "join": "item id",
+     "s1_v0_items_kept": 235,
+     "stage0_ug_items_kept": 235,
+     "pairs": 235,
+     "min_pairs": 200,
+     "below_min": false
+    },
+    "paired_means": {
+     "R1.B1": {
+      "acc_I2b": 0.8212765957446808,
+      "acc_VG": 0.8595744680851064
+     },
+     "R1.B2": {
+      "acc_V0_S1": 0.7829787234042553,
+      "acc_UG_stage0": 0.8382978723404255
+     }
+    },
+    "payload_sanity": {
+     "pass": true,
+     "rule": "I1 or I2b acceptance > 0 (PROPOSAL 362b16c), else payload failure: not read",
+     "I1": 0.31063829787234043,
+     "I2b": 0.8212765957446808
+    },
+    "wrapper_lift_descriptive": {
+     "stat": "acc(I2b) - acc(I1), S1 (descriptive only)",
+     "n_items": 235,
+     "point": 0.5106382978723404,
+     "ci": [
+      0.4425531914893617,
+      0.5787234042553191
+     ],
+     "level": 0.95
+    },
+    "R1.B1": {
+     "n_items": 235,
+     "point": -0.03829787234042553,
+     "ci": [
+      -0.06808510638297872,
+      -0.00851063829787234
+     ],
+     "level": 0.9,
+     "stat": "acc(I2b) - acc(VG), S1",
+     "verdict": "SHOWN"
+    },
+    "R1.B2": {
+     "n_items": 235,
+     "point": -0.05531914893617021,
+     "ci": [
+      -0.09361702127659574,
+      -0.01702127659574468
+     ],
+     "level": 0.9,
+     "stat": "acc(V0 | S1) - acc(UG | Stage 0, cut 0.9), same items",
+     "verdict": "SHOWN"
+    }
+   },
+   "1.7B|math500": {
+    "model": "Qwen/Qwen3-1.7B",
+    "source": "math500",
+    "n_items_in_store": 250,
+    "arms_in_store": [
+     "I1",
+     "I2b",
+     "N",
+     "V0",
+     "VG"
+    ],
+    "n_items_not_dropped": 234,
+    "acceptance": {
+     "V0": 0.47863247863247865,
+     "VG": 0.6794871794871795,
+     "I1": 0.12393162393162394,
+     "I2b": 0.6025641025641025
+    },
+    "categories": {
+     "VG": {
+      "new": 159,
+      "stale": 31,
+      "dropped_ref_is_gold": 13,
+      "other": 44,
+      "dropped_ref_invalid": 3
+     },
+     "I1": {
+      "stale": 180,
+      "dropped_ref_is_gold": 13,
+      "new": 29,
+      "other": 25,
+      "dropped_ref_invalid": 3
+     },
+     "I2b": {
+      "new": 141,
+      "stale": 48,
+      "dropped_ref_is_gold": 13,
+      "other": 45,
+      "dropped_ref_invalid": 3
+     },
+     "V0": {
+      "new": 112,
+      "stale": 88,
+      "dropped_ref_is_gold": 13,
+      "other": 34,
+      "dropped_ref_invalid": 3
+     }
+    },
+    "r1b2_pairing": {
+     "join": "item id",
+     "s1_v0_items_kept": 234,
+     "stage0_ug_items_kept": 229,
+     "pairs": 229,
+     "min_pairs": 200,
+     "below_min": false
+    },
+    "paired_means": {
+     "R1.B1": {
+      "acc_I2b": 0.6025641025641025,
+      "acc_VG": 0.6794871794871795
+     },
+     "R1.B2": {
+      "acc_V0_S1": 0.48034934497816595,
+      "acc_UG_stage0": 0.5982532751091703
+     }
+    },
+    "payload_sanity": {
+     "pass": true,
+     "rule": "I1 or I2b acceptance > 0 (PROPOSAL 362b16c), else payload failure: not read",
+     "I1": 0.12393162393162394,
+     "I2b": 0.6025641025641025
+    },
+    "wrapper_lift_descriptive": {
+     "stat": "acc(I2b) - acc(I1), S1 (descriptive only)",
+     "n_items": 234,
+     "point": 0.47863247863247865,
+     "ci": [
+      0.405982905982906,
+      0.5512820512820513
+     ],
+     "level": 0.95
+    },
+    "R1.B1": {
+     "n_items": 234,
+     "point": -0.07692307692307693,
+     "ci": [
+      -0.12393162393162394,
+      -0.029914529914529916
+     ],
+     "level": 0.9,
+     "stat": "acc(I2b) - acc(VG), S1",
+     "verdict": "UNDETERMINED"
+    },
+    "R1.B2": {
+     "n_items": 229,
+     "point": -0.11790393013100436,
+     "ci": [
+      -0.1615720524017467,
+      -0.07423580786026202
+     ],
+     "level": 0.9,
+     "stat": "acc(V0 | S1) - acc(UG | Stage 0, cut 0.9), same items",
+     "verdict": "UNDETERMINED"
+    }
+   },
+   "8B|gsm8k": {
+    "model": "Qwen/Qwen3-8B",
+    "source": "gsm8k",
+    "n_items_in_store": 250,
+    "arms_in_store": [
+     "I1",
+     "I2b",
+     "N",
+     "V0",
+     "VG"
+    ],
+    "n_items_not_dropped": 237,
+    "acceptance": {
+     "V0": 0.9409282700421941,
+     "VG": 0.9367088607594937,
+     "I1": 0.8860759493670886,
+     "I2b": 0.9578059071729957
+    },
+    "categories": {
+     "I2b": {
+      "new": 227,
+      "other": 9,
+      "dropped_ref_is_gold": 13,
+      "stale": 1
+     },
+     "V0": {
+      "new": 223,
+      "dropped_ref_is_gold": 13,
+      "other": 13,
+      "stale": 1
+     },
+     "VG": {
+      "new": 222,
+      "dropped_ref_is_gold": 13,
+      "other": 13,
+      "stale": 2
+     },
+     "I1": {
+      "new": 210,
+      "other": 14,
+      "stale": 13,
+      "dropped_ref_is_gold": 13
+     }
+    },
+    "r1b2_pairing": {
+     "join": "item id",
+     "s1_v0_items_kept": 237,
+     "stage0_ug_items_kept": 237,
+     "pairs": 237,
+     "min_pairs": 200,
+     "below_min": false
+    },
+    "paired_means": {
+     "R1.B1": {
+      "acc_I2b": 0.9578059071729957,
+      "acc_VG": 0.9367088607594937
+     },
+     "R1.B2": {
+      "acc_V0_S1": 0.9409282700421941,
+      "acc_UG_stage0": 0.9578059071729957
+     }
+    },
+    "payload_sanity": {
+     "pass": true,
+     "rule": "I1 or I2b acceptance > 0 (PROPOSAL 362b16c), else payload failure: not read",
+     "I1": 0.8860759493670886,
+     "I2b": 0.9578059071729957
+    },
+    "wrapper_lift_descriptive": {
+     "stat": "acc(I2b) - acc(I1), S1 (descriptive only)",
+     "n_items": 237,
+     "point": 0.07172995780590717,
+     "ci": [
+      0.04208860759493689,
+      0.10970464135021098
+     ],
+     "level": 0.95
+    },
+    "R1.B1": {
+     "n_items": 237,
+     "point": 0.02109704641350211,
+     "ci": [
+      0.004219409282700422,
+      0.04219409282700422
+     ],
+     "level": 0.9,
+     "stat": "acc(I2b) - acc(VG), S1",
+     "verdict": "SHOWN"
+    },
+    "R1.B2": {
+     "n_items": 237,
+     "point": -0.016877637130801686,
+     "ci": [
+      -0.03375527426160337,
+      0.0
+     ],
+     "level": 0.9,
+     "stat": "acc(V0 | S1) - acc(UG | Stage 0, cut 0.9), same items",
+     "verdict": "SHOWN"
+    }
+   },
+   "8B|math500": {
+    "model": "Qwen/Qwen3-8B",
+    "source": "math500",
+    "n_items_in_store": 100,
+    "arms_in_store": [
+     "I1",
+     "I2b",
+     "N",
+     "V0",
+     "VG"
+    ],
+    "n_items_not_dropped": 94,
+    "acceptance": {
+     "V0": 0.8351648351648352,
+     "VG": 0.9032258064516129,
+     "I1": 0.6170212765957447,
+     "I2b": 0.8191489361702128
+    },
+    "categories": {
+     "I2b": {
+      "new": 77,
+      "dropped_ref_is_gold": 5,
+      "other": 13,
+      "stale": 4,
+      "dropped_ref_invalid": 1
+     },
+     "I1": {
+      "stale": 25,
+      "dropped_ref_is_gold": 5,
+      "new": 58,
+      "other": 11,
+      "dropped_ref_invalid": 1
+     },
+     "VG": {
+      "new": 84,
+      "dropped_ref_is_gold": 5,
+      "other": 8,
+      "dropped_ref_invalid": 1,
+      "truncated": 1,
+      "stale": 1
+     },
+     "V0": {
+      "new": 76,
+      "dropped_ref_is_gold": 5,
+      "other": 10,
+      "dropped_ref_invalid": 1,
+      "truncated": 3,
+      "stale": 5
+     }
+    },
+    "r1b2_pairing": {
+     "join": "item id",
+     "s1_v0_items_kept": 91,
+     "stage0_ug_items_kept": 92,
+     "pairs": 89,
+     "min_pairs": 200,
+     "below_min": true
+    },
+    "paired_means": {
+     "R1.B1": {
+      "acc_I2b": 0.8172043010752689,
+      "acc_VG": 0.9032258064516129
+     },
+     "R1.B2": {
+      "acc_V0_S1": 0.8314606741573034,
+      "acc_UG_stage0": 0.8764044943820225
+     }
+    },
+    "payload_sanity": {
+     "pass": true,
+     "rule": "I1 or I2b acceptance > 0 (PROPOSAL 362b16c), else payload failure: not read",
+     "I1": 0.6170212765957447,
+     "I2b": 0.8191489361702128
+    },
+    "wrapper_lift_descriptive": {
+     "stat": "acc(I2b) - acc(I1), S1 (descriptive only)",
+     "n_items": 94,
+     "point": 0.20212765957446807,
+     "ci": [
+      0.11702127659574468,
+      0.2978723404255319
+     ],
+     "level": 0.95
+    },
+    "R1.B1": {
+     "n_items": 93,
+     "point": -0.08602150537634409,
+     "ci": [
+      -0.1510752688172046,
+      -0.021505376344086023
+     ],
+     "level": 0.9,
+     "stat": "acc(I2b) - acc(VG), S1",
+     "verdict": "UNDETERMINED"
+    },
+    "R1.B2": {
+     "n_items": 89,
+     "point": -0.0449438202247191,
+     "ci": [
+      -0.11235955056179775,
+      0.011235955056179775
+     ],
+     "level": 0.9,
+     "stat": "acc(V0 | S1) - acc(UG | Stage 0, cut 0.9), same items",
+     "verdict": "UNDETERMINED"
+    }
+   }
+  },
+  "pooled": {
+   "1.7B": {
+    "model": "Qwen/Qwen3-1.7B",
+    "sources_planned": [
+     "gsm8k",
+     "math500"
+    ],
+    "sources_read": [
+     "gsm8k",
+     "math500"
+    ],
+    "bootstrap": "item bootstrap stratified by source",
+    "R1.B1": {
+     "n_items": 469,
+     "n_by_source": {
+      "gsm8k": 235,
+      "math500": 234
+     },
+     "point": -0.057569296375266525,
+     "ci": [
+      -0.08528784648187633,
+      -0.02771855010660981
+     ],
+     "level": 0.9,
+     "stat": "acc(I2b) - acc(VG), S1",
+     "verdict": "SHOWN"
+    },
+    "R1.B2": {
+     "n_items": 464,
+     "n_by_source": {
+      "gsm8k": 235,
+      "math500": 229
+     },
+     "point": -0.08620689655172414,
+     "ci": [
+      -0.11422413793103449,
+      -0.05603448275862069
+     ],
+     "level": 0.9,
+     "stat": "acc(V0 | S1) - acc(UG | Stage 0, cut 0.9), same items",
+     "verdict": "UNDETERMINED"
+    },
+    "wrapper_lift_descriptive": {
+     "n_items": 469,
+     "n_by_source": {
+      "gsm8k": 235,
+      "math500": 234
+     },
+     "point": 0.4946695095948827,
+     "ci": [
+      0.44562899786780386,
+      0.5437100213219617
+     ],
+     "level": 0.95
+    }
+   },
+   "8B": {
+    "model": "Qwen/Qwen3-8B",
+    "sources_planned": [
+     "gsm8k",
+     "math500"
+    ],
+    "sources_read": [
+     "gsm8k",
+     "math500"
+    ],
+    "bootstrap": "item bootstrap stratified by source",
+    "R1.B1": {
+     "n_items": 330,
+     "n_by_source": {
+      "gsm8k": 237,
+      "math500": 93
+     },
+     "point": -0.00909090909090909,
+     "ci": [
+      -0.03333333333333333,
+      0.012121212121212121
+     ],
+     "level": 0.9,
+     "stat": "acc(I2b) - acc(VG), S1",
+     "verdict": "SHOWN"
+    },
+    "R1.B2": {
+     "n_items": 326,
+     "n_by_source": {
+      "gsm8k": 237,
+      "math500": 89
+     },
+     "point": -0.024539877300613498,
+     "ci": [
+      -0.046012269938650305,
+      -0.006134969325153374
+     ],
+     "level": 0.9,
+     "stat": "acc(V0 | S1) - acc(UG | Stage 0, cut 0.9), same items",
+     "verdict": "SHOWN"
+    },
+    "wrapper_lift_descriptive": {
+     "n_items": 331,
+     "n_by_source": {
+      "gsm8k": 237,
+      "math500": 94
+     },
+     "point": 0.10876132930513595,
+     "ci": [
+      0.07250755287009064,
+      0.14501510574018128
+     ],
+     "level": 0.95
+    }
+   }
+  }
+ }
+}

@@ -1,1 +1,0 @@
-{"runs": [{"stage": 1, "lens_set": "logit", "device": "cpu", "dtype": "float32", "prompts": 3, "seconds_per_prompt": 30.39421838064057, "load_s": 13.468050724128261, "wall_s": 91.36959098605439, "stopped_at_deadline": false, "n_failed": 0, "peak_rss_mb": 12521.8828125}]}

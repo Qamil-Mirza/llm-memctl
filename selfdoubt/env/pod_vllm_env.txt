@@ -1,0 +1,12 @@
+antlr4-python3-runtime==4.7.2
+hf-xet==1.8.0
+huggingface_hub==0.36.2
+latex2sympy2==1.9.1
+sympy==1.13.3
+tokenizers==0.22.2
+torch==2.8.0+cu128
+torchaudio==2.8.0+cu128
+torchvision==0.23.0+cu128
+transformers==4.57.1
+vllm==0.11.0
+xformers==0.0.32.post1

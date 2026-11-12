@@ -1,13 +1,15 @@
-accelerate==1.15.0
-bitsandbytes==0.50.2
-huggingface-hub==1.33.0
-matplotlib==3.11.2
-numpy==2.5.3
-pulp==3.3.2
-pytest==9.1.1
-pyyaml==6.0.3
+# Self-doubt pins (2026-11-11): union of selfdoubt/env/pod_vllm_env.txt and pod_stage2_hf_env.txt (pod pip freeze, Python 3.12).
+# The memctl/false-abstention pins are at tag false-abstention-era-final:constraints.txt.
+antlr4-python3-runtime==4.7.2
+hf-xet==1.8.0
+huggingface_hub==0.36.2
+latex2sympy2==1.9.1
 safetensors==0.8.0
-sentence-transformers==6.1.0
-tokenizers==0.23.2
-torch==2.14.0
-transformers==5.17.0
+sympy==1.13.3
+tokenizers==0.22.2
+torch==2.8.0+cu128
+torchaudio==2.8.0+cu128
+torchvision==0.23.0+cu128
+transformers==4.57.1
+vllm==0.11.0
+xformers==0.0.32.post1

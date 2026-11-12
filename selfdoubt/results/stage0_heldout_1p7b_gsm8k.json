@@ -1,0 +1,396 @@
+{
+ "rule": "Advisor 2026-11-09: GSM8K-only 1.7B readings; MATH item counts only if all 11 rows finished",
+ "split_sha256": "c9e99ab227e45d10298d91d4f0a17e150cfefa3a24d872555a2330c7d9392703",
+ "provenance": {
+  "upstream": "https://github.com/dynamic-lm/interrupt-lrm",
+  "upstream_commit": "b87d61bd2e5e998f34878fb0ee5fb2f5550f98c6",
+  "dataset": "dynamic-lm/update-interrupt-benchmark",
+  "dataset_revision": "6ac4ea4baadeccafbb452c1649c90e24ffac4cfc",
+  "split_seed": 56
+ },
+ "n_boot": 2000,
+ "gsm8k": {
+  "label": "1.7B, GSM8K only",
+  "n_items": 250,
+  "readings": {
+   "n_u0_failures_pooled": 259,
+   "min_failures": 30,
+   "R0.1": {
+    "point": 0.525096525096525,
+    "ci": [
+     0.44572747703732657,
+     0.6037792452830189
+    ],
+    "level": 0.95,
+    "bar": 0.5,
+    "direction": "gt",
+    "verdict": "UNDETERMINED"
+   },
+   "R0.2": {
+    "point": -0.05932203389830509,
+    "ci": [
+     -0.1398305084745763,
+     0.02542372881355931
+    ],
+    "level": 0.95,
+    "bar": 0.0,
+    "direction": "gt",
+    "verdict": "UNDETERMINED",
+    "n_items": 236
+   },
+   "R0.2_secondary_cut0.5": {
+    "point": -0.0423728813559322,
+    "ci": [
+     -0.1228813559322034,
+     0.03813559322033899
+    ],
+    "level": 0.95,
+    "bar": 0.0,
+    "direction": "gt",
+    "verdict": "UNDETERMINED",
+    "n_items": 236
+   },
+   "R0.4": {
+    "point": -0.16643159379407618,
+    "ci": [
+     -0.2039381153305204,
+     -0.1287037942158109
+    ],
+    "level": 0.95,
+    "bar": 0.0,
+    "direction": "lt",
+    "verdict": "SHOWN",
+    "n_item_cuts": 709
+   },
+   "R0.1_sensitivity_truncated_as_failure": {
+    "point": 0.525096525096525,
+    "ci": [
+     0.44572747703732657,
+     0.6037792452830189
+    ]
+   }
+  },
+  "table": {
+   "U0@0.3": {
+    "new": 154,
+    "other": 45,
+    "stale": 38,
+    "dropped_ref_is_gold": 13,
+    "n": 250
+   },
+   "U0@0.5": {
+    "new": 146,
+    "other": 44,
+    "stale": 46,
+    "dropped_ref_is_gold": 14,
+    "n": 250
+   },
+   "U0@0.9": {
+    "new": 150,
+    "stale": 52,
+    "other": 34,
+    "dropped_ref_is_gold": 14,
+    "n": 250
+   },
+   "U0@0.0": {
+    "new": 136,
+    "other": 76,
+    "stale": 24,
+    "dropped_ref_is_gold": 14,
+    "n": 250
+   },
+   "UG@0.3": {
+    "new": 194,
+    "other": 37,
+    "stale": 6,
+    "dropped_ref_is_gold": 13,
+    "n": 250
+   },
+   "UG@0.5": {
+    "new": 190,
+    "other": 42,
+    "stale": 4,
+    "dropped_ref_is_gold": 14,
+    "n": 250
+   },
+   "UG@0.9": {
+    "new": 197,
+    "stale": 8,
+    "other": 31,
+    "dropped_ref_is_gold": 14,
+    "n": 250
+   },
+   "UG@0.0": {
+    "new": 172,
+    "other": 60,
+    "stale": 3,
+    "dropped_ref_is_gold": 14,
+    "truncated": 1,
+    "n": 250
+   },
+   "N@0.3": {
+    "n": 250,
+    "truncated": 0,
+    "no_answer": 0,
+    "is_gold": 13,
+    "differs_from_full": 6
+   },
+   "N@0.5": {
+    "n": 250,
+    "truncated": 0,
+    "no_answer": 0,
+    "is_gold": 14,
+    "differs_from_full": 5
+   },
+   "N@0.9": {
+    "n": 250,
+    "truncated": 0,
+    "no_answer": 0,
+    "is_gold": 14,
+    "differs_from_full": 3
+   }
+  },
+  "u0_ref_is_gold_drops_by_cut": {
+   "0.3": 13,
+   "0.5": 14,
+   "0.9": 14
+  },
+  "n_differs_from_full_by_cut": {
+   "0.3": 6,
+   "0.5": 5,
+   "0.9": 3
+  },
+  "hit_max_rows": [
+   {
+    "item_id": 425,
+    "arm": "UG",
+    "cut": 0.0,
+    "n_gen_tokens": 16384,
+    "category": "truncated"
+   }
+  ]
+ },
+ "math500": {
+  "n_items_run": 100,
+  "n_complete": 81,
+  "n_incomplete": 19,
+  "n_missing_rows": 155,
+  "missing_by_arm_cut": {
+   "N@0.3": 17,
+   "N@0.5": 14,
+   "N@0.9": 12,
+   "U0@0.0": 12,
+   "U0@0.3": 14,
+   "U0@0.5": 16,
+   "U0@0.9": 14,
+   "UG@0.0": 13,
+   "UG@0.3": 14,
+   "UG@0.5": 14,
+   "UG@0.9": 15
+  },
+  "incomplete": {
+   "517": [
+    "N@0.3",
+    "UG@0.3",
+    "U0@0.5",
+    "UG@0.5"
+   ],
+   "649": [
+    "N@0.3",
+    "U0@0.3",
+    "UG@0.3",
+    "N@0.5",
+    "U0@0.5",
+    "UG@0.5",
+    "N@0.9",
+    "U0@0.9",
+    "UG@0.9",
+    "U0@0.0",
+    "UG@0.0"
+   ],
+   "654": [
+    "N@0.3",
+    "UG@0.9",
+    "UG@0.0"
+   ],
+   "657": [
+    "N@0.3",
+    "U0@0.3",
+    "UG@0.3",
+    "N@0.5",
+    "U0@0.5",
+    "UG@0.5",
+    "N@0.9",
+    "U0@0.9",
+    "UG@0.9",
+    "U0@0.0",
+    "UG@0.0"
+   ],
+   "672": [
+    "UG@0.9"
+   ],
+   "692": [
+    "N@0.3",
+    "U0@0.3",
+    "UG@0.3",
+    "N@0.5",
+    "U0@0.5",
+    "UG@0.5",
+    "N@0.9",
+    "U0@0.9",
+    "UG@0.9",
+    "U0@0.0",
+    "UG@0.0"
+   ],
+   "727": [
+    "N@0.3",
+    "U0@0.3",
+    "UG@0.3",
+    "N@0.5",
+    "U0@0.5",
+    "UG@0.5",
+    "N@0.9",
+    "U0@0.9",
+    "UG@0.9",
+    "U0@0.0",
+    "UG@0.0"
+   ],
+   "728": [
+    "N@0.3",
+    "U0@0.3",
+    "UG@0.3",
+    "N@0.5",
+    "U0@0.5",
+    "UG@0.5",
+    "N@0.9",
+    "U0@0.9",
+    "UG@0.9",
+    "UG@0.0"
+   ],
+   "751": [
+    "N@0.3",
+    "U0@0.3",
+    "UG@0.3",
+    "N@0.5",
+    "U0@0.5",
+    "UG@0.5",
+    "N@0.9",
+    "U0@0.9",
+    "UG@0.9",
+    "U0@0.0",
+    "UG@0.0"
+   ],
+   "762": [
+    "N@0.3",
+    "U0@0.3",
+    "UG@0.3",
+    "N@0.5",
+    "U0@0.5",
+    "UG@0.5",
+    "N@0.9",
+    "U0@0.9",
+    "UG@0.9",
+    "U0@0.0",
+    "UG@0.0"
+   ],
+   "789": [
+    "N@0.3",
+    "U0@0.3",
+    "UG@0.3",
+    "N@0.5",
+    "U0@0.5",
+    "UG@0.5",
+    "N@0.9",
+    "U0@0.9",
+    "UG@0.9",
+    "U0@0.0",
+    "UG@0.0"
+   ],
+   "802": [
+    "N@0.3",
+    "U0@0.0"
+   ],
+   "845": [
+    "N@0.3",
+    "U0@0.3",
+    "UG@0.3",
+    "N@0.5",
+    "U0@0.5",
+    "UG@0.5",
+    "N@0.9",
+    "U0@0.9",
+    "UG@0.9",
+    "U0@0.0",
+    "UG@0.0"
+   ],
+   "848": [
+    "N@0.3",
+    "U0@0.3",
+    "U0@0.5",
+    "U0@0.9"
+   ],
+   "879": [
+    "N@0.3",
+    "U0@0.3",
+    "UG@0.3",
+    "N@0.5",
+    "U0@0.5",
+    "UG@0.5",
+    "N@0.9",
+    "U0@0.9",
+    "UG@0.9",
+    "U0@0.0",
+    "UG@0.0"
+   ],
+   "900": [
+    "N@0.3",
+    "U0@0.3",
+    "UG@0.3",
+    "N@0.5",
+    "U0@0.5",
+    "UG@0.5",
+    "N@0.9",
+    "U0@0.9",
+    "UG@0.9",
+    "U0@0.0",
+    "UG@0.0"
+   ],
+   "938": [
+    "N@0.3",
+    "U0@0.3",
+    "UG@0.3",
+    "N@0.5",
+    "U0@0.5",
+    "UG@0.5",
+    "U0@0.9",
+    "UG@0.9",
+    "U0@0.0",
+    "UG@0.0"
+   ],
+   "990": [
+    "N@0.3",
+    "U0@0.3",
+    "UG@0.3",
+    "N@0.5",
+    "U0@0.5",
+    "UG@0.5",
+    "UG@0.9"
+   ],
+   "997": [
+    "N@0.5",
+    "U0@0.5",
+    "N@0.9",
+    "U0@0.9"
+   ]
+  },
+  "rerun_estimate": {
+   "rate_tok_per_s": 569.7,
+   "tokens_floor": 245156,
+   "tokens_ceiling": 2539520,
+   "setup_s": 300,
+   "usd_floor": 0.12,
+   "usd_ceiling": 0.78,
+   "hours_ceiling": 1.32
+  }
+ }
+}
