@@ -1,17 +1,0 @@
-Loading weights:   0%|          | 0/434 [00:00<?, ?it/s]Loading weights:   0%|          | 1/434 [00:00<04:48,  1.50it/s]Loading weights:  20%|██        | 88/434 [00:00<00:02, 153.66it/s]Loading weights:  32%|███▏      | 138/434 [00:01<00:01, 164.29it/s]Loading weights:  40%|███▉      | 173/434 [00:01<00:01, 166.01it/s]Loading weights:  46%|████▋     | 201/434 [00:01<00:01, 175.31it/s]Loading weights:  52%|█████▏    | 227/434 [00:01<00:01, 178.86it/s]Loading weights:  58%|█████▊    | 251/434 [00:01<00:00, 185.31it/s]Loading weights:  65%|██████▍   | 281/434 [00:01<00:00, 204.88it/s]Loading weights:  73%|███████▎  | 315/434 [00:01<00:00, 229.21it/s]Loading weights:  81%|████████  | 351/434 [00:01<00:00, 260.34it/s]Loading weights:  88%|████████▊ | 380/434 [00:02<00:00, 265.39it/s]Loading weights:  97%|█████████▋| 423/434 [00:02<00:00, 290.06it/s]Loading weights: 100%|██████████| 434/434 [00:02<00:00, 196.68it/s]
-05:37:03 engine hf-5.17.0-torch-2.14.0+cpu-cpu-float32-t16 loaded in 3 s
-05:41:17 calib 10/140, 25.3 s/row, peak RSS 17.7 GB
-05:45:22 calib 20/140, 24.9 s/row, peak RSS 17.7 GB
-05:49:10 calib 30/140, 24.2 s/row, peak RSS 17.7 GB
-05:53:30 calib 40/140, 24.7 s/row, peak RSS 17.7 GB
-05:58:46 calib 50/140, 26.1 s/row, peak RSS 17.7 GB
-06:02:41 calib 60/140, 25.6 s/row, peak RSS 17.7 GB
-06:07:11 calib 70/140, 25.8 s/row, peak RSS 17.7 GB
-06:11:06 calib 80/140, 25.5 s/row, peak RSS 17.7 GB
-06:15:23 calib 90/140, 25.6 s/row, peak RSS 17.7 GB
-06:20:28 calib 100/140, 26.0 s/row, peak RSS 17.7 GB
-06:25:15 calib 110/140, 26.3 s/row, peak RSS 17.7 GB
-06:29:12 calib 120/140, 26.1 s/row, peak RSS 17.7 GB
-06:34:18 calib 130/140, 26.4 s/row, peak RSS 17.7 GB
-06:39:35 calib 140/140, 26.8 s/row, peak RSS 17.7 GB
-06:39:35 {"b_cal": 16.0, "matched": false, "ladder_monotone": true, "ladder_monotone_up_to_bracket": true, "target_arm": "K_N", "target_rel": 0.8714285714285714, "rel_K_P": 0.6, "rel_K_N": 0.8714285714285714, "ladder": {"0": 0.0, "1": 0.2571428571428571, "2": 0.44285714285714284, "3": 0.5571428571428572, "4": 0.6214285714285714, "5": 0.7, "6": 0.7428571428571429, "7": 0.7642857142857142, "8": 0.7928571428571428, "9": 0.8214285714285714, "10": 0.8214285714285714, "11": 0.8357142857142857, "12": 0.8428571428571429, "13": 0.85, "14": 0.85, "15": 0.85, "16": 0.85}, "n_rows": 140}

@@ -1,33 +1,0 @@
-Loading weights:   0%|          | 0/434 [00:00<?, ?it/s]Loading weights:   0%|          | 1/434 [00:00<04:07,  1.75it/s]Loading weights:  20%|██        | 87/434 [00:00<00:02, 158.95it/s]Loading weights:  28%|██▊       | 122/434 [00:00<00:01, 195.27it/s]Loading weights:  36%|███▌      | 156/434 [00:00<00:01, 212.30it/s]Loading weights:  43%|████▎     | 187/434 [00:01<00:01, 206.23it/s]Loading weights:  52%|█████▏    | 227/434 [00:01<00:00, 236.52it/s]Loading weights:  59%|█████▉    | 256/434 [00:01<00:00, 246.61it/s]Loading weights:  67%|██████▋   | 291/434 [00:01<00:00, 256.81it/s]Loading weights:  74%|███████▎  | 320/434 [00:01<00:00, 250.40it/s]Loading weights:  80%|███████▉  | 347/434 [00:01<00:00, 241.82it/s]Loading weights:  86%|████████▌ | 373/434 [00:01<00:00, 228.31it/s]Loading weights:  91%|█████████▏| 397/434 [00:01<00:00, 223.88it/s]Loading weights: 100%|██████████| 434/434 [00:02<00:00, 211.88it/s]
-20:25:51 engine hf-5.17.0-torch-2.14.0+cpu-cpu-float32-t16 loaded in 3 s
-20:25:51 stage 2 read: 743 dev-A rows, 743 to do
-20:32:51 25/743 rows, 16.8 s/row, ETA 201 min, peak RSS 17.7 GB
-20:40:13 50/743 rows, 17.2 s/row, ETA 199 min, peak RSS 17.7 GB
-20:47:13 75/743 rows, 17.1 s/row, ETA 190 min, peak RSS 17.7 GB
-20:54:22 100/743 rows, 17.1 s/row, ETA 183 min, peak RSS 17.7 GB
-21:01:26 125/743 rows, 17.1 s/row, ETA 176 min, peak RSS 17.9 GB
-21:08:37 150/743 rows, 17.1 s/row, ETA 169 min, peak RSS 17.9 GB
-21:15:38 175/743 rows, 17.1 s/row, ETA 162 min, peak RSS 17.9 GB
-21:22:44 200/743 rows, 17.1 s/row, ETA 154 min, peak RSS 17.9 GB
-21:30:00 225/743 rows, 17.1 s/row, ETA 148 min, peak RSS 17.9 GB
-21:38:31 250/743 rows, 17.4 s/row, ETA 143 min, peak RSS 17.9 GB
-21:46:41 275/743 rows, 17.6 s/row, ETA 138 min, peak RSS 17.9 GB
-21:54:41 300/743 rows, 17.8 s/row, ETA 131 min, peak RSS 18.0 GB
-22:03:03 325/743 rows, 17.9 s/row, ETA 125 min, peak RSS 18.3 GB
-22:11:11 350/743 rows, 18.1 s/row, ETA 118 min, peak RSS 18.3 GB
-22:19:20 375/743 rows, 18.2 s/row, ETA 111 min, peak RSS 18.3 GB
-22:27:29 400/743 rows, 18.2 s/row, ETA 104 min, peak RSS 18.3 GB
-22:35:42 425/743 rows, 18.3 s/row, ETA 97 min, peak RSS 18.3 GB
-22:43:53 450/743 rows, 18.4 s/row, ETA 90 min, peak RSS 18.3 GB
-22:52:18 475/743 rows, 18.5 s/row, ETA 83 min, peak RSS 18.3 GB
-23:00:44 500/743 rows, 18.6 s/row, ETA 75 min, peak RSS 18.3 GB
-23:08:53 525/743 rows, 18.6 s/row, ETA 68 min, peak RSS 18.3 GB
-23:17:12 550/743 rows, 18.7 s/row, ETA 60 min, peak RSS 18.3 GB
-23:25:35 575/743 rows, 18.8 s/row, ETA 53 min, peak RSS 18.3 GB
-23:34:04 600/743 rows, 18.8 s/row, ETA 45 min, peak RSS 18.3 GB
-23:42:16 625/743 rows, 18.9 s/row, ETA 37 min, peak RSS 18.3 GB
-23:50:45 650/743 rows, 18.9 s/row, ETA 29 min, peak RSS 18.3 GB
-23:58:51 675/743 rows, 18.9 s/row, ETA 21 min, peak RSS 18.3 GB
-00:07:19 700/743 rows, 19.0 s/row, ETA 14 min, peak RSS 18.3 GB
-00:15:42 725/743 rows, 19.0 s/row, ETA 6 min, peak RSS 18.3 GB
-00:21:54 743/743 rows, 19.1 s/row, ETA 0 min, peak RSS 18.3 GB

@@ -1,11 +1,0 @@
-direction: runs/exp38_dev/qwen3b/directions.npz sha256 be1e3a09bdb5157d24126ebe16b14c035d429ebd51409e9b615b347c5b29f921
-  v_29 sha256 a7f967ecdf2f59a9e1f64d99e366d33011f27daa8b09b18f5ff33d1e1ba20c6c (||v|| 32.2342); steer vector = 2 * v_29 (scaled_vector a2 vnorm, byte-equal) sha256 e0000366813f3c94cf4875c5ba948fc7f4bac220099cc8848edb79196045d71c (norm 64.4685)
-  Random-0: seeded layer-29 random vector (rng [38, 29], norm ||2 v_29||), rebuilt deterministically; NOT the pod's layer-29 random vector (bf16 re-estimate, different norm); sha256 633bc895c2af0dc7f5c88d235c557eaaa4fa7955d2e3c4ba7efdfe9fa2269513 (norm 64.4685)
-populations (folds [0, 1]): R 28; pairs 13; unseen 15; damage 8
-Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
-Loading weights:   0%|          | 0/434 [00:00<?, ?it/s]Loading weights:   0%|          | 1/434 [00:00<02:04,  3.47it/s]Loading weights:  17%|█▋        | 75/434 [00:00<00:01, 244.99it/s]Loading weights:  27%|██▋       | 118/434 [00:00<00:01, 277.85it/s]Loading weights:  36%|███▌      | 157/434 [00:00<00:00, 289.48it/s]Loading weights:  44%|████▍     | 193/434 [00:00<00:00, 293.03it/s]Loading weights:  52%|█████▏    | 227/434 [00:00<00:00, 268.49it/s]Loading weights:  59%|█████▉    | 257/434 [00:01<00:00, 254.68it/s]Loading weights:  67%|██████▋   | 291/434 [00:01<00:00, 258.24it/s]Loading weights:  74%|███████▎  | 319/434 [00:01<00:00, 247.69it/s]Loading weights:  81%|████████  | 351/434 [00:01<00:00, 263.65it/s]Loading weights:  87%|████████▋ | 379/434 [00:01<00:00, 245.23it/s]Loading weights:  93%|█████████▎| 405/434 [00:01<00:00, 173.19it/s]Loading weights:  98%|█████████▊| 426/434 [00:01<00:00, 162.19it/s]Loading weights: 100%|██████████| 434/434 [00:01<00:00, 220.36it/s]
-engine hf-transformers-5.17.0-cpu-float32, model loaded in 6 s
-Steer-all reused: 28 rows of steer:L29:a2:vnorm from runs/exp38_dev/qwen3b/sweep.jsonl (sha256 32e1668c39203e41b2003cbb5876de1c6df9bd432185737b16d4ae762c04b3ae); engine, classifier, wording, vector sha and max tokens match
-timing: prefill 13.8 ms/token, decode 0.69 s/token, cache copy 0.02 s
-projection (k [1, 2, 4]): 1.22 h conservative (0.64 h optimistic); k = 2 only 1.05 h; by stage repro 0.31 h, arms_A 0.57 h, arms_cut 0.29 h, damage 0.06 h
-Stopping (--timing-only).

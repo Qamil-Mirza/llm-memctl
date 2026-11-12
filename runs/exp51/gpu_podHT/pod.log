@@ -1,6 +1,0 @@
-exp51 pod H+T; engine hf; hard stop +22000 s; self-stop +23500 s
-F2 guard ok
-stage smoke rc 0 at +73 s
-stage h_run rc 0 at +15477 s
-stage h_report rc 0 at +15514 s
-pod H+T done at +15514 s: copy back runs/exp51/gpu now

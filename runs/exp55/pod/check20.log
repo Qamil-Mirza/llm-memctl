@@ -1,2 +1,0 @@
-01:35:07 stage check20 root runs/exp55/pod/run pod=True device=cuda backend=hf engine=hf-5.17.0-torch-2.8.0+cu128-cuda-float32-notf32
-01:35:26 check20 (device check): 20 rows generated; compared with the laptop §54 B0 after copy-back

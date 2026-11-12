@@ -1,15 +1,0 @@
-Loading weights:   0%|          | 0/434 [00:00<?, ?it/s]Loading weights:   0%|          | 1/434 [00:00<04:24,  1.64it/s]Loading weights:  23%|██▎       | 99/434 [00:00<00:02, 166.43it/s]Loading weights:  31%|███       | 134/434 [00:00<00:01, 187.68it/s]Loading weights:  38%|███▊      | 165/434 [00:01<00:01, 173.52it/s]Loading weights:  44%|████▍     | 190/434 [00:01<00:01, 180.71it/s]Loading weights:  49%|████▉     | 213/434 [00:01<00:01, 182.18it/s]Loading weights:  54%|█████▍    | 235/434 [00:01<00:01, 183.30it/s]Loading weights:  59%|█████▉    | 256/434 [00:01<00:00, 186.29it/s]Loading weights:  64%|██████▍   | 279/434 [00:01<00:00, 187.82it/s]Loading weights:  70%|██████▉   | 303/434 [00:01<00:00, 191.74it/s]Loading weights:  78%|███████▊  | 338/434 [00:01<00:00, 231.90it/s]Loading weights:  84%|████████▎ | 363/434 [00:02<00:00, 187.55it/s]Loading weights:  92%|█████████▏| 399/434 [00:02<00:00, 216.50it/s]Loading weights: 100%|██████████| 434/434 [00:02<00:00, 185.50it/s]
-17:56:13 engine hf-5.17.0-torch-2.14.0+cpu-cpu-float32-t16 loaded in 3 s
-17:58:57 25/305 C rows, 6.6 s/row, peak RSS 17.7
-18:01:51 50/305 C rows, 6.8 s/row, peak RSS 17.7
-18:04:55 75/305 C rows, 7.0 s/row, peak RSS 17.7
-18:08:05 100/305 C rows, 7.1 s/row, peak RSS 17.7
-18:11:21 125/305 C rows, 7.3 s/row, peak RSS 17.7
-18:14:41 150/305 C rows, 7.4 s/row, peak RSS 17.7
-18:18:09 175/305 C rows, 7.5 s/row, peak RSS 17.7
-18:21:43 200/305 C rows, 7.6 s/row, peak RSS 17.7
-18:25:12 225/305 C rows, 7.7 s/row, peak RSS 17.7
-18:28:46 250/305 C rows, 7.8 s/row, peak RSS 17.7
-18:32:21 275/305 C rows, 7.9 s/row, peak RSS 17.7
-18:36:01 300/305 C rows, 8.0 s/row, peak RSS 17.7
-18:36:43 305/305 C rows, 8.0 s/row, peak RSS 17.7

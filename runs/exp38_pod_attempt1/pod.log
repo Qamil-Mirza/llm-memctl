@@ -1,6 +1,0 @@
-§38 pod chain; engine hf; RUNPOD_POD_ID setebfakbdujp2z7w; hard stop +2700 s, self-stop +3300 s
-watchdog pid 211: pod stops itself at +3300 s
-preflight ok: 61 files and 3 folders present; out runs/exp38_pod
-torch 2.8.0+cu128 cuda 12.8 gpu NVIDIA A40 transformers 5.17.0
-stage install: elapsed 26 s (total 26 s of 2700)
-stage smoke failed: exit 1

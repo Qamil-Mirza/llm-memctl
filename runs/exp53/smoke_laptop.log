@@ -1,19 +1,0 @@
-Loading weights:   0%|          | 0/434 [00:00<?, ?it/s]Loading weights:   0%|          | 1/434 [00:00<00:51,  8.35it/s]Loading weights:  15%|█▍        | 65/434 [00:00<00:01, 343.77it/s]Loading weights:  24%|██▎       | 102/434 [00:00<00:01, 312.69it/s]Loading weights:  31%|███       | 135/434 [00:00<00:00, 318.71it/s]Loading weights:  39%|███▊      | 168/434 [00:00<00:00, 318.86it/s]Loading weights:  46%|████▋     | 201/434 [00:00<00:00, 298.84it/s]Loading weights:  53%|█████▎    | 232/434 [00:00<00:00, 286.10it/s]Loading weights:  62%|██████▏   | 267/434 [00:00<00:00, 291.29it/s]Loading weights:  70%|██████▉   | 303/434 [00:01<00:00, 296.72it/s]Loading weights:  78%|███████▊  | 339/434 [00:01<00:00, 293.74it/s]Loading weights:  86%|████████▋ | 375/434 [00:01<00:00, 304.39it/s]Loading weights:  95%|█████████▍| 411/434 [00:01<00:00, 310.98it/s]Loading weights: 100%|██████████| 434/434 [00:01<00:00, 306.14it/s]
-[13:06:54] B0 on 6 dev rows done at +0 s
-[13:06:54] sample: [('FA', 2), ('C', 2), ('UNA', 2)]
-[13:09:01] D-target: 6 rows, 127 s
-[13:12:13] D-randread00: 6 rows, 193 s
-[13:14:53] A-target: 6 rows, 160 s
-[13:16:57] A-rand00: 4 rows, 124 s
-[13:21:02] arm C done (245 s)
-[13:21:49] C5 f reads done
-[13:22:27] A-amp-target: 2 rows, 38 s
-[13:23:06] A-amp-rand00: 2 rows, 39 s
-[13:24:07] B-opt done
-[13:27:09] B-DLA done
-[13:29:39] A-single-L32: 6 rows, 150 s
-[13:31:29] A-late00: 4 rows, 110 s
-[13:33:18] D-randwrite00: 4 rows, 109 s
-[13:34:37] B1-ref: 6 rows, 80 s
-[13:34:37] all stages done at +1664 s
-{"written": "runs/exp53/smoke_laptop/report.json"}

@@ -1,8 +1,0 @@
-exp53 pod; engine hf; hard stop +17000 s; self-stop +17600 s
-manifest guard ok
-snapshot /root/.cache/huggingface/hub/models--Qwen--Qwen2.5-3B-Instruct/snapshots/aa8e72537993ba99e69dfaafa59ed015b17504d1
-stage smoke rc 0 at +223 s
-stage smoke_report rc 0 at +224 s
-stage run rc 0 at +15640 s
-stage report rc 0 at +15645 s
-pod done at +15645 s (run rc 0): copy back runs/exp53/pod and runs/exp53/smoke now

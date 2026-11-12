@@ -1,77 +1,0 @@
-Loading weights:   0%|          | 0/434 [00:00<?, ?it/s]Loading weights:   6%|▌         | 27/434 [00:00<00:01, 243.15it/s]Loading weights:  15%|█▍        | 63/434 [00:00<00:01, 273.09it/s]Loading weights:  23%|██▎       | 99/434 [00:00<00:01, 278.32it/s]Loading weights:  31%|███       | 135/434 [00:00<00:01, 281.70it/s]Loading weights:  39%|███▉      | 170/434 [00:00<00:00, 303.07it/s]Loading weights:  46%|████▋     | 201/434 [00:00<00:00, 272.59it/s]Loading weights:  53%|█████▎    | 231/434 [00:00<00:00, 277.16it/s]Loading weights:  60%|█████▉    | 260/434 [00:00<00:00, 250.81it/s]Loading weights:  66%|██████▌   | 286/434 [00:01<00:00, 230.28it/s]Loading weights:  71%|███████▏  | 310/434 [00:01<00:00, 210.00it/s]Loading weights:  76%|███████▋  | 332/434 [00:01<00:00, 204.33it/s]Loading weights:  81%|████████▏ | 353/434 [00:01<00:00, 185.91it/s]Loading weights:  86%|████████▋ | 375/434 [00:01<00:00, 187.93it/s]Loading weights:  92%|█████████▏| 399/434 [00:01<00:00, 192.27it/s]Loading weights: 100%|██████████| 434/434 [00:01<00:00, 236.25it/s]
-06:39:43 engine hf-5.17.0-torch-2.14.0+cpu-cpu-float32-t16 loaded in 3 s
-06:39:43 stage 3 run: b_cal 16.000; 737 rows (Counter({'C': 298, 'TA': 291, 'FA': 148})), 737 to do
-06:49:50 10/737 rows (FA), 60.7 s/row avg, elapsed 0.17 h, peak RSS 17.7 GB
-06:58:19 20/737 rows (FA), 55.8 s/row avg, elapsed 0.31 h, peak RSS 17.7 GB
-07:07:20 30/737 rows (FA), 55.2 s/row avg, elapsed 0.46 h, peak RSS 17.7 GB
-07:16:16 40/737 rows (FA), 54.8 s/row avg, elapsed 0.61 h, peak RSS 17.7 GB
-07:27:23 50/737 rows (FA), 57.2 s/row avg, elapsed 0.79 h, peak RSS 17.7 GB
-07:36:52 60/737 rows (FA), 57.1 s/row avg, elapsed 0.95 h, peak RSS 17.7 GB
-07:45:12 70/737 rows (FA), 56.1 s/row avg, elapsed 1.09 h, peak RSS 17.7 GB
-07:55:46 80/737 rows (FA), 57.0 s/row avg, elapsed 1.27 h, peak RSS 17.7 GB
-08:05:33 90/737 rows (FA), 57.2 s/row avg, elapsed 1.43 h, peak RSS 17.7 GB
-08:16:23 100/737 rows (FA), 58.0 s/row avg, elapsed 1.61 h, peak RSS 17.7 GB
-08:25:20 110/737 rows (FA), 57.6 s/row avg, elapsed 1.76 h, peak RSS 17.7 GB
-08:35:04 120/737 rows (FA), 57.7 s/row avg, elapsed 1.92 h, peak RSS 17.7 GB
-08:43:32 130/737 rows (FA), 57.1 s/row avg, elapsed 2.06 h, peak RSS 17.7 GB
-08:54:57 140/737 rows (FA), 58.0 s/row avg, elapsed 2.25 h, peak RSS 17.7 GB
-09:08:20 150/737 rows (TA), 59.4 s/row avg, elapsed 2.48 h, peak RSS 17.7 GB
-09:12:54 160/737 rows (TA), 57.4 s/row avg, elapsed 2.55 h, peak RSS 17.7 GB
-09:16:52 170/737 rows (TA), 55.5 s/row avg, elapsed 2.62 h, peak RSS 17.7 GB
-09:21:01 180/737 rows (TA), 53.8 s/row avg, elapsed 2.69 h, peak RSS 17.7 GB
-09:25:00 190/737 rows (TA), 52.2 s/row avg, elapsed 2.75 h, peak RSS 17.7 GB
-09:29:15 200/737 rows (TA), 50.9 s/row avg, elapsed 2.83 h, peak RSS 17.7 GB
-09:33:15 210/737 rows (TA), 49.6 s/row avg, elapsed 2.89 h, peak RSS 17.7 GB
-09:38:01 220/737 rows (TA), 48.6 s/row avg, elapsed 2.97 h, peak RSS 17.7 GB
-09:42:34 230/737 rows (TA), 47.7 s/row avg, elapsed 3.05 h, peak RSS 17.7 GB
-09:47:36 240/737 rows (TA), 47.0 s/row avg, elapsed 3.13 h, peak RSS 17.7 GB
-09:52:00 250/737 rows (TA), 46.1 s/row avg, elapsed 3.20 h, peak RSS 17.7 GB
-09:56:08 260/737 rows (TA), 45.3 s/row avg, elapsed 3.27 h, peak RSS 17.7 GB
-10:00:10 270/737 rows (TA), 44.5 s/row avg, elapsed 3.34 h, peak RSS 17.7 GB
-10:04:16 280/737 rows (TA), 43.8 s/row avg, elapsed 3.41 h, peak RSS 17.7 GB
-10:08:35 290/737 rows (TA), 43.2 s/row avg, elapsed 3.48 h, peak RSS 17.7 GB
-10:12:52 300/737 rows (TA), 42.6 s/row avg, elapsed 3.55 h, peak RSS 17.7 GB
-10:17:02 310/737 rows (TA), 42.1 s/row avg, elapsed 3.62 h, peak RSS 17.7 GB
-10:21:13 320/737 rows (TA), 41.5 s/row avg, elapsed 3.69 h, peak RSS 17.7 GB
-10:25:43 330/737 rows (TA), 41.1 s/row avg, elapsed 3.77 h, peak RSS 17.7 GB
-10:30:07 340/737 rows (TA), 40.7 s/row avg, elapsed 3.84 h, peak RSS 17.7 GB
-10:34:37 350/737 rows (TA), 40.3 s/row avg, elapsed 3.91 h, peak RSS 17.7 GB
-10:38:36 360/737 rows (TA), 39.8 s/row avg, elapsed 3.98 h, peak RSS 17.7 GB
-10:43:16 370/737 rows (TA), 39.5 s/row avg, elapsed 4.06 h, peak RSS 17.7 GB
-10:48:51 380/737 rows (TA), 39.3 s/row avg, elapsed 4.15 h, peak RSS 17.7 GB
-10:54:02 390/737 rows (TA), 39.1 s/row avg, elapsed 4.24 h, peak RSS 17.7 GB
-10:58:25 400/737 rows (TA), 38.8 s/row avg, elapsed 4.31 h, peak RSS 17.7 GB
-11:03:00 410/737 rows (TA), 38.5 s/row avg, elapsed 4.39 h, peak RSS 17.7 GB
-11:07:08 420/737 rows (TA), 38.2 s/row avg, elapsed 4.46 h, peak RSS 17.7 GB
-11:11:26 430/737 rows (TA), 37.9 s/row avg, elapsed 4.53 h, peak RSS 17.7 GB
-11:15:36 440/737 rows (C), 37.6 s/row avg, elapsed 4.60 h, peak RSS 17.7 GB
-11:19:03 450/737 rows (C), 37.2 s/row avg, elapsed 4.66 h, peak RSS 17.7 GB
-11:22:17 460/737 rows (C), 36.9 s/row avg, elapsed 4.71 h, peak RSS 17.7 GB
-11:25:52 470/737 rows (C), 36.5 s/row avg, elapsed 4.77 h, peak RSS 17.7 GB
-11:29:03 480/737 rows (C), 36.2 s/row avg, elapsed 4.82 h, peak RSS 17.7 GB
-11:32:25 490/737 rows (C), 35.8 s/row avg, elapsed 4.88 h, peak RSS 17.7 GB
-11:34:46 500/737 rows (C), 35.4 s/row avg, elapsed 4.92 h, peak RSS 17.7 GB
-11:37:27 510/737 rows (C), 35.0 s/row avg, elapsed 4.96 h, peak RSS 17.7 GB
-11:39:58 520/737 rows (C), 34.6 s/row avg, elapsed 5.00 h, peak RSS 17.7 GB
-11:42:41 530/737 rows (C), 34.3 s/row avg, elapsed 5.05 h, peak RSS 17.7 GB
-11:45:21 540/737 rows (C), 34.0 s/row avg, elapsed 5.09 h, peak RSS 17.7 GB
-11:47:57 550/737 rows (C), 33.6 s/row avg, elapsed 5.14 h, peak RSS 17.7 GB
-11:50:34 560/737 rows (C), 33.3 s/row avg, elapsed 5.18 h, peak RSS 17.7 GB
-11:53:12 570/737 rows (C), 33.0 s/row avg, elapsed 5.22 h, peak RSS 17.7 GB
-11:56:07 580/737 rows (C), 32.7 s/row avg, elapsed 5.27 h, peak RSS 17.7 GB
-11:58:49 590/737 rows (C), 32.5 s/row avg, elapsed 5.32 h, peak RSS 17.7 GB
-12:01:19 600/737 rows (C), 32.2 s/row avg, elapsed 5.36 h, peak RSS 17.7 GB
-12:04:29 610/737 rows (C), 31.9 s/row avg, elapsed 5.41 h, peak RSS 17.7 GB
-12:07:26 620/737 rows (C), 31.7 s/row avg, elapsed 5.46 h, peak RSS 17.7 GB
-12:10:05 630/737 rows (C), 31.5 s/row avg, elapsed 5.51 h, peak RSS 17.7 GB
-12:12:54 640/737 rows (C), 31.2 s/row avg, elapsed 5.55 h, peak RSS 17.7 GB
-12:15:42 650/737 rows (C), 31.0 s/row avg, elapsed 5.60 h, peak RSS 17.7 GB
-12:18:34 660/737 rows (C), 30.8 s/row avg, elapsed 5.65 h, peak RSS 17.7 GB
-12:21:23 670/737 rows (C), 30.6 s/row avg, elapsed 5.69 h, peak RSS 17.7 GB
-12:24:14 680/737 rows (C), 30.4 s/row avg, elapsed 5.74 h, peak RSS 17.7 GB
-12:26:58 690/737 rows (C), 30.2 s/row avg, elapsed 5.79 h, peak RSS 17.7 GB
-12:29:42 700/737 rows (C), 30.0 s/row avg, elapsed 5.83 h, peak RSS 17.7 GB
-12:32:32 710/737 rows (C), 29.8 s/row avg, elapsed 5.88 h, peak RSS 17.7 GB
-12:35:13 720/737 rows (C), 29.6 s/row avg, elapsed 5.92 h, peak RSS 17.7 GB
-12:37:55 730/737 rows (C), 29.4 s/row avg, elapsed 5.97 h, peak RSS 17.7 GB
-12:39:48 737/737 rows (C), 29.3 s/row avg, elapsed 6.00 h, peak RSS 17.7 GB
