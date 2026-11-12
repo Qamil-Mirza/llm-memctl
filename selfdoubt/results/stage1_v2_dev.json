@@ -1,0 +1,335 @@
+{
+ "split_name": "dev",
+ "payload": "plain",
+ "by_sys": {
+  "s1t": {
+   "payload": "plain",
+   "n_items": 242,
+   "acceptance": {
+    "V0": 0.6721991701244814,
+    "VG": 0.8305785123966942,
+    "Vp": 0.7644628099173554,
+    "Vc": 0.7427385892116183,
+    "I1": 0.15289256198347106,
+    "I2a": 0.24380165289256198,
+    "I2d": 0.22727272727272727,
+    "I2b": 0.7603305785123967,
+    "I2c": 0.7231404958677686
+   },
+   "deltas": {
+    "dV": {
+     "point": 0.16182572614107885,
+     "ci95": [
+      0.10372372346627347,
+      0.2231404958677686
+     ]
+    },
+    "dVp": {
+     "point": 0.0912863070539419,
+     "ci95": [
+      0.03319502074688797,
+      0.15289256198347106
+     ]
+    },
+    "dVc": {
+     "point": 0.07053941908713693,
+     "ci95": [
+      0.012296860893117753,
+      0.13224512190939947
+     ]
+    },
+    "dI2a": {
+     "point": 0.09090909090909091,
+     "ci95": [
+      0.04535123966942167,
+      0.14049586776859505
+     ]
+    },
+    "dI2d": {
+     "point": 0.0743801652892562,
+     "ci95": [
+      0.028925619834710745,
+      0.11983471074380166
+     ]
+    },
+    "dI2b": {
+     "point": 0.6074380165289256,
+     "ci95": [
+      0.5454545454545454,
+      0.6735537190082644
+     ]
+    },
+    "dI2c": {
+     "point": 0.5702479338842975,
+     "ci95": [
+      0.5082644628099173,
+      0.6363636363636364
+     ]
+    }
+   },
+   "gate": {
+    "pass": true,
+    "rule": "dV >= 0.15 and 95% interval excludes 0"
+   },
+   "U_lambda1": {
+    "point": -0.4456122903878468,
+    "ci95": [
+     -0.5282942114467953,
+     -0.3628459243510168
+    ]
+   },
+   "U_lambda2": {
+    "point": -1.0530503069167723,
+    "ci95": [
+     -1.189503960769521,
+     -0.9166343746785088
+    ]
+   },
+   "selectivity": {
+    "stat": "dI2b - 0.5 dV",
+    "point": 0.5265251534583861,
+    "ci95": [
+     0.4583171873392544,
+     0.5947519803847605
+    ],
+    "verdict": "NOT SELECTIVE"
+   },
+   "categories": {
+    "I2c": {
+     "new": 175,
+     "stale": 23,
+     "other": 44,
+     "dropped_ref_is_gold": 8
+    },
+    "I2b": {
+     "new": 184,
+     "other": 38,
+     "stale": 20,
+     "dropped_ref_is_gold": 8
+    },
+    "VG": {
+     "other": 37,
+     "new": 201,
+     "dropped_ref_is_gold": 8,
+     "stale": 4
+    },
+    "I1": {
+     "stale": 193,
+     "new": 37,
+     "dropped_ref_is_gold": 8,
+     "other": 12
+    },
+    "I2a": {
+     "stale": 160,
+     "new": 59,
+     "other": 23,
+     "dropped_ref_is_gold": 8
+    },
+    "Vc": {
+     "new": 179,
+     "other": 49,
+     "stale": 13,
+     "dropped_ref_is_gold": 8,
+     "truncated": 1
+    },
+    "I2d": {
+     "stale": 166,
+     "new": 55,
+     "other": 21,
+     "dropped_ref_is_gold": 8
+    },
+    "Vp": {
+     "new": 185,
+     "other": 42,
+     "stale": 15,
+     "dropped_ref_is_gold": 8
+    },
+    "V0": {
+     "stale": 38,
+     "new": 162,
+     "other": 41,
+     "dropped_ref_is_gold": 8,
+     "truncated": 1
+    }
+   },
+   "payload_sanity": {
+    "pass": true,
+    "rule": "I1 or I2c acceptance > 0 in at least one payload format; if not, stop and report",
+    "acceptance": {
+     "plain": {
+      "I1": 0.15289256198347106,
+      "I2c": 0.7231404958677686
+     }
+    }
+   }
+  },
+  "s0": {
+   "payload": "plain",
+   "n_items": 242,
+   "acceptance": {
+    "V0": 0.5785123966942148,
+    "VG": 0.7933884297520661,
+    "Vp": 0.6859504132231405,
+    "Vc": 0.6818181818181818,
+    "I1": 0.1487603305785124,
+    "I2a": 0.23553719008264462,
+    "I2d": 0.2644628099173554,
+    "I2b": 0.7975206611570248,
+    "I2c": 0.6942148760330579
+   },
+   "deltas": {
+    "dV": {
+     "point": 0.21487603305785125,
+     "ci95": [
+      0.1487603305785124,
+      0.28512396694214875
+     ]
+    },
+    "dVp": {
+     "point": 0.10743801652892562,
+     "ci95": [
+      0.045454545454545456,
+      0.16942148760330578
+     ]
+    },
+    "dVc": {
+     "point": 0.10330578512396695,
+     "ci95": [
+      0.04132231404958678,
+      0.16942148760330578
+     ]
+    },
+    "dI2a": {
+     "point": 0.08677685950413223,
+     "ci95": [
+      0.028925619834710745,
+      0.1446280991735537
+     ]
+    },
+    "dI2d": {
+     "point": 0.11570247933884298,
+     "ci95": [
+      0.06198347107438017,
+      0.16942148760330578
+     ]
+    },
+    "dI2b": {
+     "point": 0.6487603305785123,
+     "ci95": [
+      0.5867768595041323,
+      0.7107438016528925
+     ]
+    },
+    "dI2c": {
+     "point": 0.5454545454545454,
+     "ci95": [
+      0.4793388429752066,
+      0.6157024793388429
+     ]
+    }
+   },
+   "gate": {
+    "pass": true,
+    "rule": "dV >= 0.15 and 95% interval excludes 0"
+   },
+   "U_lambda1": {
+    "point": -0.4338842975206611,
+    "ci95": [
+     -0.5206611570247934,
+     -0.35537190082644626
+    ]
+   },
+   "U_lambda2": {
+    "point": -1.0826446280991735,
+    "ci95": [
+     -1.214979338842975,
+     -0.9545454545454546
+    ]
+   },
+   "selectivity": {
+    "stat": "dI2b - 0.5 dV",
+    "point": 0.5413223140495868,
+    "ci95": [
+     0.4772727272727273,
+     0.6074896694214873
+    ],
+    "verdict": "NOT SELECTIVE"
+   },
+   "categories": {
+    "I2d": {
+     "stale": 158,
+     "new": 64,
+     "other": 20,
+     "dropped_ref_is_gold": 8
+    },
+    "Vc": {
+     "new": 165,
+     "stale": 31,
+     "dropped_ref_is_gold": 8,
+     "other": 46
+    },
+    "I2a": {
+     "stale": 161,
+     "new": 57,
+     "other": 24,
+     "dropped_ref_is_gold": 8
+    },
+    "I2c": {
+     "other": 50,
+     "stale": 24,
+     "new": 168,
+     "dropped_ref_is_gold": 8
+    },
+    "VG": {
+     "new": 192,
+     "other": 42,
+     "dropped_ref_is_gold": 8,
+     "stale": 8
+    },
+    "I2b": {
+     "new": 193,
+     "other": 34,
+     "dropped_ref_is_gold": 8,
+     "stale": 15
+    },
+    "I1": {
+     "stale": 196,
+     "new": 36,
+     "other": 10,
+     "dropped_ref_is_gold": 8
+    },
+    "V0": {
+     "new": 140,
+     "stale": 64,
+     "dropped_ref_is_gold": 8,
+     "other": 38
+    },
+    "Vp": {
+     "stale": 40,
+     "new": 166,
+     "other": 36,
+     "dropped_ref_is_gold": 8
+    }
+   },
+   "payload_sanity": {
+    "pass": true,
+    "rule": "I1 or I2c acceptance > 0 in at least one payload format; if not, stop and report",
+    "acceptance": {
+     "plain": {
+      "I1": 0.1487603305785124,
+      "I2c": 0.6942148760330579
+     }
+    }
+   }
+  }
+ },
+ "primary": {
+  "setting": "s1t",
+  "gates": {
+   "s1t": true,
+   "s0": true
+  },
+  "rule": "S1t if its dev gate passes, else S0 if its gate passes, else closed UNDETERMINED",
+  "decision": "primary setting s1t"
+ }
+}

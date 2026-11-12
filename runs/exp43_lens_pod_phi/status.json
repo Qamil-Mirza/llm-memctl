@@ -1,7 +1,0 @@
-{
- "logit_small": 330,
- "logit_large": 330,
- "jlens_small": 330,
- "eval": true,
- "lens": 56
-}

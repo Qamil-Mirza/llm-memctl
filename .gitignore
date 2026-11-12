@@ -8,3 +8,13 @@ data/
 .env
 .worktrees/
 external/
+reports/
+archive/*
+!archive/README.md
+!archive/memctl-era/
+archive/memctl-era/*
+!archive/memctl-era/SHA256SUMS
+!archive/false-abstention/
+archive/false-abstention/*
+!archive/false-abstention/SHA256SUMS
+writing/

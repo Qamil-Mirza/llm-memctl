@@ -196,3 +196,382 @@ the user has made the decision.
   - The D-72 editor budget ($50 workspace limit) is separate and unchanged.
 - **Authority.** The user's "Do A" (Advisor pane, 2026-11-03), answering the option "raise the cap to $36 and run it all
   as one GPU job".
+
+## D-74 (2026-11-04) — §52 proposed: a screen of readers below 3B for in-view abstention, then a queue
+
+- **What.** Proposal `research/proposals/2026-11-04-exp52-small-readers.md` (rev 0). Stage 0 repeats §43 stage 0 on
+  Qwen2.5-0.5B and 1.5B, Llama-3.2-1B, gemma-3-1b (and optionally 270m) and SmolLM2-1.7B: the 126 dev rows, `fixed8`,
+  the frozen prompt, on the laptop at $0. A model is queued for steering, lens, patching and (after §51 confirms)
+  weight editing only if its marker rate is ≥ 0.70, its reading floor is ≥ 0.15, and its in-view abstention rate is
+  ≥ 0.15 on at least 10 rows.
+- **Unchanged.** Stage 0 starts only after the §51 §8.4.2 replay ends; §51 keeps pod priority. Each queued stage is its
+  own pre-registration and quote; nothing here approves a spend. Folds 2–4 stay sealed.
+- **Authority.** The user, Advisor pane, 2026-11-04: "Let's try even smaller models than 3B too ... study if they
+  abstain with evidence in view. And if they do queue them up for our activation steering, lens, activation patching
+  and weight space programming regiments."
+
+## D-75 (2026-11-05) — §53 proposed: specificity, reading and transfer controls for the §51 heads
+
+- **What.** Proposal `research/proposals/2026-11-05-exp53-head-controls.md` (rev 0), from the gap check
+  `research/audits/2026-11-05-research-gap-check.md`. Arms: random late-head pairs against the target pair, in both
+  directions (claims C1, C2); attention, logit attribution, option-removed prompt and head-output patching
+  (descriptive); transfer to the LongMemEval dev rows (descriptive). Data: a new controlled split (seed 54) and
+  LongMemEval folds 0–1.
+- **Opening rule.** Opens only if §51 confirms submission 1 on H; otherwise it closes unrun (D-45). It does not change
+  §51's freeze and does not read E, S, H or T.
+- **Unchanged.** Laptop at $0; any pod is its own quote with the user's line, inside $36, never during a §51 pod.
+- **Authority.** The user, Advisor pane, 2026-11-05: "save it and draft the follow-up proposal".
+
+## D-76 (2026-11-07) — §51 closed under D-45; STATE F18 added; §53 to be revised (rev 1)
+
+- **What.** §51 is complete. R: the selected rank-1 L35 edit (submission 2, dose 2) met the repair criterion on
+  sealed H; better trade-off than B2, B4 and B5; B1 inconclusive; B3 not established. M: the layer-33 pathway of the
+  two-head edit is located and sufficient, not necessary; the editor's account is not supported by the frozen tests.
+  T-city descriptive and consistent. Recorded as STATE F18. No rescue variant; H and T stay read once.
+- **Record.** EXPERIMENTS.md §51 at d7292f7; F2 02bb2f6; h_report at 321a4f1; Advisor reviews
+  `research/reviews/2026-11-06-exp51-s-review.md` and `research/reviews/2026-11-07-exp51-h-review.md` (ACCEPT,
+  recount 0 mismatches). Spend: RunPod about $31.16 of $36; editor API $3.58 of its $50.
+- **§53.** Its opening rule (submission 1 confirms on H) is read as not met as written, because the edit that met the
+  repair criterion is submission 2. The user chose to run §53 revised (rev 1) to cover both edits: specificity
+  controls for the L35 rank-1 edit and the two heads, and natural-data transfer. Rev 1 is its own pre-registration.
+- **Authority.** The user, Advisor pane, 2026-11-07: "let's run 53 as you recommended. Then you have the go on the
+  closing decision entry."
+
+## D-77 (2026-11-07) — §53 complete; STATE F19 added; closed under D-45
+
+- **What.** §53 (rev 1b) ran once on N-held. Each of its four pre-registered claims passed its own test:
+  - **C1:** the two-head ablation releases more false abstentions than 20 random L32×L33 pairs (0.751 against a max
+    of 0.464).
+  - **C2:** doubling the pair creates more abstention on correct rows than doubling 20 random pairs (0.381 against
+    0.345; the narrowest pass).
+  - **C4:** the L35 edit's U1 beats 20 sign-aligned, RMS-matched random read vectors (0.403 against 0.300), with Uns
+    below their median.
+  - **C5:** submission 2's four activity predictions hold on the unedited model (IUT p ≈ 1e-4).
+  - No family-wise claim. Under exchangeability, P(at least one passes) ≤ about 0.19.
+- **Beside it (descriptive).** §51's frozen logit bias (B1 −8) matches both edits on U1 (0.406 against 0.403 and
+  0.414). The edits beat random edits of their own form, not the simplest baseline. This is consistent with §51's
+  "B1 inconclusive".
+  - LongMemEval: the edits release most in-view refusals (20 and 19 of 26), but only 8 and 7 of those contain the
+    gold.
+  - B-opt is not estimable.
+- **Record.**
+  - EXPERIMENTS.md §53 at 54a00e1; manifest b2b14bac at a177536 (before any N-held output).
+  - Pod outputs at 7b9e271 (report.json f1ba6dad).
+  - Advisor review `research/reviews/2026-11-07-exp53-results-review.md` (ACCEPT; independent recount of all 87 arms,
+    0 mismatches; corrected at e3e051e).
+- **Spend.** Pod A40 4.383 h ≈ $2.59 (quote $2.55, hard stop $3.10). RunPod total ≈ $33.75 of $36. The §51 editor
+  API is unchanged at $3.58 of its $50.
+- **Closure.** No rescue variant, no second N read, and no tuning of B1 or the edits on N. Open follow-ups go to
+  OPEN_QUESTIONS only, if the user wants them: a predictor/interaction test of submission 2's account, and a
+  head-to-head of the edits against B1 on fresh data with power for a difference.
+- **Authority.** The user, Advisor pane, 2026-11-07: "do draft the decision entry and the state update". "Go" (2026-11-07).
+
+## D-78 (2026-11-07) — §54 opened: native switch for false "unknown", stages 0–4 approved
+
+- **What.** Proposal `research/proposals/2026-11-07-exp54-native-switch.md` (rev 0). It looks for the component(s)
+  of the **unedited** Qwen 2.5 3B that carry the decision to say "unknown" with the answer in view.
+  - Instrument: timestamp-only twin pairs (rep a / rep b, same note forced into both), activation patching of natural
+    values at P_ans, layers 20–35.
+  - A candidate set K (≤ 5 components) counts as the switch only if it passes five pre-set criteria: differs within
+    twins; sufficient forward; sufficient in reverse; necessary given the rest of the late stack; rank 1 of 21 against
+    random sets.
+  - K is chosen on dev-A and verified on dev-B (split by base).
+- **Why.** The claims audit of the technical report (2026-11-07) found no native computation shown to be necessary,
+  sufficient and specific for false abstention. §51's editor notes give an untested competition account (mover heads
+  vs a near-constant prior, L35 MLP compensating); §50's dev patch places the decision-relevant difference in the
+  residual at P_ans by layer 26.
+- **Scope approved.** Stages 0–4 only: $0, laptop, new seed 55 (development). No §50–§53 held split is read. Stage 5
+  (sealed seed 56) needs a separate user decision, with measured time and, if a pod is needed, a quote and hard stop.
+- **Stopping rules.** As frozen in proposal §6 (feasibility gate ≥ 40 primary pairs from ≥ 20 bases and ≥ 2 tasks;
+  distributed-decision stop at stage 2; no re-choice of K on dev-B). Closure under D-45: document, don't rescue.
+- **Context.** The Qwen weight-editing line (§51/§53) is closed (D-76, D-77). The §53 LongMemEval release audit
+  (`research/audits/2026-11-07-exp53-lme-release-audit.md`) left the arm C conclusion standing under its pre-set rule.
+- **Authority.** The user, Advisor pane, 2026-11-07: "approved, go ahead with stages 0–4".
+
+## D-79 (2026-11-08) — §54 closed at the stage-1 feasibility gate; STATE F20 added
+
+- **What.** §54 stage 1 found 21 primary twin pairs against the frozen bar of 40 (bases 20 and tasks 3 pass). Under
+  proposal §6 and D-45 it stops: no stage 2, no timing step, no enlargement of W, no use of the secondary pairs.
+  Seed 56 stays sealed and ungenerated.
+- **Record.** EXPERIMENTS §54 (a15418b); stage-1 results 71b9ce7 with the grading fix disclosed; gate review
+  `research/reviews/2026-11-08-exp54-stage1-gate-review.md` (3db285b); descriptive note audit
+  `research/audits/2026-11-08-exp54-note-audit.md` (6fb06f9). STATE F20.
+- **Reading.** 43 of 64 twin flips are note-driven; most of those notes still hold the evidence (29 of 43), and about
+  0.89 of all W false abstentions have the gold in the model's own note (automatic rule). Evidence lost at the note
+  step is a minority, concentrated in RC and TU. Q18 is unchanged: the contrast with an evidence-use failure stays NOT
+  ESTABLISHED.
+- **Spend.** $0. RunPod programme total unchanged at about $33.75 of $36.
+- **Authority.** The user, Advisor pane, 2026-11-08: "Go".
+
+## D-80 (2026-11-08) — §52 closed at its stage-0 gate; nothing queued; STATE F21 added
+
+- **What.** §52 stage 0 screened six instruction-tuned readers below 3B (Qwen 2.5 0.5B/1.5B, Llama 3.2 1B, gemma-3
+  1B/270M, SmolLM2 1.7B) on the 126 §43 dev rows with the frozen prompt. The gate fails for all six, so nothing goes to
+  Q-A to Q-D. Under D-45 it stops: no prompt-variation arm, no rescue.
+- **Record.** EXPERIMENTS §52 (6c7b1d3); freeze 0c88a93; outputs, report and pipeline check 0f25a1c. STATE F21.
+- **Reading.**
+  - Five readers do not follow the note + `Answer:` format, so in-view abstention is not measurable for them.
+  - SmolLM2 follows it but never abstains, not even on unanswerable rows.
+  - Post hoc: Qwen 1.5B gives a blanket, evidence-insensitive bare "unknown" (0.960 in view, 0.935 not in view). The
+    pipeline check passes.
+- **Context.** All six used the same frozen prompt that §55 (D-81) now tests. A rerun under §55's P1 would be a new
+  proposal.
+- **Spend.** $0. RunPod programme total unchanged at about $33.75 of $36.
+- **Authority.** The user, Advisor pane, 2026-11-08: "Go on D-80".
+
+## D-81 (2026-11-08) — §55 opened: clean, consistent abstention prompt against the frozen prompt
+
+- **What.** Proposal `research/proposals/2026-11-08-exp55-clean-prompt.md` (rev 0, 9ddb074). Three reader prompts on
+  Qwen 2.5 3B: P0 (frozen, 7b5fc30, two different "unknown" conditions), P1 (one consistent condition), P2 (no
+  "unknown" instruction). W controlled rows (even base_index: 450 ANS, 225 UNA-rel, 75 UNA-swap) and the 200 §52
+  LongMemEval dev rows; free generation plus a controlled-prefix arm on W. Readings R1/R2 fixed in the proposal.
+- **Why.** The frozen prompt's two abstention conditions disagree; §53 B-opt (145/150) and §51 B3 (Rel 0.977, Uns
+  0.682) show the option drives most controlled-task false abstentions; arXiv 2507.16199 ("abstention inflation")
+  reports the same effect and a mid-layer-preserved, late-overridden answer. Reviewer concern raised by the user.
+- **Scope.** Laptop only, $0, development data only; seed 56 sealed. Freeze committed before any model output.
+  Stopping rule D-45.
+- **Number.** D-80 is held for the pending §52 closure (awaits the user's Go).
+- **Authority.** The user, Advisor pane, 2026-11-08: "approved, go ahead with §55".
+- **Amendment (2026-11-08, rev 0b bc8e145).** At the user's request §55 moves to one A40 pod: HF fp32 with tf32 off,
+  all arms on the pod, laptop partials unused. Quote about $1.00; hard stop $1.50 / 150 min. The user's approval line
+  in the Executor pane: "approved: §55 on one A40, about $1.00, hard stop $1.50 / 150 min". After it the worst-case
+  programme total is about $35.25 of $36.
+
+## D-82 (2026-11-08) — §55 complete: false abstention on controlled tasks is the price of the abstention option; STATE F22 added
+
+- **What.** §55 (rev 0 + 0a + 0b) compared three prompts on Qwen 2.5 3B, all on one A40 pod with the §51 HF fp32 engine:
+  P0 (the frozen prompt), P1 (one consistent "unknown" rule) and P2 (no "unknown" instruction). Data: 750 W controlled
+  rows and 200 LongMemEval dev rows.
+- **Readings, as frozen.**
+  - **R1:** "the inconsistency is not the main cause". The consistent wording raises FA from 0.311 to 0.380 (+0.069
+    [0.022, 0.118]). Which sentence is responsible was not tested.
+  - **R2:** "the false abstention is largely the price of having an abstention option". P2 has FA 0, but answers
+    0.653 of unanswerable rows (+0.620 over P1). U(λ=1) falls by 0.138, so removing the option is not a fix.
+  - With P0's note fixed, the P1 instruction alone moves FA by +0.160. 163/171 P1 abstentions have the gold in their
+    own note.
+  - LongMemEval, descriptive: P2 removes all 28 in-view "unknown"s but adds only 11 gold, and answers 11 of 12
+    unanswerable rows.
+- **Record.** EXPERIMENTS §55 (0c016d4); results f07fbfd; freeze 3bfb13f; proposal revs 9ddb074 / 45eaee6 / bc8e145.
+  STATE F22.
+- **Consequence (fixed in the proposal).** Controlled-task false abstention is framed as abstention inflation, a
+  calibration trade-off, with arXiv 2507.16199 as the closest prior work. A cross-model table from cached outputs is
+  not built on P0 alone. Earlier controlled-task results (§49–§54) stand under P0; the inconsistency was not inflating
+  them.
+- **Spend.** Pod x75t0k719w43yh, lifetime 3,498 s; billing posted $0.587 (5475d0a). Programme total ≈ $34.34 of $36.
+- **Authority.** The user, Advisor pane, 2026-11-08: "Go on D-82".
+
+
+## D-83 (2026-11-10) — §56 opened: MLP neurons behind false "unknown" at the answer position
+
+- **What.** Proposal `research/proposals/2026-11-10-exp56-answer-neurons.md` (rev 0, 6e6b075). On Qwen 2.5 3B
+  (fp32, laptop CPU, frozen reader prompt P0 7b5fc30, greedy), rank the 396,288 SwiGLU neurons by their direct push
+  toward "unknown" at P_ans (DLA through the final-RMSNorm scale, D = logit("unknown") − logit(t*)), and test whether
+  a small set carries false "unknown" (R1 concentration), whether it is shared with true abstentions (R2 channel
+  type), whether ablating it at P_ans releases false abstentions beyond 20 matched random sets (R3), and whether it is
+  more selective than the B1 logit bias at matched release (R4). Data: W controlled rows (§54 split, seed 55); dev-A =
+  even `base_index` (§54 B0 ANS + §55 P0 UNA), used to choose; dev-B = odd `base_index` (§54 B0 ANS + about 300 new
+  P0 UNA rows), used to test. Readings R1–R4 and the stopping rules are fixed in §6–§7 of the proposal.
+- **Why.** Every fix for false abstention so far behaves like a dial: §53 (F19) found that a plain logit bias matches
+  the best §51 weight edit, and §55 (F22) found that removing the option trades false abstentions for unanswerable
+  rows answered. §51 (F18) located a pathway in attention; MLP neurons at the answer step were never examined.
+  Goodfire's "Neurons as an Interpretable Basis" (Tigges et al., 2026-11-10) argues that MLP neurons are sparse,
+  mostly single-purpose units, which makes a neuron-level test cheap to run and easy to read.
+- **Scope.** Stages 0–3 only: laptop, $0, development data only (W seed 55). Seed 56 stays unused; the seed-57 split
+  of stage 4 is not generated. No pod. Stage 4 (sealed confirmation) needs a separate approval. The stage-0 freeze
+  (row lists, class labels, t* rule, DLA code and its sum test) is committed before any neuron is measured, and the
+  Advisor reviews at each gate. Stopping rule D-45. No change to STATE until results are reviewed and the user says
+  "Go".
+- **Authority.** The user, Advisor pane, 2026-11-10, answering "Do you approve stages 0–3 ($0, practice data
+  only)?": "yes".
+
+## D-84 (2026-11-10) — §56 closed at its stage-1 gate: the push toward "unknown" at P_ans is distributed over MLP neurons; STATE F23 added
+
+- **What.** §56 stage 1 (rev 0 + 0a) read 743 dev-A rows of the W split (seed 55) on Qwen 2.5 3B and ranked all
+  396,288 SwiGLU neurons by their mean direct push toward "unknown" at P_ans on false abstentions (DLA through the
+  final-RMSNorm scale, t* = the best city token).
+- **Reading, as frozen.**
+  - **R1 = DISTRIBUTED.** K50 = 14,966 neurons, 95% CI [14,899, 15,130], against a bar of 500.
+  - The top 50 neurons hold 3.1% of the positive push and the top 500 hold 9.8%. The push is spread over layers 6–35,
+    and no layer holds more than 5.8% of it.
+  - Under §7 and D-45 it stops: no ablation, no stage 2–4, no dev-B UNA generation. Seed 57 is not generated.
+- **Descriptives after the stop (no reading).**
+  - The top-50 set pushes "unknown" on every class. On it, TA/FA = 1.189 [1.123, 1.268] and C/FA = 0.920, so it is
+    not specific to abstention.
+  - On the direct path the net push to "unknown" comes through attention (FA +14.5, C +3.8, TA +32.3). Summed MLP
+    DLA is negative (FA −7.7), mostly from layer 35 (−12.3).
+  - DLA is a direct-path measure, so attention's share includes what upstream MLPs write and attention moves. This
+    is not a finding about where the decision is made.
+- **Record.** EXPERIMENTS §56 (061b257); stage-1 results and frozen K at 7d78ee0; freeze 55d3d87b at 3690b0f (amends
+  98d96e7); proposal rev 0 6e6b075, rev 0a df5d028. STATE F23.
+- **Disclosed.** A class-unpack bug in the first report run (TA and C swapped in the point R2, the ablation values
+  and the labels; the bootstrap and R1 were unaffected) was fixed before any verdict. Cross-process noise on D is
+  about 8e-5.
+- **Not done.** No attention-head analysis, no §9 ablation-ranking threat check, and no 3B run of the stage-2
+  batched-arm engine (`scripts/exp56_arms.py`, dummy-tested only). Any follow-up on the attention pathway, and the
+  user's planned step 2 (the same method on self-doubt), is new scope and needs a new proposal.
+- **Spend.** $0 (laptop). RunPod programme total unchanged.
+- **Authority.** The user, Advisor pane, 2026-11-10: "Go".
+
+## D-85 (2026-11-11) — §57 closed after stage 3: selected neurons beat random sets but no neuron set beats the logit bias; K_N's release is an off-distribution push; STATE F24 added
+
+- **What.** §57 (rev 0 + 0a + 0b) ranked all 396,288 SwiGLU neurons of Qwen 2.5 3B by total effect (attribution
+  patching) on dev-A false abstentions, at P_ans (K_P) and over the note and marker (K_N), and tested the top-50 sets
+  on dev-B against 20 random sets each and the logit bias B1 at matched release.
+- **Reading, as frozen.**
+  - R1 DISTRIBUTED in both regions (K50 P 13,640, N 14,912). R2: K_P SHARED (1.136), K_N FA-SPECIFIC (0.330).
+  - R3: K_P SHOWN (Rel 0.581, random max 0.014); K_N SHOWN (Rel 0.831, random max 0.034).
+  - R4 matched (primary, rev 0a): K_P WORSE than B1 (Uns +0.030 [0.012, 0.057]; plus 7/298 correct rows turned to
+    "unknown", B1 0); K_N NO DIFFERENCE SHOWN (+0.003 [−0.031, 0.025]).
+  - Rev 0b: K_N@marker (in-distribution reset at the marker) Rel 0.088, NOT SHOWN, so K_N's release is described as
+    an off-distribution push and no causal sentence is written about K_N. Δ̂ vs real: K_P 0.96, K_N 0.23.
+  - R4 dev-A-calibrated: NOT READ (the dev-A B1 ladder saturates at 0.85 below K_N's 0.871; b_cal unmatched).
+- **Consequence.** No neuron-level fix beats the dial on this behaviour. Stage 4 and stage 5 are not proposed.
+- **Record.** EXPERIMENTS §57 (b301ff6); proposal rev 0 9e51a1b, rev 0a 476a580, rev 0b 02c7cab; stage 0+1 3501a72;
+  stage 2 b284ce2, 6584388; dev-B UNA 5800ebd; marker 250f548; equality 1e147dd; b_cal 1c1ad9b; stage 3 fdb2860.
+  STATE F24.
+- **Disclosed.**
+  - The freeze (runs/exp57/freeze.json) has no engine block; the engine (hf-5.17.0-torch-2.14.0+cpu-cpu-float32-t16)
+    is in every log.
+  - Choices fixed with the Advisor before the run, not in the proposal: ties count against a set in R3; R4-matched
+    draws outside the curve are dropped (fragile above 20%); Dam = C rows not graded gold; U via grade51.base_mixture;
+    R2′ = Uns/Rel on dev-B.
+  - R4 dev-A-calibrated was first labelled BETTER THAN THE DIAL by the report code for all arms; relabelled NOT READ
+    at the Advisor's review (unequal release).
+- **Spend.** $0 (laptop).
+- **Authority.** The user, Advisor pane, 2026-11-10: "Go for, it's free right" (stages 0–4, dev only). Record
+  changes: the user, Advisor pane and Executor pane, 2026-11-11: "Go on D-85/F24 and D-86".
+
+## D-86 (2026-11-11) — False-abstention line closed as thesis groundwork; no paper from §33–§57; the thesis pivots to self-doubt (Wu, Miroyan et al.)
+
+- **What.** The false-abstention line (§33–§57, STATE F11–F24) is closed. No further false-abstention experiment is
+  run unless the user reopens it. Not run: the second-model dial comparison, §57 stage 5 (seed 57), the
+  cross-family prompt test, the prompt-feature predictor.
+- **Why (the user's judgement, 2026-11-11).**
+  - The in-view false "unknown" is strongest in Qwen 2.5 3B under our prompt (F11: 0.30; Llama 3B 0.10, Gemma 4B
+    0.02, Phi-4-mini 0.03; F21: not measurable below 3B).
+  - It is largely the price of offering the option (F22).
+  - No component-level fix beats a plain logit bias on "unknown" (F18, F19, F24).
+  - The user judged this not enough for a standalone paper, workshop included. The Advisor had recommended a
+    workshop paper; the user decided otherwise.
+- **Status of §33–§57.** Groundwork: one thesis chapter and the motivation and method base for the self-doubt
+  work. It carries forward the localisation toolkit (lenses, patching, attribution patching, head and neuron
+  resets) and two standing controls:
+  - the logit-bias dial at matched release;
+  - random sets of the same shape.
+- **Pivot.** The thesis becomes a mechanistic follow-up to Wu, Miroyan et al., "Are Large Reasoning Models
+  Interruptible?" (arXiv 2510.11713). Goal (user, 2026-11-11): find which layers, attention heads or neurons play
+  a role in self-doubt. Working claim: in both failures the information reaches the model and is represented,
+  but a late decision does not use it. The pre-registration is `selfdoubt/PROPOSAL.md` (Q1–Q4) on branch
+  `self-doubt-updates`. Target (user): "Self-doubt is definitely work I want in main conference"; January 2027 deadlines mentioned.
+- **Open (pivot plan §5; each needs its own user decision).**
+  - 2: how much of the old work stays in the thesis;
+  - 3: branch merge and § numbering for self-doubt stages;
+  - 4: the Mihran/Narges email;
+  - 5: budget;
+  - 6: the repo archive and the knowledge graph.
+  Until 3 is decided, self-doubt stages keep their own numbering in `selfdoubt/PROPOSAL.md`.
+- **Record.** STATE.md reframed (header, one paragraph, closed/open); OPEN_QUESTIONS Q14, Q16–Q18 marked closed
+  (not pursued); pivot plan `research/briefings/2026-11-11-pivot-plan.md`.
+- **Spend.** $0. RunPod programme total ≈ $34.32 of $36 (Berkeley), unchanged. The gmail account (≈ $15.7 left of
+  its $25 cap) stays reserved for self-doubt; every spend still needs the user's advance approval.
+- **Authority.** The user, session llm-memctl-c6, 2026-11-11: "Ok let's close this and pivot fully to
+  self-doubt"; record Go in the Advisor pane and the Executor pane, 2026-11-11: "Go on D-85/F24 and D-86".
+
+## D-87 (2026-11-11) — Repo consolidated: false-abstention code and record kept at a tag, run data in verified tarballs under archive/, self-doubt merged as the live project
+
+- **What.** Branch `cleanup-2026-11` was taken off `jacobian-lens` at ef91067. Commits:
+  - c033409: step 8, `git rm` of 12,590 tracked paths;
+  - 59c2177: the K21 provenance tarball;
+  - 762276d: merge of `self-doubt-updates` (5ce8c3f);
+  - 09bd35d: README rewritten for self-doubt; EXPERIMENTS §33–§57 condensed (3,604 → 165 lines).
+
+  Plan: `research/audits/2026-11-11-consolidation-plan.md` (Advisor review ACCEPT with conditions). Both the plan and
+  the review are copied into K21.
+- **Code and record.** `memctl/`, `scripts/`, `tests/`, `docs/`, the full EXPERIMENTS text, reviews, proposals,
+  briefings, audits, roles, BOARD, MONITOR_LOG, EXPERIMENT_INDEX and 12,227 tracked run files left HEAD. They are
+  byte-identical at the local tag `false-abstention-era-final` (ef91067), alongside `memctl-era-final` (0c016d4). The
+  bundle `archive/llm-memctl-all-2026-11-11.bundle` (291 MB, sha256 8cd070f3e9c6…3edd) holds every ref.
+- **Layout differs from the request.** The user asked for an "archive" directory. The plan keeps code and record at
+  the tag and only the data under `archive/`. The Advisor (c6, 2026-11-11) told the user this differed from a
+  browsable `archive/` code folder before the user's "Go on the cleanup list". It is reversible from the tag.
+- **Data.**
+  - Every file under `runs/`, `cache/`, `data/` and `external/jacobian-lens` went into exactly one tarball under
+    `archive/false-abstention/`, except the D1–D5 items below:
+    - kept tier K01–K18, K20, K21 (10.55 GiB): per-row outputs, frozen inputs, the KEEP\* activations of F13, F14,
+      F16, F23 and F24, populations, data, provenance;
+    - bulk tier B01–B05 (8.99 GiB).
+  - Every member was verified by streaming the tarball back and comparing sha256, size and link target with a manifest
+    written from the original. 233,366 members (kept 213,294, bulk 20,072), plus K21's 134, all matched before any
+    original was removed (D9).
+  - `archive/false-abstention/SHA256SUMS` (25 lines, sha256 b36678c0…4644) and `archive/memctl-era/SHA256SUMS`
+    (sha256 fa568e9d…1bd8) are tracked.
+  - The finding → tarball table is in `archive/README.md` and REPRODUCE.md §2.
+- **Finding during the safety checks.** The pod upload bundles (`runs/_transfer`, deleted in D2) held 19 small files
+  found nowhere else. One was the E+S extract of `cases51.jsonl` shipped to §51 pod S (sha 55e89193…). It is a
+  byte-identical prefix of the K12 file that the §51 freeze pins (sha 5eeb7c40…). All 19 are kept in K21
+  `transfer-provenance/`. Every other member was in git or on disk with the same sha.
+- **Verification (step 9), as it happened.** A worktree was made at the tag and the kept tarballs untarred into it:
+  - `git status` was clean, so all tracked run files were byte-identical.
+  - `exp52_report.py`, `exp55_report.py --root runs/exp55/pod/run` and `exp57_stage3.py report` rewrote their tracked
+    reports byte-identically.
+  - The first full suite gave 720 passed, 6 failed, for restore-recipe reasons:
+    - 2 tests read bulk-tier files;
+    - 3 exp51 sandbox tests need `ROOT/.venv`;
+    - 1 test (`test_exp43_lens_pod::test_pod_chain_skips_stages_past_the_deadline`, `HARD_STOP_S=1`) failed once under
+      load.
+  - No script was patched. With the bulk tier untarred and a `.venv` symlink, the full rerun gave **726 passed,
+    0 failed (947 s)**, equal to the 726 on the full tree before archiving.
+  - The recipe in `archive/README.md` and REPRODUCE.md now includes both steps.
+- **Self-doubt merge.**
+  - The merge only added files under `selfdoubt/` and had no conflicts.
+  - `pod_launch.sh` and `pod_wait.sh` now default to the main checkout.
+  - Frozen inputs `selfdoubt/frozen/{split.json (c9e99ab2), s2_heldout/rows.jsonl (c3d849e8)}`.
+  - Pins are in `selfdoubt/env/`; `pyproject.toml` and `constraints.txt` are re-pointed at selfdoubt.
+  - `runs/selfdoubt` moved from the worktree into the main checkout: 409/409 files md5-identical. The worktree's
+    small vLLM smoke logs are kept under `runs/selfdoubt/_worktree_cache/`. The worktree was retired.
+  - Tests from the main checkout: 126 passed. A fresh `pip install -e ".[dev]"` gives 106 passed, 1 skipped
+    (`test_stage2_pilot.py` needs torch).
+  - `stage1_rep.json` and `stage2_heldout_report.json` re-ran byte-equal. The three Stage 0 result files and the two
+    Stage 1 report files were not re-run, because those scripts also rewrite per-row files under `runs/selfdoubt`.
+- **Deleted (user's yes, D1–D9).**
+
+  | Item | Size | Safety record |
+  |---|---|---|
+  | D1 `cache/exp44_hf` (Qwen2.5-7B @ a09a3545) | 14.5 GB | all 4 shard sha256 equal their LFS sha |
+  | D2 `runs/_transfer` | 3.4 GB | member check above |
+  | D3 `runs/exp55/d30venv` | 1.2 GB | `pip freeze` in K21 |
+  | D4 `community_qwen7b.pt` | 0.65 GB | sha equals HF `andyx10/…@f70dfaca` |
+  | D5 main `runs/selfdoubt` mirror | 0.24 GB | md5 subset, then replaced by the canonical copy |
+  | D6 self-doubt venvs (`venv-vllm`, `_venv457`) | ≈ 0 GB freed | they were hard links into uv's package cache outside the repo; package lists are in `selfdoubt/env/` |
+  | D7 `.superpowers/` | 1.2 MB | none needed |
+  | D8 the file `\` | 136 B | none needed |
+  | D9 originals of all tarred groups | ~22 GB | full-member verification |
+
+  The codex briefing (2026-11-07) was archived into K21 on the user's word. Free disk went from 25 GB to 48 GB.
+- **Not done.**
+  - Nothing was pushed. Origin `Qamil-Mirza/llm-memctl` is public. `jacobian-lens` is 26 commits ahead of
+    `origin/jacobian-lens`, `cleanup-2026-11` is 79 ahead, and both tags are local only.
+  - D10 (copy to the Mac) was not done: the ssh route gave "Permission denied" on 2026-11-11.
+  - So the bundle, `archive/memctl-era/` and `archive/false-abstention/` exist only on this laptop.
+- **Left over.** 35 root-owned `.pyc` files from an old Docker run (Python 3.12, gitignored): `memctl/__pycache__`
+  (16), `memctl/controllers/__pycache__` (6), `memctl/benchmarks/__pycache__` (4), `tests/__pycache__` (9). To remove:
+  `sudo rm -rf ~/Code/llm-memctl/memctl ~/Code/llm-memctl/tests`.
+- **Known caveats (documented, not fixed: fixing them would mean new code).**
+  - `scripts/exp57_k50_halfsample.py:7` hard-codes the repo path.
+  - `exp51_stage4.py --stage h-report` loads the engine and its design guard rejects `--root gpu_podHT` as laid out.
+  - REPRODUCE.md also lists the §43 lenses never copied back and the unrecorded laptop model revisions for §37–§44.
+- **Record.**
+  - Reviewed by session llm-memctl-c6, which the user made Advisor for the consolidation migration on 2026-11-11
+    ("you now how hold the advisor role for this consolidation migration").
+  - The pointer fixes to STATE.md, OPEN_QUESTIONS.md and the `selfdoubt/PROPOSAL.md` status line
+    (`research/audits/2026-11-11-record-pointer-fixes-draft.md`) land with D-87 on the same Go, as a separate Advisor
+    commit.
+- **Spend.** $0 (laptop).
+- **Authority.**
+  - The user, c6 session, 2026-11-11: "we need to consolidate first … move the mem-ctl and false abstention work into
+    an "archive" directory … start clean".
+  - The user, previous Advisor pane, 2026-11-11: "let's not build anything if the improvement is marginal rn …
+    realy deep declutter".
+  - Executor pane, 2026-11-11: "Go on the cleanup list, no push, D1–D9 yes".
+  - The codex briefing: "The codex briefing can be archived" (to c6).
+  - Record change: the user, Executor pane, 2026-11-11: "Go" (on D-87 and the pointer fixes, as presented by the Advisor).
