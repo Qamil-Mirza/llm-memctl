@@ -411,3 +411,32 @@ the user has made the decision.
   user's planned step 2 (the same method on self-doubt), is new scope and needs a new proposal.
 - **Spend.** $0 (laptop). RunPod programme total unchanged.
 - **Authority.** The user, Advisor pane, 2026-11-10: "Go".
+
+## D-85 (2026-11-11) — §57 closed after stage 3: selected neurons beat random sets but no neuron set beats the logit bias; K_N's release is an off-distribution push; STATE F24 added
+
+- **What.** §57 (rev 0 + 0a + 0b) ranked all 396,288 SwiGLU neurons of Qwen 2.5 3B by total effect (attribution
+  patching) on dev-A false abstentions, at P_ans (K_P) and over the note and marker (K_N), and tested the top-50 sets
+  on dev-B against 20 random sets each and the logit bias B1 at matched release.
+- **Reading, as frozen.**
+  - R1 DISTRIBUTED in both regions (K50 P 13,640, N 14,912). R2: K_P SHARED (1.136), K_N FA-SPECIFIC (0.330).
+  - R3: K_P SHOWN (Rel 0.581, random max 0.014); K_N SHOWN (Rel 0.831, random max 0.034).
+  - R4 matched (primary, rev 0a): K_P WORSE than B1 (Uns +0.030 [0.012, 0.057]; plus 7/298 correct rows turned to
+    "unknown", B1 0); K_N NO DIFFERENCE SHOWN (+0.003 [−0.031, 0.025]).
+  - Rev 0b: K_N@marker (in-distribution reset at the marker) Rel 0.088, NOT SHOWN, so K_N's release is described as
+    an off-distribution push and no causal sentence is written about K_N. Δ̂ vs real: K_P 0.96, K_N 0.23.
+  - R4 dev-A-calibrated: NOT READ (the dev-A B1 ladder saturates at 0.85 below K_N's 0.871; b_cal unmatched).
+- **Consequence.** No neuron-level fix beats the dial on this behaviour. Stage 4 and stage 5 are not proposed.
+- **Record.** EXPERIMENTS §57 (b301ff6); proposal rev 0 9e51a1b, rev 0a 476a580, rev 0b 02c7cab; stage 0+1 3501a72;
+  stage 2 b284ce2, 6584388; dev-B UNA 5800ebd; marker 250f548; equality 1e147dd; b_cal 1c1ad9b; stage 3 fdb2860.
+  STATE F24.
+- **Disclosed.**
+  - The freeze (runs/exp57/freeze.json) has no engine block; the engine (hf-5.17.0-torch-2.14.0+cpu-cpu-float32-t16)
+    is in every log.
+  - Choices fixed with the Advisor before the run, not in the proposal: ties count against a set in R3; R4-matched
+    draws outside the curve are dropped (fragile above 20%); Dam = C rows not graded gold; U via grade51.base_mixture;
+    R2′ = Uns/Rel on dev-B.
+  - R4 dev-A-calibrated was first labelled BETTER THAN THE DIAL by the report code for all arms; relabelled NOT READ
+    at the Advisor's review (unequal release).
+- **Spend.** $0 (laptop).
+- **Authority.** The user, Advisor pane, 2026-11-10: "Go for, it's free right" (stages 0–4, dev only). Record
+  changes: the user, Advisor pane and Executor pane, 2026-11-11: "Go on D-85/F24 and D-86".
