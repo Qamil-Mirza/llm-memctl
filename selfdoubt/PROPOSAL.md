@@ -4,8 +4,12 @@ Status: proposal rev 2, 2026-11-08. Rev 1 was reviewed once (verdict REVISE, 6 b
 see "Changes after review" at the end. This is a separate project on branch `self-doubt-updates` and is not part
 of the thesis record. Nothing has been run.
 
+**2026-11-11 (D-86, D-87):** this is now the thesis. The branch was merged into `cleanup-2026-11` at 762276d.
+Stages 0, 1 and 2 have been run; their results sections are below, and their summaries are in `selfdoubt/results/`.
+
 Literature basis: `reports/Mechanisms of self doubt under updates.md` (local, gitignored) and
-`research_notes/Mechanisms of self doubt under updates/` (main checkout, untracked).
+`research_notes/Mechanisms of self doubt under updates/` (main checkout, untracked). Extended on 2026-11-11 by
+`reports/Self doubt mechanism research questions.md` and its notes folder (local, not committed).
 
 Audience: Mihran Miroyan, co-first author of Wu, Miroyan et al., "Are Large Reasoning Models Interruptible?"
 (arXiv 2510.11713, ICML 2026). What is shared with him, and when, is decided later.

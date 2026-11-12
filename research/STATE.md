@@ -1,23 +1,26 @@
 # Scientific state (as of 2026-11-11; false-abstention line closed, thesis pivoting to self-doubt)
 
-The current, defensible state of the memctl project. Every claim points to a section of
-[EXPERIMENTS.md](../EXPERIMENTS.md), which is the record. If this file and EXPERIMENTS.md disagree,
-EXPERIMENTS.md wins, and this file should be fixed. Only the Advisor edits this file
-(see [RESET_HANDOFF.md](../RESET_HANDOFF.md)).
+The current, defensible state of the thesis. Every claim points to a section of
+[EXPERIMENTS.md](../EXPERIMENTS.md). Since the 2026-11-11 consolidation EXPERIMENTS.md is condensed; the full text
+of each section is at a git tag (`memctl-era-final` for §1–§32, `false-abstention-era-final` for §33–§57). If this
+file and the full text disagree, the full text wins, and this file should be fixed. Only the Advisor edits this file.
 
-> **Repo cleanup, 2026-11-08 (119f0eb, branch `cleanup/mech-interp-only`).** The memctl-era code, configs, docs and
-> run folders for §1–§32 were removed, and EXPERIMENTS §1–§32 were condensed into one section. Links in this file to
-> removed paths still resolve:
-> - tracked files: `git show memctl-era-final:<path>` (tag at 0c016d4, local only);
-> - untracked run data: `archive/memctl-era-data.tar.zst` and `archive/memctl-era-external.tar.zst`, listed in the
->   `.manifest` files beside them.
+> **Consolidation, 2026-11-11 (D-87, branch `cleanup-2026-11`).** The code, tests, docs, proposals, reviews and run
+> files of both closed eras were removed from the working tree. Paths cited in this file still resolve:
+> - tracked files: `git show memctl-era-final:<path>` (tag at 0c016d4) or
+>   `git show false-abstention-era-final:<path>` (tag at ef91067); both tags are local only;
+> - run data: checksummed tarballs under `archive/memctl-era/` and `archive/false-abstention/`. The table of which
+>   tarball each finding needs is in [archive/README.md](../archive/README.md), and the command that recomputes each
+>   finding is in [REPRODUCE.md](../REPRODUCE.md).
 >
-> Kept in place: runs/exp23_*, runs/exp24_*, their caches and verdicts, and everything from §33 on.
+> The §23/§24 run folders, caches and verdicts are in tarball K01. The earlier cleanup of 2026-11-08 (119f0eb) removed
+> the memctl-era tree.
 
 > **Pivot, 2026-11-11 (D-86).** The false-abstention line (§33–§57, F11–F24) is closed as thesis groundwork; no
 > paper is planned from it. The thesis now asks which layers, attention heads and neurons cause self-doubt in
 > reasoning models (Wu, Miroyan et al., arXiv 2510.11713). Its pre-registration and results live in
-> `selfdoubt/PROPOSAL.md` (branch `self-doubt-updates`) until the merge decision. F1–F10 are the memctl era (closed
+> `selfdoubt/PROPOSAL.md`, merged into this branch on 2026-11-11 (762276d); new entries are numbered from §58.
+> F1–F10 are the memctl era (closed
 > 2026-11-08); F11–F24 are the false-abstention groundwork.
 
 ## In one paragraph
@@ -39,7 +42,7 @@ shape, and the logit-bias dial at matched release. The thesis now applies them t
 ## Strongest supported findings
 
 F1–F10: memctl era, closed 2026-11-08. F11–F24: false-abstention groundwork, closed 2026-11-11 (D-86). Self-doubt
-findings will be added after the record-merge decision (pivot plan §5, item 3).
+findings will be added from F25 as their experiments are recorded from §58.
 
 | # | Finding | Evidence | Strength |
 |---|---|---|---|
@@ -115,7 +118,7 @@ findings will be added after the record-merge decision (pivot plan §5, item 3).
   - Q3 (main): which layers, heads and neurons;
   - Q4: the causal test against the prompt fix and the logit-bias dial;
   - Q1 and the layer part of Q3 are partly answered on Qwen3 1.7B.
-  These move into [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md) after the merge decision.
+  They are listed in [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md).
 
 ## Spend
 

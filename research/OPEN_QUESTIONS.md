@@ -1,11 +1,26 @@
 # Open scientific questions
 
 > **2026-11-11 (D-86):** the false-abstention line (Q14–Q18) is closed; the thesis pivots to self-doubt. Its questions
-> (`selfdoubt/PROPOSAL.md` Q1–Q4) get their own section here after the record-merge decision.
+> (`selfdoubt/PROPOSAL.md` Q1–Q4) are in the section "Self-doubt" below.
 
 Questions the record leaves unresolved. Each one says what would settle it and whether that costs money.
 Anyone may propose an addition, but only the Advisor edits this file. Mark an item **answered**, with
 a pointer to the EXPERIMENTS.md section, instead of deleting it.
+
+## Self-doubt (thesis, from 2026-11-11)
+
+Copied from [selfdoubt/PROPOSAL.md](../selfdoubt/PROPOSAL.md) ("Questions"), which holds the pre-registered stages
+and their results. Status as recorded there.
+
+| ID | Question | Status |
+|---|---|---|
+| SD-Q1 | When the model fails after an update, how often does it give the answer it would have given with no update? Does doubt wording appear in successes as often as in failures? Does the failure depend on the update arriving mid-trace? | Stage 0 run (held-out): on Qwen3 1.7B the stale share of update failures is 0.677, mostly on MATH |
+| SD-Q2 | Does the fix also make the model accept a change it should reject, such as a change in a tool output with the same clauses forged onto it? | Stage 1 partly run; a side result by the user's ruling (2026-11-11), not a headline |
+| SD-Q3 | On failures, is the new value represented inside the model and outvoted, or never taken in? Which component decides? | Layer level partly answered on Qwen3 1.7B (Stage 2, held-out): taken in, then not used, after layers 20–24. Heads and neurons open |
+| SD-Q4 | Can an internal intervention chosen from Q3 release self-doubt while still rejecting invalid changes, and do so better than the prompt fix? | Not started (Stage 3) |
+
+The three research questions proposed by the 2026-11-11 literature scan (`reports/Self doubt mechanism research
+questions.md`, local) are not added here; they wait for the user's decision.
 
 ## Toward the pivot (sequential memory and delayed credit)
 
@@ -38,7 +53,7 @@ a pointer to the EXPERIMENTS.md section, instead of deleting it.
 
 ## Record-keeping gaps (not science, but they block clean citation)
 
-- `docs/research/THESIS_RESULTS_OUTLINE.md` is dated 2026-10-07. It has no §29–§32 rows. Its headline
+- `docs/research/THESIS_RESULTS_OUTLINE.md` (at the tag `memctl-era-final`) is dated 2026-10-07. It has no §29–§32 rows. Its headline
   must be reconciled with F3 (head ≈ LR) and must carry the 3-head and ±0.007 caveats.
 - The cost table ends at §27–§28 ($12.58); §29 and §32 rows are missing.
 - Head A fold 0 and head B fold 4 are the same checkpoint (sha256 prefix `9f0be108`), and head B folds 0 = 1,
