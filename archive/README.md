@@ -73,7 +73,9 @@ Tarball shas are in `false-abstention/SHA256SUMS`. Per-file manifests (path, typ
 - `transfer-provenance/`: 19 files that existed only inside the deleted pod upload bundles (`bundle_info.json`,
   `COMMIT`, `head_commit`, and the E+S extract of `cases51.jsonl` shipped to §51 pod S, sha 55e89193…, which is a
   byte-identical prefix of the K12 file);
-- the builder and checker scripts, the repo inventory and the consolidation plan.
+- the builder and checker scripts, the repo inventory, the consolidation plan and its review, the step-9
+  verification logs (`verification/`), and all per-file manifests;
+- `research/briefings/2026-11-07-codex-next-directions-for-advisor.md`, archived on the user's word (2026-11-11).
 
 ## Deleted on 2026-11-11 (user's yes, D1–D8)
 
