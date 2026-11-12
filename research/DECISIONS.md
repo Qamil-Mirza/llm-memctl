@@ -476,3 +476,102 @@ the user has made the decision.
   its $25 cap) stays reserved for self-doubt; every spend still needs the user's advance approval.
 - **Authority.** The user, session llm-memctl-c6, 2026-11-11: "Ok let's close this and pivot fully to
   self-doubt"; record Go in the Advisor pane and the Executor pane, 2026-11-11: "Go on D-85/F24 and D-86".
+
+## D-87 (2026-11-11) — Repo consolidated: false-abstention code and record kept at a tag, run data in verified tarballs under archive/, self-doubt merged as the live project
+
+- **What.** Branch `cleanup-2026-11` was taken off `jacobian-lens` at ef91067. Commits:
+  - c033409: step 8, `git rm` of 12,590 tracked paths;
+  - 59c2177: the K21 provenance tarball;
+  - 762276d: merge of `self-doubt-updates` (5ce8c3f);
+  - 09bd35d: README rewritten for self-doubt; EXPERIMENTS §33–§57 condensed (3,604 → 165 lines).
+
+  Plan: `research/audits/2026-11-11-consolidation-plan.md` (Advisor review ACCEPT with conditions). Both the plan and
+  the review are copied into K21.
+- **Code and record.** `memctl/`, `scripts/`, `tests/`, `docs/`, the full EXPERIMENTS text, reviews, proposals,
+  briefings, audits, roles, BOARD, MONITOR_LOG, EXPERIMENT_INDEX and 12,227 tracked run files left HEAD. They are
+  byte-identical at the local tag `false-abstention-era-final` (ef91067), alongside `memctl-era-final` (0c016d4). The
+  bundle `archive/llm-memctl-all-2026-11-11.bundle` (291 MB, sha256 8cd070f3e9c6…3edd) holds every ref.
+- **Layout differs from the request.** The user asked for an "archive" directory. The plan keeps code and record at
+  the tag and only the data under `archive/`. The Advisor (c6, 2026-11-11) told the user this differed from a
+  browsable `archive/` code folder before the user's "Go on the cleanup list". It is reversible from the tag.
+- **Data.**
+  - Every file under `runs/`, `cache/`, `data/` and `external/jacobian-lens` went into exactly one tarball under
+    `archive/false-abstention/`, except the D1–D5 items below:
+    - kept tier K01–K18, K20, K21 (10.55 GiB): per-row outputs, frozen inputs, the KEEP\* activations of F13, F14,
+      F16, F23 and F24, populations, data, provenance;
+    - bulk tier B01–B05 (8.99 GiB).
+  - Every member was verified by streaming the tarball back and comparing sha256, size and link target with a manifest
+    written from the original. 233,366 members (kept 213,294, bulk 20,072), plus K21's 134, all matched before any
+    original was removed (D9).
+  - `archive/false-abstention/SHA256SUMS` (25 lines, sha256 b36678c0…4644) and `archive/memctl-era/SHA256SUMS`
+    (sha256 fa568e9d…1bd8) are tracked.
+  - The finding → tarball table is in `archive/README.md` and REPRODUCE.md §2.
+- **Finding during the safety checks.** The pod upload bundles (`runs/_transfer`, deleted in D2) held 19 small files
+  found nowhere else. One was the E+S extract of `cases51.jsonl` shipped to §51 pod S (sha 55e89193…). It is a
+  byte-identical prefix of the K12 file that the §51 freeze pins (sha 5eeb7c40…). All 19 are kept in K21
+  `transfer-provenance/`. Every other member was in git or on disk with the same sha.
+- **Verification (step 9), as it happened.** A worktree was made at the tag and the kept tarballs untarred into it:
+  - `git status` was clean, so all tracked run files were byte-identical.
+  - `exp52_report.py`, `exp55_report.py --root runs/exp55/pod/run` and `exp57_stage3.py report` rewrote their tracked
+    reports byte-identically.
+  - The first full suite gave 720 passed, 6 failed, for restore-recipe reasons:
+    - 2 tests read bulk-tier files;
+    - 3 exp51 sandbox tests need `ROOT/.venv`;
+    - 1 test (`test_exp43_lens_pod::test_pod_chain_skips_stages_past_the_deadline`, `HARD_STOP_S=1`) failed once under
+      load.
+  - No script was patched. With the bulk tier untarred and a `.venv` symlink, the full rerun gave **726 passed,
+    0 failed (947 s)**, equal to the 726 on the full tree before archiving.
+  - The recipe in `archive/README.md` and REPRODUCE.md now includes both steps.
+- **Self-doubt merge.**
+  - The merge only added files under `selfdoubt/` and had no conflicts.
+  - `pod_launch.sh` and `pod_wait.sh` now default to the main checkout.
+  - Frozen inputs `selfdoubt/frozen/{split.json (c9e99ab2), s2_heldout/rows.jsonl (c3d849e8)}`.
+  - Pins are in `selfdoubt/env/`; `pyproject.toml` and `constraints.txt` are re-pointed at selfdoubt.
+  - `runs/selfdoubt` moved from the worktree into the main checkout: 409/409 files md5-identical. The worktree's
+    small vLLM smoke logs are kept under `runs/selfdoubt/_worktree_cache/`. The worktree was retired.
+  - Tests from the main checkout: 126 passed. A fresh `pip install -e ".[dev]"` gives 106 passed, 1 skipped
+    (`test_stage2_pilot.py` needs torch).
+  - `stage1_rep.json` and `stage2_heldout_report.json` re-ran byte-equal. The three Stage 0 result files and the two
+    Stage 1 report files were not re-run, because those scripts also rewrite per-row files under `runs/selfdoubt`.
+- **Deleted (user's yes, D1–D9).**
+
+  | Item | Size | Safety record |
+  |---|---|---|
+  | D1 `cache/exp44_hf` (Qwen2.5-7B @ a09a3545) | 14.5 GB | all 4 shard sha256 equal their LFS sha |
+  | D2 `runs/_transfer` | 3.4 GB | member check above |
+  | D3 `runs/exp55/d30venv` | 1.2 GB | `pip freeze` in K21 |
+  | D4 `community_qwen7b.pt` | 0.65 GB | sha equals HF `andyx10/…@f70dfaca` |
+  | D5 main `runs/selfdoubt` mirror | 0.24 GB | md5 subset, then replaced by the canonical copy |
+  | D6 self-doubt venvs (`venv-vllm`, `_venv457`) | ≈ 0 GB freed | they were hard links into uv's package cache outside the repo; package lists are in `selfdoubt/env/` |
+  | D7 `.superpowers/` | 1.2 MB | none needed |
+  | D8 the file `\` | 136 B | none needed |
+  | D9 originals of all tarred groups | ~22 GB | full-member verification |
+
+  The codex briefing (2026-11-07) was archived into K21 on the user's word. Free disk went from 25 GB to 48 GB.
+- **Not done.**
+  - Nothing was pushed. Origin `Qamil-Mirza/llm-memctl` is public. `jacobian-lens` is 26 commits ahead of
+    `origin/jacobian-lens`, `cleanup-2026-11` is 79 ahead, and both tags are local only.
+  - D10 (copy to the Mac) was not done: the ssh route gave "Permission denied" on 2026-11-11.
+  - So the bundle, `archive/memctl-era/` and `archive/false-abstention/` exist only on this laptop.
+- **Left over.** 35 root-owned `.pyc` files from an old Docker run (Python 3.12, gitignored): `memctl/__pycache__`
+  (16), `memctl/controllers/__pycache__` (6), `memctl/benchmarks/__pycache__` (4), `tests/__pycache__` (9). To remove:
+  `sudo rm -rf ~/Code/llm-memctl/memctl ~/Code/llm-memctl/tests`.
+- **Known caveats (documented, not fixed: fixing them would mean new code).**
+  - `scripts/exp57_k50_halfsample.py:7` hard-codes the repo path.
+  - `exp51_stage4.py --stage h-report` loads the engine and its design guard rejects `--root gpu_podHT` as laid out.
+  - REPRODUCE.md also lists the §43 lenses never copied back and the unrecorded laptop model revisions for §37–§44.
+- **Record.**
+  - Reviewed by session llm-memctl-c6, which the user made Advisor for the consolidation migration on 2026-11-11
+    ("you now how hold the advisor role for this consolidation migration").
+  - The pointer fixes to STATE.md, OPEN_QUESTIONS.md and the `selfdoubt/PROPOSAL.md` status line
+    (`research/audits/2026-11-11-record-pointer-fixes-draft.md`) land with D-87 on the same Go, as a separate Advisor
+    commit.
+- **Spend.** $0 (laptop).
+- **Authority.**
+  - The user, c6 session, 2026-11-11: "we need to consolidate first … move the mem-ctl and false abstention work into
+    an "archive" directory … start clean".
+  - The user, previous Advisor pane, 2026-11-11: "let's not build anything if the improvement is marginal rn …
+    realy deep declutter".
+  - Executor pane, 2026-11-11: "Go on the cleanup list, no push, D1–D9 yes".
+  - The codex briefing: "The codex briefing can be archived" (to c6).
+  - Record change: the user, Executor pane, 2026-11-11: "Go" (on D-87 and the pointer fixes, as presented by the Advisor).
