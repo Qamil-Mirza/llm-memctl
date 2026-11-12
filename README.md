@@ -10,7 +10,7 @@ of its thinking ("self-doubt").
 | Path | What it holds |
 |---|---|
 | `selfdoubt/` | The current work: code, tests, the pre-registration (`PROPOSAL.md`), spend log (`SPEND.md`), frozen inputs and result summaries |
-| `research/` | The research record: `STATE.md` (what is supported, and how strongly), `DECISIONS.md` (every decision by number), `OPEN_QUESTIONS.md` |
+| `research/` | The research record: `PAPER_CONTRACT.md` (the claim, dates, gates and evidence rules every experiment is checked against), `STATE.md` (what is supported, and how strongly), `DECISIONS.md` (every decision by number), `OPEN_QUESTIONS.md`, `RELATED_WORK.md` (closest papers) |
 | `EXPERIMENTS.md` | Every experiment: what it asked, what it found, what it cost |
 | `REPRODUCE.md` | How to rerun each reported number, and the conventions for new work |
 | `archive/` | Earlier, closed work. Only its `README.md` and checksum files are in git; the data itself stays local |
