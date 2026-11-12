@@ -1,21 +1,21 @@
 [project]
-name = "memctl"
+name = "selfdoubt"
 version = "0.1.0"
-description = "Mechanistic investigation of evidence-use failures in small language models (honors thesis)."
+description = "Mechanistic study of self-doubt in reasoning models (honors thesis). Archived eras: see archive/README.md."
 requires-python = ">=3.11"
-dependencies = ["numpy>=1.26", "matplotlib>=3.8"]
+dependencies = ["numpy>=1.26", "sympy==1.13.3", "latex2sympy2==1.9.1", "regex", "pyarrow", "word2number", "huggingface_hub"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0"]
-stats = ["scikit-learn>=1.3", "scipy"]
-models = ["torch>=2.3", "transformers>=5.0", "accelerate", "sentence-transformers"]  # for the hf backend
+dev = ["pytest>=8.0", "transformers==4.57.1", "jinja2"]   # tests need the Qwen3 tokenizer and chat template only
+models = ["torch==2.8.0", "transformers==4.57.1"]   # Stage 2 HF readings (selfdoubt/env/pod_stage2_hf_env.txt)
+pods = ["vllm==0.11.0"]                              # generation pods (selfdoubt/env/pod_vllm_env.txt)
 
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
-include = ["memctl*"]
+include = ["selfdoubt*"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["selfdoubt/tests"]

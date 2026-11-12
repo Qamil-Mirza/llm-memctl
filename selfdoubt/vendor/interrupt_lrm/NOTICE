@@ -1,0 +1,11 @@
+This directory contains files copied from https://github.com/dynamic-lm/interrupt-lrm
+at commit b87d61bd2e5e998f34878fb0ee5fb2f5550f98c6, licensed under the Apache License, Version 2.0 (LICENSE in this directory).
+
+Copied unchanged:
+  prompts/intervene/wo_prompt_guidance.json   <- src/prompts/intervene/wo_prompt_guidance.json
+  prompts/intervene/w_prompt_guidance.json    <- src/prompts/intervene/w_prompt_guidance.json
+  prompts/intervene/user_turn.json            <- src/prompts/intervene/user_turn.json
+Copied with an attribution header (and, for math_parsing_util.py, a Python 3.13 import shim) above a VERBATIM marker:
+  math_parsing_util.py   <- eval/math/math_parsing_util.py (whole file)
+  prompt_utils_qwen.py   <- selected functions of src/prompt_utils.py
+  math_utils.py          <- selected functions of eval/math/utils.py (no global process pool)

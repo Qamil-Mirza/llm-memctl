@@ -1,0 +1,197 @@
+{
+ "split_name": "heldout",
+ "payload": "plain",
+ "rules": "PROPOSAL c69f28e (frozen); primary setting s1t",
+ "primary_s1t": {
+  "n_items": 236,
+  "acceptance": {
+   "V0": 0.7669491525423728,
+   "VG": 0.8347457627118644,
+   "Vp": 0.7542372881355932,
+   "Vc": 0.7457627118644068,
+   "I1": 0.25,
+   "I2a": 0.326271186440678,
+   "I2d": 0.288135593220339,
+   "I2b": 0.7754237288135594,
+   "I2c": 0.711864406779661
+  },
+  "deltas": {
+   "dV": {
+    "point": 0.06779661016949153,
+    "ci95": [
+     0.01694915254237288,
+     0.1271186440677966
+    ]
+   },
+   "dVp": {
+    "point": -0.012711864406779662,
+    "ci95": [
+     -0.0635593220338983,
+     0.038135593220338986
+    ]
+   },
+   "dVc": {
+    "point": -0.0211864406779661,
+    "ci95": [
+     -0.06790254237288117,
+     0.029766949152541796
+    ]
+   },
+   "dI2a": {
+    "point": 0.07627118644067797,
+    "ci95": [
+     0.012711864406779662,
+     0.13983050847457626
+    ]
+   },
+   "dI2d": {
+    "point": 0.038135593220338986,
+    "ci95": [
+     -0.0211864406779661,
+     0.09745762711864407
+    ]
+   },
+   "dI2b": {
+    "point": 0.5254237288135594,
+    "ci95": [
+     0.4576271186440678,
+     0.5932203389830508
+    ]
+   },
+   "dI2c": {
+    "point": 0.461864406779661,
+    "ci95": [
+     0.3855932203389831,
+     0.5338983050847458
+    ]
+   }
+  },
+  "gate": {
+   "pass": false,
+   "rule": "dV >= 0.15 and 95% interval excludes 0"
+  },
+  "selectivity": {
+   "stat": "dI2b - 0.5 dV",
+   "point": 0.4915254237288136,
+   "ci95": [
+    0.4216101694915254,
+    0.5593220338983051
+   ],
+   "verdict": "UNDETERMINED (gate not passed)"
+  },
+  "U_lambda1": {
+   "point": -0.45762711864406785,
+   "ci95": [
+    -0.538135593220339,
+    -0.3728813559322034
+   ]
+  },
+  "U_lambda2": {
+   "point": -0.9830508474576272,
+   "ci95": [
+    -1.1186440677966103,
+    -0.8432203389830508
+   ]
+  }
+ },
+ "payload_sanity_s1t": {
+  "pass": true,
+  "rule": "I1 or I2c acceptance > 0 in at least one payload format; if not, stop and report",
+  "acceptance": {
+   "plain": {
+    "I1": 0.25,
+    "I2c": 0.711864406779661
+   }
+  }
+ },
+ "s1_acceptance": {
+  "note": "descriptive only (S1 is not the primary setting; no gate or selectivity verdict is read on it); same per-arm denominator convention as primary_s1t",
+  "n_items": 235,
+  "acceptance": {
+   "V0": 0.7829787234042553,
+   "VG": 0.8595744680851064,
+   "Vp": 0.8085106382978723,
+   "Vc": 0.8297872340425532,
+   "I1": 0.31063829787234043,
+   "I2a": 0.4425531914893617,
+   "I2d": 0.3717948717948718,
+   "I2b": 0.8212765957446808,
+   "I2c": 0.7872340425531915
+  }
+ },
+ "s1_r1b": {
+  "split_name": "heldout",
+  "cut": 0.9,
+  "payload": "plain",
+  "band": 0.1,
+  "r1b2_pairing": {
+   "join": "item id",
+   "s1_v0_items_kept": 235,
+   "stage0_ug_items_kept": 235,
+   "pairs": 235,
+   "min_pairs": 200,
+   "below_min": false,
+   "note": "ok"
+  },
+  "R1.B1": {
+   "n_items": 235,
+   "point": -0.03829787234042553,
+   "ci": [
+    -0.06808510638297872,
+    -0.00851063829787234
+   ],
+   "level": 0.9,
+   "stat": "acc(I2b) - acc(VG), S1",
+   "verdict": "SHOWN"
+  },
+  "R1.B2": {
+   "n_items": 235,
+   "point": -0.05531914893617021,
+   "ci": [
+    -0.09361702127659574,
+    -0.01702127659574468
+   ],
+   "level": 0.9,
+   "stat": "acc(V0 under S1) - acc(UG, Stage 0, authors' prompt), same items",
+   "verdict": "SHOWN"
+  },
+  "paired_means": {
+   "R1.B1": {
+    "n_items": 235,
+    "acc_I2b": 0.8212765957446808,
+    "acc_VG": 0.8595744680851064
+   },
+   "R1.B2": {
+    "n_items": 235,
+    "acc_V0_S1": 0.7829787234042553,
+    "acc_UG_stage0": 0.8382978723404255
+   }
+  }
+ },
+ "provenance": {
+  "pod": "6jlr8m87m7psco",
+  "build": "fa0696e",
+  "rules": "PROPOSAL c69f28e; scorer 7d09937",
+  "stores": {
+   "s1t": {
+    "path": "runs/selfdoubt/s1ho_pod/heldout/stage1_s1t/Qwen3-1.7B/gen.jsonl",
+    "sha256": "387ff443bf90f486e51acd6aa5deb346466b6bb44c5cb1c94049ec3558ddae42",
+    "rows": 2500
+   },
+   "s1": {
+    "path": "runs/selfdoubt/s1ho_pod/heldout/stage1/Qwen3-1.7B/gen.jsonl",
+    "sha256": "96839f12fe846ff8b0dacc19faa2a3e8186e87b3eac92097b26f550ce46f9bc8",
+    "rows": 2500
+   },
+   "stage0_full": {
+    "path": "runs/selfdoubt/full/Qwen3-1.7B/gen.jsonl",
+    "sha256": "191ea3b878bd09b23f3f30ab3838f090424884b67b892575ff38423b5eb4d18e",
+    "rows": 4045
+   }
+  },
+  "timeout_ledger": {
+   "n_calls_timed_out": 0,
+   "note": "scoring.TIMEOUTS empty after the full heldout() run (5 s rule); no row rests on a timeout, so no 60 s sensitivity rescore is needed"
+  }
+ }
+}

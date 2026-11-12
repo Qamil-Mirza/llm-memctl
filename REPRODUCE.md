@@ -24,7 +24,26 @@
 
 | Reading | Command | Reads |
 |---|---|---|
-| (filled in as self-doubt stages are recorded) | | |
+| Stage 0, 1.7B GSM8K (`results/stage0_heldout_1p7b_gsm8k.json`) | `python selfdoubt/stage0_heldout_1p7b.py --heldout-confirmed` | `runs/selfdoubt/full/Qwen3-1.7B/gen.jsonl`, `split.json` (not re-run 2026-11-11: it also rewrites per-row files under `runs/selfdoubt`) |
+| Stage 0, 1.7B MATH-500 + pooled (`results/stage0_heldout_1p7b_math500.json`) | `python selfdoubt/stage0_heldout_readings.py --model 1.7B --heldout-confirmed` | stores listed in the file's `stores` block (not re-run, same reason) |
+| Stage 0, 8B (`results/stage0_heldout_8b.json`) | `python selfdoubt/stage0_heldout_readings.py --model 8B --heldout-confirmed` | `runs/selfdoubt/s0c_pod2/heldout/full/Qwen3-8B/gen.jsonl` (not re-run, same reason) |
+| Stage 1 held-out (`results/stage1_heldout.json`) | `python selfdoubt/stage1_report.py read --split-name heldout --heldout-confirmed --store …` | store paths and sha256 in the file's `provenance.stores` block (not re-run) |
+| Stage 1 v2 dev (`results/stage1_v2_dev.json`) | `python selfdoubt/stage1_report.py v2 --store-s1t …` | `runs/selfdoubt/s1s2v2_pod/s1/dev/…` (not re-run) |
+| Stage 1 replication (`results/stage1_rep.json`) | `python selfdoubt/stage1_rep.py --layout two --heldout-confirmed` | `runs/selfdoubt/{s1rep_a,s1rep_b,s1ho_pod,s0c_pod1,s0c_pod2}` (**re-run 2026-11-11 from the main checkout: byte-equal**, 661 s) |
+| Stage 2 held-out (`results/stage2_heldout_report.json`) | `python selfdoubt/stage2_pilot.py report --res runs/selfdoubt/s1s2v2_pod/s2/res.jsonl --label heldout` (writes `res.report.json` beside `--res`; the committed file is that output) | `res.jsonl`; frozen rows `selfdoubt/frozen/s2_heldout/rows.jsonl` (sha c3d849e8) (**re-run 2026-11-11: byte-equal**, 3 s) |
+
+Frozen inputs: `selfdoubt/frozen/split.json` (sha c9e99ab2, seed 56) and `selfdoubt/frozen/s2_heldout/rows.jsonl`
+(sha c3d849e8). The scripts still read the working copies under `runs/selfdoubt/`; the two files are byte-identical.
+Env pins: `selfdoubt/env/` (pod `env.txt` files, the laptop vLLM venv freeze, and the `_venv457` package list).
+
+**Install and test (checked 2026-11-11):**
+```bash
+python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"     # Python 3.13.9; ~16 s
+.venv/bin/python -m pytest                                      # 106 passed, 1 skipped (test_stage2_pilot.py needs torch)
+```
+With torch installed as well, all 126 tests pass: the laptop `.venv`, with torch 2.14.0+cpu and transformers 5.17.0,
+ran 126 passed in 36 s. The pinned Stage 2 environment is `.[dev,models]` (torch 2.8.0, transformers 4.57.1);
+generation pods add `.[pods]` (vLLM 0.11.0).
 
 ## 2. Archived eras
 
