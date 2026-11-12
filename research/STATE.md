@@ -1,4 +1,4 @@
-# Scientific state (as of 2026-10-10; findings table to 2026-11-07)
+# Scientific state (as of 2026-11-11; false-abstention line closed, thesis pivoting to self-doubt)
 
 The current, defensible state of the memctl project. Every claim points to a section of
 [EXPERIMENTS.md](../EXPERIMENTS.md), which is the record. If this file and EXPERIMENTS.md disagree,
@@ -14,20 +14,32 @@ EXPERIMENTS.md wins, and this file should be fixed. Only the Advisor edits this 
 >
 > Kept in place: runs/exp23_*, runs/exp24_*, their caches and verdicts, and everything from §33 on.
 
+> **Pivot, 2026-11-11 (D-86).** The false-abstention line (§33–§57, F11–F24) is closed as thesis groundwork; no
+> paper is planned from it. The thesis now asks which layers, attention heads and neurons cause self-doubt in
+> reasoning models (Wu, Miroyan et al., arXiv 2510.11713). Its pre-registration and results live in
+> `selfdoubt/PROPOSAL.md` (branch `self-doubt-updates`) until the merge decision. F1–F10 are the memctl era (closed
+> 2026-11-08); F11–F24 are the false-abstention groundwork.
+
 ## In one paragraph
 
-The project asked whether a learned memory controller helps a language model answer questions over long
-histories. On synthetic tasks a learned controller can beat fixed rules. On real conversations
-(LongMemEval, LoCoMo), the only thing that clearly helps is **query-aware selection at question time**.
-That means a small head that picks 8 of the 32 BM25 candidates for each question (`fixed8`, §19; 27,526 parameters,
-of which 8,705 belong to an unused value head, so about 18,800 are active). It
-beats FIFO + floor by about +0.10 accuracy at a third of the prompt tokens, and the lift holds in 10 of
-11 readers from 5 families. But the head is **not shown better than a 31-parameter logistic regression on
-its own inputs** (§32). What carries the result is the feature set and the evidence labels, not the
-network. RL never beat imitation (RQ3 closed). A reader-side utility signal did not help (§29). The
-frozen reader is the ceiling: with perfect evidence, a 3B reader still trails a 7B reader.
+The thesis began with learned memory controllers (F1–F10, closed; the memctl summary is at the tag
+`memctl-era-final`). When small readers failed with the evidence in view, it became a study of why: false
+abstention. On controlled tasks, a Qwen 2.5 3B reader that says "unknown" with sufficient evidence in view usually
+has the answer. The gold is near the top of its final-layer distribution (F11), and its own note usually names the
+gold before it refuses (F16). The refusal is a late decision: "unknown" wins only in the last layers (F11, F13), and
+offering the option causes much of it (F22). Many interventions release it: a prompt instruction (F6), a
+content-free steering direction (Q16), zeroing two attention heads (F19), an agent-proposed weight edit (F18), and
+resetting 50 neurons (F24). None of them does so more selectively than a plain bias against the "unknown" token
+(F18, F19, F24). The push is distributed: no small set of neurons carries it (F23, F24), and on the direct path it
+comes through attention (F23). In-view false abstention is strongest in the Qwen 3B; it is low in three other
+families at this size (F11) and not measurable below 3B (F21). The line closed on 2026-11-11 (D-86). Its lasting
+outputs are a localisation toolkit and two controls every later mechanism claim must pass: random sets of the same
+shape, and the logit-bias dial at matched release. The thesis now applies them to self-doubt in reasoning models.
 
 ## Strongest supported findings
+
+F1–F10: memctl era, closed 2026-11-08. F11–F24: false-abstention groundwork, closed 2026-11-11 (D-86). Self-doubt
+findings will be added after the record-merge decision (pivot plan §5, item 3).
 
 | # | Finding | Evidence | Strength |
 |---|---|---|---|
@@ -92,16 +104,22 @@ frozen reader is the ceiling: with perfect evidence, a 3B reader still trails a 
 
 ## What is closed and what is open
 
-- **Closed:** RQ3 (RL vs imitation); adaptive k (§19b); write action (§20, gate fail); query rewriting
-  (§28, non-inferior only); utility signal (§29); StreamMemBench transfer (§25, does not transfer:
-  recency wins); UtilMem (§30) and test-time training (§31), both closed without a run; LRE as a
-  baseline (§27, worse than FIFO when it fills the head's slots).
-- **Open:** see [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md). The candidate pivot (sequential memory
-  management and delayed credit assignment) builds on F10 and F5. No new architecture has been chosen.
+- **Closed:**
+  - the memctl era (F1–F10): RQ3 (RL vs imitation); adaptive k (§19b); write action (§20, gate fail); query
+    rewriting (§28, non-inferior only); utility signal (§29); StreamMemBench transfer (§25, does not transfer:
+    recency wins); UtilMem (§30) and test-time training (§31), both closed without a run; LRE as a baseline (§27,
+    worse than FIFO when it fills the head's slots);
+  - the false-abstention line (§33–§57, F11–F24; D-86). Not run, by decision: a second-model dial comparison,
+    §57 stage 5, the cross-family prompt test, the prompt-feature predictor.
+- **Open:** the self-doubt localisation questions, `selfdoubt/PROPOSAL.md` Q1–Q4:
+  - Q3 (main): which layers, heads and neurons;
+  - Q4: the causal test against the prompt fix and the logit-bias dial;
+  - Q1 and the layer part of Q3 are partly answered on Qwen3 1.7B.
+  These move into [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md) after the merge decision.
 
 ## Spend
 
-About $33.75 on RunPod for all experiments to date (2026-11-07; the §53 A40 pod about $2.59; §51 pods S $4.38 and H+T $2.57; the §51 editor API, $3.58, is billed separately); before §51 about $24.2 (2026-11-02; the §50 L40S pod $1.319 posted (GPU $1.310 + disk $0.009); the §49 L40S pod $0.847 posted (GPU $0.840 + disk $0.006; guard pod $0.0003); the §47 A40 pod $0.34 posted (GPU $0.333 + disk $0.007); the §46 A40 pod about $0.24; the §45 A40 pod about $1.21; the §42 pod about $0.12; the §43 Llama, Gemma and Phi lens pods about $0.61, $0.75 and $0.75; the §44 A40 pod about $0.16; §44 runs on the laptop at $0; the §40 figure was $17.82 on 2026-10-23; §39, §39b and §41 cost nothing, laptop only; the §40 pod about $0.12 plus an aborted first attempt about $0.03). The last
+About $34.32 on RunPod (Berkeley account, $36 cap) for all experiments to 2026-11-11 (§55 ≈ $0.57; §56, §57 laptop, $0). The self-doubt work uses a separate gmail RunPod account (≈ $15.7 left of $25). Earlier: about $33.75 (2026-11-07; the §53 A40 pod about $2.59; §51 pods S $4.38 and H+T $2.57; the §51 editor API, $3.58, is billed separately); before §51 about $24.2 (2026-11-02; the §50 L40S pod $1.319 posted (GPU $1.310 + disk $0.009); the §49 L40S pod $0.847 posted (GPU $0.840 + disk $0.006; guard pod $0.0003); the §47 A40 pod $0.34 posted (GPU $0.333 + disk $0.007); the §46 A40 pod about $0.24; the §45 A40 pod about $1.21; the §42 pod about $0.12; the §43 Llama, Gemma and Phi lens pods about $0.61, $0.75 and $0.75; the §44 A40 pod about $0.16; §44 runs on the laptop at $0; the §40 figure was $17.82 on 2026-10-23; §39, §39b and §41 cost nothing, laptop only; the §40 pod about $0.12 plus an aborted first attempt about $0.03). The last
 total in a table is $12.58 after §27–§28; §29 (about $1.02) and §32 (about $0.15) gave $13.75, the
 J-lens and answer-selection runs (§34–§36b; §36 and §36b together $0.33) brought it to about $17.55, §37 cost
 nothing (laptop only), and the §38 pod (13 min, including a failed first attempt) about $0.13. Every
