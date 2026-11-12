@@ -1,78 +1,77 @@
 # memctl
 
-**Honors thesis: A Mechanistic Investigation of Evidence-Use Failures In Language Models.**
+**Honors thesis repository. Current question: what inside a reasoning model makes it ignore a valid update that
+arrives in the middle of its thinking?**
 
-When a small language model has the evidence it needs in front of it, why does it still answer "unknown" or answer
-wrong? This repository holds the code, runs and research record for that question. Most of the work is on Qwen2.5-3B,
-with checks on Llama, Gemma and Phi.
+Wu, Miroyan et al. ("Are Large Reasoning Models Interruptible?", arXiv 2510.11713) showed that when a reasoning model
+is given a corrected problem partway through its reasoning, it often finishes the old problem anyway, and called this
+self-doubt. This repository holds the code, results and research record of a study that looks for the layers,
+attention heads and neurons responsible, on Qwen3 1.7B and 8B with the authors' benchmark.
 
-> **Start here:** [research/STATE.md](research/STATE.md) (what is currently supported, with strength and caveats),
-> then [EXPERIMENTS.md](EXPERIMENTS.md) (the record; it wins any disagreement) and
-> [research/EXPERIMENT_INDEX.md](research/EXPERIMENT_INDEX.md) (where each experiment's configs, runs, commits and
-> costs live).
+> **Start here:** [research/STATE.md](research/STATE.md) (what is supported, with strength and caveats), then
+> [selfdoubt/PROPOSAL.md](selfdoubt/PROPOSAL.md) (the pre-registration and the results of stages 0–2),
+> [EXPERIMENTS.md](EXPERIMENTS.md) (the record) and [REPRODUCE.md](REPRODUCE.md) (one command per reported number).
 
 ## How the project got here
 
-1. **Memory controllers (Experiments 1–32).** The project began by asking whether a learned memory controller helps
-   a model answer questions over long histories (LongMemEval, LoCoMo). The only clear win was query-aware selection at
-   question time, and a 31-parameter logistic regression did as well as the learned head (§32). RL never beat
-   imitation. The ceiling was the reader itself: with perfect evidence in view, a 3B reader still trailed a 7B one.
-2. **Why the reader fails (Experiments 34–50).** That ceiling became the thesis. The main findings so far:
-   - The answer is usually present inside the model when it fails. On most failures the gold answer's first token is
-     in the final layer's top 10, in all four families (§34, §43).
-   - Many failures are a refusal, not a gap in knowledge. One instruction line ("do not reply unknown") lifts 3B
-     accuracy by 0.176 (§35). A single content-free steering direction at layer 29 opens the refusal, and the evidence
-     then decides whether the answer is right (§38–§40).
-   - The fixes are not selective. Every push tried so far also makes the model answer questions it should refuse
-     (§41, §42, §49).
-   - On controlled tasks, most false "unknown"s are "note, then refuse": the model writes the right answer in its own
-     note and then says "unknown" (§49). Asking the model whether the evidence is sufficient was not a usable measure
-     (§50).
-3. **Experiments 51–55.** Agent-proposed weight edits and their random-edit controls (§51, §53), a screen of readers
-   below 3B (§52), twin-pair patching for a native "unknown" switch (§54), and a clean-prompt check (§55): with the
-   evidence and model fixed, a consistent abstention rule does not reduce false "unknown"s, and removing the option
-   removes them only by making the model answer questions that have no answer. Results and caveats are in
-   [EXPERIMENTS.md](EXPERIMENTS.md); what they support is in [research/STATE.md](research/STATE.md).
-
-## Research questions
-
-- **RQ1 (behaviour):** can a push make the model answer, without making it guess, when the evidence is in view?
-- **RQ2 (inside the model):** is a failure one of not using the evidence, or of using it and still not producing
-  the answer?
-- **RQ3 (exploratory):** if the evidence is used, what makes the model refuse anyway, and where would a fix go?
+1. **Memory controllers (§1–§32, closed 2026-11-08).** Does a learned memory controller help a model answer questions
+   over long histories? The only clear win was query-aware selection at question time, and a 31-parameter logistic
+   regression did as well as the learned head. The ceiling was the reader: with the evidence in view, a 3B reader
+   still trailed a 7B one.
+2. **False abstention (§33–§57, closed 2026-11-11).** Why does a small reader say "unknown" with the evidence in
+   view? The answer is usually present inside the model, the refusal is a late decision, and offering the "unknown"
+   option causes much of it. Steering, head ablation, weight edits and neuron resets each release it and each beats
+   its random control, but none is more selective than a plain logit bias against the "unknown" token. The line was
+   closed as groundwork, with no paper planned from it.
+3. **Self-doubt (from 2026-11-08; the thesis since 2026-11-11).** The same shape of failure in reasoning models: the
+   information is taken in and then not used. It inherits the localisation tools and two controls that every
+   mechanism claim here must pass: random component sets of the same shape, and a logit bias at matched effect.
 
 ## Where things are
 
 | Path | What |
 |---|---|
-| [research/](research/) | State, decisions, open questions, proposals, reviews, audits and briefings |
-| [EXPERIMENTS.md](EXPERIMENTS.md) | Full record of §33–§55, with numbers and caveats; §1–§32 condensed |
-| `memctl/` | Library: data loaders for the §23/§24 prompts, answer selection and grading, the lenses, steering, patching and editing tools, LLM backends and the judge |
-| `scripts/` | Experiment scripts (`expNN_*.py`, the J-lens fit / read / eval scripts, pod chains) |
-| `runs/`, `cache/` | Run outputs and cached model outputs, not in git (never delete the §23/§24 generation caches: every prompt is rebuilt from them) |
-| [docs/research/](docs/research/) | Per-experiment report copies (§23, §24, §34, §35) and the J-lens design notes under `docs/superpowers/` |
+| [research/STATE.md](research/STATE.md), [DECISIONS.md](research/DECISIONS.md), [OPEN_QUESTIONS.md](research/OPEN_QUESTIONS.md) | Findings F1–F24 with their strength, every decision by number, and the open questions |
+| [EXPERIMENTS.md](EXPERIMENTS.md) | The record: §1–§57 condensed, live entries from §58 |
+| [REPRODUCE.md](REPRODUCE.md) | Conventions for new work, and the command that recomputes each finding |
+| `selfdoubt/` | Code, tests, the pre-registration (`PROPOSAL.md`), the spend log (`SPEND.md`), frozen inputs and result summaries |
+| `runs/selfdoubt/` | Per-row outputs, not in git |
+| `external/interrupt-lrm/` | The original authors' code, pinned, not in git |
+| [archive/](archive/README.md) | Data of the two closed eras as checksummed tarballs, not in git |
 
-**The memory-controller era (§1–§32)** was removed from the working tree on 2026-11-09. Its code, configs, tests and
-full experiment text are at the git tag `memctl-era-final`; its run data is in the local archive
-`archive/memctl-era-data.tar.zst` (manifest beside it). To look at or restore a file:
+## The closed eras
+
+Their code, tests, proposals, reviews and full experiment text are at two git tags, and their data is in `archive/`:
+
+| Era | Tag | Data |
+|---|---|---|
+| Memory controllers, §1–§32 | `memctl-era-final` | `archive/memctl-era/` |
+| False abstention, §33–§57 | `false-abstention-era-final` | `archive/false-abstention/` |
 
 ```bash
-git show memctl-era-final:memctl/controllers/heuristics.py
-git checkout memctl-era-final -- memctl/rl                 # bring a folder back
-tar -I zstd -xf archive/memctl-era-data.tar.zst runs/exp19_gate_f0   # unpack one run
+git show false-abstention-era-final:EXPERIMENTS.md          # the full record of §33–§57
+git worktree add --detach .worktrees/fa false-abstention-era-final   # the whole tree, runnable once data is untarred
 ```
 
-The earlier Phase 2 work (eviction policies on LoCoMo) is on branch `phase2-locomo-baseline`, tag `phase2-complete`.
+[archive/README.md](archive/README.md) lists every tarball and the restore steps. The tags exist only on this laptop;
+`archive/llm-memctl-all-2026-11-11.bundle` is a single-file copy of the whole history. The earlier Phase 2 work
+(eviction policies on LoCoMo) is on branch `phase2-locomo-baseline`, tag `phase2-complete`.
 
 ## Running
 
 ```bash
-python3 -m venv .venv
-.venv/bin/pip install -c constraints.txt -e ".[dev,models,stats]"
-.venv/bin/pip install torch==2.14.0 --index-url https://download.pytorch.org/whl/cpu
-.venv/bin/python -m pytest -q
+python3 -m venv .venv && .venv/bin/pip install -e ".[dev]"
+.venv/bin/python -m pytest
 ```
 
-Secrets (`HF_TOKEN`, `RUNPOD_API_KEY`, `ANTHROPIC_API_KEY`) go in `.env`, copied from `.env.example`. GPU runs use
-rented RunPod pods (image-based A40, HF fp32); each experiment's proposal records its cost and hard stop, and each
-pod chain (`scripts/expNN_pod.sh`) has a laptop stub mode.
+This gives 106 passed and 1 skipped module; with torch installed all 126 tests pass. The pinned Stage 2 environment
+is `.[dev,models]` (torch 2.8.0, transformers 4.57.1), and pods add `.[pods]` (vLLM 0.11.0). GPU runs use rented
+RunPod pods; [selfdoubt/SPEND.md](selfdoubt/SPEND.md) records each one.
+
+## Working rules
+
+- Design choices come from development data only. Held-out data is read once, after the design is frozen by commit.
+- Every paid run needs the user's approval in advance, with a quote from a timed stub.
+- A number is reported only if [REPRODUCE.md](REPRODUCE.md) has the command that recomputes it from kept files.
+- Secrets (`HF_TOKEN`, `RUNPOD_API_KEY`, `RUNPOD_API_KEY_2`, `ANTHROPIC_API_KEY`) go in `.env`, copied from
+  `.env.example`.
