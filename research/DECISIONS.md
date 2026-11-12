@@ -440,3 +440,39 @@ the user has made the decision.
 - **Spend.** $0 (laptop).
 - **Authority.** The user, Advisor pane, 2026-11-10: "Go for, it's free right" (stages 0–4, dev only). Record
   changes: the user, Advisor pane and Executor pane, 2026-11-11: "Go on D-85/F24 and D-86".
+
+## D-86 (2026-11-11) — False-abstention line closed as thesis groundwork; no paper from §33–§57; the thesis pivots to self-doubt (Wu, Miroyan et al.)
+
+- **What.** The false-abstention line (§33–§57, STATE F11–F24) is closed. No further false-abstention experiment is
+  run unless the user reopens it. Not run: the second-model dial comparison, §57 stage 5 (seed 57), the
+  cross-family prompt test, the prompt-feature predictor.
+- **Why (the user's judgement, 2026-11-11).**
+  - The in-view false "unknown" is strongest in Qwen 2.5 3B under our prompt (F11: 0.30; Llama 3B 0.10, Gemma 4B
+    0.02, Phi-4-mini 0.03; F21: not measurable below 3B).
+  - It is largely the price of offering the option (F22).
+  - No component-level fix beats a plain logit bias on "unknown" (F18, F19, F24).
+  - The user judged this not enough for a standalone paper, workshop included. The Advisor had recommended a
+    workshop paper; the user decided otherwise.
+- **Status of §33–§57.** Groundwork: one thesis chapter and the motivation and method base for the self-doubt
+  work. It carries forward the localisation toolkit (lenses, patching, attribution patching, head and neuron
+  resets) and two standing controls:
+  - the logit-bias dial at matched release;
+  - random sets of the same shape.
+- **Pivot.** The thesis becomes a mechanistic follow-up to Wu, Miroyan et al., "Are Large Reasoning Models
+  Interruptible?" (arXiv 2510.11713). Goal (user, 2026-11-11): find which layers, attention heads or neurons play
+  a role in self-doubt. Working claim: in both failures the information reaches the model and is represented,
+  but a late decision does not use it. The pre-registration is `selfdoubt/PROPOSAL.md` (Q1–Q4) on branch
+  `self-doubt-updates`. Target (user): "Self-doubt is definitely work I want in main conference"; January 2027 deadlines mentioned.
+- **Open (pivot plan §5; each needs its own user decision).**
+  - 2: how much of the old work stays in the thesis;
+  - 3: branch merge and § numbering for self-doubt stages;
+  - 4: the Mihran/Narges email;
+  - 5: budget;
+  - 6: the repo archive and the knowledge graph.
+  Until 3 is decided, self-doubt stages keep their own numbering in `selfdoubt/PROPOSAL.md`.
+- **Record.** STATE.md reframed (header, one paragraph, closed/open); OPEN_QUESTIONS Q14, Q16–Q18 marked closed
+  (not pursued); pivot plan `research/briefings/2026-11-11-pivot-plan.md`.
+- **Spend.** $0. RunPod programme total ≈ $34.32 of $36 (Berkeley), unchanged. The gmail account (≈ $15.7 left of
+  its $25 cap) stays reserved for self-doubt; every spend still needs the user's advance approval.
+- **Authority.** The user, session llm-memctl-c6, 2026-11-11: "Ok let's close this and pivot fully to
+  self-doubt"; record Go in the Advisor pane and the Executor pane, 2026-11-11: "Go on D-85/F24 and D-86".
