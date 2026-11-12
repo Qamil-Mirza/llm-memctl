@@ -52,6 +52,7 @@ compared with a manifest written from the original. All 233,366 members (kept 21
 | K18 | §57 including `run/stage2/*.npz` and `run/stage3` | F24 |
 | K20 | `data/` (LongMemEval, LoCoMo, J-lens corpus), `external/jacobian-lens@581d3986` | populations, `jlens` |
 | K21 | provenance (see below) | F13 audit, F20 note audit, recounts |
+| K22 | consolidation records: the plan, the Advisor's review, the D-87 draft, the record pointer-fix draft (final versions) | the cleanup's own record |
 | B01 | stubs, smokes, scratch, old pipeline drivers and logs, stub judges | none |
 | B02 | J-lens files: `exp34_jlens/lenses/*` (checkpoints, 7B, 0.5B, 3B) and `exp45_maps/lenses/qwen3b.pt` | regenerating §45 maps only |
 | B03 | unread activations (`exp50` resid and s2dev, `exp46_patch` and `exp44_swap` resid, stub safetensors, `exp53/edits`) | none |
